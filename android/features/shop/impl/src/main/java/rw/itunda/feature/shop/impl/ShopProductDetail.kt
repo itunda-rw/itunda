@@ -26,6 +26,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.ui.res.stringResource
+import rw.itunda.feature.shop.impl.R
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -186,6 +190,7 @@ internal fun MultiCartView(
     BackHandler(onBack = onBack)
     var address by remember { mutableStateOf("") }
     var submitting by remember { mutableStateOf(false) }
+    var showOrderReview by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     // Real device binding step-up (2026-07-21) -- every order in this batch shares
     // the same device/session, so hitting this once means every remaining order
@@ -322,12 +327,90 @@ internal fun MultiCartView(
         // -- replaces the plain tap-to-confirm button with Toss's own signature
         // deliberate-drag payment gesture. See SwipeToConfirmButton's own doc comment.
         SwipeToConfirmButton(
-            label = "Swipe to place ${groups.size} order${if (groups.size == 1) "" else "s"}",
-            busyLabel = "Placing orders…",
+            label = stringResource(R.string.shop_review_swipe_to_place, groups.size),
+            busyLabel = stringResource(R.string.shop_review_placing_orders),
             enabled = !submitting && address.isNotBlank(),
             busy = submitting,
-            onConfirm = { coroutineScope.launch { placeOrders() } },
+            onConfirm = { showOrderReview = true },
         )
+        if (showOrderReview) {
+            ModalBottomSheet(
+                onDismissRequest = { if (!submitting) showOrderReview = false },
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                containerColor = Ids.colors.surface,
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(
+                        stringResource(R.string.shop_review_confirm_identity),
+                        color = Ids.colors.textPrimary,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        stringResource(R.string.shop_review_payment_summary, groups.size),
+                        color = Ids.colors.textSecondary,
+                        fontSize = 14.sp,
+                    )
+                    groupList.forEach { (_, lines) ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                lines.first().businessName,
+                                color = Ids.colors.textPrimary,
+                                fontSize = 14.sp,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text(
+                                String.format(Locale.US, "%,.0f RWF", lines.sumOf { it.product.price * it.quantity }),
+                                color = Ids.colors.textPrimary,
+                                fontSize = 14.sp,
+                            )
+                        }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(stringResource(R.string.shop_review_total), color = Ids.colors.textSecondary, fontSize = 14.sp)
+                        Text(
+                            String.format(Locale.US, "%,.0f RWF", grandTotal),
+                            color = Ids.colors.textPrimary,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                    Text(
+                        stringResource(R.string.shop_review_delivery_to, address.trim()),
+                        color = Ids.colors.textSecondary,
+                        fontSize = 13.sp,
+                    )
+                    androidx.compose.material3.Button(
+                        onClick = {
+                            if (!submitting) {
+                                showOrderReview = false
+                                coroutineScope.launch { placeOrders() }
+                            }
+                        },
+                        enabled = !submitting,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(if (submitting) stringResource(R.string.shop_review_placing_orders) else stringResource(R.string.shop_review_confirm_order))
+                    }
+                    TextButton(
+                        onClick = { if (!submitting) showOrderReview = false },
+                        enabled = !submitting,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.shop_review_cancel))
+                    }
+                }
+            }
+        }
         deviceStepUpHost(
             needsDeviceVerification,
             { needsDeviceVerification = false },
