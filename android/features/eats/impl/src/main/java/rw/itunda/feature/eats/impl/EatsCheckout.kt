@@ -79,6 +79,7 @@ internal fun EatsCheckoutView(
     // comment for why this is free text rather than a validated table registry.
     var tableNumber by remember { mutableStateOf("") }
     var submitting by remember { mutableStateOf(false) }
+    var showOrderReview by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     // Real device binding step-up (2026-07-21) -- Eats checkout was a real gap:
     // already correctly enforced server-side (a real 403 DEVICE_NOT_VERIFIED) but
@@ -231,28 +232,123 @@ internal fun EatsCheckoutView(
                 .clip(RoundedCornerShape(16.dp))
                 .background(if (submitting || !canSubmit) Ids.colors.textTertiary else Ids.colors.brand)
                 .pressScaleClickable(enabled = !submitting && canSubmit) {
-                    submitting = true
                     error = null
-                    needsDeviceVerification = false
-                    coroutineScope.launch {
-                        try {
-                            when (mode) { EatsCheckoutMode.DELIVERY -> submitDelivery(); EatsCheckoutMode.PICKUP -> submitPickup(); EatsCheckoutMode.DINE_IN -> submitDineIn() }
-                        } catch (e: HttpException) {
-                            if (isDeviceNotVerifiedError(e)) {
-                                needsDeviceVerification = true
-                            } else {
-                                error = superAppErrorMessage(e)
-                            }
-                        } catch (e: IOException) {
-                            error = "Couldn't reach itunda. Check your connection and try again."
-                        } finally {
-                            submitting = false
-                        }
-                    }
+                    showOrderReview = true
                 }
                 .padding(vertical = 16.dp),
             contentAlignment = Alignment.Center,
         ) { Text(if (submitting) "Placing order…" else "Place order", color = Color.White, fontWeight = FontWeight.Bold) }
+        if (showOrderReview) {
+            androidx.compose.material3.ModalBottomSheet(
+                onDismissRequest = { if (!submitting) showOrderReview = false },
+                sheetState = androidx.compose.material3.rememberModalBottomSheetState(
+                    skipPartiallyExpanded = true,
+                ),
+                containerColor = Ids.colors.surface,
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .padding(bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(
+                        "Confirm it’s you",
+                        color = Ids.colors.textPrimary,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        "Review your order to ${restaurant.name}",
+                        color = Ids.colors.textSecondary,
+                        fontSize = 14.sp,
+                    )
+                    lines.forEach { (product, line) ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                "${product.name} × ${line.quantity}",
+                                color = Ids.colors.textPrimary,
+                                fontSize = 14.sp,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text(
+                                String.format(Locale.US, "%,.0f RWF", eatsLineUnitPrice(product, line.choiceIds) * line.quantity),
+                                color = Ids.colors.textPrimary,
+                                fontSize = 14.sp,
+                            )
+                        }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text("Subtotal", color = Ids.colors.textSecondary, fontSize = 14.sp)
+                        Text(
+                            String.format(Locale.US, "%,.0f RWF", total),
+                            color = Ids.colors.textPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                        )
+                    }
+                    Text(
+                        when (mode) {
+                            EatsCheckoutMode.DELIVERY -> "Delivery to ${address.trim()}"
+                            EatsCheckoutMode.PICKUP -> "Pickup at ${restaurant.name}"
+                            EatsCheckoutMode.DINE_IN -> "Table ${tableNumber.trim()}"
+                        },
+                        color = Ids.colors.textSecondary,
+                        fontSize = 13.sp,
+                    )
+                    if (error != null) {
+                        Text(error!!, color = Ids.colors.danger, fontSize = 13.sp)
+                    }
+                    androidx.compose.material3.Button(
+                        onClick = {
+                            if (!submitting) {
+                                submitting = true
+                                error = null
+                                needsDeviceVerification = false
+                                coroutineScope.launch {
+                                    try {
+                                        when (mode) {
+                                            EatsCheckoutMode.DELIVERY -> submitDelivery()
+                                            EatsCheckoutMode.PICKUP -> submitPickup()
+                                            EatsCheckoutMode.DINE_IN -> submitDineIn()
+                                        }
+                                        showOrderReview = false
+                                    } catch (e: HttpException) {
+                                        if (isDeviceNotVerifiedError(e)) {
+                                            needsDeviceVerification = true
+                                        } else {
+                                            error = superAppErrorMessage(e)
+                                        }
+                                    } catch (e: IOException) {
+                                        error = "Couldn't reach itunda. Check your connection and try again."
+                                    } finally {
+                                        submitting = false
+                                    }
+                                }
+                            }
+                        },
+                        enabled = !submitting,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(if (submitting) "Placing order…" else "Confirm order")
+                    }
+                    androidx.compose.material3.TextButton(
+                        onClick = { if (!submitting) showOrderReview = false },
+                        enabled = !submitting,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            }
+        }
         deviceStepUpHost(
             needsDeviceVerification,
             { needsDeviceVerification = false },
