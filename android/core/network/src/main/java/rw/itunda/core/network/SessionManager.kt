@@ -196,17 +196,24 @@ object SessionManager {
         _sessionState.value = SessionState.LoggedOut
     }
 
-    private suspend fun runAuthCall(call: suspend () -> AuthResponse): AuthResult = try {
-        val response = call()
-        NetworkClient.currentTokenStore().saveSession(response.user.id, response.accessToken, response.refreshToken)
-        _sessionState.value = SessionState.LoggedIn(response.user.id)
-        registerDeviceToken()
-        AuthResult.Success
-    } catch (e: retrofit2.HttpException) {
-        AuthResult.Failure(httpErrorMessage(e))
-    } catch (e: Exception) {
-        AuthResult.Failure("Couldn't reach itunda. Check your connection and try again.")
-    }
+    private suspend fun runAuthCall(call: suspend () -> AuthResponse): AuthResult {
+        return try {
+            val response = call()
+            NetworkClient.currentTokenStore().saveSession(response.user.id, response.accessToken, response.refreshToken)
+            _sessionState.value = SessionState.LoggedIn(response.user.id)
+            registerDeviceToken()
+            AuthResult.Success
+        } catch (e: retrofit2.HttpException) {
+            AuthResult.Failure(httpErrorMessage(e))
+        } catch (e: java.io.IOException) {
+            android.util.Log.w("ITUNDA_AUTH", "Authentication transport failure: ${e.javaClass.simpleName}")
+            AuthResult.Failure("Couldn't connect to itunda. Check your connection and try again.")
+        } catch (e: Exception) {
+            // Keep the user-facing message generic, but record only the exception type for
+            // diagnosis. Never log credentials, tokens, phone numbers, or response bodies.
+            android.util.Log.e("ITUNDA_AUTH", "Authentication failed: ${e.javaClass.simpleName}")
+            AuthResult.Failure("We couldn't complete sign-in. Please try again.")
+        }
 
     // Real push device-token registration (item 120) -- see ApiService.kt's own doc
     // comment. Best-effort and fire-and-forget: a registration failure must never
