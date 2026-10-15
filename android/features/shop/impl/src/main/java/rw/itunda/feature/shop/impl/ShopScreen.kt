@@ -545,13 +545,17 @@ fun CommerceShopContent(
                 Box(
                     modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp))
                         .background(Ids.colors.surface)
-                        .pressScaleClickable { if (totalItems > 0) showCart = true },
+                        .pressScaleClickable { showCart = true },
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(Icons.Outlined.ShoppingCart, contentDescription = "Cart", tint = Ids.colors.textPrimary)
                     if (totalItems > 0) {
-                        Box(modifier = Modifier.align(Alignment.TopEnd).padding(2.dp).size(8.dp)
-                            .clip(RoundedCornerShape(4.dp)).background(Ids.colors.brand))
+                        Box(
+                            modifier = Modifier.align(Alignment.TopEnd).padding(2.dp)
+                                .clip(RoundedCornerShape(9.dp)).background(Ids.colors.brand)
+                                .padding(horizontal = 5.dp, vertical = 2.dp),
+                            contentAlignment = Alignment.Center,
+                        ) { Text(totalItems.toString(), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold) }
                     }
                 }
             }
