@@ -93,7 +93,11 @@ export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }
     return { tx, afterBalance, isCredit };
   });
   const filtered = withBalance.filter((entry) => {
-    if (filterType && entry.tx.type !== filterType) return false;
+    // Match the clickable prototype's customer-facing direction filters while
+    // preserving the existing per-transaction-type filters below.
+    if (filterType === '__MONEY_IN__' && !entry.isCredit) return false;
+    if (filterType === '__MONEY_OUT__' && entry.isCredit) return false;
+    if (filterType && filterType !== '__MONEY_IN__' && filterType !== '__MONEY_OUT__' && entry.tx.type !== filterType) return false;
     if (searchQuery.trim() && !entry.tx.description.toLowerCase().includes(searchQuery.trim().toLowerCase())) return false;
     return true;
   });
@@ -204,14 +208,19 @@ export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }
           {sorted.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0' }}>
               <select
+                aria-label="Filter transactions"
                 value={filterType ?? ''}
                 onChange={(e) => setFilterType(e.target.value || null)}
-                style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-grey-900)', border: 'none', background: 'transparent' }}
+                style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-grey-900)', border: 'none', background: 'transparent', minHeight: '40px', maxWidth: '70%' }}
               >
-                <option value="">All</option>
-                {availableTypes.map((type) => (
-                  <option key={type} value={type}>{transactionTypeLabel(type)}</option>
-                ))}
+                <option value="">All activity</option>
+                <option value="__MONEY_IN__">Money in</option>
+                <option value="__MONEY_OUT__">Money out</option>
+                <optgroup label="By transaction type">
+                  {availableTypes.map((type) => (
+                    <option key={type} value={type}>{transactionTypeLabel(type)}</option>
+                  ))}
+                </optgroup>
               </select>
               <button onClick={() => setShowSearch((v) => !v)} aria-label="Search transactions" style={{ display: 'flex', padding: '4px' }}>
                 <Search size={18} color="var(--itunda-grey-500)" />
