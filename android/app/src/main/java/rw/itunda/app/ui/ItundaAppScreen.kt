@@ -2097,21 +2097,7 @@ private fun AccountDetailScreen(
     var ledgerQuery by remember { mutableStateOf("") }
     var ledgerFilter by remember { mutableStateOf("ALL") }
     val visibleTransactions = remember(withBalance, ledgerQuery, ledgerFilter, currentUserId) {
-        val query = ledgerQuery.trim().lowercase()
-        withBalance.filter { (tx, _) ->
-            val isOutgoing = tx.senderId == currentUserId
-            val matchesDirection = when (ledgerFilter) {
-                "IN" -> !isOutgoing
-                "OUT" -> isOutgoing
-                else -> true
-            }
-            val matchesQuery = query.isBlank() ||
-                tx.description.lowercase().contains(query) ||
-                tx.type.lowercase().contains(query) ||
-                tx.status.lowercase().contains(query) ||
-                tx.createdAt.lowercase().contains(query)
-            matchesDirection && matchesQuery
-        }
+        filterAccountLedgerTransactions(withBalance, ledgerQuery, ledgerFilter, currentUserId)
     }
     val visibleGrouped = remember(visibleTransactions) {
         visibleTransactions.groupBy { (tx, _) -> ledgerDateHeader(tx.createdAt) }
@@ -2242,51 +2228,12 @@ private fun AccountDetailScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             }
             item {
-                Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 12.dp)) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Ids.colors.chip)
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(Icons.Outlined.Search, contentDescription = null, modifier = Modifier.size(18.dp), tint = Ids.colors.textTertiary)
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Box(modifier = Modifier.weight(1f)) {
-                            if (ledgerQuery.isEmpty()) {
-                                Text("Search transactions", color = Ids.colors.textTertiary, fontSize = 14.sp)
-                            }
-                            BasicTextField(
-                                value = ledgerQuery,
-                                onValueChange = { ledgerQuery = it },
-                                singleLine = true,
-                                textStyle = androidx.compose.ui.text.TextStyle(color = Ids.colors.textPrimary, fontSize = 14.sp),
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("ALL" to "All", "IN" to "Money in", "OUT" to "Money out").forEach { (value, label) ->
-                            val selected = ledgerFilter == value
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(999.dp))
-                                    .background(if (selected) Ids.colors.brand.copy(alpha = 0.14f) else Ids.colors.chip)
-                                    .clickable { ledgerFilter = value }
-                                    .padding(horizontal = 14.dp, vertical = 9.dp),
-                            ) {
-                                Text(
-                                    label,
-                                    color = if (selected) Ids.colors.brand else Ids.colors.textSecondary,
-                                    fontSize = 13.sp,
-                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                )
-                            }
-                        }
-                    }
-                }
+                AccountLedgerSearchFilters(
+                    query = ledgerQuery,
+                    onQueryChange = { ledgerQuery = it },
+                    filter = ledgerFilter,
+                    onFilterChange = { ledgerFilter = it },
+                )
             }
             if (visibleTransactions.isEmpty()) {
                 item { EmptyState(if (withBalance.isEmpty()) stringResource(R.string.account_detail_empty) else "No matching transactions") }
