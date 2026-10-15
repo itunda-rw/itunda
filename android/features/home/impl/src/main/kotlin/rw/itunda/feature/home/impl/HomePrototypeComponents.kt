@@ -148,8 +148,8 @@ internal fun HomePrimaryActions(
     onAddMoney: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(
             modifier = Modifier
@@ -157,7 +157,7 @@ internal fun HomePrimaryActions(
                 .clip(RoundedCornerShape(16.dp))
                 .background(Ids.colors.brand)
                 .pressScaleClickable(onClick = onSend)
-                .padding(vertical = 15.dp),
+                .padding(vertical = 17.dp),
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -194,7 +194,7 @@ internal fun HomeQuickActions(
     onAirtime: () -> Unit,
 ) {
     androidx.compose.foundation.layout.Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
@@ -222,7 +222,7 @@ internal fun HomeRecentActivity(
     onOpenTransaction: () -> Unit,
 ) {
     androidx.compose.foundation.layout.Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Row(
@@ -306,7 +306,7 @@ internal fun HomeRwandaServices(
     onOpenService: () -> Unit,
 ) {
     androidx.compose.foundation.layout.Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
