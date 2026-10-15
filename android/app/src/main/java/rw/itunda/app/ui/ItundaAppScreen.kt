@@ -1833,6 +1833,7 @@ fun ItundaAppScreen(
                         val homeUnreadNotificationCount by viewModel.unreadNotificationCount.collectAsState()
                         val homeIsOffline by viewModel.isOffline.collectAsState()
                         val homePrimaryAccount by viewModel.primaryAccount.collectAsState()
+                        val homeTransactions by viewModel.transactions.collectAsState()
                         val homeProfile by viewModel.profile.collectAsState()
                         val homeIsRefreshing by viewModel.isRefreshing.collectAsState()
                         HomeEntryPoint(
@@ -1840,6 +1841,7 @@ fun ItundaAppScreen(
                         unreadNotificationCount = homeUnreadNotificationCount,
                         isOffline = homeIsOffline,
                         primaryAccount = homePrimaryAccount,
+                        recentTransactions = homeTransactions,
                         neighborhoodSet = homeProfile?.neighborhood != null,
                         isRefreshing = homeIsRefreshing,
                         onRetry = { viewModel.retry() },
@@ -1863,6 +1865,7 @@ fun ItundaAppScreen(
                         // Bank's own new account-account card below is what actually opens
                         // AccountDetailScreen.
                         onOpenAccountDetail = { showBank = true },
+                        onOpenActivity = { showTransactionHistory = true },
                         // Real Naver-style Home redesign (2026-08-14, direct user
                         // reference: 5 real Naver Home screenshots -- search bar, weather/
                         // stock widgets, a Clip video grid, an infinite content feed).
