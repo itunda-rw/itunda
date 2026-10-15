@@ -40,6 +40,12 @@
     <string name="home_trending_title">Trending nearby</string>
     <string name="home_feed_title">For you</string>
     <string name="home_recent_activity">Recent activity</string>
+    <string name="home_spending">Spending</string>
+    <string name="home_spending_empty">No account activity to show yet</string>
+    <string name="home_spending_activity">View account activity</string>
+    <string name="home_spending_subtitle">Your latest account activity</string>
+    <string name="home_for_you">For you</string>
+    <string name="home_for_you_empty">No recommendations available yet</string>
     <string name="home_see_all">See all</string>
     <string name="home_no_recent_activity">No recent activity yet.</string>
     <string name="home_discover">Discover</string>
