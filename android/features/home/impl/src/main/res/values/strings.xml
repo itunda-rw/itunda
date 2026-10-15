@@ -7,6 +7,12 @@
      exact label. -->
 <resources>
     <string name="home_pay_shortcut">Pay</string>
+    <string name="home_send_money">Send</string>
+    <string name="home_add_money">Add money</string>
+    <string name="home_quick_actions">Quick actions</string>
+    <string name="home_scan_to_pay">Scan to pay</string>
+    <string name="home_shop">Shop</string>
+    <string name="home_community">Community</string>
     <string name="home_notifications">Notifications</string>
     <string name="home_account_switcher">Switch account</string>
     <string name="home_your_accounts">YOUR ACCOUNTS</string>
