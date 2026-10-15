@@ -83,7 +83,7 @@ export function MapPlaceDetailPanel({ merchantId, onClose }: { merchantId: strin
                       ?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[nextIndex]
                       ?.focus();
                   }
-                }
+                }}
                 style={{
                   padding: '10px 14px', minHeight: '48px', fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap',
                   color: tab === t.id ? 'var(--itunda-indigo)' : TEXT_SECONDARY,
