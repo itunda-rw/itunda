@@ -158,18 +158,17 @@ fun HomeTab(
                     color = Ids.colors.textPrimary,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
+                    modifier = Modifier.padding(top = 16.dp, bottom = 2.dp),
                 )
             }
             item {
                 Row(
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
-                        .background(Ids.colors.surface)
-                        .padding(horizontal = 14.dp, vertical = 14.dp),
+                    modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpenActivity)
+                        .padding(vertical = 11.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(
-                        modifier = Modifier.size(42.dp).clip(RoundedCornerShape(14.dp))
+                        modifier = Modifier.size(48.dp).clip(RoundedCornerShape(18.dp))
                             .background(Ids.colors.chip),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -186,7 +185,7 @@ fun HomeTab(
                             if (recentTransactions.isEmpty()) stringResource(R.string.home_spending_empty)
                             else stringResource(R.string.home_spending_activity),
                             color = Ids.colors.textPrimary,
-                            fontSize = 14.sp,
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
                         Text(
