@@ -13,6 +13,14 @@
     <string name="home_scan_to_pay">Scan to pay</string>
     <string name="home_shop">Shop</string>
     <string name="home_community">Community</string>
+    <string name="home_pay_bills">Pay bills</string>
+    <string name="home_airtime">Airtime</string>
+    <string name="home_rwanda_services">Rwanda services</string>
+    <string name="home_irembo">Irembo</string>
+    <string name="home_rra_taxes">RRA taxes</string>
+    <string name="home_reg_electricity">REG electricity</string>
+    <string name="home_wasac_water">WASAC water</string>
+    <string name="home_school_fees">School fees</string>
     <string name="home_notifications">Notifications</string>
     <string name="home_account_switcher">Switch account</string>
     <string name="home_your_accounts">YOUR ACCOUNTS</string>
