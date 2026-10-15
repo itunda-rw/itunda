@@ -282,6 +282,7 @@ fun HomeEntryPoint(
     isRefreshing: Boolean,
     onRetry: () -> Unit,
     onOpenPay: () -> Unit = {},
+    onOpenBills: () -> Unit = onOpenPay,
     onOpenSend: () -> Unit = onOpenPay,
     onOpenNotifications: () -> Unit = {},
     onOpenOverview: () -> Unit = {},
