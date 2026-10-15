@@ -63,6 +63,18 @@
     mainAccountId = main.id;
     S.bank = Number(main.balance || 0);
     S.name = [liveUser && liveUser.firstName, liveUser && liveUser.lastName].filter(Boolean).join(' ') || S.name || '';
+    if (Array.isArray(S.act)) {
+      S.act = liveTransactions.map(function (tx) {
+        const outgoing = Boolean((liveUser && tx.senderId === liveUser.id) || tx.fromAccountId === mainAccountId);
+        const amount = Number(tx.amount || 0) * (outgoing ? -1 : 1);
+        const type = String(tx.type || '').toUpperCase();
+        const icon = type === 'INTEREST' ? 'coin' : (type === 'BILL' || type === 'AIRTIME' || type === 'PAYMENT' ? 'bill' : (outgoing ? 'send' : 'up'));
+        const date = tx.createdAt ? new Date(tx.createdAt) : new Date();
+        const status = String(tx.status || 'COMPLETED').toLowerCase();
+        const label = outgoing ? 'Paid' : 'Received';
+        return [icon, String(tx.description || tx.type || 'Account activity'), label + ' · ' + date.toLocaleDateString(), amount, status, date.getTime()];
+      });
+    }
   }
   function fail(error) {
     if (typeof window.toast === 'function') window.toast(error.message || 'Something went wrong.');
