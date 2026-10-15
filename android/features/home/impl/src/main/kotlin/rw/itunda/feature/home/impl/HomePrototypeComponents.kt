@@ -215,6 +215,92 @@ internal fun HomeQuickActions(
 }
 
 @Composable
+internal fun HomeRecentActivity(
+    transactions: List<rw.itunda.core.network.TransactionDto>,
+    onSeeAll: () -> Unit,
+    onOpenTransaction: () -> Unit,
+) {
+    androidx.compose.foundation.layout.Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                stringResource(R.string.home_recent_activity),
+                color = Ids.colors.textPrimary,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                stringResource(R.string.home_see_all),
+                color = Ids.colors.brand,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.pressScaleClickable(onClick = onSeeAll).padding(6.dp),
+            )
+        }
+        if (transactions.isEmpty()) {
+            Text(
+                stringResource(R.string.home_no_recent_activity),
+                color = Ids.colors.textSecondary,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(vertical = 12.dp),
+            )
+        } else {
+            transactions.take(3).forEach { transaction ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                        .pressScaleClickable(onClick = onOpenTransaction)
+                        .padding(vertical = 10.dp, horizontal = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier = Modifier.size(42.dp).clip(RoundedCornerShape(14.dp))
+                            .background(Ids.colors.chip),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            Icons.Outlined.AccountBalanceWallet,
+                            contentDescription = null,
+                            tint = Ids.colors.textPrimary,
+                            modifier = Modifier.size(21.dp),
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    androidx.compose.foundation.layout.Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            transaction.description.ifBlank { transaction.type },
+                            color = Ids.colors.textPrimary,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                        )
+                        Text(
+                            transaction.status,
+                            color = Ids.colors.textSecondary,
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        String.format(Locale.US, "%,.0f %s", transaction.amount, transaction.currency),
+                        color = Ids.colors.textPrimary,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 internal fun HomeRwandaServices(
     onOpenService: () -> Unit,
 ) {
