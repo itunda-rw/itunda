@@ -144,13 +144,13 @@ android {
         // Real login/session flow needs a real base URL -- NetworkClient.kt previously
         // hardcoded "http://10.0.2.2:8080/", the emulator-only loopback alias, at the
         // wrong port (services/backend listens on 4001, see its application.yml) --
-        // and a physical device can't resolve 10.0.2.2 at all. Defaults to the emulator
-        // alias at the right port; override for a physical device on the same LAN with
-        // e.g. `-PapiBaseUrl=http://192.168.0.63:4001/` (2026-07-11 fix).
+        // and a physical device can't resolve 10.0.2.2 at all. Production defaults to
+        // the canonical public HTTPS API host; override for local/staging builds with
+        // e.g. `-PapiBaseUrl=http://192.168.0.63:4001/` for intentional local testing.
         buildConfigField(
             "String",
             "API_BASE_URL",
-            "\"${project.findProperty("apiBaseUrl") ?: "https://itunda-api-hptgu43hsa-du.a.run.app/"}\""
+            "\"${project.findProperty("apiBaseUrl") ?: "https://api.itunda.im/"}\""
         )
 
         // Same real gap as API_BASE_URL above, just discovered later (2026-07-21):
