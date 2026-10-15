@@ -9,6 +9,12 @@
     <string name="home_dismiss_recommendation">Ivanaho</string>
     <string name="home_feed_title">Kuri wowe</string>
     <string name="home_recent_activity">Ibikorwa biheruka</string>
+    <string name="home_next_for_you">Ikurikira kuri wowe</string>
+    <string name="home_savings_goal_title">Tangira intego yawe yo kuzigama</string>
+    <string name="home_savings_goal_description">Hitamo intego n’itariki yo kugeraho, utangire kuzigama.</string>
+    <string name="home_savings_goal_progress">Wabitse RWF %1$s kuri RWF %2$s</string>
+    <string name="home_savings_goal_cta">Tangira kuzigama</string>
+    <string name="home_savings_goal_view">Reba intego yawe yo kuzigama</string>
     <string name="home_connection_online">Itunda serivisi zirahari</string>
     <string name="home_connection_offline">Nta murongo — amakuru ashobora kuba ashaje</string>
     <string name="home_spending">Ikoreshwa ry’amafaranga</string>
