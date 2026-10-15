@@ -1,7 +1,9 @@
 package rw.itunda.feature.payments.impl
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -10,19 +12,26 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import rw.itunda.core.designsystem.components.EmptyState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.theme.Ids
 
@@ -39,7 +48,12 @@ data class TransactionDisplayItem(
     val currency: String,
     val status: String,
     val isOutgoing: Boolean,
-)
+    val type: String = "",
+) {
+    val isPayment: Boolean
+        get() = listOf("PAYMENT", "BILL", "PURCHASE", "ORDER", "EATS", "SHOP")
+            .any { type.contains(it, ignoreCase = true) }
+}
 
 /**
  * Real transaction history screen, matching the real Toss card-detail reference
@@ -73,6 +87,23 @@ fun TransactionHistoryScreen(
         .filter { it.isOutgoing && it.status == "COMPLETED" }
         .sumOf { it.amount }
 
+    var query by remember { mutableStateOf("") }
+    var selectedFilter by remember { mutableStateOf("ALL") }
+    val filteredTransactions = transactions.filter { tx ->
+        val matchesFilter = when (selectedFilter) {
+            "SENT" -> tx.isOutgoing && !tx.isPayment
+            "RECEIVED" -> !tx.isOutgoing
+            "PAID" -> tx.isPayment
+            else -> true
+        }
+        val q = query.trim()
+        val matchesQuery = q.isBlank() ||
+            tx.description.contains(q, ignoreCase = true) ||
+            tx.status.contains(q, ignoreCase = true) ||
+            tx.type.contains(q, ignoreCase = true) ||
+            tx.amount.toLong().toString().contains(q)
+        matchesFilter && matchesQuery
+    }
     val pullToRefreshState = rememberPullToRefreshState()
     LaunchedEffect(pullToRefreshState.isRefreshing) {
         if (pullToRefreshState.isRefreshing) onRefresh()
@@ -94,7 +125,7 @@ fun TransactionHistoryScreen(
             FlowTopBar(onBack)
 
             Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-                Text("Spent this month", color = Ids.colors.textSecondary, fontSize = 15.sp)
+                Text(stringResource(R.string.transaction_history_spent_label), color = Ids.colors.textSecondary, fontSize = 15.sp)
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     "${rwfFormatter.format(spentThisMonth.toLong())} RWF",
@@ -104,13 +135,66 @@ fun TransactionHistoryScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
-            if (transactions.isEmpty()) {
-                EmptyState("No transactions yet — sends, receives, and payments will show up here.", icon = Icons.Outlined.ReceiptLong)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
+                    .clip(RoundedCornerShape(14.dp)).background(Ids.colors.chip)
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Outlined.Search, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(10.dp))
+                Box(modifier = Modifier.weight(1f)) {
+                    if (query.isEmpty()) {
+                        Text(stringResource(R.string.transaction_history_search), color = Ids.colors.textTertiary, fontSize = 14.sp)
+                    }
+                    BasicTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        singleLine = true,
+                        textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 14.sp),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                listOf(
+                    "ALL" to R.string.transaction_history_filter_all,
+                    "SENT" to R.string.transaction_history_filter_sent,
+                    "RECEIVED" to R.string.transaction_history_filter_received,
+                    "PAID" to R.string.transaction_history_filter_paid,
+                ).forEach { (key, label) ->
+                    val selected = selectedFilter == key
+                    Box(
+                        modifier = Modifier.clip(RoundedCornerShape(999.dp))
+                            .background(if (selected) Ids.colors.textPrimary else Ids.colors.chip)
+                            .clickable { selectedFilter = key }
+                            .padding(horizontal = 12.dp, vertical = 9.dp),
+                    ) {
+                        Text(stringResource(label),
+                            color = if (selected) Ids.colors.background else Ids.colors.textSecondary,
+                            fontSize = 13.sp,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (filteredTransactions.isEmpty()) {
+                EmptyState(
+                    if (transactions.isEmpty()) stringResource(R.string.transaction_history_empty)
+                    else stringResource(R.string.transaction_history_no_matches),
+                    icon = Icons.Outlined.ReceiptLong,
+                )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
-                    items(transactions, key = { it.id }) { tx -> TransactionRow(tx) }
+                    items(filteredTransactions, key = { it.id }) { tx -> TransactionRow(tx) }
                 }
             }
         }
