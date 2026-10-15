@@ -37,4 +37,10 @@
     <string name="transfer_amount_insufficient">Amafaranga ntahagije — ufite RWF %1$s</string>
     <string name="transfer_send">Ohereza</string>
     <string name="transfer_delete_digit">Siba</string>
+    <string name="transfer_confirm_identity">Emeza ko ari wowe</string>
+    <string name="transfer_confirm_recipient">Uwo wohereza</string>
+    <string name="transfer_confirm_amount">Amafaranga</string>
+    <string name="transfer_confirm_fee">Ikiguzi</string>
+    <string name="transfer_confirm">Emeza</string>
+    <string name="transfer_send_anyway">Ohereza uko biri</string>
 </resources>
