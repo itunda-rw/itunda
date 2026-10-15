@@ -1809,6 +1809,9 @@ return _s6.apply(this,arguments)};
   const USER = 'itunda_bank_user';
   const DEVICE = 'itunda_web_device_id';
   let mainAccount = null;
+  let payAccount = null;
+  let accountDataLoaded = false;
+  let spendingSummary = null;
   let recentTransactions = [];
   let refreshing = null;
   let transferBusy = false;
@@ -1887,10 +1890,11 @@ return _s6.apply(this,arguments)};
     return null;
   }
   async function syncRealData() {
-    const [profileResult, accountResult, txResult] = await Promise.allSettled([
+    const [profileResult, accountResult, txResult, spendingResult] = await Promise.allSettled([
       api('/api/v1/auth/profile'),
       api('/api/v1/account'),
-      api('/api/v1/account/transactions')
+      api('/api/v1/account/transactions'),
+      api('/api/v1/account/spending')
     ]);
     if (profileResult.status === 'fulfilled' && profileResult.value.user) {
       const user = profileResult.value.user;
@@ -1899,16 +1903,22 @@ return _s6.apply(this,arguments)};
     }
     if (accountResult.status === 'fulfilled' && Array.isArray(accountResult.value.accounts)) {
       const accounts = accountResult.value.accounts;
-      mainAccount = accounts.find(a => /MAIN/i.test(String(a.accountType || a.type || a.name || a.nickname || ''))) || accounts[0] || null;
+      mainAccount = accounts.find(a => String(a.accountType || a.type || '').toUpperCase() === 'MAIN')
+        || accounts.find(a => !/PAY/i.test(String(a.accountType || a.type || a.name || a.nickname || '')))
+        || accounts[0] || null;
+      payAccount = accounts.find(a => String(a.accountType || a.type || '').toUpperCase() === 'PAY') || null;
+      accountDataLoaded = Boolean(mainAccount);
       if (mainAccount) {
         const balance = accountBalance(mainAccount);
-        if (balance !== null) { S.bank = balance; S.pay = balance; }
+        if (balance !== null) S.bank = balance;
       }
+      S.pay = payAccount ? (accountBalance(payAccount) ?? 0) : 0;
     }
     if (txResult.status === 'fulfilled' && Array.isArray(txResult.value.transactions)) {
       recentTransactions = txResult.value.transactions;
     }
-    return {profile:profileResult.status === 'fulfilled', accounts:accountResult.status === 'fulfilled', transactions:txResult.status === 'fulfilled'};
+    if (spendingResult.status === 'fulfilled') spendingSummary = spendingResult.value;
+    return {profile:profileResult.status === 'fulfilled', accounts:accountResult.status === 'fulfilled', transactions:txResult.status === 'fulfilled', spending:spendingResult.status === 'fulfilled'};
   }
   function notifyError(error) {
     const message = (error && error.message) || 'Something went wrong. Please try again.';
@@ -2182,6 +2192,31 @@ return _s6.apply(this,arguments)};
     } finally {
       transferBusy = false;
     }
+  };
+
+  // Home balances, spending, and recent activity come from the authenticated APIs.
+  const originalHomeScreen = screens.home;
+  screens.home = function () {
+    let html = originalHomeScreen();
+    html = html.replace('MTN MoMo and Airtel Money are working normally',
+      accountDataLoaded ? 'Account balance synced from Itunda' : 'Account data unavailable — retry to refresh');
+    const totalSpent = spendingSummary ? number(spendingSummary.totalSpent) : null;
+    html = html.replace('312,000 RWF', totalSpent === null ? '—' : fmt(totalSpent) + ' RWF');
+    html = html.replace('Spent this period, mostly on food',
+      totalSpent === null ? 'Spending data not available' : 'Actual spending from your Itunda account');
+    // This bill status is still prototype data; never present it as a real bill.
+    html = html.replace('Upcoming, due Friday', 'Bill provider not connected')
+               .replace('18,500 RWF', 'Not available');
+    if (recentTransactions.length) {
+      const activity = recentTransactions.slice(0, 3).map(tx => {
+        const title = escapeHtml(tx.description || tx.title || tx.merchantName || tx.type || 'Account activity');
+        const date = escapeHtml(String(tx.createdAt || tx.date || '').slice(0, 10));
+        return row('cash', title, date || 'Recent transaction', '', '');
+      }).join('');
+      html = html.replace('<div class="sec"><div class="sech">For you</div>',
+        '<div class="sec"><div class="sech">Recent activity</div>' + activity + '</div><div class="sec"><div class="sech">For you</div>');
+    }
+    return html;
   };
 
   // The existing account screen is hydrated from real accounts/ledger transactions.
