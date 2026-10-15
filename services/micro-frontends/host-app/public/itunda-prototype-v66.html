@@ -2092,9 +2092,15 @@ return _s6.apply(this,arguments)};
     return originalLogout();
   };
 
-  // Money movement uses the server's quote -> confirm contract, and a fresh idempotency
-  // key per intentional confirmation. No local balance mutation is considered success.
-  const originalFinish = window.finish;
+  // Real money movement is deliberately two-step: request a server quote, show the
+  // exact phone, amount, fee and total debit, then require a second explicit confirmation.
+  // The prototype's contact list is sample UI, so never silently send on its first tap.
+  let pendingTransferQuote = null;
+  let pendingTransferRecipient = '';
+  let pendingTransferAmount = 0;
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
   window.finish = async function () {
     if (!localStorage.getItem(ACCESS)) {
       notifyError(new Error('Sign in to make a real transfer.'));
@@ -2102,26 +2108,71 @@ return _s6.apply(this,arguments)};
     }
     if (transferBusy) return;
     const amount = Number(S.amt);
+    const recipient = phoneE164(S.to);
     if (!S.to || !Number.isFinite(amount) || amount <= 0) {
       notifyError(new Error('Enter a valid recipient and amount.'));
+      return;
+    }
+    if (!/^\\+250\\d{9}$/.test(recipient)) {
+      notifyError(new Error('Enter a valid Rwanda mobile number before sending.'));
       return;
     }
     transferBusy = true;
     try {
       const quoted = await api('/api/v1/account/transfer/quote', {
         method:'POST',
-        body:JSON.stringify({amount, recipient:S.to, fromAccountId:mainAccount && mainAccount.id})
+        body:JSON.stringify({amount, recipient, fromAccountId:mainAccount && mainAccount.id})
       });
       const quote = quoted.quote || {};
-      const quoteId = quote.quoteId || quote.id;
+      const quoteId = quote.id || quote.quoteId;
       if (!quoteId) throw new Error('The server did not return a transfer quote. No money was moved.');
+      pendingTransferQuote = quote;
+      pendingTransferRecipient = recipient;
+      pendingTransferAmount = amount;
+      const fee = number(quote.fee);
+      const total = number(quote.totalDebit);
+      const currency = escapeHtml(quote.currency || 'RWF');
+      const quoteExpires = quote.expiresAt ? new Date(quote.expiresAt).toLocaleTimeString() : '';
+      $('#layer').innerHTML = '<div class="sheetbg" onclick="cancelRealTransfer()"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="real-transfer-title">' +
+        '<div class="h1" id="real-transfer-title" style="font-size:22px">Confirm real transfer</div>' +
+        '<div class="mu" style="font-size:14px;margin:8px 0 20px">Review the recipient and final debit from Itunda’s server before sending.</div>' +
+        '<div class="ar"><div class="t">Recipient</div><div class="r" style="font-weight:800">' + escapeHtml(recipient) + '</div></div>' +
+        '<div class="ar"><div class="t">Amount</div><div class="r" style="font-weight:800">' + fmt(number(quote.amount) ?? amount) + ' ' + currency + '</div></div>' +
+        '<div class="ar"><div class="t">Transfer fee</div><div class="r" style="font-weight:800">' + (fee === null ? 'Not provided' : fmt(fee) + ' ' + currency) + '</div></div>' +
+        '<div class="ar"><div class="t">Total debit</div><div class="r" style="font-weight:800">' + (total === null ? 'Not provided' : fmt(total) + ' ' + currency) + '</div></div>' +
+        (quoteExpires ? '<div class="sm mu" style="margin:8px 0 16px">Quote expires at ' + escapeHtml(quoteExpires) + '</div>' : '') +
+        '<button class="btn" style="margin-top:18px" onclick="confirmRealTransfer()">Confirm and send real money</button>' +
+        '<button class="btn sec2" style="margin-top:10px" onclick="cancelRealTransfer()">Cancel</button></div>';
+    } catch (error) {
+      notifyError(error);
+    } finally {
+      transferBusy = false;
+    }
+  };
+  window.cancelRealTransfer = function () {
+    pendingTransferQuote = null;
+    pendingTransferRecipient = '';
+    pendingTransferAmount = 0;
+    closeSheet();
+  };
+  window.confirmRealTransfer = async function () {
+    if (!pendingTransferQuote || !pendingTransferQuote.id || transferBusy) {
+      notifyError(new Error('This transfer quote is missing or expired. Request a new quote.'));
+      return;
+    }
+    transferBusy = true;
+    try {
       const result = await api('/api/v1/account/transfer/confirm', {
         method:'POST',
         headers:{'Idempotency-Key':crypto.randomUUID ? crypto.randomUUID() : 'web-' + Date.now() + '-' + Math.random().toString(36).slice(2)},
-        body:JSON.stringify({quoteId})
+        body:JSON.stringify({quoteId:pendingTransferQuote.id})
       });
+      S.to = pendingTransferRecipient;
+      S.sentAmt = pendingTransferAmount;
+      pendingTransferQuote = null;
+      pendingTransferRecipient = '';
+      pendingTransferAmount = 0;
       await syncRealData();
-      S.sentAmt = amount;
       closeSheet();
       S.stack = ['sent'];
       render('push');
