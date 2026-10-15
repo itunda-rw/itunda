@@ -10,11 +10,11 @@
   let busy = false;
 
   function normalizePhone(value) {
-    const v = String(value || '').replace(/[\\s()-]/g, '');
+    const v = String(value || '').replace(/[\s()-]/g, '');
     if (v.startsWith('+')) return v;
     if (v.startsWith('250') && v.length === 12) return '+' + v;
     if (v.startsWith('0') && v.length === 10) return '+250' + v.slice(1);
-    if (/^\\d{9}$/.test(v)) return '+250' + v;
+    if (/^\d{9}$/.test(v)) return '+250' + v;
     return v;
   }
   async function api(path, options, retry) {
@@ -89,7 +89,7 @@
   };
   window.backendPinKey = function (key) {
     if (key === 'del') S.ob.pin = (S.ob.pin || '').slice(0, -1);
-    else if (/^\\d$/.test(key) && (S.ob.pin || '').length < 6) S.ob.pin = (S.ob.pin || '') + key;
+    else if (/^\d$/.test(key) && (S.ob.pin || '').length < 6) S.ob.pin = (S.ob.pin || '') + key;
     render('fade-none');
   };
   window.backendLogin = async function () {
@@ -183,7 +183,7 @@
     const amount = Number(S.amt);
     const recipient = normalizePhone(S.to);
     if (!localStorage.getItem(ACCESS_KEY) || !mainAccountId) return fail(new Error('Sign in before sending money.'));
-    if (!Number.isFinite(amount) || amount <= 0 || !/^\\+\\d{8,15}$/.test(recipient)) {
+    if (!Number.isFinite(amount) || amount <= 0 || !/^\+\d{8,15}$/.test(recipient)) {
       return fail(new Error('Enter a valid amount and the recipient’s phone number.'));
     }
     transferBusy = true;
