@@ -214,7 +214,11 @@
       });
       S.sentAmt = amount;
       if (result.newBalance !== undefined) S.bank = Number(result.newBalance);
-      await loadAccount();
+      // Confirmation is the commit point. A later refresh failure must not make a
+      // completed transfer look unsuccessful to the customer.
+      await loadAccount().catch(function (refreshError) {
+        console.warn('[itunda backend] Transfer succeeded; account refresh will retry later:', refreshError.message);
+      });
       closeSheet(); S.stack = ['sent']; render('push');
       window.toast(result.message || 'Transfer completed by itunda');
     } catch (error) { fail(error); }
