@@ -93,9 +93,8 @@ object NetworkClient {
     // Feature modules can depend on it directly -- a Gradle library module can't read
     // an application module's BuildConfig, and passing the value in at runtime avoids
     // needing to relocate the buildConfigField/`-PapiBaseUrl=` override plumbing too).
-    // Overridable at build time for a physical device -- see app/build.gradle.kts's
-    // apiBaseUrl comment (2026-07-11 fix, still the actual place that's set).
-    private var BASE_URL: String = "https://itunda-api-hptgu43hsa-du.a.run.app/"
+    // Safe fallback mirrors the canonical production host if initialization happens late.
+    private var BASE_URL: String = "https://api.itunda.im/"
 
     // Must be initialized once, from ItundaApplication.onCreate(), before any request
     // fires -- see that file. Held nullable rather than lateinit so a request made
