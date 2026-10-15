@@ -1196,6 +1196,7 @@ fun ItundaAppScreen(
                         currency = tx.currency,
                         status = tx.status,
                         isOutgoing = tx.senderId == currentUserIdForHistory?.userId,
+                        type = tx.type,
                     )
                 },
                 onBack = { showTransactionHistory = false },
