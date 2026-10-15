@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - "fix/android-map-preview-fallback"
+      - "fix/android-login-api-url-2026-10-15"
     paths:
       - "android/**"
       - "packages/saronite/**"
