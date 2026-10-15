@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.outlined.Storefront
@@ -532,6 +533,14 @@ fun CommerceShopContent(
                         label = "Search products",
                         modifier = Modifier.fillMaxWidth(),
                     )
+                }
+                Box(
+                    modifier = Modifier.size(40.dp).clip(RoundedCornerShape(12.dp))
+                        .background(Ids.colors.surface)
+                        .pressScaleClickable(enabled = !productSearching && productSearchInput.isNotBlank()) { searchProducts() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Outlined.Search, contentDescription = "Search products", tint = Ids.colors.textPrimary)
                 }
                 Box(
                     modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp))
