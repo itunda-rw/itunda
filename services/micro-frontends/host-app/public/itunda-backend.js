@@ -274,10 +274,13 @@
   window.finish = async function () {
     if (transferBusy) return;
     const amount = Number(S.amt);
-    const recipient = normalizePhone(S.to);
+    const rawRecipient = String(S.to || '').replace(/[\\s()-]/g, '');
+    const recipient = /^\\d{10,20}$/.test(rawRecipient) && !rawRecipient.startsWith('0') && !rawRecipient.startsWith('250')
+      ? rawRecipient : normalizePhone(rawRecipient);
+    const validRecipient = /^\\+\\d{8,15}$/.test(recipient) || /^\\d{10,20}$/.test(recipient);
     if (!localStorage.getItem(ACCESS_KEY) || !mainAccountId) return fail(new Error('Sign in before sending money.'));
     if (!Number.isFinite(amount) || amount <= 0 || !/^\+\d{8,15}$/.test(recipient)) {
-      return fail(new Error('Enter a valid amount and the recipient’s phone number.'));
+      return fail(new Error('Enter a valid amount and the recipient’s phone number or account number.'));
     }
     transferBusy = true;
     try {
