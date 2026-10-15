@@ -50,9 +50,10 @@ data class TransactionDisplayItem(
     val isOutgoing: Boolean,
     val type: String = "",
 ) {
+    // Match the backend TransactionType enum exactly. Substring matching made
+    // filters depend on display text and could misclassify future types.
     val isPayment: Boolean
-        get() = listOf("PAYMENT", "BILL", "PURCHASE", "ORDER", "EATS", "SHOP")
-            .any { type.contains(it, ignoreCase = true) }
+        get() = type.uppercase() in setOf("PAYMENT", "BILL", "AIRTIME")
 }
 
 /**
@@ -88,7 +89,7 @@ fun TransactionHistoryScreen(
     val filteredTransactions = transactions.filter { tx ->
         val matchesFilter = when (selectedFilter) {
             "SENT" -> tx.isOutgoing && !tx.isPayment
-            "RECEIVED" -> !tx.isOutgoing
+            "RECEIVED" -> !tx.isOutgoing && !tx.isPayment
             "PAID" -> tx.isPayment
             else -> true
         }
