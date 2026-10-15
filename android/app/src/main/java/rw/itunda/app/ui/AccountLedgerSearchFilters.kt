@@ -27,7 +27,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
-import rw.itunda.core.designsystem.Ids
+import rw.itunda.app.R
+import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.TransactionDto
 
 /**
