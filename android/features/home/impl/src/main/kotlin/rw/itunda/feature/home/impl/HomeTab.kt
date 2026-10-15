@@ -234,156 +234,98 @@ fun HomeTab(
             }
             item { HomeRwandaServices(onOpenService = onOpenPay) }
             item {
-                HomeRecentActivity(
-                    transactions = recentTransactions,
-                    onSeeAll = onOpenActivity,
-                    onOpenTransaction = onOpenActivity,
+                Text(
+                    stringResource(R.string.home_spending),
+                    color = Ids.colors.textPrimary,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
                 )
             }
-        item {
-            HomeSearchBar(
-                query = searchQuery,
-                onQueryChange = { searchQuery = it; if (it.isBlank()) searchResults = null else runSearch(it) },
-                onClear = { searchQuery = ""; searchResults = null },
-            )
-        }
-        if (searchQuery.isNotBlank()) {
-            val stillLoading = searchResults == null || marketplaceResults == null ||
-                communityResults == null || jobResults == null || propertyResults == null
-            val totalResults = (searchResults?.size ?: 0) + (marketplaceResults?.size ?: 0) +
-                (communityResults?.size ?: 0) + (jobResults?.size ?: 0) + (propertyResults?.size ?: 0)
-            if (stillLoading && totalResults == 0) {
-                item {
-                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = Ids.colors.brand)
-                    }
-                }
-            } else if (!stillLoading && totalResults == 0) {
-                item { EmptyState(stringResource(R.string.home_search_empty)) }
-            } else {
-                searchResults?.takeIf { it.isNotEmpty() }?.let { results ->
-                    item { HomeSearchSectionHeader(stringResource(R.string.home_search_section_products)) }
-                    items(results, key = { "product_${it.id}" }) { result -> HomeSearchResultRow(result, onClick = onOpenShop) }
-                }
-                marketplaceResults?.takeIf { it.isNotEmpty() }?.let { results ->
-                    item { HomeSearchSectionHeader(stringResource(R.string.home_search_section_marketplace)) }
-                    items(results, key = { "marketplace_${it.id}" }) { entry -> HomeFeedRow(entry, onClick = onOpenMarketplace) }
-                }
-                communityResults?.takeIf { it.isNotEmpty() }?.let { results ->
-                    item { HomeSearchSectionHeader(stringResource(R.string.home_search_section_community)) }
-                    items(results, key = { "community_${it.id}" }) { entry -> HomeFeedRow(entry, onClick = onOpenCommunity) }
-                }
-                jobResults?.takeIf { it.isNotEmpty() }?.let { results ->
-                    item { HomeSearchSectionHeader(stringResource(R.string.home_search_section_jobs)) }
-                    items(results, key = { "jobs_${it.id}" }) { entry -> HomeFeedRow(entry, onClick = onOpenJobs) }
-                }
-                propertyResults?.takeIf { it.isNotEmpty() }?.let { results ->
-                    item { HomeSearchSectionHeader(stringResource(R.string.home_search_section_property)) }
-                    items(results, key = { "property_${it.id}" }) { entry -> HomeFeedRow(entry, onClick = onOpenProperty) }
-                }
-            }
-        } else {
-        // Real fix (2026-08-13, direct live-device catch): a genuinely offline user
-        // saw normal-looking placeholder data (a "RWF 0" account, a fixed 3-item
-        // Discover feed) with zero indication any of it wasn't real.
-        if (isOffline) {
             item {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Ids.colors.dangerTint)
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
+                        .background(Ids.colors.surface)
+                        .padding(horizontal = 14.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Outlined.CloudOff, contentDescription = null, modifier = Modifier.size(18.dp), tint = Ids.colors.danger)
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(stringResource(R.string.home_offline_banner), color = Ids.colors.danger, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                }
-            }
-        }
-        // Real personalized recommendation card (2026-08-11) -- direct comparison
-        // against real Toss Bank reference screenshots (user-provided): Toss leads
-        // Home with a large, illustrated, name-addressed card, not a small generic
-        // list entry. Promotes the single highest-priority real item to hero
-        // treatment; DiscoverSection below excludes it from its own list so nothing
-        // renders twice. Sorted by `priority`, not `isNew` -- see backend
-        // DiscoverService's own doc comment (Toss Intelligence-banner research): the
-        // backend does real per-user eligibility + ranking server-side.
-        val heroDiscoverItem = discoverItems.sortedByDescending { it.priority }.firstOrNull()
-        if (heroDiscoverItem != null) {
-            item {
-                // Real per-category destination (2026-08-13) -- DiscoverService's
-                // real backend only ever emits 3 real category values
-                // (account/savings/credit, confirmed by grep) -- each maps to a real,
-                // already-built itunda screen, not a guess.
-                val onOpenAction: () -> Unit = when (heroDiscoverItem.category) {
-                    "account" -> onOpenIdentity
-                    "savings" -> onOpenBank
-                    "credit" -> onOpenLoans
-                    else -> {
-                        {}
+                    Box(
+                        modifier = Modifier.size(42.dp).clip(RoundedCornerShape(14.dp))
+                            .background(Ids.colors.chip),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            androidx.compose.material.icons.Icons.Outlined.ReceiptLong,
+                            contentDescription = null,
+                            tint = Ids.colors.textPrimary,
+                            modifier = Modifier.size(21.dp),
+                        )
                     }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    androidx.compose.foundation.layout.Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            if (recentTransactions.isEmpty()) stringResource(R.string.home_spending_empty)
+                            else stringResource(R.string.home_spending_activity),
+                            color = Ids.colors.textPrimary,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            stringResource(R.string.home_spending_subtitle),
+                            color = Ids.colors.textSecondary,
+                            fontSize = 12.sp,
+                        )
+                    }
+                    Text(
+                        stringResource(R.string.home_see_all),
+                        color = Ids.colors.brand,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                            .pressScaleClickable(onClick = onOpenActivity).padding(6.dp),
+                    )
                 }
-                PersonalRecommendationCard(heroDiscoverItem, onOpenAction = onOpenAction)
             }
-        }
-        // Real architectural fix (2026-08-13, direct user directive): "all itunda
-        // product features are independent and isolated -- itunda bank is a complete
-        // product... tabs are not products, are just access points." Home no longer
-        // carries any Bank- or Pay-specific data or destinations at all -- see
-        // BankHubScreen/PayTab's own doc comments for where that content moved.
-        val remainingDiscoverItems = discoverItems.filter { it.id != heroDiscoverItem?.id }
-        if (remainingDiscoverItems.isNotEmpty()) {
-            item { DiscoverSection(remainingDiscoverItems) }
-        }
-        // Real market widget row (2026-08-14) -- account balance (real, already
-        // fetched) plus real RSE stock ticker chips, matching Naver's own weather/
-        // stock-index widget row structurally without inventing weather data itunda
-        // has no source for.
-        if (stocks.isNotEmpty()) {
-            // The live account balance now lives in the prototype-matched hero card above.
-            item { HomeMarketWidgetRow(null, stocks, onOpenBank = onOpenBank, onOpenInvest = onOpenInvest) }
-        }
-        // Real Toss/Kakao/Naver hub-organization fix (2026-08-29) -- an account with
-        // no neighborhood set silently left the entire bottom two-thirds of Home
-        // blank. Real, established EmptyState pattern closes it here too, with a
-        // real action into Hood/Community where neighborhood is actually set.
-        if (trendingListings.isEmpty() && feedEntries.isEmpty() && !neighborhoodSet) {
-            item {
-                EmptyState(
-                    "Set your neighborhood to see local marketplace, community, jobs, and property listings here.",
-                    icon = Icons.Outlined.LocationOn,
-                    actionLabel = "Set neighborhood",
-                    onAction = onOpenCommunity,
-                )
-            }
-        }
-        if (trendingListings.isNotEmpty()) {
-            item { HomeTrendingGrid(trendingListings, onOpenMarketplace = onOpenMarketplace) }
-        }
-        if (feedEntries.isNotEmpty()) {
             item {
                 Text(
-                    stringResource(R.string.home_feed_title),
-                    color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 4.dp),
+                    stringResource(R.string.home_for_you),
+                    color = Ids.colors.textPrimary,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
                 )
             }
-            items(feedEntries, key = { it.id }) { entry ->
-                HomeFeedRow(
-                    entry,
-                    onClick = when (entry.kind) {
-                        "marketplace" -> onOpenMarketplace
-                        "community" -> onOpenCommunity
-                        "jobs" -> onOpenJobs
-                        "property" -> onOpenProperty
-                        else -> ({})
-                    },
-                )
+            val heroDiscoverItem = discoverItems.sortedByDescending { it.priority }.firstOrNull()
+            if (heroDiscoverItem != null) {
+                item {
+                    val onOpenAction: () -> Unit = when (heroDiscoverItem.category) {
+                        "account" -> onOpenIdentity
+                        "savings" -> onOpenBank
+                        "credit" -> onOpenLoans
+                        else -> onOpenOverview
+                    }
+                    PersonalRecommendationCard(heroDiscoverItem, onOpenAction = onOpenAction)
+                }
+            } else {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
+                            .background(Ids.colors.surface)
+                            .padding(horizontal = 14.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            stringResource(R.string.home_for_you_empty),
+                            color = Ids.colors.textSecondary,
+                            fontSize = 14.sp,
+                        )
+                    }
+                }
             }
-        }
-        }
+            val remainingDiscoverItems = discoverItems.filter { it.id != heroDiscoverItem?.id }
+            if (remainingDiscoverItems.isNotEmpty()) {
+                item { DiscoverSection(remainingDiscoverItems) }
+            }
         }
         PullToRefreshContainer(state = pullToRefreshState, modifier = Modifier.align(Alignment.TopCenter))
     }
