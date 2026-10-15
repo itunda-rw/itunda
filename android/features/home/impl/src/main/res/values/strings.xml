@@ -6,7 +6,7 @@
      :features:banking:impl) since 3 different modules' code all render this
      exact label. -->
 <resources>
-    <string name="home_pay_shortcut">Pay</string>
+    <string name="home_pay_shortcut">itunda Pay</string>
     <string name="home_send_money">Send</string>
     <string name="home_add_money">Add money</string>
     <string name="home_quick_actions">Quick actions</string>
