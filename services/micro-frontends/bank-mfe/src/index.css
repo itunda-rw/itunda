@@ -267,7 +267,7 @@ input, textarea, select {
 .itunda-field { display: flex; flex-direction: column; gap: 6px; }
 .itunda-field__label { font-size: 13px; line-height: 18px; font-weight: 600; color: var(--itunda-text-secondary); }
 .itunda-field__control { min-height: 48px; width: 100%; padding: 12px 14px; border: 1px solid var(--itunda-border-default); border-radius: var(--itunda-control-radius, 12px); background: var(--itunda-surface-default); color: var(--itunda-text-primary); font: inherit; font-size: 15px; outline: none; }
-.itunda-field__control:focus-visible, .itunda-field__select:focus-visible { border-color: var(--itunda-brand); box-shadow: 0 0 0 3px var(--itunda-focus-ring, rgba(116,114,244,.18)); }
+.itunda-field__control:focus-visible, .itunda-field__select:focus-visible { border-color: var(--itunda-brand); box-shadow: 0 0 0 3px var(--itunda-focus-ring, rgba(143,137,255,.18)); }
 .itunda-field__select { min-height: 44px; padding: 8px 10px; border: 1px solid var(--itunda-border-default); border-radius: var(--itunda-control-radius, 12px); background: var(--itunda-surface-default); color: var(--itunda-text-secondary); font: inherit; outline: none; }
 .itunda-auth-error { margin: 0; color: var(--itunda-field-border-error); font-size: 13px; line-height: 18px; }
 @media (prefers-reduced-motion: reduce) { button { transition: none; } .skeleton { animation: none; } }
@@ -1905,7 +1905,7 @@ input, textarea, select {
 
 /* Itunda flat surface refinement — 2026-10-02
    Design intent:
-   - Itunda Indigo #7472F4 remains the only brand accent.
+   - Itunda Indigo #8F89FF remains the only brand accent.
    - Flat composition: no glass, blur, gradients, floating nav containers, or 3D card treatment.
    - Hierarchy comes from spacing, type, dividers, and one clear action.
    - Desktop gets more breathing room; mobile stays compact and single-column.
@@ -2330,7 +2330,7 @@ input, textarea, select {
 
 /* Pay surface refinement — 2026-10-02.
    Keep the Pay screen task-first: balance identity, one primary money action,
-   then supporting tools. Flat Itunda composition; Indigo #7472F4 remains the
+   then supporting tools. Flat Itunda composition; Indigo #8F89FF remains the
    semantic accent. */
 .itunda-pay-page {
   padding-top: 8px;
@@ -2999,7 +2999,7 @@ input, textarea, select {
 \n
 /* Itunda product craft v2 — 2026-10-02
    Inspired by Toss principles: one clear task, easy-to-answer choices, less visual noise.
-   This remains Itunda-specific: flat surfaces, Indigo #7472F4, and no decorative gradients.
+   This remains Itunda-specific: flat surfaces, Indigo #8F89FF, and no decorative gradients.
 */
 .itunda-app-content {
   max-width: 720px;
