@@ -222,7 +222,7 @@ const RECENT_SEARCHES_KEY = 'itunda_map_recent_searches';
 // pass below, same real distinction the earlier indigo rebrand already drew for
 // this exact palette, see feedback captured in project_itunda_own_icons_graphics.md).
 const DEFAULT_BOOKMARK_FOLDER = 'Saved places';
-const BOOKMARK_COLOR_PALETTE = ['#F5A623', '#3182F6', '#8B5CF6', 'var(--itunda-red)', '#22B07D', '#4E5968'];
+const BOOKMARK_COLOR_PALETTE = ['#F5A623', '#3182F6', '#8B5CF6', '#E5484D', '#22B07D', '#4E5968'];
 
 // Real fixed (non-theme-reactive) text colors for this component's own deliberately-
 // white map chrome (search pill, chip row, results dropdown, bottom sheet) -- found as a
@@ -782,7 +782,7 @@ export default function MapView() {
     if (!map) return;
     map.flyTo({ center: [place.longitude, place.latitude], zoom: 15 });
     destinationMarkerRef.current?.remove();
-    destinationMarkerRef.current = new maplibregl.Marker({ color: 'var(--itunda-red)' })
+    destinationMarkerRef.current = new maplibregl.Marker({ color: '#E5484D' })
       .setLngLat([place.longitude, place.latitude])
       .setPopup(new maplibregl.Popup({ offset: 12 }).setText(place.displayName))
       .addTo(map);
@@ -1120,7 +1120,7 @@ export default function MapView() {
         : await searchNearbyPlaces(categoryId, center[0], center[1]);
       categoryMarkersRef.current.forEach((m) => m.remove());
       categoryMarkersRef.current = places.map((place) =>
-        new maplibregl.Marker({ color: 'var(--itunda-color-brand)' })
+        new maplibregl.Marker({ color: '#8F89FF' })
           .setLngLat([place.longitude, place.latitude])
           .setPopup(new maplibregl.Popup({ offset: 12 }).setText(`${place.displayName} · ${place.distanceKm.toFixed(1)}km`))
           .addTo(map),
@@ -1352,7 +1352,7 @@ export default function MapView() {
                 ))}
               </div>
               {subscribedCount !== null ? (
-                <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-color-brand)', marginTop: '10px' }}>
+                <p style={{ fontSize: '12px', fontWeight: 700, color: '#8F89FF', marginTop: '10px' }}>
                   ✓ Saved {subscribedCount} new place{subscribedCount === 1 ? '' : 's'} to your own bookmarks
                 </p>
               ) : (
@@ -1458,7 +1458,7 @@ export default function MapView() {
                 </button>
               ))
             ))}
-            {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', padding: '8px' }} role="alert">{error}</p>}
+            {error && <p style={{ fontSize: '13px', color: '#E5484D', padding: '8px' }} role="alert">{error}</p>}
           </div>
         )}
 
@@ -1546,7 +1546,7 @@ export default function MapView() {
           aria-label={measuring ? 'Stop measuring distance' : 'Measure distance'}
           style={{
             width: '46px', height: '46px', borderRadius: '50%',
-            background: measuring ? 'var(--itunda-red)' : '#fff', boxShadow: 'var(--itunda-shadow-sm)',
+            background: measuring ? '#E5484D' : '#fff', boxShadow: 'var(--itunda-shadow-sm)',
             fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: measuring ? '#fff' : MAP_CARD_TEXT_SECONDARY,
           }}
@@ -2021,7 +2021,7 @@ export default function MapView() {
                   <button
                     type="button"
                     onClick={() => setShowStartShare((v) => !v)}
-                    style={{ fontSize: '11px', fontWeight: 700, color: 'var(--itunda-color-brand)', background: 'none', border: 'none' }}
+                    style={{ fontSize: '11px', fontWeight: 700, color: '#8F89FF', background: 'none', border: 'none' }}
                   >
                     {showStartShare ? t('maps.cancel') : t('maps.shareMyLocation')}
                   </button>
@@ -2066,7 +2066,7 @@ export default function MapView() {
                       <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px' }}>
                         <span style={{ color: MAP_CARD_TEXT }}>Sharing until {new Date(s.expiresAt).toLocaleTimeString()}</span>
                         <div style={{ display: 'flex', gap: '12px' }}>
-                          <button type="button" onClick={() => handleExtendLocationShare(s.id)} style={{ fontSize: '11px', fontWeight: 700, color: 'var(--itunda-color-brand)', background: 'none', border: 'none' }}>
+                          <button type="button" onClick={() => handleExtendLocationShare(s.id)} style={{ fontSize: '11px', fontWeight: 700, color: '#8F89FF', background: 'none', border: 'none' }}>
                             +1h
                           </button>
                           <button type="button" onClick={() => handleStopLocationShare(s.id)} style={{ fontSize: '11px', fontWeight: 700, color: 'var(--itunda-color-error)', background: 'none', border: 'none' }}>
@@ -2089,7 +2089,7 @@ export default function MapView() {
                             Stop watching
                           </button>
                         ) : (
-                          <button type="button" onClick={() => handleWatchIncomingShare(s.id)} style={{ fontSize: '11px', fontWeight: 700, color: 'var(--itunda-color-brand)', background: 'none', border: 'none' }}>
+                          <button type="button" onClick={() => handleWatchIncomingShare(s.id)} style={{ fontSize: '11px', fontWeight: 700, color: '#8F89FF', background: 'none', border: 'none' }}>
                             View on map
                           </button>
                         )}
