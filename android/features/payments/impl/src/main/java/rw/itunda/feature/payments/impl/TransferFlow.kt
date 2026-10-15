@@ -428,8 +428,13 @@ fun TransferAmountScreen(
             )
             Spacer(modifier = Modifier.height(2.dp))
             TransferPartyRow(
-                label = stringResource(R.string.transfer_to_account, recipientAccountNumber),
-                sublabel = stringResource(R.string.transfer_new_recipient),
+                label = recipientDisplayName?.takeIf { it.isNotBlank() }
+                    ?: stringResource(R.string.transfer_to_account, recipientAccountNumber),
+                sublabel = if (recipientDisplayName?.isNotBlank() == true) {
+                    recipientAccountNumber
+                } else {
+                    stringResource(R.string.transfer_new_recipient)
+                },
                 icon = Icons.Outlined.Savings
             )
             if (scamWarning != null && scamWarning.reportCount > 0) {
