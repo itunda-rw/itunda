@@ -10,7 +10,15 @@
     <string name="home_feed_title">Kuri wowe</string>
     <string name="home_link_another_account">+ Ongeramo indi konti</string>
     <string name="home_offline_banner">Nturi kuri interineti. Turerekana amakuru macye, atari ay\'igihe nyacyo.</string>
-    <string name="home_pay_shortcut">Kwishyura</string>
+    <string name="home_pay_shortcut">itunda Pay</string>
+    <string name="home_pay_bills">Kwishyura fagitire</string>
+    <string name="home_airtime">Ikarita yo guhamagara</string>
+    <string name="home_rwanda_services">Serivisi zo mu Rwanda</string>
+    <string name="home_irembo">Irembo</string>
+    <string name="home_rra_taxes">Imisoro ya RRA</string>
+    <string name="home_reg_electricity">Amashanyarazi REG</string>
+    <string name="home_wasac_water">Amazi WASAC</string>
+    <string name="home_school_fees">Amafaranga y’ishuri</string>
     <string name="home_recommendation_cta_named">%1$s, %2$s</string>
     <string name="home_search_clear">Siba ishakiro</string>
     <string name="home_search_description">Shakisha kuri itunda</string>
