@@ -1958,7 +1958,7 @@ return _s6.apply(this,arguments)};
     if (!(S.ob && S.ob.mode === 'login' && S.obStep === 'obPin')) return originalObKey(digit);
     const o = S.ob;
     o.pin = digit === 'del' ? o.pin.slice(0, -1) : (o.pin.length < 6 ? o.pin + digit : o.pin);
-    const dots = document.querySelector('.dots6');
+    const dots = document.querySelector('#pd');
     if (dots) dots.innerHTML = [0,1,2,3,4,5].map(i => '<i class="' + (i < o.pin.length ? 'on' : '') + '"></i>').join('');
     if (o.pin.length === 6) {
       (async () => {
@@ -2099,6 +2099,7 @@ return _s6.apply(this,arguments)};
         body:JSON.stringify({quoteId})
       });
       await syncRealData();
+      S.sentAmt = amount;
       closeSheet();
       S.stack = ['sent'];
       render('push');
