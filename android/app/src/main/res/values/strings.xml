@@ -268,6 +268,7 @@
     <string name="account_ledger_filter_all">All</string>
     <string name="account_ledger_filter_in">Money in</string>
     <string name="account_ledger_filter_out">Money out</string>
+    <string name="account_detail_no_matching_transactions">No matching transactions</string>
     <string name="account_detail_empty">No transactions yet</string>
     <string name="loading">Loading…</string>
     <string name="bucket_fill">Fill</string>
