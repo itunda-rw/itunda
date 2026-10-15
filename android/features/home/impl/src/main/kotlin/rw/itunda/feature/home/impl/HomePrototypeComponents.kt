@@ -18,6 +18,7 @@ import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.RequestQuote
 import androidx.compose.material.icons.outlined.School
+import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.QrCodeScanner
@@ -181,6 +182,72 @@ internal fun HomePrimaryActions(
                 color = Ids.colors.textPrimary,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+}
+
+@Composable
+internal fun HomeNextForYou(
+    savingsGoals: List<rw.itunda.core.network.SavingsGoal>,
+    onOpenSavings: () -> Unit,
+) {
+    val goal = savingsGoals.firstOrNull { it.status.equals("ACTIVE", ignoreCase = true) }
+        ?: savingsGoals.firstOrNull()
+    androidx.compose.foundation.layout.Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(
+            stringResource(R.string.home_next_for_you),
+            color = Ids.colors.textPrimary,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.ExtraBold,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp))
+                .background(Ids.colors.chip)
+                .pressScaleClickable(onClick = onOpenSavings)
+                .padding(horizontal = 18.dp, vertical = 18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            androidx.compose.foundation.layout.Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    goal?.name ?: stringResource(R.string.home_savings_goal_title),
+                    color = Ids.colors.textPrimary,
+                    fontSize = 18.sp,
+                    lineHeight = 24.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                )
+                Text(
+                    if (goal != null) {
+                        stringResource(
+                            R.string.home_savings_goal_progress,
+                            String.format(Locale.US, "%,.0f", goal.currentAmount),
+                            String.format(Locale.US, "%,.0f", goal.targetAmount),
+                        )
+                    } else {
+                        stringResource(R.string.home_savings_goal_description)
+                    },
+                    color = Ids.colors.textSecondary,
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+                Text(
+                    stringResource(if (goal != null) R.string.home_savings_goal_view else R.string.home_savings_goal_cta),
+                    color = Ids.colors.brand,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 10.dp),
+                )
+            }
+            Icon(
+                Icons.Outlined.Savings,
+                contentDescription = null,
+                tint = Ids.colors.brand,
+                modifier = Modifier.size(44.dp),
             )
         }
     }
