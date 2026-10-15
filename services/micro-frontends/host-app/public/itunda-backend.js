@@ -104,6 +104,7 @@
       localStorage.setItem(ACCESS_KEY, session.accessToken);
       localStorage.setItem(REFRESH_KEY, session.refreshToken);
       liveUser = session.user;
+      localStorage.setItem('itunda_web_user', JSON.stringify(session.user));
       await loadAccount();
       S.auth = true; S.obStep = null; S.stack = []; S.tab = 'home'; S.first = true;
       render('fade'); window.toast('Signed in to your real itunda account');
@@ -143,6 +144,84 @@
       if (fullName) html = html.replace('Amina Uwase', fullName);
     }
     return html;
+  };
+
+  // Real registration: the required consent IDs come from the backend catalog.
+  window.obCreate = async function () {
+    if (busy) return;
+    busy = true;
+    try {
+      const catalog = await api('/api/v1/auth/terms', {}, false);
+      const required = (Array.isArray(catalog.terms) ? catalog.terms : []).filter(function (t) { return t.required; }).map(function (t) { return t.id; });
+      if (!required.length) throw new Error('Required terms could not be loaded. Please try again later.');
+      if (!(S.ob.t && S.ob.p && S.ob.c)) throw new Error('Please accept all required terms before creating your account.');
+      const session = await api('/api/v1/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          phoneNumber: normalizePhone(S.ob.ph), email: null,
+          firstName: S.ob.first.trim(), lastName: S.ob.last.trim(),
+          password: S.ob.pin, acceptedTermsIds: required
+        })
+      }, false);
+      if (!session.accessToken || !session.refreshToken || !session.user) throw new Error('The server returned an incomplete session.');
+      localStorage.setItem(ACCESS_KEY, session.accessToken);
+      localStorage.setItem(REFRESH_KEY, session.refreshToken);
+      localStorage.setItem('itunda_web_user', JSON.stringify(session.user));
+      liveUser = session.user;
+      await loadAccount();
+      S.auth = true; S.obStep = null; S.stack = []; S.tab = 'home'; S.first = true;
+      render('fade'); window.toast('Your itunda account is ready');
+    } catch (error) {
+      S.ob.err = error.message || 'We could not create your account.';
+      render('fade-none'); fail(error);
+    } finally { busy = false; }
+  };
+
+  // Money only moves after the backend quote and idempotent confirmation succeed.
+  window.finish = async function () {
+    if (transferBusy) return;
+    const amount = Number(S.amt);
+    const recipient = normalizePhone(S.to);
+    if (!localStorage.getItem(ACCESS_KEY) || !mainAccountId) return fail(new Error('Sign in before sending money.'));
+    if (!Number.isFinite(amount) || amount <= 0 || !/^\\+\\d{8,15}$/.test(recipient)) {
+      return fail(new Error('Enter a valid amount and the recipient’s phone number.'));
+    }
+    transferBusy = true;
+    try {
+      const quote = await api('/api/v1/account/transfer/quote', {
+        method: 'POST',
+        body: JSON.stringify({ amount: amount, recipient: recipient, fromAccountId: mainAccountId, description: 'Transfer from itunda web app' })
+      });
+      if (!quote.quote || !quote.quote.id) throw new Error('The server did not return a valid transfer quote.');
+      const idempotencyKey = window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() :
+        'web-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+      const result = await api('/api/v1/account/transfer/confirm', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': idempotencyKey },
+        body: JSON.stringify({ quoteId: quote.quote.id })
+      });
+      S.sentAmt = amount;
+      if (result.newBalance !== undefined) S.bank = Number(result.newBalance);
+      await loadAccount();
+      closeSheet(); S.stack = ['sent']; render('push');
+      window.toast(result.message || 'Transfer completed by itunda');
+    } catch (error) { fail(error); }
+    finally { transferBusy = false; }
+  };
+
+  const oldLogOut = window.logOut;
+  window.logOut = function () {
+    const refreshToken = localStorage.getItem(REFRESH_KEY);
+    if (localStorage.getItem(ACCESS_KEY)) {
+      api('/api/v1/auth/logout', {
+        method: 'POST', body: JSON.stringify(refreshToken ? { refreshToken: refreshToken } : {})
+      }).catch(function () {});
+    }
+    localStorage.removeItem(ACCESS_KEY);
+    localStorage.removeItem(REFRESH_KEY);
+    localStorage.removeItem('itunda_web_user');
+    liveUser = null; mainAccountId = null; liveTransactions = [];
+    if (oldLogOut) oldLogOut();
   };
 
   (async function restoreSession() {
