@@ -784,6 +784,7 @@ fun ItundaAppScreen(
                 is TransferStep.Amount -> {
                     rw.itunda.feature.payments.impl.TransferAmountScreen(
                         recipientAccountNumber = step.accountNumber,
+                        recipientDisplayName = recipientDisplayName,
                         availableBalance = transferFromAccount?.balance ?: primaryAccountForTransfer?.availableBalance ?: 0.0,
                         fromAccountName = transferFromAccount?.accountName,
                         isSubmitting = isSendingTransfer,
