@@ -1078,7 +1078,7 @@ export default function MapView() {
         el.style.width = '16px';
         el.style.height = '16px';
         el.style.borderRadius = '50%';
-        el.style.backgroundColor = '#7472F4';
+        el.style.backgroundColor = '#8F89FF';
         el.style.border = '3px solid white';
         el.style.boxShadow = '0 0 0 2px rgba(49,130,246,0.4)';
         myLocationMarkerRef.current = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
@@ -1431,8 +1431,8 @@ export default function MapView() {
                   fontSize: '12px',
                   fontWeight: 600,
                   border: 'none',
-                  boxShadow: active ? '0 2px 6px rgba(116,114,244,0.4)' : '0 1px 4px rgba(0,0,0,0.1)',
-                  backgroundColor: active ? '#7472F4' : '#fff',
+                  boxShadow: active ? '0 2px 6px rgba(143,137,255,0.4)' : '0 1px 4px rgba(0,0,0,0.1)',
+                  backgroundColor: active ? '#8F89FF' : '#fff',
                   color: active ? '#fff' : MAP_CARD_TEXT_SECONDARY,
                 }}
               >
@@ -1740,7 +1740,7 @@ export default function MapView() {
                     style={{ padding: '8px 10px', borderRadius: 'var(--itunda-radius-xs)', border: `1px solid ${MAP_CARD_DIVIDER}`, fontSize: '13px' }}
                   />
                   <div style={{ display: 'flex', gap: '6px' }}>
-                    {['Home', 'Work'].map((preset) => <button key={preset} type="button" onClick={() => setFolderNameInput(preset)} style={{ borderRadius: 'var(--itunda-radius-pill)', padding: '6px 10px', fontSize: '12px', fontWeight: 700, background: folderNameInput.toLowerCase() === preset.toLowerCase() ? '#7472F4' : '#F2F4F6', color: folderNameInput.toLowerCase() === preset.toLowerCase() ? '#fff' : MAP_CARD_TEXT }}>{preset}</button>)}
+                    {['Home', 'Work'].map((preset) => <button key={preset} type="button" onClick={() => setFolderNameInput(preset)} style={{ borderRadius: 'var(--itunda-radius-pill)', padding: '6px 10px', fontSize: '12px', fontWeight: 700, background: folderNameInput.toLowerCase() === preset.toLowerCase() ? '#8F89FF' : '#F2F4F6', color: folderNameInput.toLowerCase() === preset.toLowerCase() ? '#fff' : MAP_CARD_TEXT }}>{preset}</button>)}
                   </div>
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                     {BOOKMARK_COLOR_PALETTE.map((c) => (
@@ -1920,7 +1920,7 @@ export default function MapView() {
                           style={{
                             marginLeft: bookmarksByFolder.length > 1 ? 0 : 'auto',
                             fontSize: '11px', fontWeight: 700,
-                            color: folderBookmarks.some((b) => b.isPublic) ? '#7472F4' : MAP_CARD_TEXT_SECONDARY,
+                            color: folderBookmarks.some((b) => b.isPublic) ? '#8F89FF' : MAP_CARD_TEXT_SECONDARY,
                             background: 'none', border: 'none',
                           }}
                         >
