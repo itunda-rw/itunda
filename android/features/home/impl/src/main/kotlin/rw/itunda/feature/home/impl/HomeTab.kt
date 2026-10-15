@@ -409,7 +409,7 @@ private fun HomeAccountHeroCard(
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(12.dp))
-                .background(Ids.colors.brandTint)
+                .background(Ids.colors.brand.copy(alpha = 0.12f))
                 .pressScaleClickable(onClick = onOpenPay)
                 .padding(horizontal = 16.dp, vertical = 11.dp),
         ) {
