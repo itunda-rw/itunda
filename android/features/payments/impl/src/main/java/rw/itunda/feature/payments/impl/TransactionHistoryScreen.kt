@@ -83,10 +83,6 @@ fun TransactionHistoryScreen(
     onRefresh: () -> Unit = {},
     isRefreshing: Boolean = false,
 ) {
-    val spentThisMonth = transactions
-        .filter { it.isOutgoing && it.status == "COMPLETED" }
-        .sumOf { it.amount }
-
     var query by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("ALL") }
     val filteredTransactions = transactions.filter { tx ->
@@ -124,18 +120,7 @@ fun TransactionHistoryScreen(
         ) {
             FlowTopBar(onBack)
 
-            Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-                Text(stringResource(R.string.transaction_history_spent_label), color = Ids.colors.textSecondary, fontSize = 15.sp)
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    "${rwfFormatter.format(spentThisMonth.toLong())} RWF",
-                    color = Ids.colors.textPrimary,
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
