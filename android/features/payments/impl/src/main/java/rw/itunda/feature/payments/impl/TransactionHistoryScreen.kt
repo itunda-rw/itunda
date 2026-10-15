@@ -18,6 +18,8 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import rw.itunda.core.designsystem.components.EmptyState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,6 +31,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
@@ -49,6 +54,8 @@ data class TransactionDisplayItem(
     val status: String,
     val isOutgoing: Boolean,
     val type: String = "",
+    val fee: Double = 0.0,
+    val createdAt: String = "",
 ) {
     // Match the backend TransactionType enum exactly. Substring matching made
     // filters depend on display text and could misclassify future types.
@@ -86,6 +93,8 @@ fun TransactionHistoryScreen(
 ) {
     var query by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("ALL") }
+    var selectedTransaction by remember { mutableStateOf<TransactionDisplayItem?>(null) }
+    val clipboard = LocalClipboardManager.current
     val filteredTransactions = transactions.filter { tx ->
         val matchesFilter = when (selectedFilter) {
             "SENT" -> tx.isOutgoing && !tx.isPayment
@@ -180,18 +189,83 @@ fun TransactionHistoryScreen(
                 )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
-                    items(filteredTransactions, key = { it.id }) { tx -> TransactionRow(tx) }
+                    items(filteredTransactions, key = { it.id }) { tx -> TransactionRow(tx, onClick = { selectedTransaction = tx }) }
                 }
             }
         }
         PullToRefreshContainer(state = pullToRefreshState, modifier = Modifier.align(Alignment.TopCenter))
+        selectedTransaction?.let { tx ->
+            ModalBottomSheet(
+                onDismissRequest = { selectedTransaction = null },
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                containerColor = Ids.colors.background,
+            ) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)) {
+                    Box(
+                        Modifier.size(56.dp).clip(CircleShape)
+                            .background(if (tx.isOutgoing) Ids.colors.dangerTint else Ids.colors.successTint)
+                            .align(Alignment.CenterHorizontally),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            if (tx.isOutgoing) Icons.Outlined.ArrowUpward else Icons.Outlined.ArrowDownward,
+                            contentDescription = null,
+                            tint = if (tx.isOutgoing) Ids.colors.danger else Ids.colors.success,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                    Text(tx.description, Modifier.fillMaxWidth().padding(top = 12.dp),
+                        color = Ids.colors.textSecondary, fontSize = 15.sp, textAlign = TextAlign.Center)
+                    Text(
+                        "${if (tx.isOutgoing) "-" else "+"}${rwfFormatter.format(tx.amount.toLong())} ${tx.currency}",
+                        Modifier.fillMaxWidth().padding(top = 4.dp),
+                        color = if (tx.isOutgoing) Ids.colors.textPrimary else Ids.colors.success,
+                        fontSize = 26.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
+                    )
+                    Spacer(Modifier.height(20.dp))
+                    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Ids.colors.chip).padding(horizontal = 16.dp)) {
+                        TransactionDetailRow(stringResource(R.string.transaction_detail_status), tx.status.lowercase().replaceFirstChar { it.uppercase() })
+                        TransactionDetailRow(stringResource(R.string.transaction_detail_type), tx.type.lowercase().replaceFirstChar { it.uppercase() }, divider = true)
+                        TransactionDetailRow(stringResource(R.string.transaction_detail_date), tx.createdAt.substringBefore("T").ifBlank { "—" }, divider = true)
+                        TransactionDetailRow(stringResource(if (tx.isOutgoing) R.string.transaction_detail_to else R.string.transaction_detail_from), stringResource(R.string.transaction_detail_itunda_account), divider = true)
+                        TransactionDetailRow(stringResource(R.string.transaction_detail_fee), "${rwfFormatter.format(tx.fee.toLong())} ${tx.currency}", divider = true)
+                        TransactionDetailRow(stringResource(R.string.transaction_detail_reference), tx.id, divider = true)
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(stringResource(R.string.transaction_detail_real_data_note), color = Ids.colors.textTertiary, fontSize = 12.sp)
+                    Spacer(Modifier.height(16.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                        Box(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(Ids.colors.chip)
+                            .clickable { selectedTransaction = null }.padding(vertical = 15.dp), contentAlignment = Alignment.Center) {
+                            Text(stringResource(R.string.transaction_detail_close), color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold)
+                        }
+                        Box(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(Ids.colors.accent)
+                            .clickable {
+                                clipboard.setText(AnnotatedString("${tx.description}\n${tx.type} · ${tx.status}\n${tx.amount} ${tx.currency}\n${tx.id}"))
+                                selectedTransaction = null
+                            }.padding(vertical = 15.dp), contentAlignment = Alignment.Center) {
+                            Text(stringResource(R.string.transaction_detail_copy), color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
 @Composable
-private fun TransactionRow(tx: TransactionDisplayItem) {
+private fun TransactionDetailRow(label: String, value: String, divider: Boolean = false) {
+    if (divider) Spacer(Modifier.height(1.dp).fillMaxWidth().background(Ids.colors.background))
+    Row(Modifier.fillMaxWidth().padding(vertical = 13.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Text(label, color = Ids.colors.textSecondary, fontSize = 14.sp)
+        Text(value, color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun TransactionRow(tx: TransactionDisplayItem, onClick: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
