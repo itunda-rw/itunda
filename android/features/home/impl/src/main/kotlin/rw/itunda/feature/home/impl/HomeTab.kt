@@ -66,6 +66,7 @@ fun HomeTab(
     isRefreshing: Boolean,
     onRetry: () -> Unit,
     onOpenPay: () -> Unit = {},
+    onOpenSend: () -> Unit = onOpenPay,
     onOpenNotifications: () -> Unit = {},
     onOpenOverview: () -> Unit = {},
     onOpenBank: () -> Unit = {},
@@ -121,11 +122,11 @@ fun HomeTab(
                 }
             }
             item {
-                HomePrimaryActions(onSend = onOpenPay, onAddMoney = onOpenPay)
+                HomePrimaryActions(onSend = onOpenSend, onAddMoney = onOpenPay)
             }
             item {
                 HomeQuickActions(
-                    onSend = onOpenPay,
+                    onSend = onOpenSend,
                     onScanToPay = onOpenPay,
                     onPayBills = onOpenPay,
                     onAirtime = onOpenPay,
@@ -248,6 +249,7 @@ fun HomeEntryPoint(
     isRefreshing: Boolean,
     onRetry: () -> Unit,
     onOpenPay: () -> Unit = {},
+    onOpenSend: () -> Unit = onOpenPay,
     onOpenNotifications: () -> Unit = {},
     onOpenOverview: () -> Unit = {},
     onOpenBank: () -> Unit = {},
@@ -272,6 +274,7 @@ fun HomeEntryPoint(
         isRefreshing = isRefreshing,
         onRetry = onRetry,
         onOpenPay = onOpenPay,
+        onOpenSend = onOpenSend,
         onOpenNotifications = onOpenNotifications,
         onOpenOverview = onOpenOverview,
         onOpenBank = onOpenBank,
