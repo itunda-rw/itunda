@@ -1795,5 +1795,332 @@ if(c){const e=c.querySelector('.t,.pn'),n=((e||c).textContent||'').trim().split(
 return _s6.apply(this,arguments)};
 })();
 </script>
+
+<script>
+/* ITUNDA_REAL_BACKEND_V1
+ * Connect the approved v66 experience to the canonical Itunda API.
+ * Never fabricate a successful auth or money movement when the API fails.
+ */
+(function () {
+  'use strict';
+  const API = 'https://api.itunda.im';
+  const ACCESS = 'itunda_bank_access_token';
+  const REFRESH = 'itunda_bank_refresh_token';
+  const USER = 'itunda_bank_user';
+  const DEVICE = 'itunda_web_device_id';
+  let mainAccount = null;
+  let recentTransactions = [];
+  let refreshing = null;
+  let transferBusy = false;
+
+  const deviceId = () => {
+    let id = localStorage.getItem(DEVICE);
+    if (!id) {
+      id = (crypto.randomUUID ? crypto.randomUUID() : 'web-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+      localStorage.setItem(DEVICE, id);
+    }
+    return id;
+  };
+  const phoneE164 = value => {
+    const compact = String(value || '').replace(/[\s()-]/g, '');
+    if (compact.startsWith('+')) return compact;
+    if (compact.startsWith('250') && compact.length === 12) return '+' + compact;
+    if (compact.startsWith('0') && compact.length === 10) return '+250' + compact.slice(1);
+    if (/^\d{9}$/.test(compact)) return '+250' + compact;
+    return compact;
+  };
+  async function bodyOf(response) {
+    try { return await response.json(); } catch (_) { return {}; }
+  }
+  async function refreshSession() {
+    if (refreshing) return refreshing;
+    const token = localStorage.getItem(REFRESH);
+    if (!token) return false;
+    refreshing = (async () => {
+      try {
+        const r = await fetch(API + '/api/v1/auth/refresh', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({refreshToken: token})
+        });
+        const b = await bodyOf(r);
+        if (!r.ok || !b.accessToken || !b.refreshToken) return false;
+        localStorage.setItem(ACCESS, b.accessToken);
+        localStorage.setItem(REFRESH, b.refreshToken);
+        if (b.user) localStorage.setItem(USER, JSON.stringify(b.user));
+        return true;
+      } catch (_) { return false; }
+      finally { refreshing = null; }
+    })();
+    return refreshing;
+  }
+  async function api(path, options = {}, retry = true) {
+    const headers = {'Content-Type':'application/json', ...(options.headers || {})};
+    const token = localStorage.getItem(ACCESS);
+    if (token) headers.Authorization = 'Bearer ' + token;
+    let response;
+    try { response = await fetch(API + path, {...options, headers}); }
+    catch (_) { throw new Error('Could not connect to Itunda. Check your connection and try again.'); }
+    if (response.status === 401 && retry && path !== '/api/v1/auth/refresh' && await refreshSession()) {
+      return api(path, options, false);
+    }
+    const data = await bodyOf(response);
+    if (!response.ok) throw new Error(data.message || data.error || ('Request failed (' + response.status + ')'));
+    return data;
+  }
+  const saveSession = data => {
+    if (!data || !data.accessToken || !data.refreshToken || !data.user) throw new Error('The server returned an incomplete session. Please try again.');
+    localStorage.setItem(ACCESS, data.accessToken);
+    localStorage.setItem(REFRESH, data.refreshToken);
+    localStorage.setItem(USER, JSON.stringify(data.user));
+    S.name = [data.user.firstName, data.user.lastName].filter(Boolean).join(' ') || data.user.phoneNumber;
+    S.ob.ph = String(data.user.phoneNumber || '').replace(/^\+250/, '');
+  };
+  const number = value => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  };
+  function accountBalance(account) {
+    for (const key of ['availableBalance','balance','currentBalance','ledgerBalance']) {
+      const n = number(account && account[key]);
+      if (n !== null) return n;
+    }
+    return null;
+  }
+  async function syncRealData() {
+    const [profileResult, accountResult, txResult] = await Promise.allSettled([
+      api('/api/v1/auth/profile'),
+      api('/api/v1/account'),
+      api('/api/v1/account/transactions')
+    ]);
+    if (profileResult.status === 'fulfilled' && profileResult.value.user) {
+      const user = profileResult.value.user;
+      localStorage.setItem(USER, JSON.stringify(user));
+      S.name = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.phoneNumber || S.name;
+    }
+    if (accountResult.status === 'fulfilled' && Array.isArray(accountResult.value.accounts)) {
+      const accounts = accountResult.value.accounts;
+      mainAccount = accounts.find(a => /MAIN/i.test(String(a.accountType || a.type || a.name || a.nickname || ''))) || accounts[0] || null;
+      if (mainAccount) {
+        const balance = accountBalance(mainAccount);
+        if (balance !== null) { S.bank = balance; S.pay = balance; }
+      }
+    }
+    if (txResult.status === 'fulfilled' && Array.isArray(txResult.value.transactions)) {
+      recentTransactions = txResult.value.transactions;
+    }
+    return {profile:profileResult.status === 'fulfilled', accounts:accountResult.status === 'fulfilled', transactions:txResult.status === 'fulfilled'};
+  }
+  function notifyError(error) {
+    const message = (error && error.message) || 'Something went wrong. Please try again.';
+    if (typeof window.toast === 'function') window.toast(message);
+    else alert(message);
+  }
+
+  // A returning user is identified by the real public phone-check endpoint.
+  const originalPhoneNext = window.obPhoneNext;
+  window.obPhoneNext = async function () {
+    const o = S.ob;
+    if (!o || String(o.ph || '').replace(/\D/g, '').length < 9) return;
+    const button = document.getElementById('obnext');
+    if (button) { button.disabled = true; button.textContent = 'Checking…'; }
+    try {
+      const phoneNumber = phoneE164(o.ph);
+      const result = await api('/api/v1/auth/check-phone', {
+        method:'POST', body:JSON.stringify({phoneNumber})
+      }, false);
+      o.phoneE164 = phoneNumber;
+      o.mode = result.exists ? 'login' : 'register';
+      if (result.exists) {
+        o.pin = '';
+        obGo('obPin');
+      } else {
+        obGo('obNotFound');
+      }
+    } catch (error) {
+      if (button) { button.disabled = false; button.textContent = 'Next'; }
+      notifyError(error);
+    }
+  };
+
+  // Reuse the existing PIN keypad and visual language, but submit the entered PIN to
+  // the real auth service for existing accounts instead of walking through fake signup.
+  const originalPinScreen = screens.obPin;
+  screens.obPin = function () {
+    let html = originalPinScreen();
+    if (S.ob && S.ob.mode === 'login') {
+      html = html.replace(t('o_pin_h'), 'Enter your 6-digit PIN')
+                 .replace(t('o_pin_s'), 'Sign in securely to your itunda account');
+    }
+    return html;
+  };
+  const originalObKey = window.obKey;
+  window.obKey = function (digit) {
+    if (!(S.ob && S.ob.mode === 'login' && S.obStep === 'obPin')) return originalObKey(digit);
+    const o = S.ob;
+    o.pin = digit === 'del' ? o.pin.slice(0, -1) : (o.pin.length < 6 ? o.pin + digit : o.pin);
+    const dots = document.querySelector('.dots6');
+    if (dots) dots.innerHTML = [0,1,2,3,4,5].map(i => '<i class="' + (i < o.pin.length ? 'on' : '') + '"></i>').join('');
+    if (o.pin.length === 6) {
+      (async () => {
+        const pad = document.querySelector('.keys');
+        if (pad) pad.style.pointerEvents = 'none';
+        try {
+          const response = await api('/api/v1/auth/login', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({phoneNumber:o.phoneE164 || phoneE164(o.ph), password:o.pin, deviceId:deviceId(), deviceName:'Web browser'})
+          }, false);
+          saveSession(response);
+          o.mode = '';
+          S.auth = true; S.stack = []; S.tab = 'home'; S.obStep = null;
+          await syncRealData();
+          render('fade');
+          if (typeof window.toast === 'function') window.toast('You’re signed in');
+        } catch (error) {
+          o.pin = '';
+          notifyError(error);
+          render('fade-none');
+        } finally {
+          const nextPad = document.querySelector('.keys');
+          if (nextPad) nextPad.style.pointerEvents = '';
+        }
+      })();
+    }
+  };
+
+  // Registration creates a real backend user only after both required consents have
+  // been checked. Optional marketing consent remains opt-in.
+  const originalObCreate = window.obCreate;
+  window.obCreate = async function () {
+    const o = S.ob;
+    if (!o.t || !o.p) {
+      notifyError(new Error('Please accept the Terms of Service and Privacy Policy to continue.'));
+      return;
+    }
+    const button = document.getElementById('obnext');
+    if (button) { button.disabled = true; button.textContent = 'Creating account…'; }
+    try {
+      const acceptedTermsIds = ['terms_of_service','privacy_policy'];
+      if (o.m) acceptedTermsIds.push('marketing_communications');
+      const response = await api('/api/v1/auth/register', {
+        method:'POST',
+        body:JSON.stringify({
+          phoneNumber:o.phoneE164 || phoneE164(o.ph), email:null,
+          firstName:o.first.trim(), lastName:o.last.trim(), password:o.pin,
+          deviceId:deviceId(), deviceName:'Web browser', acceptedTermsIds
+        })
+      }, false);
+      saveSession(response);
+      o.mode = '';
+      S.obStep = 'obDone';
+      S.auth = false;
+      render('push');
+    } catch (error) {
+      if (button) { button.disabled = false; button.textContent = t('o_create'); }
+      notifyError(error);
+    }
+  };
+
+  const originalObStart = window.obStart;
+  window.obStart = async function () {
+    if (!localStorage.getItem(ACCESS)) return originalObStart();
+    S.auth = true; S.obStep = null; S.stack = []; S.tab = 'home';
+    try { await syncRealData(); } catch (error) { notifyError(error); }
+    render('fade');
+  };
+
+  // On returning to the app with a stored session, validate it against the server.
+  // Invalid sessions are not treated as signed in.
+  window.addEventListener('load', async () => {
+    if (!localStorage.getItem(ACCESS)) return;
+    try {
+      const result = await api('/api/v1/auth/profile');
+      if (!result.user) throw new Error('Session is no longer valid.');
+      S.name = [result.user.firstName, result.user.lastName].filter(Boolean).join(' ') || result.user.phoneNumber;
+      S.auth = true; S.obStep = null; S.stack = []; S.tab = 'home';
+      await syncRealData();
+      render('fade-none');
+    } catch (_) {
+      localStorage.removeItem(ACCESS); localStorage.removeItem(REFRESH); localStorage.removeItem(USER);
+    }
+  });
+
+  // Logout revokes the real server session before clearing local credentials.
+  const originalLogout = window.logOut;
+  window.logOut = async function () {
+    const access = localStorage.getItem(ACCESS);
+    const refresh = localStorage.getItem(REFRESH);
+    try {
+      if (access) await fetch(API + '/api/v1/auth/logout', {
+        method:'POST', headers:{'Content-Type':'application/json', Authorization:'Bearer '+access},
+        body:JSON.stringify({refreshToken:refresh})
+      });
+    } catch (_) { /* Local logout must still work when offline. */ }
+    localStorage.removeItem(ACCESS); localStorage.removeItem(REFRESH); localStorage.removeItem(USER);
+    mainAccount = null; recentTransactions = [];
+    return originalLogout();
+  };
+
+  // Money movement uses the server's quote -> confirm contract, and a fresh idempotency
+  // key per intentional confirmation. No local balance mutation is considered success.
+  const originalFinish = window.finish;
+  window.finish = async function () {
+    if (!localStorage.getItem(ACCESS)) {
+      notifyError(new Error('Sign in to make a real transfer.'));
+      return;
+    }
+    if (transferBusy) return;
+    const amount = Number(S.amt);
+    if (!S.to || !Number.isFinite(amount) || amount <= 0) {
+      notifyError(new Error('Enter a valid recipient and amount.'));
+      return;
+    }
+    transferBusy = true;
+    try {
+      const quoted = await api('/api/v1/account/transfer/quote', {
+        method:'POST',
+        body:JSON.stringify({amount, recipient:S.to, fromAccountId:mainAccount && mainAccount.id})
+      });
+      const quote = quoted.quote || {};
+      const quoteId = quote.quoteId || quote.id;
+      if (!quoteId) throw new Error('The server did not return a transfer quote. No money was moved.');
+      const result = await api('/api/v1/account/transfer/confirm', {
+        method:'POST',
+        headers:{'Idempotency-Key':crypto.randomUUID ? crypto.randomUUID() : 'web-' + Date.now() + '-' + Math.random().toString(36).slice(2)},
+        body:JSON.stringify({quoteId})
+      });
+      await syncRealData();
+      closeSheet();
+      S.stack = ['sent'];
+      render('push');
+      if (typeof window.toast === 'function') window.toast(result.message || 'Transfer completed');
+    } catch (error) {
+      notifyError(error);
+    } finally {
+      transferBusy = false;
+    }
+  };
+
+  // The existing account screen is hydrated from real accounts/ledger transactions.
+  const originalBankScreen = screens.bank;
+  if (originalBankScreen) screens.bank = function () {
+    let html = originalBankScreen();
+    if (mainAccount) {
+      const b = accountBalance(mainAccount);
+      if (b !== null) html = html.replace(/(<div class="bdb">)[\s\S]*?(<\/div>)/, '$1' + fmt(b) + '$2');
+    }
+    if (recentTransactions.length) {
+      const items = recentTransactions.slice(0,5).map(tx => {
+        const title = String(tx.description || tx.title || tx.type || tx.category || 'Account activity').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+        const amount = number(tx.amount ?? tx.value);
+        const value = amount === null ? '' : (amount < 0 ? '−' : '+') + fmt(Math.abs(amount)) + ' RWF';
+        return '<div class="row" style="padding:12px 24px"><div class="ico">↔</div><div style="flex:1;min-width:0"><div class="t">' + title + '</div><div class="s">' + String(tx.createdAt || tx.date || '').slice(0,10) + '</div></div><div class="r">' + value + '</div></div>';
+      }).join('');
+      html = html.replace(/(<div class="sech">Recent activity<\/div>)[\s\S]*?(?=<\/div>\s*<div class="sec"|$)/, '$1' + items);
+    }
+    return html;
+  };
+})();
+</script>
+
 </body>
 </html>
