@@ -1,5 +1,7 @@
 package rw.itunda.core.network
 
+import android.util.Log
+import java.io.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -198,14 +200,20 @@ object SessionManager {
 
     private suspend fun runAuthCall(call: suspend () -> AuthResponse): AuthResult = try {
         val response = call()
+        // A local encrypted-session persistence or response-processing exception can
+        // happen after HTTP 200. Do not misreport every non-HTTP exception as offline.
         NetworkClient.currentTokenStore().saveSession(response.user.id, response.accessToken, response.refreshToken)
         _sessionState.value = SessionState.LoggedIn(response.user.id)
         registerDeviceToken()
         AuthResult.Success
     } catch (e: retrofit2.HttpException) {
         AuthResult.Failure(httpErrorMessage(e))
-    } catch (e: Exception) {
+    } catch (e: IOException) {
+        Log.w("ItundaAuth", "Network I/O failed during authentication", e)
         AuthResult.Failure("Couldn't reach itunda. Check your connection and try again.")
+    } catch (e: Exception) {
+        Log.e("ItundaAuth", "Authentication response or local session persistence failed", e)
+        AuthResult.Failure("We couldn't finish signing you in. Please try again.")
     }
 
     // Real push device-token registration (item 120) -- see ApiService.kt's own doc
