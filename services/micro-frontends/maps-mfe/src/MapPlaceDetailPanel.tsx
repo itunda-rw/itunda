@@ -24,6 +24,7 @@ export function MapPlaceDetailPanel({ merchantId, onClose }: { merchantId: strin
     let active = true;
     setDetail(null);
     setError(null);
+    setTab('HOME');
     fetchMapPlaceDetail(merchantId)
       .then((nextDetail) => { if (active) setDetail(nextDetail); })
       .catch(() => { if (active) setError("Couldn't load this place right now."); });
@@ -66,7 +67,23 @@ export function MapPlaceDetailPanel({ merchantId, onClose }: { merchantId: strin
                 id={`place-tab-${t.id.toLowerCase()}`}
                 aria-selected={tab === t.id}
                 aria-controls="place-detail-tabpanel"
+                tabIndex={tab === t.id ? 0 : -1}
                 onClick={() => setTab(t.id)}
+                onKeyDown={(event) => {
+                  const currentIndex = tabs.findIndex((item) => item.id === t.id);
+                  let nextIndex: number | null = null;
+                  if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % tabs.length;
+                  else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+                  else if (event.key === 'Home') nextIndex = 0;
+                  else if (event.key === 'End') nextIndex = tabs.length - 1;
+                  if (nextIndex !== null) {
+                    event.preventDefault();
+                    setTab(tabs[nextIndex].id);
+                    event.currentTarget.parentElement
+                      ?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[nextIndex]
+                      ?.focus();
+                  }
+                }
                 style={{
                   padding: '10px 14px', minHeight: '48px', fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap',
                   color: tab === t.id ? 'var(--itunda-indigo)' : TEXT_SECONDARY,
