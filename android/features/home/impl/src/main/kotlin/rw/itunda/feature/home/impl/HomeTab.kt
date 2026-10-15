@@ -63,6 +63,7 @@ fun HomeTab(
     isOffline: Boolean,
     primaryAccount: rw.itunda.core.network.Account?,
     payAccount: rw.itunda.core.network.Account? = null,
+    savingsGoals: List<rw.itunda.core.network.SavingsGoal> = emptyList(),
     recentTransactions: List<rw.itunda.core.network.TransactionDto>,
     neighborhoodSet: Boolean,
     isRefreshing: Boolean,
@@ -144,6 +145,7 @@ fun HomeTab(
             item {
                 HomePrimaryActions(onSend = onOpenSend, onAddMoney = onOpenPay)
             }
+            item { HomeNextForYou(savingsGoals = savingsGoals, onOpenSavings = onOpenBank) }
             item {
                 HomeQuickActions(
                     onSend = onOpenSend,
@@ -271,6 +273,7 @@ fun HomeEntryPoint(
     isOffline: Boolean,
     primaryAccount: rw.itunda.core.network.Account?,
     payAccount: rw.itunda.core.network.Account? = null,
+    savingsGoals: List<rw.itunda.core.network.SavingsGoal> = emptyList(),
     recentTransactions: List<rw.itunda.core.network.TransactionDto>,
     neighborhoodSet: Boolean,
     isRefreshing: Boolean,
@@ -297,6 +300,7 @@ fun HomeEntryPoint(
         isOffline = isOffline,
         primaryAccount = primaryAccount,
         payAccount = payAccount,
+        savingsGoals = savingsGoals,
         recentTransactions = recentTransactions,
         neighborhoodSet = neighborhoodSet,
         isRefreshing = isRefreshing,
