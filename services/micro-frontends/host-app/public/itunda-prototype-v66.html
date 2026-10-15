@@ -1942,6 +1942,28 @@ return _s6.apply(this,arguments)};
     }
   };
 
+  // Keep the prototype's consent UI aligned with the backend's real terms catalog:
+  // Terms of Service + Privacy Policy are required; marketing is optional. The prototype
+  // previously marked its third credit-data row as mandatory even though the API's
+  // registration contract only requires the two catalog IDs above.
+  screens.obTerms = function () {
+    const o = S.ob;
+    const all = o.t && o.p;
+    const row = (key, label, required) => `<div class="row tap" onclick="tcTog('${key}')"><div class="cb ${o[key] ? 'on' : ''}">${o[key] ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#121216" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>' : ''}</div><div style="flex:1"><div class="t" style="font-size:15px">${label}</div></div><span class="sm" style="color:${required ? 'var(--lk)' : 'var(--mu)'};font-weight:700">${required ? 'Required' : 'Optional'}</span></div>`;
+    return `${obbar()}<div class="pad" style="padding-top:16px"><div class="h1">${t('o_terms_h')}</div><div class="mu" style="font-size:16px;margin-top:8px">${t('o_terms_s')}</div></div><div class="pad" style="padding-top:22px"><div class="row tap" style="background:var(--chip);border-radius:16px;padding:14px 16px" onclick="tcAll()"><div class="cb ${all && o.m ? 'on' : ''}">${all && o.m ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#121216" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>' : ''}</div><div class="t" style="font-size:16px">Select all</div></div><div style="padding-top:8px">${row('t', t('s_terms'), true)}${row('p', t('s_priv'), true)}${row('m', 'Marketing communications', false)}</div></div><div class="cta"><button id="obnext" class="btn" ${all ? '' : 'disabled'} onclick="obGo('obPin')">${t('nx')}</button></div>`;
+  };
+  // Select-all respects the optional marketing choice: select required consents and
+  // marketing together, but never make marketing a prerequisite for account creation.
+  const originalTcAll = window.tcAll;
+  window.tcAll = function () {
+    const allRequired = S.ob.t && S.ob.p;
+    const next = !allRequired;
+    S.ob.t = next;
+    S.ob.p = next;
+    S.ob.m = next;
+    render('fade-none');
+  };
+
   // Reuse the existing PIN keypad and visual language, but submit the entered PIN to
   // the real auth service for existing accounts instead of walking through fake signup.
   const originalPinScreen = screens.obPin;
