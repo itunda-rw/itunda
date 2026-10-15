@@ -2385,6 +2385,7 @@ return _s6.apply(this,arguments)};
       '<form class="it-maps-search" onsubmit="event.preventDefault();itundaMapSearch()"><input id="itunda-map-query" value="'+esc(state.query)+'" placeholder="Search places, addresses, landmarks" aria-label="Search places"><button type="submit">Search</button></form>'+
       '<div class="it-maps-chips">'+chips+'</div><div id="itunda-real-map" class="it-maps-map" role="application" aria-label="Interactive OpenStreetMap"></div>'+
       '<div id="maps-status" class="it-maps-note">'+esc(state.error||'Live map · OpenStreetMap data · Real Itunda place search and directions')+'</div>'+
+      ((state.start||state.destination)?'<div style="padding:10px 16px;display:flex;gap:8px;align-items:center"><div style="flex:1;min-width:0;font-size:12px;color:var(--mu)">'+(state.start?'Start: '+esc(state.start.displayName):'Choose a start')+'<br>'+(state.destination?'To: '+esc(state.destination.displayName):'Choose a destination')+'</div><button class="it-maps-primary" style="height:42px" onclick="mpGo(\'route\')">Directions</button></div>':'')+
       '<div class="it-maps-note" style="font-weight:800;color:var(--tx)">Nearby and search results</div>'+
       (rows||'<div class="it-maps-note">Search a place or choose a category to load real results from Itunda Maps.</div>')+
       '<div style="height:26px"></div>';
