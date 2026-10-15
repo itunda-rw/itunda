@@ -9,6 +9,12 @@
     <string name="home_dismiss_recommendation">Ivanaho</string>
     <string name="home_feed_title">Kuri wowe</string>
     <string name="home_recent_activity">Ibikorwa biheruka</string>
+    <string name="home_spending">Ikoreshwa ry’amafaranga</string>
+    <string name="home_spending_empty">Nta bikorwa by’amafaranga biragaragara</string>
+    <string name="home_spending_activity">Reba ibikorwa bya konti</string>
+    <string name="home_spending_subtitle">Amakuru y’ibikorwa byawe aheruka</string>
+    <string name="home_for_you">Bikwiriye wowe</string>
+    <string name="home_for_you_empty">Nta byifuzo bihari ubu</string>
     <string name="home_see_all">Reba byose</string>
     <string name="home_no_recent_activity">Nta bikorwa biheruka.</string>
     <string name="home_link_another_account">+ Ongeramo indi konti</string>
