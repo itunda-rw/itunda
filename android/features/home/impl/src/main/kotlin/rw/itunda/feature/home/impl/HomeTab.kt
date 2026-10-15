@@ -101,6 +101,14 @@ fun HomeTab(
     LaunchedEffect(Unit) { rw.itunda.core.network.recordAnalyticsEvent("home_view") }
 
     var stocks by remember { mutableStateOf<List<rw.itunda.core.network.StockDto>>(emptyList()) }
+    var payAccount by remember { mutableStateOf<rw.itunda.core.network.Account?>(null) }
+    LaunchedEffect(Unit) {
+        payAccount = try {
+            rw.itunda.core.network.NetworkClient.apiService.getAccounts().accounts.firstOrNull { it.type == "PAY" }
+        } catch (_: Exception) {
+            null
+        }
+    }
     var trendingListings by remember { mutableStateOf<List<rw.itunda.core.network.ListingDto>>(emptyList()) }
     var feedEntries by remember { mutableStateOf<List<HomeFeedEntry>>(emptyList()) }
     LaunchedEffect(Unit) {
@@ -209,7 +217,7 @@ fun HomeTab(
             // not a secondary tile buried below recommendations and search.
             if (primaryAccount != null) {
                 item { HomeAccountHeroCard(primaryAccount, onOpenBank = onOpenBank, onOpenPay = onOpenPay) }
-                item { HomePayBalanceRow(primaryAccount, onOpenPay = onOpenPay) }
+                if (payAccount != null) item { HomePayBalanceRow(payAccount!!, onOpenPay = onOpenPay) }
             }
             item {
                 HomePrimaryActions(onSend = onOpenPay, onAddMoney = onOpenPay)
