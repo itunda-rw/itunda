@@ -98,7 +98,7 @@ fun SpendingScreen(onBack: () -> Unit) {
             }
             val current = insight
             if (current == null) {
-                if (error == null) item { SkeletonBlock() }
+                if (!error) item { SkeletonBlock() }
             } else {
                 item {
                     Card(Modifier.fillMaxWidth()) {
