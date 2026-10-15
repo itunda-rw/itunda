@@ -59,4 +59,15 @@
     <string name="transaction_history_filter_paid">Paid</string>
     <string name="transaction_history_empty">No transactions yet — sends, receives, and payments will show up here.</string>
     <string name="transaction_history_no_matches">Nothing here yet.</string>
+    <string name="transaction_detail_status">Status</string>
+    <string name="transaction_detail_type">Type</string>
+    <string name="transaction_detail_date">Date</string>
+    <string name="transaction_detail_to">To</string>
+    <string name="transaction_detail_from">From</string>
+    <string name="transaction_detail_itunda_account">Itunda account</string>
+    <string name="transaction_detail_fee">Fee</string>
+    <string name="transaction_detail_reference">Reference</string>
+    <string name="transaction_detail_real_data_note">Details from your real transaction record.</string>
+    <string name="transaction_detail_close">Close</string>
+    <string name="transaction_detail_copy">Copy details</string>
 </resources>
