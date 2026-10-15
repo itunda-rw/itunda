@@ -1964,7 +1964,6 @@ return _s6.apply(this,arguments)};
   };
   // Select-all respects the optional marketing choice: select required consents and
   // marketing together, but never make marketing a prerequisite for account creation.
-  const originalTcAll = window.tcAll;
   window.tcAll = function () {
     const allSelected = S.ob.t && S.ob.p && S.ob.m;
     const next = !allSelected;
@@ -1980,8 +1979,12 @@ return _s6.apply(this,arguments)};
   screens.obPin = function () {
     let html = originalPinScreen();
     if (S.ob && S.ob.mode === 'login') {
-      html = html.replace(t('o_pin_h'), 'Enter your 6-digit PIN')
-                 .replace(t('o_pin_s'), 'Sign in securely to your itunda account');
+      const copy = ({
+        en: ['Enter your 6-digit PIN', 'Sign in securely to your itunda account'],
+        rw: ['Andika PIN yawe y’imibare 6', 'Injira neza muri konti yawe ya Itunda'],
+        fr: ['Saisissez votre code PIN à 6 chiffres', 'Connectez-vous en toute sécurité à votre compte Itunda']
+      })[S.lang] || ['Enter your 6-digit PIN', 'Sign in securely to your itunda account'];
+      html = html.replace(t('o_pin_h'), copy[0]).replace(t('o_pin_s'), copy[1]);
     }
     return html;
   };
