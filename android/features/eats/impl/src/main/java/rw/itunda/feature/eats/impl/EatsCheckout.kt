@@ -55,9 +55,6 @@ import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
 import java.util.UUID
 
-
-
-
 internal enum class EatsCheckoutMode { DELIVERY, PICKUP, DINE_IN }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -409,7 +406,6 @@ internal fun DineInOrderConfirmationView(order: DineInOrderDto, onDone: () -> Un
         confirmButton = { TextButton(onClick = onDone) { Text("Done") } },
     )
 }
-
 
 // Real per-configuration cart line (2026-07-21) -- ports bank-mfe's own EatsCartLine
 // (BankDashboard.tsx) 1:1. `choiceIds` is empty for any item with no option groups --
