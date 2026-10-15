@@ -136,6 +136,16 @@
   };
   window.obPhoneNext = function () { S.ob.pin = ''; S.obStep = 'backendLogin'; render('push'); };
 
+  const previousObBack = window.obBack;
+  window.obBack = function () {
+    if (S.obStep === 'obName') {
+      S.obStep = 'backendLogin';
+      render('pop');
+      return;
+    }
+    previousObBack();
+  };
+
   const previousBankScreen = screens.bank;
   screens.bank = function () {
     const html = previousBankScreen();
