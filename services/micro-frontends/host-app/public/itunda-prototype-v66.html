@@ -2404,7 +2404,7 @@ return _s6.apply(this,arguments)};
   const originalRender=window.render;
   // Screen renderers are consumed by the existing app render() dispatcher.
   const oldOpenMaps=window.openMaps;
-  window.openMaps=function(){state.route=null;destroyMap();S.stack=['mapsearch'];render('push');setTimeout(initMap,160);};
+  window.openMaps=function(){state.route=null;destroyMap();S.stack=['mapsearch'];render('push');setTimeout(()=>{initMap();if(!state.results.length&&!state.query)window.itundaMapNearby(state.category);},160);};
   const oldMpGo=window.mpGo;
   window.mpGo=function(n){if(n==='route'){destroyMap();S.stack.push(n);render('push');setTimeout(initMap,160);return;}return oldMpGo?oldMpGo(n):(S.stack.push(n),render('push'));};
   const oldRender=window.render;
