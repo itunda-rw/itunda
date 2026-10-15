@@ -260,7 +260,7 @@ internal fun EatsCheckoutView(
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        "Review your order to ${restaurant.name}",
+                        "Review your order to ${restaurant.businessName}",
                         color = Ids.colors.textSecondary,
                         fontSize = 14.sp,
                     )
@@ -297,7 +297,7 @@ internal fun EatsCheckoutView(
                     Text(
                         when (mode) {
                             EatsCheckoutMode.DELIVERY -> "Delivery to ${address.trim()}"
-                            EatsCheckoutMode.PICKUP -> "Pickup at ${restaurant.name}"
+                            EatsCheckoutMode.PICKUP -> "Pickup at ${restaurant.businessName}"
                             EatsCheckoutMode.DINE_IN -> "Table ${tableNumber.trim()}"
                         },
                         color = Ids.colors.textSecondary,
@@ -357,6 +357,7 @@ internal fun EatsCheckoutView(
                 submitting = true
                 try {
                     when (mode) { EatsCheckoutMode.DELIVERY -> submitDelivery(); EatsCheckoutMode.PICKUP -> submitPickup(); EatsCheckoutMode.DINE_IN -> submitDineIn() }
+                    showOrderReview = false
                 } catch (e: HttpException) {
                     error = superAppErrorMessage(e)
                 } catch (e: IOException) {
