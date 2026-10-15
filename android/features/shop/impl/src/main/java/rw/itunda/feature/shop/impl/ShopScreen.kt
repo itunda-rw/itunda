@@ -24,7 +24,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.ShoppingCart
+import androidx.compose.material3.Icon
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
@@ -127,6 +129,8 @@ internal fun formatTimeDealCountdownHms(endsAt: String): String {
 fun CommerceShopContent(
     deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
     onMessageSeller: (String) -> Unit = {},
+    onBack: () -> Unit = {},
+    onOpenEats: () -> Unit = {},
 ) {
     var view by remember { mutableStateOf(CommerceView.BROWSE) }
     var merchants by remember { mutableStateOf<List<ShoppingMerchantDto>?>(null) }
@@ -509,6 +513,59 @@ fun CommerceShopContent(
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
         item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Box(
+                    modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp))
+                        .background(Ids.colors.surface).pressScaleClickable { onBack() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Outlined.ArrowBack, contentDescription = "Back", tint = Ids.colors.textPrimary)
+                }
+                Box(modifier = Modifier.weight(1f)) {
+                    IdsTextField(
+                        value = productSearchInput,
+                        onValueChange = { productSearchInput = it },
+                        label = "Search products",
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                Box(
+                    modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp))
+                        .background(Ids.colors.surface)
+                        .pressScaleClickable { if (totalItems > 0) showCart = true },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Outlined.ShoppingCart, contentDescription = "Cart", tint = Ids.colors.textPrimary)
+                    if (totalItems > 0) {
+                        Box(modifier = Modifier.align(Alignment.TopEnd).padding(2.dp).size(8.dp)
+                            .clip(RoundedCornerShape(4.dp)).background(Ids.colors.brand))
+                    }
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                    .background(Ids.colors.surface).padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Box(
+                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(11.dp))
+                        .background(Ids.colors.brand).pressScaleClickable { view = CommerceView.BROWSE }
+                        .padding(vertical = 11.dp),
+                    contentAlignment = Alignment.Center,
+                ) { Text("Shop", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+                Box(
+                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(11.dp))
+                        .pressScaleClickable { onOpenEats() }.padding(vertical = 11.dp),
+                    contentAlignment = Alignment.Center,
+                ) { Text("Eats", color = Ids.colors.textSecondary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp) }
+            }
+        }
+        item {
             // No TabHeader here (2026-07-24, was `TabHeader("Shop")`): the bottom
             // nav / ShopTab's own Shop/Eats row already establish where the user
             // is, same redundant-title fix as Hood. Flat category strip below,
@@ -634,28 +691,12 @@ fun CommerceShopContent(
                     }
                 }
             }
-            item {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    IdsTextField(
-                        value = productSearchInput,
-                        onValueChange = { productSearchInput = it },
-                        label = "Search products across every merchant",
-                        modifier = Modifier.weight(1f),
-                    )
-                    Box(
-                        modifier = Modifier.clip(RoundedCornerShape(10.dp))
-                            .background(if (productSearching || productSearchInput.isBlank()) Ids.colors.textTertiary else Ids.colors.brand)
-                            .pressScaleClickable(enabled = !productSearching && productSearchInput.isNotBlank()) { searchProducts() }
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        contentAlignment = Alignment.Center,
-                    ) { Text(if (productSearching) "…" else "Search", color = Color.White, fontWeight = FontWeight.Bold) }
-                    if (productSearchResults != null) {
-                        Box(
-                            modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.textTertiary)
-                                .pressScaleClickable { productSearchResults = null; productSearchInput = "" }
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
-                            contentAlignment = Alignment.Center,
-                        ) { Text("Clear", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
+            if (productSearchResults != null) {
+                item {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Search results", color = Ids.colors.textSecondary, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                        Text("Clear", color = Ids.colors.brand, fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.pressScaleClickable { productSearchResults = null; productSearchInput = "" }.padding(8.dp))
                     }
                 }
             }
@@ -879,6 +920,8 @@ fun CommerceShopContent(
 fun CommerceShopEntryPoint(
     deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
     onMessageSeller: (String) -> Unit = {},
+    onBack: () -> Unit = {},
+    onOpenEats: () -> Unit = {},
 ) {
-    CommerceShopContent(deviceStepUpHost, onMessageSeller)
+    CommerceShopContent(deviceStepUpHost, onMessageSeller, onBack, onOpenEats)
 }
