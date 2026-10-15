@@ -222,15 +222,18 @@ export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }
                   ))}
                 </optgroup>
               </select>
-              <button onClick={() => setShowSearch((v) => !v)} aria-label="Search transactions" style={{ display: 'flex', padding: '4px' }}>
+              <button onClick={() => setShowSearch((v) => !v)} aria-label={showSearch ? 'Hide transaction search' : 'Search transactions'} aria-expanded={showSearch} aria-controls="itunda-bank-transaction-search" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '40px', minHeight: '40px', padding: '4px' }}>
                 <Search size={18} color="var(--itunda-grey-500)" />
               </button>
             </div>
           )}
           {showSearch && (
             <input
-              type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search transactions"
-              style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)', marginBottom: '8px' }}
+              id="itunda-bank-transaction-search"
+              aria-label="Search transactions by description"
+              type="search" autoComplete="off"
+              value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search transactions"
+              style={{ width: '100%', minHeight: '44px', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)', marginBottom: '8px' }}
             />
           )}
           {error ? (
