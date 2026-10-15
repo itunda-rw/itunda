@@ -2145,17 +2145,7 @@ private fun AccountDetailScreen(
             }
         }
         LazyColumn(
-            // Real fix (2026-08-24, direct user follow-up: "toss uses spring effect
-            // which users feel not only when they pressing a button but also when
-            // they are scrolling through the lists like those transactions" --
-            // watching this exact ledger scroll live on-device). See
-            // SpringOverscroll.kt's own doc comment for the full sourced account.
-            //
-            // Follow-up fix (same day, "not as smooth as toss spring effect ...
-            // user finger touch presable components while scroll user can feel
-            // that spring effect"): trackScrollPressedKey adds the live
-            // touch-follows-finger-during-scroll half of this -- see
-            // ScrollPressTracker.kt's own doc comment.
+            // Keep native spring overscroll and touch-following feedback on ledger rows.
             state = ledgerListState,
             modifier = Modifier.fillMaxSize().weight(1f)
                 .then(rememberSpringOverscrollModifier())
@@ -2255,18 +2245,7 @@ private fun AccountDetailScreen(
                 }
             }
         }
-        // Real Toss Bank reference (20 screenshots, 2026-08-21, direct user
-        // follow-up: "those buttons at bottom" -- the real Top up/Send row is
-        // pinned to the bottom of the screen, not scrolling away with the ledger
-        // content above it. Moved out of the LazyColumn into a fixed footer here,
-        // matching FullScreenFlow's own bottomCTA convention on bank-mfe.
-        //
-        // Real fix (2026-08-24, direct user side-by-side against a real Toss Bank
-        // screenshot: "there is no layer sitting btn button and those contents") --
-        // dropped the .border() that used to draw a visible divider line above this
-        // footer. The real reference has no seam at all between the scrolled ledger
-        // and the fixed button row; same background color on both sides already
-        // gives enough real separation on its own.
+        // Fixed bottom actions stay visible while the ledger scrolls; no divider seam.
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier
