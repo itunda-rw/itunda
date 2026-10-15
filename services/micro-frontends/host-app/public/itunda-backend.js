@@ -8,6 +8,7 @@
   let liveTransactions = [];
   let liveUser = null;
   let lastTransaction = null;
+  let termsCatalog = [];
   let busy = false;
   let refreshInFlight = null;
 
@@ -171,21 +172,78 @@
     return html;
   };
 
+  function termKey(id) {
+    if (id === 'terms_of_service') return 't';
+    if (id === 'privacy_policy') return 'p';
+    if (id === 'marketing_communications') return 'm';
+    return 'term_' + id;
+  }
+  function escapeTerm(value) {
+    return String(value || '').replace(/[<>&"]/g, function (ch) {
+      return ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[ch];
+    });
+  }
+  const fallbackTerms = [
+    { id: 'terms_of_service', title: 'Terms of Service', required: true, summary: '' },
+    { id: 'privacy_policy', title: 'Privacy Policy', required: true, summary: '' },
+    { id: 'marketing_communications', title: 'Marketing Communications', required: false, summary: '' }
+  ];
+  screens.obTerms = function () {
+    const docs = termsCatalog.length ? termsCatalog : fallbackTerms;
+    const rows = docs.map(function (doc) {
+      const key = termKey(doc.id), checked = Boolean(S.ob[key]);
+      const marker = doc.required ? t('o_req') : (({ rw: 'Bihitamo', fr: 'Facultatif' })[S.lang] || 'Optional');
+      return '<div class="row tap" role="button" tabindex="0" onclick="tcTog(\'' + key + '\')">' +
+        '<div class="cb ' + (checked ? 'on' : '') + '">' + (checked ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#121216" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>' : '') + '</div>' +
+        '<div style="flex:1;min-width:0"><div class="t" style="font-size:15px">' + escapeTerm(doc.title) + '</div>' +
+        (doc.summary ? '<div class="s" style="line-height:18px">' + escapeTerm(doc.summary) + '</div>' : '') + '</div>' +
+        '<span class="sm" style="color:' + (doc.required ? 'var(--lk)' : 'var(--mu)') + ';font-weight:700">' + marker + '</span></div>';
+    }).join('');
+    const all = docs.length > 0 && docs.every(function (doc) { return Boolean(S.ob[termKey(doc.id)]); });
+    const valid = docs.filter(function (doc) { return doc.required; }).every(function (doc) { return Boolean(S.ob[termKey(doc.id)]); });
+    return obbar() + '<div class="pad" style="padding-top:16px"><div class="h1">' + t('o_terms_h') + '</div><div class="mu" style="font-size:16px;margin-top:8px">' + t('o_terms_s') + '</div></div>' +
+      '<div class="pad" style="padding-top:22px"><div class="row tap" role="button" tabindex="0" style="background:var(--chip);border-radius:16px;padding:14px 16px" onclick="tcAll()">' +
+      '<div class="cb ' + (all ? 'on' : '') + '">' + (all ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#121216" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>' : '') + '</div>' +
+      '<div class="t" style="font-size:16px">' + t('o_all') + '</div></div><div style="padding-top:8px">' + rows + '</div></div>' +
+      '<div class="cta"><button id="obnext" class="btn" ' + (valid ? '' : 'disabled') + ' onclick="obGo(\'obPin\')">' + t('nx') + '</button></div>';
+  };
+  const previousObGo = window.obGo;
+  window.obGo = function (step) {
+    if (step === 'obTerms') {
+      api('/api/v1/auth/terms', {}, false).then(function (body) {
+        termsCatalog = Array.isArray(body.terms) ? body.terms : [];
+        if (S.obStep === 'obTerms') render('fade-none');
+      }).catch(function (error) {
+        console.warn('[itunda backend] Terms catalog unavailable:', error.message);
+      });
+    }
+    previousObGo(step);
+  };
+  window.tcAll = function () {
+    const docs = termsCatalog.length ? termsCatalog : fallbackTerms;
+    const all = docs.length > 0 && docs.every(function (doc) { return Boolean(S.ob[termKey(doc.id)]); });
+    docs.forEach(function (doc) { S.ob[termKey(doc.id)] = !all; });
+    render('fade-none');
+  };
+
   // Real registration: the required consent IDs come from the backend catalog.
   window.obCreate = async function () {
     if (busy) return;
     busy = true;
     try {
       const catalog = await api('/api/v1/auth/terms', {}, false);
-      const required = (Array.isArray(catalog.terms) ? catalog.terms : []).filter(function (t) { return t.required; }).map(function (t) { return t.id; });
-      if (!required.length) throw new Error('Required terms could not be loaded. Please try again later.');
-      if (!(S.ob.t && S.ob.p && S.ob.c)) throw new Error('Please accept all required terms before creating your account.');
+      const currentTerms = Array.isArray(catalog.terms) ? catalog.terms : [];
+      if (!currentTerms.length) throw new Error('Required terms could not be loaded. Please try again later.');
+      termsCatalog = currentTerms;
+      const acceptedTermsIds = currentTerms.filter(function (doc) { return Boolean(S.ob[termKey(doc.id)]); }).map(function (doc) { return doc.id; });
+      const missing = currentTerms.filter(function (doc) { return doc.required && acceptedTermsIds.indexOf(doc.id) < 0; });
+      if (missing.length) throw new Error('Please accept each required term before creating your account.');
       const session = await api('/api/v1/auth/register', {
         method: 'POST',
         body: JSON.stringify({
           phoneNumber: normalizePhone(S.ob.ph), email: null,
           firstName: S.ob.first.trim(), lastName: S.ob.last.trim(),
-          password: S.ob.pin, acceptedTermsIds: required
+          password: S.ob.pin, acceptedTermsIds: acceptedTermsIds
         })
       }, false);
       if (!session.accessToken || !session.refreshToken || !session.user) throw new Error('The server returned an incomplete session.');
