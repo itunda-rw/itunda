@@ -43,4 +43,6 @@
     <string name="transfer_confirm_fee">Ikiguzi</string>
     <string name="transfer_confirm">Emeza</string>
     <string name="transfer_send_anyway">Ohereza uko biri</string>
+    <string name="transfer_review_gift">Ongera urebe impano mbere yo kohereza</string>
+    <string name="transfer_review_before_send">Genzura amakuru mbere yo kohereza</string>
 </resources>
