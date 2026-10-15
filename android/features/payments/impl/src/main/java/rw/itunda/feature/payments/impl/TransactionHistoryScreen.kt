@@ -239,7 +239,7 @@ fun TransactionHistoryScreen(
                             .clickable { selectedTransaction = null }.padding(vertical = 15.dp), contentAlignment = Alignment.Center) {
                             Text(stringResource(R.string.transaction_detail_close), color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold)
                         }
-                        Box(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(Ids.colors.accent)
+                        Box(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(Ids.colors.brand)
                             .clickable {
                                 clipboard.setText(AnnotatedString("${tx.description}\n${tx.type} · ${tx.status}\n${tx.amount} ${tx.currency}\n${tx.id}"))
                                 selectedTransaction = null
