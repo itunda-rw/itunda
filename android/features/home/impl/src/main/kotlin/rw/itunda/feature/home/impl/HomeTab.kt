@@ -13,11 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CloudOff
-import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -28,7 +23,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
@@ -38,9 +32,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import java.util.Locale
-import kotlinx.coroutines.launch
-import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.theme.Ids
 
 // Moved here from :app's ItundaAppScreen.kt (2026-09-02, Home Feature-module
@@ -95,98 +86,6 @@ fun HomeTab(
     // Home, the baseline every retention question is measured against -- same event
     // name/shape bank-mfe's identical HomeView effect already fires.
     LaunchedEffect(Unit) { rw.itunda.core.network.recordAnalyticsEvent("home_view") }
-
-    var stocks by remember { mutableStateOf<List<rw.itunda.core.network.StockDto>>(emptyList()) }
-    var payAccount by remember { mutableStateOf<rw.itunda.core.network.Account?>(null) }
-    LaunchedEffect(Unit) {
-        payAccount = try {
-            rw.itunda.core.network.NetworkClient.apiService.getAccounts().accounts.firstOrNull { it.type == "PAY" }
-        } catch (_: Exception) {
-            null
-        }
-    }
-    var trendingListings by remember { mutableStateOf<List<rw.itunda.core.network.ListingDto>>(emptyList()) }
-    var feedEntries by remember { mutableStateOf<List<HomeFeedEntry>>(emptyList()) }
-    LaunchedEffect(Unit) {
-        try { stocks = rw.itunda.core.network.NetworkClient.apiService.getStocks().stocks.take(2) } catch (_: Exception) {}
-    }
-    // Real fix (2026-08-26, live-caught: uiautomator logs showed 4 guaranteed
-    // 400s -- NeighborhoodNotSetException -- firing on every single Home load
-    // for any user who hasn't set a neighborhood yet). All 4 of these are
-    // real "my neighborhood" endpoints that unconditionally throw when
-    // MarketplaceService.myNeighborhood's own real caller.neighborhood check
-    // fails server-side; the try/catch below already degraded gracefully
-    // (empty feed, no crash) but still wasted 4 real round-trips + 4 noisy
-    // error logs every load.
-    LaunchedEffect(neighborhoodSet) {
-        if (!neighborhoodSet) return@LaunchedEffect
-        val listings = try { rw.itunda.core.network.NetworkClient.apiService.getListingsMyNeighborhood().listings } catch (_: Exception) { emptyList() }
-        val posts = try { rw.itunda.core.network.NetworkClient.apiService.getCommunityPostsMyNeighborhood().posts } catch (_: Exception) { emptyList() }
-        val jobs = try { rw.itunda.core.network.NetworkClient.apiService.getJobPostsMyNeighborhood().posts } catch (_: Exception) { emptyList() }
-        val properties = try { rw.itunda.core.network.NetworkClient.apiService.getPropertyListingsMyNeighborhood().listings } catch (_: Exception) { emptyList() }
-        // Listings with a real photo lead the Trending grid (Naver's own Clip section
-        // is image-first); the rest -- including photo-less listings -- flow into the
-        // merged feed below like every other vertical.
-        val (withPhoto, withoutPhoto) = listings.partition { !it.photoUrl.isNullOrBlank() }
-        trendingListings = withPhoto.take(4)
-        val trendingIds = trendingListings.map { it.id }.toSet()
-        feedEntries = (
-            (listings.filter { it.id !in trendingIds }).map {
-                HomeFeedEntry(it.id, "marketplace", it.title, String.format(Locale.US, "%,.0f RWF", it.price), it.createdAt, it.photoUrl)
-            } +
-            posts.map { HomeFeedEntry(it.id, "community", it.title, it.body.take(80), it.createdAt) } +
-            jobs.map { HomeFeedEntry(it.id, "jobs", it.title, String.format(Locale.US, "${it.payType} · %,.0f RWF", it.payAmount), it.createdAt) } +
-            properties.map { HomeFeedEntry(it.id, "property", it.title, String.format(Locale.US, "%,.0f RWF", it.price), it.createdAt) }
-        ).sortedByDescending { it.createdAt }.take(30)
-    }
-    // Real blended "universal search" (2026-08-14, direct user reference: real Naver
-    // search results blend multiple content types on one page -- products, places,
-    // posts -- each with its own card style, not a single flat list). itunda's own
-    // equivalents are its 5 real content verticals; all fired in parallel (matching
-    // this file's own "each screen fetches its own minimal real data" convention),
-    // each independently null (loading) / empty (no matches) / populated, rendered as
-    // labeled sections rather than one merged, type-blind list.
-    var searchQuery by remember { mutableStateOf("") }
-    var searchResults by remember { mutableStateOf<List<rw.itunda.core.network.ProductSearchResultDto>?>(null) }
-    var marketplaceResults by remember { mutableStateOf<List<HomeFeedEntry>?>(null) }
-    var communityResults by remember { mutableStateOf<List<HomeFeedEntry>?>(null) }
-    var jobResults by remember { mutableStateOf<List<HomeFeedEntry>?>(null) }
-    var propertyResults by remember { mutableStateOf<List<HomeFeedEntry>?>(null) }
-    val searchScope = rememberCoroutineScope()
-    fun runSearch(query: String) {
-        searchResults = null; marketplaceResults = null; communityResults = null; jobResults = null; propertyResults = null
-        searchScope.launch {
-            searchResults = try { rw.itunda.core.network.NetworkClient.apiService.searchProducts(query).products } catch (_: Exception) { emptyList() }
-        }
-        searchScope.launch {
-            marketplaceResults = try {
-                rw.itunda.core.network.NetworkClient.apiService.searchListings(query).listings.map {
-                    HomeFeedEntry(it.id, "marketplace", it.title, String.format(Locale.US, "%,.0f RWF", it.price), it.createdAt, it.photoUrl)
-                }
-            } catch (_: Exception) { emptyList() }
-        }
-        searchScope.launch {
-            communityResults = try {
-                rw.itunda.core.network.NetworkClient.apiService.searchCommunityPosts(query).posts.map {
-                    HomeFeedEntry(it.id, "community", it.title, it.body.take(80), it.createdAt)
-                }
-            } catch (_: Exception) { emptyList() }
-        }
-        searchScope.launch {
-            jobResults = try {
-                rw.itunda.core.network.NetworkClient.apiService.searchJobPosts(query).posts.map {
-                    HomeFeedEntry(it.id, "jobs", it.title, String.format(Locale.US, "${it.payType} · %,.0f RWF", it.payAmount), it.createdAt)
-                }
-            } catch (_: Exception) { emptyList() }
-        }
-        searchScope.launch {
-            propertyResults = try {
-                rw.itunda.core.network.NetworkClient.apiService.searchPropertyListings(query).listings.map {
-                    HomeFeedEntry(it.id, "property", it.title, String.format(Locale.US, "%,.0f RWF", it.price), it.createdAt)
-                }
-            } catch (_: Exception) { emptyList() }
-        }
-    }
 
     // Real Toss/Kakao pull-to-refresh (2026-08-11 research pass) -- Home had no way
     // to manually refresh at all beyond leaving and re-entering the tab, despite
