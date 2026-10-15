@@ -51,4 +51,12 @@
     <string name="transfer_send_anyway">Send anyway</string>
     <string name="transfer_review_gift">Review your gift before sending</string>
     <string name="transfer_review_before_send">Check the details before sending</string>
+    <string name="transaction_history_spent_label">Spent this month</string>
+    <string name="transaction_history_search">Search activity</string>
+    <string name="transaction_history_filter_all">All</string>
+    <string name="transaction_history_filter_sent">Sent</string>
+    <string name="transaction_history_filter_received">Received</string>
+    <string name="transaction_history_filter_paid">Paid</string>
+    <string name="transaction_history_empty">No transactions yet — sends, receives, and payments will show up here.</string>
+    <string name="transaction_history_no_matches">Nothing here yet.</string>
 </resources>
