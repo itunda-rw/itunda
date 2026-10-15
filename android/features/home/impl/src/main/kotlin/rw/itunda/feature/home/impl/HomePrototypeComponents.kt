@@ -12,6 +12,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.PhoneAndroid
+import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material.icons.outlined.RequestQuote
+import androidx.compose.material.icons.outlined.School
+import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Send
@@ -41,57 +48,53 @@ internal fun HomeAccountHeroCard(
     onOpenBank: () -> Unit,
     onOpenPay: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(Ids.colors.surface)
-            .pressScaleClickable(onClick = onOpenBank)
-            .padding(horizontal = 18.dp, vertical = 18.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    androidx.compose.foundation.layout.Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(Ids.colors.chip),
-            contentAlignment = Alignment.Center,
+        androidx.compose.foundation.layout.Column(
+            modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpenBank),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Icon(
-                Icons.Outlined.AccountBalanceWallet,
-                contentDescription = null,
-                tint = Ids.colors.textPrimary,
-                modifier = Modifier.size(24.dp),
-            )
-        }
-        Spacer(modifier = Modifier.width(14.dp))
-        androidx.compose.foundation.layout.Column(modifier = Modifier.weight(1f)) {
-            Text(
-                String.format(Locale.US, "%,.0f %s", account.balance, account.currency),
-                color = Ids.colors.textPrimary,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.ExtraBold,
-                maxLines = 1,
-            )
             Text(
                 stringResource(R.string.bank_account_account),
                 color = Ids.colors.textSecondary,
-                fontSize = 13.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
             )
+            Text(
+                String.format(Locale.US, "%,.0f", account.balance) + " " + account.currency,
+                color = Ids.colors.textPrimary,
+                fontSize = 32.sp,
+                lineHeight = 38.sp,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 1,
+            )
         }
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .background(Ids.colors.brand.copy(alpha = 0.12f))
+        Row(
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
                 .pressScaleClickable(onClick = onOpenPay)
-                .padding(horizontal = 16.dp, vertical = 11.dp),
+                .padding(vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 stringResource(R.string.home_pay_shortcut),
-                color = Ids.colors.brand,
-                fontSize = 14.sp,
+                color = Ids.colors.textSecondary,
+                fontSize = 15.sp,
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                String.format(Locale.US, "%,.0f", account.balance) + " " + account.currency,
+                color = Ids.colors.textPrimary,
+                fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Icon(
+                androidx.compose.material.icons.Icons.Outlined.AccountBalanceWallet,
+                contentDescription = null,
+                tint = Ids.colors.textTertiary,
+                modifier = Modifier.size(16.dp),
             )
         }
     }
@@ -185,8 +188,8 @@ internal fun HomePrimaryActions(
 internal fun HomeQuickActions(
     onSend: () -> Unit,
     onScanToPay: () -> Unit,
-    onShop: () -> Unit,
-    onCommunity: () -> Unit,
+    onPayBills: () -> Unit,
+    onAirtime: () -> Unit,
 ) {
     androidx.compose.foundation.layout.Column(
         modifier = Modifier.fillMaxWidth(),
@@ -204,9 +207,67 @@ internal fun HomeQuickActions(
         ) {
             HomeQuickAction(Icons.Outlined.Send, stringResource(R.string.home_send_money), onSend)
             HomeQuickAction(Icons.Outlined.QrCodeScanner, stringResource(R.string.home_scan_to_pay), onScanToPay)
-            HomeQuickAction(Icons.Outlined.Storefront, stringResource(R.string.home_shop), onShop)
-            HomeQuickAction(Icons.Outlined.Forum, stringResource(R.string.home_community), onCommunity)
+            HomeQuickAction(Icons.Outlined.RequestQuote, stringResource(R.string.home_pay_bills), onPayBills)
+            HomeQuickAction(Icons.Outlined.PhoneAndroid, stringResource(R.string.home_airtime), onAirtime)
         }
+    }
+}
+
+@Composable
+internal fun HomeRwandaServices(
+    onOpenService: () -> Unit,
+) {
+    androidx.compose.foundation.layout.Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            stringResource(R.string.home_rwanda_services),
+            color = Ids.colors.textPrimary,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            HomeServiceAction(Icons.Outlined.Home, stringResource(R.string.home_irembo), onOpenService, Modifier.weight(1f))
+            HomeServiceAction(Icons.Outlined.ReceiptLong, stringResource(R.string.home_rra_taxes), onOpenService, Modifier.weight(1f))
+            HomeServiceAction(Icons.Outlined.Bolt, stringResource(R.string.home_reg_electricity), onOpenService, Modifier.weight(1f))
+            HomeServiceAction(Icons.Outlined.WaterDrop, stringResource(R.string.home_wasac_water), onOpenService, Modifier.weight(1f))
+            HomeServiceAction(Icons.Outlined.School, stringResource(R.string.home_school_fees), onOpenService, Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun HomeServiceAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    androidx.compose.foundation.layout.Column(
+        modifier = modifier.clip(RoundedCornerShape(14.dp)).pressScaleClickable(onClick = onClick)
+            .padding(vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Box(
+            modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.chip),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = Ids.colors.textPrimary, modifier = Modifier.size(21.dp))
+        }
+        Text(
+            label,
+            color = Ids.colors.textSecondary,
+            fontSize = 10.sp,
+            lineHeight = 12.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 2,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
     }
 }
 
