@@ -78,9 +78,6 @@ import rw.itunda.core.network.ShoppingMerchantDto
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
 
-
-
-
 // Shop screen entry point + browse content. Sub-views live in
 // ShopBrowseComponents.kt / ShopMerchantDetail.kt / ShopBooking.kt /
 // ShopProductDetail.kt / ShopOrders.kt / ShopMerchantOrders.kt /
@@ -869,8 +866,6 @@ fun CommerceShopContent(
         }
     }
 }
-
-
 
 /** Feature composition entry point. Keeps the app shell independent of concrete screen names. */
 @Composable
