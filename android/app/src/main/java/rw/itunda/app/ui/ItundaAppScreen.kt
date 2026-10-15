@@ -1245,6 +1245,8 @@ fun ItundaAppScreen(
                             showShop = false
                             selectedTab = ItundaTab.Messages
                         },
+                        onBack = { showShop = false },
+                        onOpenEats = { showShop = false; showEats = true },
                     )
                 }
             }
