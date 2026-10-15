@@ -37,7 +37,7 @@ import rw.itunda.core.designsystem.theme.Ids
  * actions navigate to existing product screens rather than simulating transactions.
  */
 @Composable
-private fun HomeAccountHeroCard(
+internal fun HomeAccountHeroCard(
     account: rw.itunda.core.network.Account,
     onOpenBank: () -> Unit,
     onOpenPay: () -> Unit,
@@ -103,7 +103,7 @@ private fun HomeAccountHeroCard(
  * Values are sourced from the account response, never local demo data.
  */
 @Composable
-private fun HomePayBalanceRow(
+internal fun HomePayBalanceRow(
     account: rw.itunda.core.network.Account,
     onOpenPay: () -> Unit,
 ) {
@@ -139,7 +139,7 @@ private fun HomePayBalanceRow(
 
 /** Primary two-button row follows the prototype's send/add-money hierarchy. */
 @Composable
-private fun HomePrimaryActions(
+internal fun HomePrimaryActions(
     onSend: () -> Unit,
     onAddMoney: () -> Unit,
 ) {
@@ -183,7 +183,7 @@ private fun HomePrimaryActions(
 }
 
 @Composable
-private fun HomeQuickActions(
+internal fun HomeQuickActions(
     onSend: () -> Unit,
     onScanToPay: () -> Unit,
     onShop: () -> Unit,
