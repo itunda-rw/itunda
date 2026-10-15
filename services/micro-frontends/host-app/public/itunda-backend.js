@@ -8,6 +8,7 @@
   let liveTransactions = [];
   let liveUser = null;
   let busy = false;
+  let refreshInFlight = null;
 
   function normalizePhone(value) {
     const v = String(value || '').replace(/[\s()-]/g, '');
@@ -26,23 +27,28 @@
     try { response = await fetch(API_BASE + path, Object.assign({}, options, { headers })); }
     catch (_) { throw new Error('Could not reach itunda. Check your connection and try again.'); }
     if (response.status === 401 && retry !== false && access && path !== '/api/v1/auth/refresh') {
-      const refreshToken = localStorage.getItem(REFRESH_KEY);
-      if (refreshToken) {
-        try {
-          const refreshed = await fetch(API_BASE + '/api/v1/auth/refresh', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refreshToken: refreshToken })
-          });
-          if (refreshed.ok) {
+      if (!refreshInFlight) {
+        refreshInFlight = (async function () {
+          const refreshToken = localStorage.getItem(REFRESH_KEY);
+          if (!refreshToken) return false;
+          try {
+            const refreshed = await fetch(API_BASE + '/api/v1/auth/refresh', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ refreshToken: refreshToken })
+            });
+            if (!refreshed.ok) return false;
             const session = await refreshed.json();
             localStorage.setItem(ACCESS_KEY, session.accessToken);
             localStorage.setItem(REFRESH_KEY, session.refreshToken);
-            return api(path, options, false);
-          }
-        } catch (_) {}
+            return true;
+          } catch (_) { return false; }
+          finally { refreshInFlight = null; }
+        })();
       }
+      if (await refreshInFlight) return api(path, options, false);
       localStorage.removeItem(ACCESS_KEY);
       localStorage.removeItem(REFRESH_KEY);
+      localStorage.removeItem('itunda_web_user');
       throw new Error('Your session expired. Please sign in again.');
     }
     const body = await response.json().catch(function () { return {}; });
