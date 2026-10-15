@@ -2244,5 +2244,179 @@ return _s6.apply(this,arguments)};
 })();
 </script>
 
+
+<script>
+/* ITUNDA_REAL_MAPS_V1 — real OSM map + authenticated Itunda maps APIs. */
+(function(){
+  'use strict';
+  const API='https://api.itunda.im';
+  const ACCESS='itunda_bank_access_token';
+  const CATEGORIES=[['RESTAURANT','Restaurants','🍽'],['CAFE','Cafes','☕'],['HOSPITAL','Hospitals','✚'],['PHARMACY','Pharmacies','＋'],['BANK','Banks','▤'],['ATM','ATMs','▣'],['MARKET','Markets','🛍'],['BUS_STOP','Bus stops','🚌']];
+  const state=window.__itundaRealMaps=window.__itundaRealMaps||{
+    center:[-1.9441,30.0619], query:'', results:[], selected:null, start:null, destination:null,
+    category:'RESTAURANT', mode:'DRIVING', route:null, loading:false, error:'', map:null, markers:[], routeLayer:null, leafletPromise:null
+  };
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  async function request(path, retry=true){
+    const headers={'Accept':'application/json'};
+    const token=localStorage.getItem(ACCESS);
+    if(token) headers.Authorization='Bearer '+token;
+    let response;
+    try{response=await fetch(API+path,{headers});}catch(_){throw new Error('Could not connect to Itunda Maps. Check your connection.');}
+    if(response.status===401 && retry){
+      const refresh=localStorage.getItem('itunda_bank_refresh_token');
+      if(refresh){
+        try{
+          const rr=await fetch(API+'/api/v1/auth/refresh',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({refreshToken:refresh})});
+          const rd=await rr.json();
+          if(rr.ok&&rd.accessToken&&rd.refreshToken){
+            localStorage.setItem(ACCESS,rd.accessToken);localStorage.setItem('itunda_bank_refresh_token',rd.refreshToken);
+            return request(path,false);
+          }
+        }catch(_){}
+      }
+    }
+    let data={};try{data=await response.json();}catch(_){}
+    if(!response.ok)throw new Error(response.status===401?'Sign in to search places and get directions.':(data.message||data.error||('Maps request failed ('+response.status+')')));
+    return data;
+  }
+  function loadLeaflet(){
+    if(state.leafletPromise)return state.leafletPromise;
+    state.leafletPromise=new Promise((resolve,reject)=>{
+      if(window.L){resolve(window.L);return;}
+      if(!document.querySelector('link[data-itunda-leaflet]')){
+        const link=document.createElement('link');link.rel='stylesheet';link.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';link.dataset.itundaLeaflet='1';document.head.appendChild(link);
+      }
+      const script=document.createElement('script');script.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';script.onload=()=>resolve(window.L);script.onerror=()=>reject(new Error('Map library could not load. Check your connection.'));document.head.appendChild(script);
+    });
+    return state.leafletPromise;
+  }
+  function destroyMap(){if(state.map){try{state.map.remove();}catch(_){}state.map=null;}state.markers=[];state.routeLayer=null;}
+  function renderAgain(){destroyMap();render('fade-none');setTimeout(initMap,120);}
+  function mapPin(L,point,color,label){
+    const marker=L.circleMarker([Number(point.latitude),Number(point.longitude)],{radius:8,color:'#fff',weight:3,fillColor:color,fillOpacity:1});
+    const name=point.displayName||point.name||label||'Place';
+    marker.bindPopup('<strong>'+esc(name)+'</strong>');
+    marker.addTo(state.map);state.markers.push(marker);return marker;
+  }
+  async function initMap(){
+    const el=document.getElementById('itunda-real-map');if(!el)return;
+    try{
+      const L=await loadLeaflet();if(!document.getElementById('itunda-real-map'))return;
+      if(state.map){try{state.map.remove();}catch(_){}}
+      state.map=L.map(el,{zoomControl:false}).setView(state.center,13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'}).addTo(state.map);
+      L.control.zoom({position:'bottomright'}).addTo(state.map);
+      if(state.route&&state.route.geometry&&state.route.geometry.length){
+        state.routeLayer=L.polyline(state.route.geometry,{color:'#6960F9',weight:6,opacity:.9,lineCap:'round'}).addTo(state.map);
+        L.circleMarker(state.route.geometry[0],{radius:8,color:'#fff',weight:3,fillColor:'#16845B',fillOpacity:1}).addTo(state.map);
+        L.circleMarker(state.route.geometry[state.route.geometry.length-1],{radius:8,color:'#fff',weight:3,fillColor:'#D92D20',fillOpacity:1}).addTo(state.map);
+        state.map.fitBounds(state.routeLayer.getBounds().pad(.18));
+      }else{
+        state.results.forEach(p=>{if(Number.isFinite(Number(p.latitude))&&Number.isFinite(Number(p.longitude)))mapPin(L,p,'#6960F9');});
+        if(state.selected)mapPin(L,state.selected,'#16845B','Selected place');
+        if(state.results.length){const pts=state.markers.map(m=>m.getLatLng());if(pts.length>1)state.map.fitBounds(L.latLngBounds(pts).pad(.15));else if(pts.length===1)state.map.setView(pts[0],15);}
+      }
+      setTimeout(()=>{try{state.map&&state.map.invalidateSize();}catch(_){}},100);
+    }catch(e){const status=document.getElementById('maps-status');if(status)status.textContent=e.message||'Map unavailable.';}
+  }
+  function status(text,isError=false){const el=document.getElementById('maps-status');if(el){el.textContent=text;el.style.color=isError?'var(--er)':'var(--mu)';}}
+  function pointRow(p,i){
+    const name=p.displayName||p.name||'Unnamed place';
+    const active=state.selected&&Number(state.selected.latitude)===Number(p.latitude)&&Number(state.selected.longitude)===Number(p.longitude);
+    return '<div class="it-maps-result"><button class="it-maps-result-main" onclick="itundaMapSelect('+i+')"><span class="it-maps-result-pin">⌖</span><span class="it-maps-result-copy"><b>'+esc(name.split(',')[0])+'</b><small>'+esc(name)+'</small></span><span class="it-maps-result-arrow">'+(active?'✓':'›')+'</span></button><div class="it-maps-result-actions"><button onclick="itundaMapSetPoint('+i+',\'start\')">Set as start</button><button onclick="itundaMapSetPoint('+i+',\'destination\')">Directions to</button></div></div>';
+  }
+  const style=document.createElement('style');
+  style.textContent='.it-maps-search{margin:12px 16px 0;display:flex;gap:8px}.it-maps-search input{min-width:0;flex:1;height:48px;border:0;border-radius:16px;background:var(--chip);padding:0 16px;color:var(--tx);font:inherit;outline:none}.it-maps-search button,.it-maps-primary{border:0;border-radius:16px;background:var(--lk);color:#fff;font:inherit;font-weight:800;padding:0 16px}.it-maps-map{height:290px;margin:14px 0 0;overflow:hidden;background:var(--chip);position:relative;z-index:0}.it-maps-chips{display:flex;gap:8px;overflow-x:auto;padding:12px 16px;scrollbar-width:none}.it-maps-chips button{flex:0 0 auto;border:0;border-radius:20px;background:var(--chip);color:var(--tx);padding:10px 14px;font:inherit;font-weight:700}.it-maps-chips button.on{background:var(--tint);color:var(--tintfg)}.it-maps-result{padding:6px 16px 12px;border-bottom:1px solid var(--ln)}.it-maps-result-main{width:100%;display:flex;gap:12px;align-items:center;text-align:left;background:none;border:0;padding:10px 0;color:var(--tx);font:inherit}.it-maps-result-pin{width:40px;height:40px;display:grid;place-items:center;border-radius:14px;background:var(--tint);color:var(--tintfg);font-size:22px}.it-maps-result-copy{min-width:0;flex:1}.it-maps-result-copy b,.it-maps-result-copy small{display:block}.it-maps-result-copy b{font-size:15px}.it-maps-result-copy small{font-size:12px;color:var(--mu);white-space:normal;line-height:17px;margin-top:3px}.it-maps-result-arrow{font-size:22px;color:var(--mu)}.it-maps-result-actions{display:flex;gap:8px;padding-left:52px}.it-maps-result-actions button{border:1px solid var(--ln);border-radius:16px;background:var(--bg);color:var(--tx);padding:7px 11px;font:inherit;font-size:12px;font-weight:700}.it-maps-note{font-size:13px;color:var(--mu);padding:10px 18px}.it-maps-directions{padding:14px 16px}.it-maps-directions select{width:100%;border:0;background:var(--chip);border-radius:14px;padding:13px;color:var(--tx);font:inherit;margin:5px 0}.it-maps-route-summary{padding:16px;background:var(--tint);border-radius:18px;margin-top:12px;color:var(--tintfg)}';
+  document.head.appendChild(style);
+  window.itundaMapSearch=async function(){
+    const input=document.getElementById('itunda-map-query');state.query=input?input.value.trim():state.query;
+    if(!state.query){status('Enter a place, address, or landmark to search.');return;}
+    state.loading=true;status('Searching real places…');
+    try{const data=await request('/api/v1/maps/search?q='+encodeURIComponent(state.query));state.results=Array.isArray(data.results)?data.results:[];state.selected=null;state.route=null;renderAgain();setTimeout(()=>status(state.results.length?state.results.length+' real place results':'No matching places found. Try another search.'),220);}
+    catch(e){status(e.message,true);}
+  };
+  window.itundaMapNearby=async function(category){
+    state.category=category;state.loading=true;status('Finding nearby places…');
+    try{
+      const lat=state.center[0],lng=state.center[1];
+      const data=await request('/api/v1/maps/nearby?category='+encodeURIComponent(category)+'&lat='+lat+'&lng='+lng+'&radiusKm=5');
+      state.results=Array.isArray(data.places)?data.places:[];state.selected=null;state.route=null;renderAgain();
+      setTimeout(()=>status(state.results.length?state.results.length+' places found near the map centre':'No places in this category nearby.'),220);
+    }catch(e){status(e.message,true);}
+  };
+  window.itundaMapSelect=function(i){
+    const p=state.results[i];if(!p)return;state.selected=p;state.center=[Number(p.latitude),Number(p.longitude)];state.route=null;renderAgain();
+  };
+  window.itundaMapSetPoint=function(i,which){
+    const p=state.results[i];if(!p)return;
+    const point={displayName:p.displayName||p.name||'Selected place',latitude:Number(p.latitude),longitude:Number(p.longitude)};
+    state[which]=point;state.selected=point;
+    status(which==='start'?'Starting point set. Choose a destination.':'Destination set. Choose a starting point.');
+    if(state.start&&state.destination){state.route=null;renderAgain();}else renderAgain();
+  };
+  window.itundaMapUseLocation=function(){
+    if(!navigator.geolocation){status('Location is not supported by this browser.',true);return;}
+    status('Getting your location…');
+    navigator.geolocation.getCurrentPosition(pos=>{
+      const lat=pos.coords.latitude,lng=pos.coords.longitude;
+      if(lat < -2.95||lat > -.94||lng < 28.75||lng > 31.01){status('Itunda Maps routing is currently available in Rwanda. Search for a Rwandan address instead.',true);return;}
+      state.center=[lat,lng];state.start={displayName:'My location',latitude:lat,longitude:lng};state.route=null;renderAgain();setTimeout(()=>status('Location found.'),220);
+    },()=>status('Location permission was not granted. You can search an address instead.',true),{enableHighAccuracy:true,timeout:10000});
+  };
+  window.itundaMapGetDirections=async function(){
+    if(!state.start||!state.destination){status('Choose a start and destination from the search results.',true);return;}
+    const mode=state.mode;
+    status('Calculating a real route…');
+    try{
+      const q=new URLSearchParams({fromLat:String(state.start.latitude),fromLng:String(state.start.longitude),toLat:String(state.destination.latitude),toLng:String(state.destination.longitude),mode});
+      const data=await request('/api/v1/maps/directions?'+q.toString());
+      if(!data.route||!Array.isArray(data.route.geometry)||!data.route.geometry.length)throw new Error('The routing service returned no drawable route.');
+      state.route=data.route;state.results=[];renderAgain();
+      setTimeout(()=>status('Real route loaded from Itunda routing.'),220);
+    }catch(e){status(e.message,true);}
+  };
+  window.itundaMapSetMode=function(mode){state.mode=mode;};
+  const L=(e,r,f)=>({en:e,rw:r,fr:f}[S.lang]||e);
+  screens.mapsearch=function(){
+    const chips=CATEGORIES.map(c=>'<button class="'+(state.category===c[0]?'on':'')+'" onclick="itundaMapNearby(\''+c[0]+'\')">'+c[2]+' '+c[1]+'</button>').join('');
+    const rows=state.results.map((p,i)=>pointRow(p,i)).join('');
+    return '<div class="mh" style="padding-bottom:0"><button class="ib" aria-label="Back" onclick="back()">'+ic('back',24)+'</button><div style="flex:1;text-align:center;font-weight:800;font-size:18px">Kigali Maps</div><button class="ib" aria-label="My location" onclick="itundaMapUseLocation()">'+ic('pin',22)+'</button></div>'+
+      '<form class="it-maps-search" onsubmit="event.preventDefault();itundaMapSearch()"><input id="itunda-map-query" value="'+esc(state.query)+'" placeholder="Search places, addresses, landmarks" aria-label="Search places"><button type="submit">Search</button></form>'+
+      '<div class="it-maps-chips">'+chips+'</div><div id="itunda-real-map" class="it-maps-map" role="application" aria-label="Interactive OpenStreetMap"></div>'+
+      '<div id="maps-status" class="it-maps-note">'+esc(state.error||'Live map · OpenStreetMap data · Real Itunda place search and directions')+'</div>'+
+      ((state.start||state.destination)?'<div style="padding:10px 16px;display:flex;gap:8px;align-items:center"><div style="flex:1;min-width:0;font-size:12px;color:var(--mu)">'+(state.start?'Start: '+esc(state.start.displayName):'Choose a start')+'<br>'+(state.destination?'To: '+esc(state.destination.displayName):'Choose a destination')+'</div><button class="it-maps-primary" style="height:42px" onclick="mpGo(\'route\')">Directions</button></div>':'')+
+      '<div class="it-maps-note" style="font-weight:800;color:var(--tx)">Nearby and search results</div>'+
+      (rows||'<div class="it-maps-note">Search a place or choose a category to load real results from Itunda Maps.</div>')+
+      '<div style="height:26px"></div>';
+  };
+  screens.route=function(){
+    const start=state.start,dest=state.destination,route=state.route;
+    const summary=route?'<div class="it-maps-route-summary"><div style="font-weight:800;font-size:20px">'+(Number(route.distanceKm).toFixed(1))+' km · '+Math.round(Number(route.durationMinutes))+' min</div><div style="margin-top:4px;font-size:13px">Calculated route · Itunda routing service</div></div>':'';
+    const steps=route&&Array.isArray(route.steps)&&route.steps.length?'<div style="padding:14px 0">'+route.steps.slice(0,12).map(s=>'<div style="padding:10px 0;border-bottom:1px solid var(--ln)"><b>'+esc(s.instruction||'Continue')+'</b><div class="sm mu">'+(Number(s.distanceMeters)>=1000?(Number(s.distanceMeters)/1000).toFixed(1)+' km':Math.round(Number(s.distanceMeters))+' m')+'</div></div>').join('')+'</div>':'';
+    return '<div class="mh" style="padding-bottom:0"><button class="ib" aria-label="Back" onclick="back()">'+ic('back',24)+'</button><b style="flex:1;font-size:18px">Directions</b><button class="ib" aria-label="Find places" onclick="openMaps()">'+ic('search',22)+'</button></div>'+
+      '<div class="it-maps-directions"><label class="sm mu">START</label><div style="font-weight:700;padding:5px 0 10px">'+esc(start?start.displayName:'Choose a start from search')+'</div><label class="sm mu">DESTINATION</label><div style="font-weight:700;padding:5px 0 10px">'+esc(dest?dest.displayName:'Choose a destination from search')+'</div>'+
+      '<select aria-label="Travel mode" onchange="itundaMapSetMode(this.value)"><option value="DRIVING" '+(state.mode==='DRIVING'?'selected':'')+'>Car</option><option value="WALKING" '+(state.mode==='WALKING'?'selected':'')+'>Walking</option><option value="BIKING" '+(state.mode==='BIKING'?'selected':'')+'>Bicycle</option></select>'+
+      '<button class="it-maps-primary" style="height:46px;width:100%;margin-top:8px" onclick="itundaMapGetDirections()">Find route</button>'+summary+steps+
+      '<button class="it-maps-primary" style="height:44px;width:100%;margin-top:12px" onclick="openMaps()">Search places</button></div>'+
+      '<div id="itunda-real-map" class="it-maps-map" style="height:340px" role="application" aria-label="Real route map"></div><div id="maps-status" class="it-maps-note">Road route and travel estimate appear after you choose both points.</div>';
+  };
+  const originalRender=window.render;
+  // Screen renderers are consumed by the existing app render() dispatcher.
+  const oldOpenMaps=window.openMaps;
+  window.openMaps=function(){state.route=null;destroyMap();S.stack=['mapsearch'];render('push');setTimeout(initMap,160);};
+  const oldMpGo=window.mpGo;
+  window.mpGo=function(n){if(n==='route'){destroyMap();S.stack.push(n);render('push');setTimeout(initMap,160);return;}return oldMpGo?oldMpGo(n):(S.stack.push(n),render('push'));};
+  const oldRender=window.render;
+  if(typeof oldRender==='function'){
+    window.render=function(){const out=oldRender.apply(this,arguments);if(S.stack&&['mapsearch','route'].includes(S.stack[S.stack.length-1]))setTimeout(initMap,160);return out;};
+  }
+  document.addEventListener('click',function(e){
+    const t=e.target.closest('button');if(!t)return;
+    if(t.getAttribute('onclick')==='back()'){setTimeout(destroyMap,300);}
+  });
+})();
+</script>
+
 </body>
 </html>
