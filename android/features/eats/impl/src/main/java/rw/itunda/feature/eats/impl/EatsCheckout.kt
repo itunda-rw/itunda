@@ -254,13 +254,13 @@ internal fun EatsCheckoutView(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Text(
-                        "Confirm it’s you",
+                        stringResource(R.string.eats_review_confirm_identity),
                         color = Ids.colors.textPrimary,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        "Review your order to ${restaurant.businessName}",
+                        stringResource(R.string.eats_review_restaurant, restaurant.businessName),
                         color = Ids.colors.textSecondary,
                         fontSize = 14.sp,
                     )
@@ -286,7 +286,7 @@ internal fun EatsCheckoutView(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        Text("Subtotal", color = Ids.colors.textSecondary, fontSize = 14.sp)
+                        Text(stringResource(R.string.eats_review_subtotal), color = Ids.colors.textSecondary, fontSize = 14.sp)
                         Text(
                             String.format(Locale.US, "%,.0f RWF", total),
                             color = Ids.colors.textPrimary,
@@ -296,9 +296,9 @@ internal fun EatsCheckoutView(
                     }
                     Text(
                         when (mode) {
-                            EatsCheckoutMode.DELIVERY -> "Delivery to ${address.trim()}"
-                            EatsCheckoutMode.PICKUP -> "Pickup at ${restaurant.businessName}"
-                            EatsCheckoutMode.DINE_IN -> "Table ${tableNumber.trim()}"
+                            EatsCheckoutMode.DELIVERY -> stringResource(R.string.eats_review_delivery, address.trim())
+                            EatsCheckoutMode.PICKUP -> stringResource(R.string.eats_review_pickup, restaurant.businessName)
+                            EatsCheckoutMode.DINE_IN -> stringResource(R.string.eats_review_table, tableNumber.trim())
                         },
                         color = Ids.colors.textSecondary,
                         fontSize = 13.sp,
@@ -337,14 +337,14 @@ internal fun EatsCheckoutView(
                         enabled = !submitting,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text(if (submitting) "Placing order…" else "Confirm order")
+                        Text(if (submitting) stringResource(R.string.eats_review_placing) else stringResource(R.string.eats_review_confirm_order))
                     }
                     androidx.compose.material3.TextButton(
                         onClick = { if (!submitting) showOrderReview = false },
                         enabled = !submitting,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.eats_review_cancel))
                     }
                 }
             }
