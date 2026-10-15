@@ -1846,6 +1846,7 @@ fun ItundaAppScreen(
                         isRefreshing = homeIsRefreshing,
                         onRetry = { viewModel.retry() },
                         onOpenPay = { selectedTab = ItundaTab.Pay },
+                        onOpenSend = { showTransferHub = false; transferStep = TransferStep.Recipient; transferFromAccount = null },
                         onOpenNotifications = { showNotificationsFeed = true },
                         onOpenOverview = { showOverview = true },
                         onOpenBank = { showBank = true },
