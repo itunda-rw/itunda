@@ -574,45 +574,60 @@ fun TransferAmountScreen(
     }
 
     if (showConfirmation) {
-        androidx.compose.material3.AlertDialog(
+        androidx.compose.material3.ModalBottomSheet(
             onDismissRequest = { showConfirmation = false },
-            title = {
+            sheetState = androidx.compose.material3.rememberModalBottomSheetState(
+                skipPartiallyExpanded = true,
+            ),
+            containerColor = Ids.colors.surface,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 24.dp),
+            ) {
                 Text(
                     stringResource(R.string.transfer_confirm_identity),
                     color = Ids.colors.textPrimary,
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                 )
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
-                    if (scamWarning != null && scamWarning.reportCount > 0) {
-                        Text(
-                            stringResource(R.string.transfer_scam_warning_body, scamWarning.reportCount),
-                            color = Ids.colors.danger,
-                            fontSize = 13.sp,
-                            modifier = Modifier.padding(bottom = 12.dp),
-                        )
-                    }
-                    TransferConfirmationRow(
-                        label = stringResource(R.string.transfer_confirm_recipient),
-                        value = recipientDisplayName?.takeIf { it.isNotBlank() } ?: recipientAccountNumber,
-                    )
-                    TransferConfirmationRow(
-                        label = stringResource(R.string.transfer_confirm_amount),
-                        value = "${rwfFormatter.format(amount)} RWF",
-                    )
-                    TransferConfirmationRow(
-                        label = stringResource(R.string.transfer_confirm_fee),
-                        value = "0 RWF",
+                Text(
+                    if (isGift) "Review your gift before sending" else "Check the details before sending",
+                    color = Ids.colors.textSecondary,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(top = 6.dp, bottom = 18.dp),
+                )
+                if (scamWarning != null && scamWarning.reportCount > 0) {
+                    Text(
+                        stringResource(R.string.transfer_scam_warning_body, scamWarning.reportCount),
+                        color = Ids.colors.danger,
+                        fontSize = 13.sp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp),
                     )
                 }
-            },
-            confirmButton = {
-                androidx.compose.material3.TextButton(
+                TransferConfirmationRow(
+                    label = stringResource(R.string.transfer_confirm_recipient),
+                    value = recipientDisplayName?.takeIf { it.isNotBlank() } ?: recipientAccountNumber,
+                )
+                TransferConfirmationRow(
+                    label = stringResource(R.string.transfer_confirm_amount),
+                    value = "${rwfFormatter.format(amount)} RWF",
+                )
+                TransferConfirmationRow(
+                    label = stringResource(R.string.transfer_confirm_fee),
+                    value = "0 RWF",
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                androidx.compose.material3.Button(
                     onClick = {
                         showConfirmation = false
                         onConfirm(amount, isGift, giftNote.trim().ifEmpty { null }, giftTheme)
                     },
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(
                         if (scamWarning != null && scamWarning.reportCount > 0)
@@ -620,13 +635,14 @@ fun TransferAmountScreen(
                         else stringResource(R.string.transfer_confirm),
                     )
                 }
-            },
-            dismissButton = {
-                androidx.compose.material3.TextButton(onClick = { showConfirmation = false }) {
+                androidx.compose.material3.TextButton(
+                    onClick = { showConfirmation = false },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
                     Text(stringResource(R.string.transfer_cancel))
                 }
-            },
-        )
+            }
+        }
     }
 }
 
