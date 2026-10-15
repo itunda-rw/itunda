@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { HeartOutline } from './icons/ItundaFaceHearts';
 import { useI18n } from './i18n/I18nContext';
 import { ApiError } from './lib/api';
@@ -8,7 +8,7 @@ import {
   fetchMerchantCategories, fetchShoppingCatalog, searchProducts,
   type ShoppingMerchant, type ProductSearchResult,
 } from './lib/shopping';
-import { fetchMerchantProducts, fetchOrderDetail, type CommerceProduct, type CommerceOrder } from './lib/commerce';
+import { fetchMerchantProducts, fetchProduct, fetchOrderDetail, type CommerceProduct, type CommerceOrder } from './lib/commerce';
 import { type CommerceCartGroup, type CommerceCart, cartTotalItems } from './CommerceOrders';
 import { ShopSellerContactPicker } from './ShopSellerContactPicker';
 import { ProductDetailView } from './ProductDisplay';
@@ -33,11 +33,15 @@ function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<ShoppingMerchant | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<CommerceProduct | null>(null);
+  // A fast second tap on another search result must win over an older, slower
+  // product-detail response; otherwise the first response can open the wrong item.
+  const productOpenRequestRef = useRef(0);
   const [cart, setCart] = useState<CommerceCart>({});
   const [showCart, setShowCart] = useState(false);
   const [results, setResults] = useState<CommerceCheckoutResult[] | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ProductSearchResult[] | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
   const [reorderingId, setReorderingId] = useState<string | null>(null);
   const [reorderError, setReorderError] = useState<string | null>(null);
@@ -120,19 +124,47 @@ function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
   // merchant.merchantId (confirmed by reading the component directly), so a minimal
   // ShoppingMerchant built from the search result -- not a second real fetch -- is
   // honest, not a shortcut that risks showing stale/wrong data.
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const runSearch = async () => {
+    const query = searchQuery.trim();
+    if (!query || searching) return;
     setSearching(true);
+    setSearchError(null);
+    setSearchResults(null);
     try {
-      setSearchResults(await searchProducts(searchQuery.trim()));
-    } catch {
-      setSearchResults([]);
+      setSearchResults(await searchProducts(query));
+    } catch (err) {
+      // A failed request is not the same as a successful search with zero matches.
+      setSearchError(err instanceof ApiError ? err.message : t('common.loadError'));
     } finally {
       setSearching(false);
     }
   };
-  const openSearchResult = (r: ProductSearchResult) => {
-    setSelected({ merchantId: r.merchantId, businessName: r.merchantName, category: null, cashbackRate: '1%' });
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    void runSearch();
+  };
+  const openSearchResult = async (r: ProductSearchResult) => {
+    const requestId = ++productOpenRequestRef.current;
+    const merchant: ShoppingMerchant = {
+      merchantId: r.merchantId,
+      businessName: r.merchantName,
+      category: null,
+      cashbackRate: '1%',
+    };
+    // Product search is a product-level intent: open the exact matching product
+    // instead of making the shopper search for it again inside the seller catalog.
+    // Fetch the authoritative product detail rather than manufacturing a partial
+    // CommerceProduct from the narrower search-result DTO.
+    setSelectedProduct(null);
+    setSelected(merchant);
+    try {
+      const product = await fetchProduct(r.id);
+      if (requestId === productOpenRequestRef.current && product.active && product.merchantId === r.merchantId) {
+        setSelectedProduct(product);
+      }
+    } catch {
+      // Keep the seller catalog as a safe fallback if the detail endpoint fails.
+    }
   };
 
   const setQtyByMerchant = (merchant: ShoppingMerchant, product: CommerceProduct, quantity: number) => {
@@ -191,7 +223,16 @@ function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
     return (
       <MultiCartResultsView
         results={results}
-        onDone={() => { setResults(null); setSelected(null); setView('ORDERS'); }}
+        onDone={() => {
+          const hasFailures = results.some((result) => !result.success);
+          setResults(null);
+          setSelected(null);
+          // The results view labels this action "Back to cart" when any merchant
+          // failed. Return to the retained failed items instead of silently routing
+          // the shopper to Orders and making the retry path hard to discover.
+          if (hasFailures) setShowCart(true);
+          else setView('ORDERS');
+        }}
       />
     );
   }
@@ -271,7 +312,7 @@ function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
             {searching ? '…' : 'Search'}
           </button>
           {searchResults !== null && (
-            <button type="button" className="itunda-btn itunda-btn-secondary" onClick={() => { setSearchResults(null); setSearchQuery(''); }}>
+            <button type="button" className="itunda-btn itunda-btn-secondary" onClick={() => { setSearchResults(null); setSearchError(null); setSearchQuery(''); }}>
               Clear
             </button>
           )}
@@ -307,6 +348,13 @@ function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
         </div>
       ) : view === 'WISHLIST' ? (
         <WishlistView onOpenMerchant={setSelected} />
+      ) : view === 'BROWSE' && searchError !== null ? (
+        <div role="alert" style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }}>
+          <p>{searchError}</p>
+          <button type="button" className="itunda-btn itunda-btn-secondary" onClick={() => { void runSearch(); }} disabled={searching}>
+            {searching ? '…' : 'Try again'}
+          </button>
+        </div>
       ) : view === 'BROWSE' && searchResults !== null ? (
         <SearchResultsList searchQuery={searchQuery} searchResults={searchResults} onOpenSearchResult={openSearchResult} />
       ) : error ? (

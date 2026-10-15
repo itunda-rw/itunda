@@ -419,7 +419,10 @@ class OrderServiceTest : BehaviorSpec({
                 startsAt = java.time.Instant.now().minusSeconds(60), endsAt = java.time.Instant.now().plusSeconds(3600),
             )
             every { timeDealRepository.findActiveDealForProduct("product_1", any()) } returns deal
-            every { timeDealRepository.save(any()) } answers { firstArg() }
+            every { timeDealRepository.reserveQuantityIfAvailable("time_deal_1", 3, any()) } answers {
+                deal.remainingQuantity -= 3
+                1
+            }
 
             val detail = service.placeOrder("buyer_1", "merchant_1", listOf(OrderItemRequest("product_1", 3)), "addr")
 
@@ -443,6 +446,8 @@ class OrderServiceTest : BehaviorSpec({
                 startsAt = java.time.Instant.now().minusSeconds(60), endsAt = java.time.Instant.now().plusSeconds(3600),
             )
             every { timeDealRepository.findActiveDealForProduct("product_1", any()) } returns scarceDeal
+            // The request exceeds the observed deal quantity, so no atomic reservation
+            // is attempted and normal pricing remains the documented fallback.
 
             val detail = service.placeOrder("buyer_1", "merchant_1", listOf(OrderItemRequest("product_1", 3)), "addr")
 
