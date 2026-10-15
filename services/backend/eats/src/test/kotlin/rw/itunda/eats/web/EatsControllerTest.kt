@@ -12,6 +12,7 @@ import rw.itunda.core.domain.EatsOrder
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.eats.EatsOrderService
+import rw.itunda.eats.EatsStampService
 
 /**
  * Real gap found and fixed 2026-09-05 (feedback_idempotency_key_sweep re-audit, same
@@ -28,7 +29,7 @@ class EatsControllerTest : BehaviorSpec({
     val currentUser = CurrentUser(userId = "rider_1")
 
     fun controller(eatsOrderService: EatsOrderService, idempotencyService: IdempotencyService) = EatsController(
-        mockk(relaxed = true), eatsOrderService, mockk(relaxed = true), mockk(relaxed = true),
+        mockk(relaxed = true), eatsOrderService, mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),
         mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), idempotencyService,
         mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),
         mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),

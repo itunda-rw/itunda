@@ -15,6 +15,7 @@ import CommerceOrdersScreen from './screens/CommerceOrdersScreen';
 import CouponsScreen from './screens/CouponsScreen';
 import DineInScreen from './screens/DineInScreen';
 import EatsOrdersScreen from './screens/EatsOrdersScreen';
+import EatsStampCampaignsScreen from './screens/EatsStampCampaignsScreen';
 import PayrollScreen from './screens/PayrollScreen';
 import PhotoGalleryScreen from './screens/PhotoGalleryScreen';
 import PosScreen from './screens/PosScreen';
@@ -218,7 +219,12 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
       <main className="merchant-main" style={{ flex: 1, padding: '32px 40px', maxWidth: '960px' }}>
         {tab === 'collect' && <CollectScreen />}
         {tab === 'pos' && <PosScreen />}
-        {tab === 'eats' && <EatsOrdersScreen />}
+        {tab === 'eats' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
+            <EatsOrdersScreen />
+            <EatsStampCampaignsScreen restaurantId={merchant.id} />
+          </div>
+        )}
         {tab === 'commerce' && <CommerceOrdersScreen />}
         {tab === 'dinein' && <DineInScreen merchant={merchant} />}
         {tab === 'booking' && <BookingScreen />}
