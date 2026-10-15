@@ -130,12 +130,12 @@ const MAP_STYLE: maplibregl.StyleSpecification = {
     {
       id: 'measure-line', type: 'line', source: 'measure',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': 'var(--itunda-red)', 'line-width': 3, 'line-dasharray': [2, 1.5] },
+      paint: { 'line-color': '#E5484D', 'line-width': 3, 'line-dasharray': [2, 1.5] },
     },
     {
       id: 'measure-points', type: 'circle', source: 'measure',
       filter: ['==', ['geometry-type'], 'Point'],
-      paint: { 'circle-radius': 5, 'circle-color': 'var(--itunda-red)', 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff' },
+      paint: { 'circle-radius': 5, 'circle-color': '#E5484D', 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff' },
     },
     // Real text labels (2026-07-19) -- item 5, the last item on the Maps "100%"
     // roadmap. Real OSM name data already baked into the tile archive (see the
