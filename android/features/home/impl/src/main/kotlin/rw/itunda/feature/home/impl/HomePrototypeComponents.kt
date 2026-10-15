@@ -66,8 +66,9 @@ internal fun HomeAccountHeroCard(
             Text(
                 String.format(Locale.US, "%,.0f", account.balance) + " " + account.currency,
                 color = Ids.colors.textPrimary,
-                fontSize = 32.sp,
-                lineHeight = 38.sp,
+                fontSize = 40.sp,
+                lineHeight = 46.sp,
+                letterSpacing = (-1.2).sp,
                 fontWeight = FontWeight.ExtraBold,
                 maxLines = 1,
             )
@@ -199,8 +200,8 @@ internal fun HomeQuickActions(
         Text(
             stringResource(R.string.home_quick_actions),
             color = Ids.colors.textPrimary,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.ExtraBold,
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -341,7 +342,7 @@ private fun HomeServiceAction(
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Box(
-            modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.chip),
+            modifier = Modifier.size(60.dp).clip(RoundedCornerShape(22.dp)).background(Ids.colors.chip),
             contentAlignment = Alignment.Center,
         ) {
             Icon(icon, contentDescription = null, tint = Ids.colors.textPrimary, modifier = Modifier.size(21.dp))
@@ -349,8 +350,8 @@ private fun HomeServiceAction(
         Text(
             label,
             color = Ids.colors.textSecondary,
-            fontSize = 10.sp,
-            lineHeight = 12.sp,
+            fontSize = 12.sp,
+            lineHeight = 14.sp,
             fontWeight = FontWeight.Medium,
             maxLines = 2,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -366,8 +367,8 @@ private fun HomeQuickAction(
 ) {
     androidx.compose.foundation.layout.Column(
         modifier = Modifier
-            .width(72.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .width(76.dp)
+            .clip(RoundedCornerShape(18.dp))
             .pressScaleClickable(onClick = onClick)
             .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -375,8 +376,8 @@ private fun HomeQuickAction(
     ) {
         Box(
             modifier = Modifier
-                .size(52.dp)
-                .clip(RoundedCornerShape(18.dp))
+                .size(60.dp)
+                .clip(RoundedCornerShape(22.dp))
                 .background(Ids.colors.chip),
             contentAlignment = Alignment.Center,
         ) {
@@ -385,8 +386,8 @@ private fun HomeQuickAction(
         Text(
             label,
             color = Ids.colors.textSecondary,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Medium,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
             maxLines = 2,
         )
     }
