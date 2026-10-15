@@ -40,6 +40,12 @@
     <string name="home_trending_title">Trending nearby</string>
     <string name="home_feed_title">For you</string>
     <string name="home_recent_activity">Recent activity</string>
+    <string name="home_next_for_you">Next for you</string>
+    <string name="home_savings_goal_title">Start your first savings goal</string>
+    <string name="home_savings_goal_description">Choose a target and a date to start building a saving habit.</string>
+    <string name="home_savings_goal_progress">Saved %1$s RWF of %2$s RWF</string>
+    <string name="home_savings_goal_cta">Start a savings goal</string>
+    <string name="home_savings_goal_view">View your savings goal</string>
     <string name="home_connection_online">Connected to Itunda services</string>
     <string name="home_connection_offline">Offline — information may be out of date</string>
     <string name="home_spending">Spending</string>
