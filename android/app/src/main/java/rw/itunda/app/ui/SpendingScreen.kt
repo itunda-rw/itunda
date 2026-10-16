@@ -1,5 +1,7 @@
 package rw.itunda.app.ui
 
+import rw.itunda.app.R
+
 import rw.itunda.core.designsystem.components.formatMoney
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.IdsTextField
