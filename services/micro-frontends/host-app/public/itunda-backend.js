@@ -10,6 +10,7 @@
   let lastTransaction = null;
   let termsCatalog = [];
   let busy = false;
+  let transferBusy = false;
   let refreshInFlight = null;
 
   function normalizePhone(value) {
@@ -105,7 +106,7 @@
       '<div id="web-login-error" role="alert" style="color:var(--er);min-height:20px;text-align:center;font-size:13px"></div>' +
       '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px">' + keys + '</div>' +
       '<button class="btn" style="margin-top:18px" ' + (pin.length === 6 && !busy ? '' : 'disabled') + ' onclick="backendLogin()">Sign in securely</button>' +
-      '<button class="btn sec2" style="margin-top:10px" onclick="S.obStep=\'obName\';S.ob.pin=\'\';render(\'push\')">Create a new account</button></div>';
+      '<button class="btn sec2" style="margin-top:10px" onclick="S.ob.name=\'\';S.ob.first=\'\';S.ob.last=\'\';S.ob.pin=\'\';S.obStep=\'obName\';render(\'push\')">Create a new account</button></div>';
   };
   window.backendPinKey = function (key) {
     if (key === 'del') S.ob.pin = (S.ob.pin || '').slice(0, -1);
@@ -135,14 +136,13 @@
     } finally { busy = false; }
   };
   window.obPhoneNext = function () { S.ob.pin = ''; S.obStep = 'backendLogin'; render('push'); };
+  window.obNameNext = function () { if (String(S.ob.name || '').trim().length > 1) window.obGo('obTerms'); };
+  window.obSkip = function () { fail(new Error('Please sign in or create an account to continue.')); };
 
   const previousObBack = window.obBack;
   window.obBack = function () {
-    if (S.obStep === 'obName') {
-      S.obStep = 'backendLogin';
-      render('pop');
-      return;
-    }
+    if (S.obStep === 'obTerms') { S.obStep = 'obName'; render('pop'); return; }
+    if (S.obStep === 'backendLogin') { S.obStep = 'obPhone'; render('pop'); return; }
     previousObBack();
   };
 
@@ -252,7 +252,8 @@
         method: 'POST',
         body: JSON.stringify({
           phoneNumber: normalizePhone(S.ob.ph), email: null,
-          firstName: S.ob.first.trim(), lastName: S.ob.last.trim(),
+          firstName: (String(S.ob.first || '').trim() || String(S.ob.name || '').trim().split(/\s+/)[0]),
+          lastName: (String(S.ob.last || '').trim() || String(S.ob.name || '').trim().split(/\s+/).slice(1).join(' ') || String(S.ob.name || '').trim().split(/\s+/)[0]),
           password: S.ob.pin, acceptedTermsIds: acceptedTermsIds
         })
       }, false);
