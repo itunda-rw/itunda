@@ -108,7 +108,7 @@
         ? '<div style="text-align:left;margin-top:28px;font-size:14px;font-weight:700">Account password</div><input id="web-login-password" type="password" autocomplete="current-password" value="' + escapeTerm(S.ob.password || '') + '" oninput="backendPasswordInput(this.value)" placeholder="Enter your password" style="display:block;width:100%;margin-top:10px;padding:14px;border:1px solid var(--ln);border-radius:14px;background:var(--bg);color:var(--tx);font:inherit" />'
         : '<div style="text-align:center;margin-top:28px;font-size:14px;font-weight:700">Your 6-digit PIN</div><div style="display:flex;justify-content:center;padding:18px 0">' + dots + '</div>' + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px">' + keys + '</div>') +
       '<div id="web-login-error" role="alert" style="color:var(--er);min-height:20px;text-align:center;font-size:13px"></div>' +
-      '<button class="btn" style="margin-top:18px" ' + (credential.length > 0 && (!usePassword ? pin.length === 6 : true) && !busy ? '' : 'disabled') + ' onclick="backendLogin()">Sign in securely</button>' +
+      '<button id="web-login-submit" class="btn" style="margin-top:18px" ' + (credential.length > 0 && (!usePassword ? pin.length === 6 : true) && !busy ? '' : 'disabled') + ' onclick="backendLogin()">Sign in securely</button>' +
       '<button class="btn sec2" style="margin-top:10px" onclick="backendToggleCredential()">' + (usePassword ? 'Use 6-digit PIN instead' : 'Use account password instead') + '</button>' +
       '<button class="btn sec2" style="margin-top:10px" onclick="S.ob.name=\'\';S.ob.first=\'\';S.ob.last=\'\';S.ob.pin=\'\';S.ob.password=\'\';S.ob.usePassword=false;S.obStep=\'obName\';render(\'push\')">Create a new account</button></div>';
   };
@@ -117,7 +117,11 @@
     else if (/^\d$/.test(key) && (S.ob.pin || '').length < 6) S.ob.pin = (S.ob.pin || '') + key;
     render('fade-none');
   };
-  window.backendPasswordInput = function (value) { S.ob.password = String(value || ''); };
+  window.backendPasswordInput = function (value) {
+    S.ob.password = String(value || '');
+    const submit = document.getElementById('web-login-submit');
+    if (submit && S.ob.usePassword) submit.disabled = !S.ob.password || busy;
+  };
   window.backendToggleCredential = function () {
     S.ob.usePassword = !Boolean(S.ob.usePassword);
     render('fade-none');
