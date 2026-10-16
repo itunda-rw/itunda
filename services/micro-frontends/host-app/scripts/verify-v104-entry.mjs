@@ -30,6 +30,7 @@ const checks = [
   ['existing-account sign-in sends the documented phone and password payload', backend.includes('body: JSON.stringify({ phoneNumber: normalizePhone(S.ob.ph), password: credential })')],
   ['sign-in requires a complete real session before setting authenticated state', backend.includes('if (!session.accessToken || !session.refreshToken || !session.user) throw new Error(\'The server returned an incomplete session.\');')],
   ['sign-in failures are shown in the login error area', backend.includes("document.getElementById('web-login-error')") && backend.includes("errorNode.textContent = error.message")],
+  ['fetch-level failures log safe diagnostics without request bodies', backend.includes("Request failed before an HTTP response") && backend.includes('errorName:') && backend.includes('errorMessage:')],
   ['real P2P send endpoint is used', backend.includes("api('/api/v1/p2p/send'")],
   ['transfer uses idempotency key', backend.includes("headers: { 'Idempotency-Key': idempotencyKey }")],
   ['v104 bridge uses the deployed custom API domain', backend.includes("const API_BASE = 'https://api.itunda.im';")],
