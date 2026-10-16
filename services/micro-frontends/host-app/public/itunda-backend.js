@@ -281,8 +281,8 @@
   let recipientPreview = null;
   let resolvingRecipient = false;
   function transferRecipientIdentifier(value) {
-    const raw = String(value || '').replace(/[\\s()-]/g, '');
-    return /^\\d{10,20}$/.test(raw) && !raw.startsWith('0') && !raw.startsWith('250')
+    const raw = String(value || '').replace(/[\s()-]/g, '');
+    return /^\d{10,20}$/.test(raw) && !raw.startsWith('0') && !raw.startsWith('250')
       ? raw : normalizePhone(raw);
   }
   const prototypeConfirmTransfer = window.confirm_;
@@ -313,7 +313,7 @@
     if (transferBusy) return;
     const amount = Number(S.amt);
     const recipient = transferRecipientIdentifier(S.to);
-    const validRecipient = /^\\+\\d{8,15}$/.test(recipient) || /^\\d{10,20}$/.test(recipient);
+    const validRecipient = /^\+\d{8,15}$/.test(recipient) || /^\d{10,20}$/.test(recipient);
     if (!localStorage.getItem(ACCESS_KEY) || !mainAccountId) return fail(new Error('Sign in before sending money.'));
     if (!Number.isFinite(amount) || amount <= 0 || !validRecipient) {
       return fail(new Error('Enter a valid amount and the recipient’s phone number or account number.'));
