@@ -13,6 +13,7 @@ const cacheProtectedPaths = ['/', '/index.html', '/itunda-prototype-v104.html', 
 const productionEquivalent = (source) => source
   .replace(/\r?\n/g, '')
   .replace('onclick="obSkip();return false">Skip (prototype)', 'onclick="obPhoneNext();return false">Sign in')
+  .replace(/<a href="#" class="sm" style="color:var\(--lk\);font-weight:700;display:inline-block;margin-top:6px" onclick="phDemo\(\);return false">Prototype: fill a returning number<\/a>/, '')
   .replace('<script src="/itunda-backend.js"></script>', '')
   .replace('</body></html>', '<script src="/itunda-backend.js"></script></body></html>')
   .replace('  <script src="/itunda-backend.js"></script>', '<script src="/itunda-backend.js"></script>');
