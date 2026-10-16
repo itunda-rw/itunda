@@ -1,4 +1,4 @@
-/* Real Itunda authentication and account data for the v66 consumer web experience. */
+/* Real Itunda authentication and account data for the v104 consumer web experience. */
 (function () {
   'use strict';
   const API_BASE = 'https://api.itunda.im';
@@ -235,6 +235,7 @@
     docs.forEach(function (doc) { S.ob[termKey(doc.id)] = !all; });
     render('fade-none');
   };
+  window.tcTog = function (key) { S.ob[key] = !S.ob[key]; render('fade-none'); };
 
   // Real registration: the required consent IDs come from the backend catalog.
   window.obCreate = async function () {
