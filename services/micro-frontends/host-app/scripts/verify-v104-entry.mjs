@@ -14,7 +14,7 @@ const checks = [
   ['real sign-in endpoint is wired', backend.includes('/api/v1/auth/login')],
   ['real P2P send endpoint is used', backend.includes("api('/api/v1/p2p/send'")],
   ['transfer uses idempotency key', backend.includes("headers: { 'Idempotency-Key': idempotencyKey }")],
-  ['v104 bridge uses the deployed Cloud Run API host', backend.includes("const API_BASE = 'https://itunda-api-hptgu43hsa-du.a.run.app';")],
+  ['v104 bridge uses the deployed custom API domain', backend.includes("const API_BASE = 'https://api.itunda.im';")],
   ['transfer resolves the real recipient before confirmation', backend.includes("api('/api/v1/p2p/recipient?identifier=' + encodeURIComponent(identifier))")],
   ['transfer blocks sending without a fresh recipient preview', backend.includes('Verify the recipient name before sending money.')],
   ['recipient phone normalization uses digit matching, not escaped backslashes', backend.includes("replace(/[\\s()-]/g, '')") && backend.includes('/^\\d{10,20}$/.test(raw)')],
