@@ -13,7 +13,10 @@ const checks = [
   ['v104 loads the real backend bridge', prototype.includes('<script src="/itunda-backend.js"></script>')],
   ['real sign-in endpoint is wired', backend.includes('/api/v1/auth/login')],
   ['transfer confirmation is server-gated', backend.includes('/api/v1/account/transfer/confirm')],
-  ['prototype skip-auth shortcut is blocked', backend.includes("window.obSkip = function () { fail(new Error('Please sign in or create an account to continue.')); };")]
+  ['prototype skip-auth shortcut is blocked', backend.includes("window.obSkip = function () { fail(new Error('Please sign in or create an account to continue.')); };")],
+  ['phone validation runs before sign-in', backend.includes("if (!phOk(S.ob.ph)) { fail(new Error('Enter a valid phone number first.')); return; }")],
+  ['sample phone shortcut is removed from live onboarding', !prototype.includes('Prototype: fill a returning number')],
+  ['phone screen offers real sign-in', prototype.includes('onclick="obPhoneNext();return false">Sign in</a>')]
 ];
 
 const failed = checks.filter(([, passed]) => !passed);
