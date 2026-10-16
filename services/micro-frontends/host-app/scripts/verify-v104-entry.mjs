@@ -33,7 +33,7 @@ const checks = [
   ['fetch-level failures log safe diagnostics without request bodies', backend.includes("Request failed before an HTTP response") && backend.includes('errorName:') && backend.includes('errorMessage:')],
   ['real P2P send endpoint is used', backend.includes("api('/api/v1/p2p/send'")],
   ['transfer uses idempotency key', backend.includes("headers: { 'Idempotency-Key': idempotencyKey }")],
-  ['v104 bridge uses the deployed custom API domain', backend.includes("const API_BASE = 'https://api.itunda.im';")],
+  ['v104 bridge uses the same deployed Cloud Run API URL as the GCP web workflow', backend.includes("const API_BASE = 'https://itunda-api-hptgu43hsa-du.a.run.app';")],
   ['password sign-in submit enables as the user types', backend.includes("id=\"web-login-submit\"") && backend.includes("if (submit && S.ob.usePassword) submit.disabled = !S.ob.password || busy;")],
   ['transfer resolves the real recipient before confirmation', backend.includes("api('/api/v1/p2p/recipient?identifier=' + encodeURIComponent(identifier))")],
   ['transfer blocks sending without a fresh recipient preview', backend.includes('Verify the recipient name before sending money.')],
