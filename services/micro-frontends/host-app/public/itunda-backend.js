@@ -290,17 +290,12 @@
     }
     transferBusy = true;
     try {
-      const quote = await api('/api/v1/account/transfer/quote', {
-        method: 'POST',
-        body: JSON.stringify({ amount: amount, recipient: recipient, fromAccountId: mainAccountId, description: 'Transfer from itunda web app' })
-      });
-      if (!quote.quote || !quote.quote.id) throw new Error('The server did not return a valid transfer quote.');
       const idempotencyKey = window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() :
         'web-' + Date.now() + '-' + Math.random().toString(36).slice(2);
-      const result = await api('/api/v1/account/transfer/confirm', {
+      const result = await api('/api/v1/p2p/send', {
         method: 'POST',
         headers: { 'Idempotency-Key': idempotencyKey },
-        body: JSON.stringify({ quoteId: quote.quote.id })
+        body: JSON.stringify({ recipient: recipient, amount: amount, description: 'Transfer from itunda web app', fromAccountId: mainAccountId })
       });
       S.sentAmt = amount;
       lastTransaction = result.transaction || null;
