@@ -13,6 +13,11 @@
   let transferBusy = false;
   let refreshInFlight = null;
 
+  function phOk(value) {
+    const normalized = normalizePhone(value);
+    return /^\\+\\d{8,15}$/.test(normalized);
+  }
+
   function normalizePhone(value) {
     const v = String(value || '').replace(/[\s()-]/g, '');
     if (v.startsWith('+')) return v;
