@@ -41,7 +41,7 @@ const checks = [
   ['recipient validation accepts international phone numbers', backend.includes('/^\\+\\d{8,15}$/.test(recipient) || /^\\d{10,20}$/.test(recipient)')],
   ['legacy simulated-rail quote flow is not used', !backend.includes("api('/api/v1/account/transfer/quote'")],
   ['prototype skip-auth shortcut is blocked', backend.includes("window.obSkip = function () { fail(new Error('Please sign in or create an account to continue.')); };")],
-  ['phone validation helper is defined and validates normalized E.164 numbers', backend.includes('function phOk(value)') && backend.includes('return /^\\\\+\\\\d{8,15}$/.test(normalized);')],
+  ['phone validation helper is defined and validates normalized E.164 numbers', backend.includes('function phOk(value)') && backend.includes('return /^\\+\\d{8,15}$/.test(normalized);')],
   ['phone validation runs before sign-in', backend.includes("if (!phOk(S.ob.ph)) { fail(new Error('Enter a valid phone number first.')); return; }")],
   ['phone screen offers real sign-in', prototype.includes('onclick="obPhoneNext();return false">Sign in</a>')],
   ['Nginx cache rules cover every entry point', cacheProtectedPaths.every((path) => nginx.includes('location = ' + path + ' {'))],
