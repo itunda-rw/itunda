@@ -15,7 +15,7 @@
 
   function phOk(value) {
     const normalized = normalizePhone(value);
-    return /^\\+\\d{8,15}$/.test(normalized);
+    return /^\+\d{8,15}$/.test(normalized);
   }
 
   function normalizePhone(value) {
