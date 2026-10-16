@@ -276,17 +276,50 @@
     } finally { busy = false; }
   };
 
-  // Money only moves after the backend quote and idempotent confirmation succeed.
+  // Resolve the real recipient before the confirmation sheet can authorize a transfer.
+  // Keep the API host aligned with the Cloud Run deployment workflow.
+  let recipientPreview = null;
+  let resolvingRecipient = false;
+  function transferRecipientIdentifier(value) {
+    const raw = String(value || '').replace(/[\\s()-]/g, '');
+    return /^\\d{10,20}$/.test(raw) && !raw.startsWith('0') && !raw.startsWith('250')
+      ? raw : normalizePhone(raw);
+  }
+  const prototypeConfirmTransfer = window.confirm_;
+  window.confirm_ = async function () {
+    if (resolvingRecipient) return;
+    const identifier = transferRecipientIdentifier(S.to);
+    if (!identifier) return fail(new Error('Choose a recipient before continuing.'));
+    resolvingRecipient = true;
+    try {
+      const data = await api('/api/v1/p2p/recipient?identifier=' + encodeURIComponent(identifier));
+      const recipient = data && data.recipient;
+      if (!recipient || !recipient.recipientUserId || !String(recipient.displayName || '').trim()) {
+        throw new Error('We could not verify this recipient. Check the number and try again.');
+      }
+      recipientPreview = { identifier: identifier, displayName: String(recipient.displayName).trim(), at: Date.now() };
+      const phoneOrAccount = S.to;
+      S.to = recipientPreview.displayName;
+      try { prototypeConfirmTransfer.call(window); }
+      finally { S.to = phoneOrAccount; }
+    } catch (error) {
+      recipientPreview = null;
+      fail(error);
+    } finally { resolvingRecipient = false; }
+  };
+
+  // Money moves only after a real recipient preview and an idempotent backend send.
   window.finish = async function () {
     if (transferBusy) return;
     const amount = Number(S.amt);
-    const rawRecipient = String(S.to || '').replace(/[\s()-]/g, '');
-    const recipient = /^\d{10,20}$/.test(rawRecipient) && !rawRecipient.startsWith('0') && !rawRecipient.startsWith('250')
-      ? rawRecipient : normalizePhone(rawRecipient);
-    const validRecipient = /^\+\d{8,15}$/.test(recipient) || /^\d{10,20}$/.test(recipient);
+    const recipient = transferRecipientIdentifier(S.to);
+    const validRecipient = /^\\+\\d{8,15}$/.test(recipient) || /^\\d{10,20}$/.test(recipient);
     if (!localStorage.getItem(ACCESS_KEY) || !mainAccountId) return fail(new Error('Sign in before sending money.'));
     if (!Number.isFinite(amount) || amount <= 0 || !validRecipient) {
       return fail(new Error('Enter a valid amount and the recipient’s phone number or account number.'));
+    }
+    if (!recipientPreview || recipientPreview.identifier !== recipient || Date.now() - recipientPreview.at > 120000) {
+      return fail(new Error('Verify the recipient name before sending money.'));
     }
     transferBusy = true;
     try {
