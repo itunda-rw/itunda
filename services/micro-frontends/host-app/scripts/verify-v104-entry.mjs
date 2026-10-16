@@ -15,7 +15,8 @@ const productionEquivalent = (source) => source
   .replace('onclick="obSkip();return false">Skip (prototype)', 'onclick="obPhoneNext();return false">Sign in')
   .replace(/<a href="#" class="sm" style="color:var\(--lk\);font-weight:700;display:inline-block;margin-top:6px" onclick="phDemo\(\);return false">Prototype: fill a returning number<\/a>/, '')
   .replace('<script src="/itunda-backend.js"></script>', '')
-  .replace('</body></html>', '<script src="/itunda-backend.js"></script></body></html>');
+  .replace('</body></html>', '<script src="/itunda-backend.js"></script></body></html>')
+  .replace('  <script src="/itunda-backend.js"></script>', '<script src="/itunda-backend.js"></script>');
 
 const checks = [
   ['production v104 matches the canonical prototype except the explicit production sign-in and bridge changes', productionEquivalent(reference) === productionEquivalent(prototype)],
