@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="shop_review_swipe_to_place">Swipe to place %1$d order(s)</string>
+    <string name="shop_review_placing_orders">Placing orders…</string>
+    <string name="shop_review_confirm_identity">Confirm it’s you</string>
+    <string name="shop_review_payment_summary">Review payment for %1$d order(s) to itunda Shop</string>
+    <string name="shop_review_total">Total</string>
+    <string name="shop_review_delivery_to">Delivery to %1$s</string>
+    <string name="shop_review_confirm_order">Confirm and place orders</string>
+    <string name="shop_review_cancel">Cancel</string>
+</resources>

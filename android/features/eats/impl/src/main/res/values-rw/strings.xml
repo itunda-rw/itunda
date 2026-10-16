@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="eats_review_confirm_identity">Emeza ko ari wowe</string>
+    <string name="eats_review_restaurant">Ongera urebe ibyo utumiza kuri %1$s</string>
+    <string name="eats_review_subtotal">Igiteranyo cy’ibicuruzwa</string>
+    <string name="eats_review_delivery">Bigezwe kuri %1$s</string>
+    <string name="eats_review_pickup">Wiyemurire kuri %1$s</string>
+    <string name="eats_review_table">Imbonerahamwe %1$s</string>
+    <string name="eats_review_placing">Turimo gutanga itumiza…</string>
+    <string name="eats_review_confirm_order">Emeza itumiza</string>
+    <string name="eats_review_cancel">Hagarika</string>
+</resources>

@@ -1,3 +1,4 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package rw.itunda.feature.payments.impl
 
 import androidx.compose.foundation.LocalIndication
@@ -359,6 +360,7 @@ private fun RecipientTabLabel(label: String, selected: Boolean, onClick: () -> U
 @Composable
 fun TransferAmountScreen(
     recipientAccountNumber: String,
+    recipientDisplayName: String? = null,
     onBack: () -> Unit,
     // Real standalone "send as a gift" toggle (found via an uncalled-endpoint sweep
     // 2026-08-16, backend/bank-mfe/iOS docs Section 88) -- GiftService's own
@@ -386,6 +388,7 @@ fun TransferAmountScreen(
     // TransferStep -- confirmed live on-device that without this, a process kill
     // mid-transfer restored the right screen but reset the typed amount to 0.
     var digits by rememberSaveable { mutableStateOf("") }
+    var showConfirmation by rememberSaveable { mutableStateOf(false) }
     var isGift by rememberSaveable { mutableStateOf(false) }
     var giftNote by rememberSaveable { mutableStateOf("") }
     var giftTheme by rememberSaveable { mutableStateOf<String?>(null) }
@@ -426,8 +429,13 @@ fun TransferAmountScreen(
             )
             Spacer(modifier = Modifier.height(2.dp))
             TransferPartyRow(
-                label = stringResource(R.string.transfer_to_account, recipientAccountNumber),
-                sublabel = stringResource(R.string.transfer_new_recipient),
+                label = recipientDisplayName?.takeIf { it.isNotBlank() }
+                    ?: stringResource(R.string.transfer_to_account, recipientAccountNumber),
+                sublabel = if (recipientDisplayName?.isNotBlank() == true) {
+                    recipientAccountNumber
+                } else {
+                    stringResource(R.string.transfer_new_recipient)
+                },
                 icon = Icons.Outlined.Savings
             )
             if (scamWarning != null && scamWarning.reportCount > 0) {
@@ -558,12 +566,97 @@ fun TransferAmountScreen(
             FlowNextBar(
                 enabled = digits.isNotEmpty() && amount > 0 && !insufficientBalance,
                 label = if (isGift) "Send gift" else stringResource(R.string.transfer_send),
-            ) { onConfirm(amount, isGift, giftNote.trim().ifEmpty { null }, giftTheme) }
+            ) { showConfirmation = true }
             NumericKeypad(
                 onDigit = { d -> if (digits.length < 9) digits += d },
                 onDelete = { if (digits.isNotEmpty()) digits = digits.dropLast(1) }
             )
         }
+    }
+
+    if (showConfirmation) {
+        androidx.compose.material3.ModalBottomSheet(
+            onDismissRequest = { showConfirmation = false },
+            sheetState = androidx.compose.material3.rememberModalBottomSheetState(
+                skipPartiallyExpanded = true,
+            ),
+            containerColor = Ids.colors.surface,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 24.dp),
+            ) {
+                Text(
+                    stringResource(R.string.transfer_confirm_identity),
+                    color = Ids.colors.textPrimary,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    if (isGift) stringResource(R.string.transfer_review_gift) else stringResource(R.string.transfer_review_before_send),
+                    color = Ids.colors.textSecondary,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(top = 6.dp, bottom = 18.dp),
+                )
+                if (scamWarning != null && scamWarning.reportCount > 0) {
+                    Text(
+                        stringResource(R.string.transfer_scam_warning_body, scamWarning.reportCount),
+                        color = Ids.colors.danger,
+                        fontSize = 13.sp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp),
+                    )
+                }
+                TransferConfirmationRow(
+                    label = stringResource(R.string.transfer_confirm_recipient),
+                    value = recipientDisplayName?.takeIf { it.isNotBlank() } ?: recipientAccountNumber,
+                )
+                TransferConfirmationRow(
+                    label = stringResource(R.string.transfer_confirm_amount),
+                    value = "${rwfFormatter.format(amount)} RWF",
+                )
+                TransferConfirmationRow(
+                    label = stringResource(R.string.transfer_confirm_fee),
+                    value = "0 RWF",
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                androidx.compose.material3.Button(
+                    onClick = {
+                        showConfirmation = false
+                        onConfirm(amount, isGift, giftNote.trim().ifEmpty { null }, giftTheme)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        if (scamWarning != null && scamWarning.reportCount > 0)
+                            stringResource(R.string.transfer_send_anyway)
+                        else stringResource(R.string.transfer_confirm),
+                    )
+                }
+                androidx.compose.material3.TextButton(
+                    onClick = { showConfirmation = false },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(R.string.transfer_cancel))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TransferConfirmationRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, color = Ids.colors.textSecondary, fontSize = 14.sp)
+        Spacer(Modifier.width(12.dp))
+        Text(value, color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 

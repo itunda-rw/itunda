@@ -78,9 +78,6 @@ import rw.itunda.core.network.ShoppingMerchantDto
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
 
-
-
-
 // Shop screen entry point + browse content. Sub-views live in
 // ShopBrowseComponents.kt / ShopMerchantDetail.kt / ShopBooking.kt /
 // ShopProductDetail.kt / ShopOrders.kt / ShopMerchantOrders.kt /
@@ -127,6 +124,8 @@ internal fun formatTimeDealCountdownHms(endsAt: String): String {
 fun CommerceShopContent(
     deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
     onMessageSeller: (String) -> Unit = {},
+    onBack: () -> Unit = {},
+    onOpenEats: () -> Unit = {},
 ) {
     var view by remember { mutableStateOf(CommerceView.BROWSE) }
     var merchants by remember { mutableStateOf<List<ShoppingMerchantDto>?>(null) }
@@ -509,6 +508,18 @@ fun CommerceShopContent(
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
         item {
+            ShopPrototypeHeader(
+                searchInput = productSearchInput,
+                onSearchInputChange = { productSearchInput = it },
+                onSearch = ::searchProducts,
+                searchEnabled = !productSearching && productSearchInput.isNotBlank(),
+                totalItems = totalItems,
+                onCart = { showCart = true },
+                onBack = onBack,
+                onOpenEats = onOpenEats,
+            )
+        }
+        item {
             // No TabHeader here (2026-07-24, was `TabHeader("Shop")`): the bottom
             // nav / ShopTab's own Shop/Eats row already establish where the user
             // is, same redundant-title fix as Hood. Flat category strip below,
@@ -634,28 +645,12 @@ fun CommerceShopContent(
                     }
                 }
             }
-            item {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    IdsTextField(
-                        value = productSearchInput,
-                        onValueChange = { productSearchInput = it },
-                        label = "Search products across every merchant",
-                        modifier = Modifier.weight(1f),
-                    )
-                    Box(
-                        modifier = Modifier.clip(RoundedCornerShape(10.dp))
-                            .background(if (productSearching || productSearchInput.isBlank()) Ids.colors.textTertiary else Ids.colors.brand)
-                            .pressScaleClickable(enabled = !productSearching && productSearchInput.isNotBlank()) { searchProducts() }
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        contentAlignment = Alignment.Center,
-                    ) { Text(if (productSearching) "…" else "Search", color = Color.White, fontWeight = FontWeight.Bold) }
-                    if (productSearchResults != null) {
-                        Box(
-                            modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.textTertiary)
-                                .pressScaleClickable { productSearchResults = null; productSearchInput = "" }
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
-                            contentAlignment = Alignment.Center,
-                        ) { Text("Clear", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
+            if (productSearchResults != null) {
+                item {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Search results", color = Ids.colors.textSecondary, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                        Text("Clear", color = Ids.colors.brand, fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.pressScaleClickable { productSearchResults = null; productSearchInput = "" }.padding(8.dp))
                     }
                 }
             }
@@ -872,13 +867,13 @@ fun CommerceShopContent(
     }
 }
 
-
-
 /** Feature composition entry point. Keeps the app shell independent of concrete screen names. */
 @Composable
 fun CommerceShopEntryPoint(
     deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
     onMessageSeller: (String) -> Unit = {},
+    onBack: () -> Unit = {},
+    onOpenEats: () -> Unit = {},
 ) {
-    CommerceShopContent(deviceStepUpHost, onMessageSeller)
+    CommerceShopContent(deviceStepUpHost, onMessageSeller, onBack, onOpenEats)
 }

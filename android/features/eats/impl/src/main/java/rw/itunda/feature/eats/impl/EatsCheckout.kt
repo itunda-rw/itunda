@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -31,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,11 +55,9 @@ import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
 import java.util.UUID
 
-
-
-
 internal enum class EatsCheckoutMode { DELIVERY, PICKUP, DINE_IN }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun EatsCheckoutView(
     restaurant: ShoppingMerchantDto,
@@ -79,6 +79,7 @@ internal fun EatsCheckoutView(
     // comment for why this is free text rather than a validated table registry.
     var tableNumber by remember { mutableStateOf("") }
     var submitting by remember { mutableStateOf(false) }
+    var showOrderReview by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     // Real device binding step-up (2026-07-21) -- Eats checkout was a real gap:
     // already correctly enforced server-side (a real 403 DEVICE_NOT_VERIFIED) but
@@ -231,28 +232,123 @@ internal fun EatsCheckoutView(
                 .clip(RoundedCornerShape(16.dp))
                 .background(if (submitting || !canSubmit) Ids.colors.textTertiary else Ids.colors.brand)
                 .pressScaleClickable(enabled = !submitting && canSubmit) {
-                    submitting = true
                     error = null
-                    needsDeviceVerification = false
-                    coroutineScope.launch {
-                        try {
-                            when (mode) { EatsCheckoutMode.DELIVERY -> submitDelivery(); EatsCheckoutMode.PICKUP -> submitPickup(); EatsCheckoutMode.DINE_IN -> submitDineIn() }
-                        } catch (e: HttpException) {
-                            if (isDeviceNotVerifiedError(e)) {
-                                needsDeviceVerification = true
-                            } else {
-                                error = superAppErrorMessage(e)
-                            }
-                        } catch (e: IOException) {
-                            error = "Couldn't reach itunda. Check your connection and try again."
-                        } finally {
-                            submitting = false
-                        }
-                    }
+                    showOrderReview = true
                 }
                 .padding(vertical = 16.dp),
             contentAlignment = Alignment.Center,
         ) { Text(if (submitting) "Placing order…" else "Place order", color = Color.White, fontWeight = FontWeight.Bold) }
+        if (showOrderReview) {
+            androidx.compose.material3.ModalBottomSheet(
+                onDismissRequest = { if (!submitting) showOrderReview = false },
+                sheetState = androidx.compose.material3.rememberModalBottomSheetState(
+                    skipPartiallyExpanded = true,
+                ),
+                containerColor = Ids.colors.surface,
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .padding(bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(
+                        stringResource(R.string.eats_review_confirm_identity),
+                        color = Ids.colors.textPrimary,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        stringResource(R.string.eats_review_restaurant, restaurant.businessName),
+                        color = Ids.colors.textSecondary,
+                        fontSize = 14.sp,
+                    )
+                    lines.forEach { (product, line) ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                "${product.name} × ${line.quantity}",
+                                color = Ids.colors.textPrimary,
+                                fontSize = 14.sp,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text(
+                                String.format(Locale.US, "%,.0f RWF", eatsLineUnitPrice(product, line.choiceIds) * line.quantity),
+                                color = Ids.colors.textPrimary,
+                                fontSize = 14.sp,
+                            )
+                        }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(stringResource(R.string.eats_review_subtotal), color = Ids.colors.textSecondary, fontSize = 14.sp)
+                        Text(
+                            String.format(Locale.US, "%,.0f RWF", total),
+                            color = Ids.colors.textPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                        )
+                    }
+                    Text(
+                        when (mode) {
+                            EatsCheckoutMode.DELIVERY -> stringResource(R.string.eats_review_delivery, address.trim())
+                            EatsCheckoutMode.PICKUP -> stringResource(R.string.eats_review_pickup, restaurant.businessName)
+                            EatsCheckoutMode.DINE_IN -> stringResource(R.string.eats_review_table, tableNumber.trim())
+                        },
+                        color = Ids.colors.textSecondary,
+                        fontSize = 13.sp,
+                    )
+                    if (error != null) {
+                        Text(error!!, color = Ids.colors.danger, fontSize = 13.sp)
+                    }
+                    androidx.compose.material3.Button(
+                        onClick = {
+                            if (!submitting) {
+                                submitting = true
+                                error = null
+                                needsDeviceVerification = false
+                                coroutineScope.launch {
+                                    try {
+                                        when (mode) {
+                                            EatsCheckoutMode.DELIVERY -> submitDelivery()
+                                            EatsCheckoutMode.PICKUP -> submitPickup()
+                                            EatsCheckoutMode.DINE_IN -> submitDineIn()
+                                        }
+                                        showOrderReview = false
+                                    } catch (e: HttpException) {
+                                        if (isDeviceNotVerifiedError(e)) {
+                                            needsDeviceVerification = true
+                                        } else {
+                                            error = superAppErrorMessage(e)
+                                        }
+                                    } catch (e: IOException) {
+                                        error = "Couldn't reach itunda. Check your connection and try again."
+                                    } finally {
+                                        submitting = false
+                                    }
+                                }
+                            }
+                        },
+                        enabled = !submitting,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(if (submitting) stringResource(R.string.eats_review_placing) else stringResource(R.string.eats_review_confirm_order))
+                    }
+                    androidx.compose.material3.TextButton(
+                        onClick = { if (!submitting) showOrderReview = false },
+                        enabled = !submitting,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.eats_review_cancel))
+                    }
+                }
+            }
+        }
         deviceStepUpHost(
             needsDeviceVerification,
             { needsDeviceVerification = false },
@@ -261,6 +357,7 @@ internal fun EatsCheckoutView(
                 submitting = true
                 try {
                     when (mode) { EatsCheckoutMode.DELIVERY -> submitDelivery(); EatsCheckoutMode.PICKUP -> submitPickup(); EatsCheckoutMode.DINE_IN -> submitDineIn() }
+                    showOrderReview = false
                 } catch (e: HttpException) {
                     error = superAppErrorMessage(e)
                 } catch (e: IOException) {
@@ -309,7 +406,6 @@ internal fun DineInOrderConfirmationView(order: DineInOrderDto, onDone: () -> Un
         confirmButton = { TextButton(onClick = onDone) { Text("Done") } },
     )
 }
-
 
 // Real per-configuration cart line (2026-07-21) -- ports bank-mfe's own EatsCartLine
 // (BankDashboard.tsx) 1:1. `choiceIds` is empty for any item with no option groups --

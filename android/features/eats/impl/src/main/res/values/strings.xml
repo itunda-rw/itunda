@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="eats_review_confirm_identity">Confirm it’s you</string>
+    <string name="eats_review_restaurant">Review your order to %1$s</string>
+    <string name="eats_review_subtotal">Subtotal</string>
+    <string name="eats_review_delivery">Delivery to %1$s</string>
+    <string name="eats_review_pickup">Pickup at %1$s</string>
+    <string name="eats_review_table">Table %1$s</string>
+    <string name="eats_review_placing">Placing order…</string>
+    <string name="eats_review_confirm_order">Confirm order</string>
+    <string name="eats_review_cancel">Cancel</string>
+</resources>

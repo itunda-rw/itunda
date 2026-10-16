@@ -43,6 +43,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val pendingActionCount: StateFlow<Int> = _pendingActionCount
     private val _primaryAccount = MutableStateFlow<Account?>(null)
     val primaryAccount: StateFlow<Account?> = _primaryAccount
+    private val _payAccount = MutableStateFlow<Account?>(null)
+    val payAccount: StateFlow<Account?> = _payAccount
 
     private val _savingsGoals = MutableStateFlow<List<SavingsGoal>>(emptyList())
     val savingsGoals: StateFlow<List<SavingsGoal>> = _savingsGoals
@@ -140,6 +142,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val accountRes = NetworkClient.apiService.getAccounts()
                 if (accountRes.success) {
                     _primaryAccount.value = accountRes.accounts.firstOrNull { it.type == "MAIN" } ?: accountRes.accounts.firstOrNull()
+                    _payAccount.value = accountRes.accounts.firstOrNull { it.type == "PAY" }
                 }
 
                 val savingsRes = NetworkClient.apiService.getSavingsGoals()
@@ -272,6 +275,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun showOfflinePlaceholder() {
         _isOffline.value = true
+        _payAccount.value = null
         _primaryAccount.value = Account(
             id = "w_offline_placeholder",
             userId = "",
