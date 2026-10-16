@@ -142,3 +142,54 @@ a:focus-visible,
     transform: none;
   }
 }
+
+
+/* v104 prototype parity: reproduce the prototype's centered 390 × 844 app
+   canvas on desktop, while keeping a true edge-to-edge mobile experience.
+   The root becomes the desktop scrolling viewport so fixed overlays/navigation
+   stay inside the phone frame instead of escaping to the browser window. */
+body {
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #E9EBF0;
+}
+
+#root {
+  width: 390px;
+  max-width: 100vw;
+  height: min(844px, 100dvh);
+  min-height: 0;
+  max-height: 100dvh;
+  margin: 0 auto;
+  border-radius: 36px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+  transform: translateZ(0);
+}
+
+#root::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 430px) {
+  body {
+    display: block;
+    min-height: 100dvh;
+    background: var(--itunda-surface-default);
+  }
+
+  #root {
+    width: 100vw;
+    height: 100dvh;
+    max-width: 100vw;
+    min-height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    box-shadow: none;
+    transform: none;
+  }
+}
