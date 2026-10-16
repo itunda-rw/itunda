@@ -28,7 +28,16 @@
     if (access) headers.Authorization = 'Bearer ' + access;
     let response;
     try { response = await fetch(API_BASE + path, Object.assign({}, options, { headers })); }
-    catch (_) { throw new Error('Could not reach itunda. Check your connection and try again.'); }
+    catch (networkError) {
+      // Keep credentials and request bodies out of diagnostics. The URL and browser error
+      // class/message are enough to distinguish a fetch-level failure from an HTTP response.
+      console.error('[itunda backend] Request failed before an HTTP response', {
+        url: API_BASE + path,
+        errorName: networkError && networkError.name ? String(networkError.name) : 'UnknownError',
+        errorMessage: networkError && networkError.message ? String(networkError.message) : 'No browser error message'
+      });
+      throw new Error('Could not reach itunda. Check your connection and try again. If this continues, reopen the app and try again.');
+    }
     if (response.status === 401 && retry !== false && access && path !== '/api/v1/auth/refresh') {
       if (!refreshInFlight) {
         refreshInFlight = (async function () {
