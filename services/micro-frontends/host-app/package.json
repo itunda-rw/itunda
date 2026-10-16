@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node --check public/itunda-backend.js && vite build",
+    "build": "node --check public/itunda-backend.js && node scripts/verify-v104-entry.mjs && vite build",
     "typecheck": "tsc -b",
     "lint": "oxlint",
     "preview": "vite preview"
