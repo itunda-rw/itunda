@@ -248,13 +248,17 @@
       termsCatalog = currentTerms;
       const acceptedTermsIds = currentTerms.filter(function (doc) { return Boolean(S.ob[termKey(doc.id)]); }).map(function (doc) { return doc.id; });
       const missing = currentTerms.filter(function (doc) { return doc.required && acceptedTermsIds.indexOf(doc.id) < 0; });
+      const enteredName = String(S.ob.name || '').trim();
+      const nameParts = enteredName ? enteredName.split(/\s+/) : [];
+      const firstName = nameParts.length ? nameParts[0] : String(S.ob.first || '').trim();
+      const lastName = String(S.ob.last || '').trim() || nameParts.slice(1).join(' ') || firstName;
       if (missing.length) throw new Error('Please accept each required term before creating your account.');
       const session = await api('/api/v1/auth/register', {
         method: 'POST',
         body: JSON.stringify({
           phoneNumber: normalizePhone(S.ob.ph), email: null,
-          firstName: (String(S.ob.first || '').trim() || String(S.ob.name || '').trim().split(/\s+/)[0]),
-          lastName: (String(S.ob.last || '').trim() || String(S.ob.name || '').trim().split(/\s+/).slice(1).join(' ') || String(S.ob.name || '').trim().split(/\s+/)[0]),
+          firstName: firstName,
+          lastName: lastName,
           password: S.ob.pin, acceptedTermsIds: acceptedTermsIds
         })
       }, false);
