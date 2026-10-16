@@ -5,10 +5,15 @@ const read = (path) => readFileSync(new URL(path, root), 'utf8');
 const index = read('index.html');
 const prototype = read('public/itunda-prototype-v104.html');
 const backend = read('public/itunda-backend.js');
+const nginx = read('../nginx.conf');
 
+const cacheHeader = 'no-store, no-cache, must-revalidate, max-age=0';
+const cacheProtectedPaths = ['/', '/index.html', '/itunda-prototype-v104.html', '/itunda-backend.js'];
 const checks = [
   ['consumer app route uses v104', index.includes('src="/itunda-prototype-v104.html"')],
   ['consumer app route does not use v66', !index.includes('src="/itunda-prototype-v66.html"')],
+  ['host frame fills the available viewport', index.includes('height: 100dvh') && index.includes('width: 100%; height: 100%')],
+  ['launch splash respects reduced-motion preferences', index.includes('@media (prefers-reduced-motion: reduce)')],
   ['v104 document title is present', prototype.includes('<title>itunda, clickable prototype v104</title>')],
   ['v104 loads the real backend bridge', prototype.includes('<script src="/itunda-backend.js"></script>')],
   ['real sign-in endpoint is wired', backend.includes('/api/v1/auth/login')],
@@ -23,7 +28,10 @@ const checks = [
   ['prototype skip-auth shortcut is blocked', backend.includes("window.obSkip = function () { fail(new Error('Please sign in or create an account to continue.')); };")],
   ['phone validation runs before sign-in', backend.includes("if (!phOk(S.ob.ph)) { fail(new Error('Enter a valid phone number first.')); return; }")],
   ['sample phone shortcut is removed from live onboarding', !prototype.includes('Prototype: fill a returning number')],
-  ['phone screen offers real sign-in', prototype.includes('onclick="obPhoneNext();return false">Sign in</a>')]
+  ['phone screen offers real sign-in', prototype.includes('onclick="obPhoneNext();return false">Sign in</a>')],
+  ['Nginx cache rules cover every entry point', cacheProtectedPaths.every((path) => nginx.includes('location = ' + path + ' {'))],
+  ['Nginx disables storage of the prototype and auth entry files', (nginx.match(new RegExp(cacheHeader.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length >= cacheProtectedPaths.length],
+  ['Nginx sends legacy no-cache compatibility headers for entry files', (nginx.match(/add_header Pragma "no-cache" always;/g) || []).length >= cacheProtectedPaths.length]
 ];
 
 const failed = checks.filter(([, passed]) => !passed);
