@@ -23,7 +23,7 @@
   }
   // Keep phone validation local to the auth bridge; the prototype's phOk helper is not in this script's scope.
   function phOk(value) {
-    return /^\\+\\d{8,15}$/.test(normalizePhone(value));
+    return /^\+\d{8,15}$/.test(normalizePhone(value));
   }
   async function api(path, options, retry) {
     options = options || {};
