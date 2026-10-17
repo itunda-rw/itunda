@@ -120,26 +120,69 @@
     else if (/^\d$/.test(key) && (S.ob.pin || '').length < 6) S.ob.pin = (S.ob.pin || '') + key;
     render('fade-none');
   };
+  function showAccountLoadRetry(message) {
+    const errorNode = document.getElementById('web-login-error');
+    if (!errorNode) return;
+    errorNode.textContent = message;
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.className = 'chip';
+    retry.style.marginTop = '8px';
+    retry.textContent = 'Retry loading account';
+    retry.onclick = window.backendRetryAccount;
+    errorNode.appendChild(document.createElement('br'));
+    errorNode.appendChild(retry);
+  };
+  window.backendRetryAccount = async function () {
+    if (busy) return;
+    busy = true;
+    const errorNode = document.getElementById('web-login-error');
+    if (errorNode) errorNode.textContent = 'Loading your account…';
+    try {
+      await loadAccount();
+      S.auth = true; S.obStep = null; S.stack = []; S.tab = 'home'; S.first = true;
+      render('fade');
+      window.toast('Your account is ready');
+    } catch (error) {
+      showAccountLoadRetry('You are signed in, but account data is still unavailable. Please retry.');
+      console.warn('[itunda backend] Account load after sign-in failed:', error.message);
+    } finally { busy = false; }
+  };
   window.backendLogin = async function () {
     if (busy || (S.ob.pin || '').length !== 6) return;
     busy = true; render('fade-none');
     try {
-      const session = await api('/api/v1/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ phoneNumber: normalizePhone(S.ob.ph), password: S.ob.pin })
-      }, false);
-      if (!session.accessToken || !session.refreshToken || !session.user) throw new Error('The server returned an incomplete session.');
+      let session;
+      // Keep credential/authentication failures separate from post-login account loading.
+      try {
+        session = await api('/api/v1/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ phoneNumber: normalizePhone(S.ob.ph), password: S.ob.pin })
+        }, false);
+        if (!session.accessToken || !session.refreshToken || !session.user) throw new Error('The server returned an incomplete session.');
+      } catch (error) {
+        S.ob.pin = ''; render('fade-none');
+        const errorNode = document.getElementById('web-login-error');
+        if (errorNode) errorNode.textContent = error.message || 'Sign in failed. Check your phone number and PIN.';
+        return;
+      }
+      // Persist the real session before loading account data. If the account API is
+      // temporarily unavailable, keep the valid session and let the user retry without
+      // repeatedly entering their PIN or confusing a data-load failure with bad login.
       localStorage.setItem(ACCESS_KEY, session.accessToken);
       localStorage.setItem(REFRESH_KEY, session.refreshToken);
       liveUser = session.user;
       localStorage.setItem('itunda_web_user', JSON.stringify(session.user));
-      await loadAccount();
+      try {
+        await loadAccount();
+      } catch (error) {
+        S.ob.pin = ''; render('fade-none');
+        showAccountLoadRetry('You are signed in, but your account data could not be loaded. Retry without entering your PIN again.');
+        console.warn('[itunda backend] Account load after sign-in failed:', error.message);
+        return;
+      }
       S.auth = true; S.obStep = null; S.stack = []; S.tab = 'home'; S.first = true;
       render('fade'); window.toast('Signed in to your real itunda account');
-    } catch (error) {
-      S.ob.pin = ''; render('fade-none');
-      const errorNode = document.getElementById('web-login-error');
-      if (errorNode) errorNode.textContent = error.message || 'Sign in failed. Check your phone number and PIN.';
     } finally { busy = false; }
   };
   window.obPhoneNext = function () { if (!phOk(S.ob.ph)) { fail(new Error('Enter a valid phone number first.')); return; } S.ob.pin = ''; S.obStep = 'backendLogin'; render('push'); };
