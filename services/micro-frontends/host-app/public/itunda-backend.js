@@ -135,7 +135,7 @@
       if (errorNode) errorNode.textContent = error.message || 'Sign in failed. Check your phone number and PIN.';
     } finally { busy = false; }
   };
-  window.obPhoneNext = function () { if (!phOk(S.ob.ph)) { fail(new Error('Enter a valid phone number first.')); return; } S.ob.pin = ''; S.obStep = 'backendLogin'; render('push'); };
+  window.obPhoneNext = function () { if (!/^7\d{8}$/.test(String(S.ob.ph || ''))) { fail(new Error('Enter a valid phone number first.')); return; } S.ob.pin = ''; S.obStep = 'backendLogin'; render('push'); };
   window.obNameNext = function () { if (String(S.ob.name || '').trim().length > 1) window.obGo('obTerms'); };
   window.obSkip = function () { fail(new Error('Please sign in or create an account to continue.')); };
 
