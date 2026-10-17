@@ -13,6 +13,11 @@
   let transferBusy = false;
   let refreshInFlight = null;
 
+  function phOk(value) {
+    const normalized = normalizePhone(value);
+    return /^\+\d{8,15}$/.test(normalized);
+  }
+
   function normalizePhone(value) {
     const v = String(value || '').replace(/[\s()-]/g, '');
     if (v.startsWith('+')) return v;
@@ -28,7 +33,16 @@
     if (access) headers.Authorization = 'Bearer ' + access;
     let response;
     try { response = await fetch(API_BASE + path, Object.assign({}, options, { headers })); }
-    catch (_) { throw new Error('Could not reach itunda. Check your connection and try again.'); }
+    catch (networkError) {
+      // Keep credentials and request bodies out of diagnostics. The URL and browser error
+      // class/message are enough to distinguish a fetch-level failure from an HTTP response.
+      console.error('[itunda backend] Request failed before an HTTP response', {
+        url: API_BASE + path,
+        errorName: networkError && networkError.name ? String(networkError.name) : 'UnknownError',
+        errorMessage: networkError && networkError.message ? String(networkError.message) : 'No browser error message'
+      });
+      throw new Error('Could not reach itunda. Check your connection and try again. If this continues, reopen the app and try again.');
+    }
     if (response.status === 401 && retry !== false && access && path !== '/api/v1/auth/refresh') {
       if (!refreshInFlight) {
         refreshInFlight = (async function () {
@@ -92,6 +106,8 @@
 
   screens.backendLogin = function () {
     const pin = S.ob.pin || '';
+    const usePassword = Boolean(S.ob.usePassword);
+    const credential = usePassword ? String(S.ob.password || '') : pin;
     const dots = Array.from({ length: 6 }, function (_, i) {
       return '<i style="width:12px;height:12px;border-radius:50%;display:inline-block;margin:0 8px;background:' + (i < pin.length ? 'var(--tx)' : 'var(--ln)') + '"></i>';
     }).join('');
@@ -102,24 +118,40 @@
     return bar('Sign in') + '<div class="pad" style="padding-top:30px"><div class="h1">Welcome back</div>' +
       '<div class="mu" style="font-size:15px;line-height:22px;margin-top:8px">Sign in to your real itunda account.</div>' +
       '<div style="margin-top:24px;padding:16px;border-radius:18px;background:var(--chip)"><div class="sm mu">Phone number</div><div style="font-size:18px;font-weight:800;margin-top:4px">' + normalizePhone(S.ob.ph).replace(/[<>&"]/g,'') + '</div></div>' +
-      '<div style="text-align:center;margin-top:28px;font-size:14px;font-weight:700">Your 6-digit PIN</div><div style="display:flex;justify-content:center;padding:18px 0">' + dots + '</div>' +
+      (usePassword
+        ? '<div style="text-align:left;margin-top:28px;font-size:14px;font-weight:700">Account password</div><input id="web-login-password" type="password" autocomplete="current-password" value="' + escapeTerm(S.ob.password || '') + '" oninput="backendPasswordInput(this.value)" placeholder="Enter your password" style="display:block;width:100%;margin-top:10px;padding:14px;border:1px solid var(--ln);border-radius:14px;background:var(--bg);color:var(--tx);font:inherit" />'
+        : '<div style="text-align:center;margin-top:28px;font-size:14px;font-weight:700">Your 6-digit PIN</div><div style="display:flex;justify-content:center;padding:18px 0">' + dots + '</div>' + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px">' + keys + '</div>') +
       '<div id="web-login-error" role="alert" style="color:var(--er);min-height:20px;text-align:center;font-size:13px"></div>' +
-      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px">' + keys + '</div>' +
-      '<button class="btn" style="margin-top:18px" ' + (pin.length === 6 && !busy ? '' : 'disabled') + ' onclick="backendLogin()">Sign in securely</button>' +
-      '<button class="btn sec2" style="margin-top:10px" onclick="S.ob.name=\'\';S.ob.first=\'\';S.ob.last=\'\';S.ob.pin=\'\';S.obStep=\'obName\';render(\'push\')">Create a new account</button></div>';
+      '<button id="web-login-submit" class="btn" style="margin-top:18px" ' + (credential.length > 0 && (!usePassword ? pin.length === 6 : true) && !busy ? '' : 'disabled') + ' onclick="backendLogin()">Sign in securely</button>' +
+      '<button class="btn sec2" style="margin-top:10px" onclick="backendToggleCredential()">' + (usePassword ? 'Use 6-digit PIN instead' : 'Use account password instead') + '</button>' +
+      '<button class="btn sec2" style="margin-top:10px" onclick="S.ob.name=\'\';S.ob.first=\'\';S.ob.last=\'\';S.ob.pin=\'\';S.ob.password=\'\';S.ob.usePassword=false;S.obStep=\'obName\';render(\'push\')">Create a new account</button></div>';
   };
   window.backendPinKey = function (key) {
     if (key === 'del') S.ob.pin = (S.ob.pin || '').slice(0, -1);
     else if (/^\d$/.test(key) && (S.ob.pin || '').length < 6) S.ob.pin = (S.ob.pin || '') + key;
     render('fade-none');
   };
+  window.backendPasswordInput = function (value) {
+    S.ob.password = String(value || '');
+    const submit = document.getElementById('web-login-submit');
+    if (submit && S.ob.usePassword) submit.disabled = !S.ob.password || busy;
+  };
+  window.backendToggleCredential = function () {
+    S.ob.usePassword = !Boolean(S.ob.usePassword);
+    render('fade-none');
+    if (S.ob.usePassword) {
+      const input = document.getElementById('web-login-password');
+      if (input) input.focus();
+    }
+  };
   window.backendLogin = async function () {
-    if (busy || (S.ob.pin || '').length !== 6) return;
+    const credential = S.ob.usePassword ? String(S.ob.password || '') : (S.ob.pin || '');
+    if (busy || !credential || (!S.ob.usePassword && credential.length !== 6)) return;
     busy = true; render('fade-none');
     try {
       const session = await api('/api/v1/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ phoneNumber: normalizePhone(S.ob.ph), password: S.ob.pin })
+        body: JSON.stringify({ phoneNumber: normalizePhone(S.ob.ph), password: credential })
       }, false);
       if (!session.accessToken || !session.refreshToken || !session.user) throw new Error('The server returned an incomplete session.');
       localStorage.setItem(ACCESS_KEY, session.accessToken);
@@ -130,9 +162,9 @@
       S.auth = true; S.obStep = null; S.stack = []; S.tab = 'home'; S.first = true;
       render('fade'); window.toast('Signed in to your real itunda account');
     } catch (error) {
-      S.ob.pin = ''; render('fade-none');
+      S.ob.pin = ''; S.ob.password = ''; render('fade-none');
       const errorNode = document.getElementById('web-login-error');
-      if (errorNode) errorNode.textContent = error.message || 'Sign in failed. Check your phone number and PIN.';
+      if (errorNode) errorNode.textContent = error.message || 'Sign in failed. Check your phone number, password, or PIN.';
     } finally { busy = false; }
   };
   window.obPhoneNext = function () { if (!phOk(S.ob.ph)) { fail(new Error('Enter a valid phone number first.')); return; } S.ob.pin = ''; S.obStep = 'backendLogin'; render('push'); };
