@@ -21,6 +21,10 @@
     if (/^\d{9}$/.test(v)) return '+250' + v;
     return v;
   }
+  // Keep phone validation local to the auth bridge; the prototype's phOk helper is not in this script's scope.
+  function phOk(value) {
+    return /^\\+\\d{8,15}$/.test(normalizePhone(value));
+  }
   async function api(path, options, retry) {
     options = options || {};
     const headers = Object.assign({ 'Content-Type': 'application/json' }, options.headers || {});
