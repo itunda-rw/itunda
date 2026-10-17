@@ -8,6 +8,7 @@ let html = readFileSync(sourcePath, 'utf8');
 
 const replacements = [
   ['<title>itunda, clickable prototype v153</title>', '<title>itunda, clickable prototype v192</title>'],
+  ["document.title='itunda, clickable prototype v191';", "document.title='itunda, clickable prototype v192';"],
   ['function obSkip(){S.auth=true;S.obStep=null;render(\'fade\')}', "function obSkip(){alert('Please sign in or create an account to continue.')}"],
 ];
 for (const [from, to] of replacements) {
