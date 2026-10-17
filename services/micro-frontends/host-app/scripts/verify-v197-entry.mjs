@@ -24,7 +24,7 @@ const runtimeV197 = "document.title='itunda, clickable prototype v197';";
 const runtimeV191 = "document.title='itunda, clickable prototype v191';";
 const checks = [
   ['production v197 matches canonical prototype apart from explicit auth bridge changes', productionEquivalent(reference) === productionEquivalent(prototype)],
-  ['consumer app route uses v197', index.includes('src="/itunda-prototype-v197.html"')],
+  ['consumer app route uses v197', index.includes('frame.src = "/itunda-prototype-v197.html"')],
   ['consumer app route no longer uses v192', !index.includes('src="/itunda-prototype-v192.html"')],
   ['host frame fills viewport', index.includes('height: 100dvh') && index.includes('width: 100%; height: 100%')],
   ['launch splash respects reduced-motion preferences', index.includes('@media (prefers-reduced-motion: reduce)')],
