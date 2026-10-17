@@ -12,6 +12,7 @@ const cacheHeader = 'no-store, no-cache, must-revalidate, max-age=0';
 const cacheProtectedPaths = ['/', '/index.html', '/itunda-prototype-v104.html', '/itunda-prototype-v186.html', '/itunda-backend.js'];
 const productionEquivalent = (source) => source
   .replace(/\r?\n/g, '')
+  .replace('<script src="/itunda-backend.js"></script>', '')
   .replace('<title>itunda, clickable prototype v153</title>', '<title>itunda, clickable prototype v186</title>')
   .replace('onclick="obSkip();return false">Skip (prototype)', 'onclick="obPhoneNext();return false">Sign in')
   .replace(/<a href="#" class="sm" style="color:var\(--lk\);font-weight:700;display:inline-block;margin-top:6px" onclick="phDemo\(\);return false">Prototype: fill a returning number<\/a>/, '')
