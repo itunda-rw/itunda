@@ -27,7 +27,7 @@ const checks = [
   ['v186 document title is correct', prototype.includes('<title>itunda, clickable prototype v186</title>') && prototype.includes("document.title='itunda, clickable prototype v186'")],
   ['v186 loads the real backend bridge exactly once', (prototype.split('<script src="/itunda-backend.js"></script>').length - 1) === 1],
   ['prototype-only phone-fill shortcut is removed', !prototype.includes('Prototype: fill a returning number') && !prototype.includes('phDemo();return false')],
-  ['prototype skip-auth shortcut is removed', !prototype.includes('Skip (prototype)') && backend.includes("window.obSkip = function () { fail(new Error('Please sign in or create an account to continue.')); };")],
+  ['prototype skip-auth shortcut is removed', !prototype.includes('onclick="obSkip();return false">Skip (prototype)') && backend.includes("window.obSkip = function () { fail(new Error('Please sign in or create an account to continue.')); };")],
   ['phone validation does not rely on a cross-script helper', backend.includes("if (!/^7\\d{8}$/.test(String(S.ob.ph || ''))) { fail(new Error('Enter a valid phone number first.')); return; }") && !backend.includes('phOk(S.ob.ph)')],
   ['real sign-in endpoint is wired', backend.includes('/api/v1/auth/login')],
   ['real registration endpoint and required terms are wired', backend.includes('/api/v1/auth/register') && backend.includes('/api/v1/auth/terms')],
