@@ -17,7 +17,7 @@ for (const [from, to] of replacements) {
 
 // Remove both prototype-only skip links. The v192 source has two phone-screen
 // renderers; guarding only the later renderer would leave an onboarding bypass.
-const skipLink = /<a href="#" class="sm" style="[^"]*" onclick="obSkip\\(\\);return false">[^<]*prototype[^<]*<\\/a>/gi;
+const skipLink = /<a href="#" class="sm" style="[^"]*" onclick="obSkip\(\);return false">[^<]*prototype[^<]*<\/a>/gi;
 const skipMatches = html.match(skipLink) || [];
 if (skipMatches.length < 2) throw new Error('Expected both prototype-only skip links; found ' + skipMatches.length);
 html = html.replace(skipLink, '');
