@@ -38,6 +38,7 @@ const checks = [
   ['transfer uses idempotency key', backend.includes("headers: { 'Idempotency-Key': idempotencyKey }")],
   ['recipient must be verified before transfer', backend.includes('Verify the recipient name before sending money.')],
   ['skip-auth handler is blocked', backend.includes("window.obSkip = function () { fail(new Error('Please sign in or create an account to continue.')); };")],
+  ['phone validation helper is defined in the auth bridge', backend.includes('function phOk(value)') && backend.includes("if (!phOk(S.ob.ph))")],
   ['Nginx cache rules cover all protected entry points', protectedPaths.every((path) => nginx.includes('location = ' + path + ' {'))],
   ['Nginx disables caching for every protected entry point', protectedPaths.every((path) => { const block = nginx.split('location = ' + path + ' {')[1]?.split(/\n    \}/)[0]; return Boolean(block && block.includes(cacheHeader) && block.includes('add_header Pragma "no-cache" always;')); })],
   ['Nginx sends legacy no-cache headers for every protected entry point', (nginx.match(/add_header Pragma "no-cache" always;/g) || []).length >= protectedPaths.length]
