@@ -23,7 +23,7 @@ const production = source
 if (production === source || !production.includes('<script src="/itunda-backend.js"></script>')) {
   throw new Error('Production v186 transform did not apply.');
 }
-if (production.includes('Prototype: fill a returning number') || production.includes('Skip (prototype)')) {
+if (production.includes('Prototype: fill a returning number') || production.includes(skipLink)) {
   throw new Error('Prototype-only authentication shortcuts remain in the production page.');
 }
 
