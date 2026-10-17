@@ -34,7 +34,7 @@ const checks = [
   ['recipient must be verified before transfer', backend.includes('Verify the recipient name before sending money.')],
   ['skip-auth handler is blocked', backend.includes("window.obSkip = function () { fail(new Error('Please sign in or create an account to continue.')); };")],
   ['Nginx cache rules cover all v192 entry points', protectedPaths.every((path) => nginx.includes('location = ' + path + ' {'))],
-  ['Nginx disables caching for every protected entry point', protectedPaths.every((path) => { const block = nginx.split('location = ' + path + ' {')[1]?.split('\\n    }')[0]; return Boolean(block && block.includes(cacheHeader) && block.includes('add_header Pragma "no-cache" always;')); })],
+  ['Nginx disables caching for every protected entry point', protectedPaths.every((path) => { const block = nginx.split('location = ' + path + ' {')[1]?.split(/\n    \}/)[0]; return Boolean(block && block.includes(cacheHeader) && block.includes('add_header Pragma "no-cache" always;')); })],
   ['Nginx sends legacy no-cache headers for every protected entry point', (nginx.match(/add_header Pragma "no-cache" always;/g) || []).length >= protectedPaths.length]
 ];
 const failed = checks.filter(([, passed]) => !passed);
