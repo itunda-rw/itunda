@@ -8,16 +8,28 @@ let html = readFileSync(sourcePath, 'utf8');
 
 const replacements = [
   ['<title>itunda, clickable prototype v153</title>', '<title>itunda, clickable prototype v192</title>'],
-  ['onclick="obSkip();return false">Skip (prototype)', 'onclick="obPhoneNext();return false">Sign in'],
+  ['function obSkip(){S.auth=true;S.obStep=null;render(\'fade\')}', "function obSkip(){alert('Please sign in or create an account to continue.')}"],
 ];
 for (const [from, to] of replacements) {
   if (!html.includes(from)) throw new Error('Expected v192 source marker missing: ' + from);
   html = html.replace(from, to);
 }
+
+// Remove both prototype-only skip links. The v192 source has two phone-screen
+// renderers; guarding only the later renderer would leave an onboarding bypass.
+const skipLink = /<a href="#" class="sm" style="color:var\(--(?:tt|lk)\);font-weight:600(?:;display:inline-block;margin-top:6px)?(?:;font-weight:700)?(?:;display:inline-block;margin-top:6px)?" onclick="obSkip\(\);return false">[^<]*prototype[^<]*<\/a>/gi;
+const skipMatches = html.match(skipLink) || [];
+if (skipMatches.length < 2) throw new Error('Expected both prototype-only skip links; found ' + skipMatches.length);
+html = html.replace(skipLink, '');
 const demoShortcut = /<a href="#" class="sm" style="color:var\(--lk\);font-weight:700;display:inline-block;margin-top:6px" onclick="phDemo\(\);return false">Prototype: fill a returning number<\/a>/;
 if (!demoShortcut.test(html)) throw new Error('Prototype phone-fill shortcut not found; refusing to produce production HTML.');
 html = html.replace(demoShortcut, '');
-if (html.includes('Skip (prototype)') || html.includes('Prototype: fill a returning number')) {
+const demoHandler = "window.phDemo=()=>{S.ob.ph='788123456';render('fade-none')};";
+if (!html.includes(demoHandler)) throw new Error('Prototype phone-fill handler not found.');
+html = html.replace(demoHandler, '');
+if (/onclick="obSkip\(\);return false">[^<]*prototype/i.test(html) ||
+    html.includes('Prototype: fill a returning number') ||
+    html.includes("window.phDemo=()=>{S.ob.ph='788123456';render('fade-none')};")) {
   throw new Error('Prototype-only authentication shortcuts remain in production HTML.');
 }
 const bridge = '<script src="/itunda-backend.js"></script>';
