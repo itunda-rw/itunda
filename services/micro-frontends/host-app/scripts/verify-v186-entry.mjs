@@ -24,7 +24,7 @@ const checks = [
   ['host frame fills the viewport', index.includes('height: 100dvh') && index.includes('width: 100%; height: 100%')],
   ['launch splash respects reduced motion', index.includes('@media (prefers-reduced-motion: reduce)')],
   ['v186 document title is correct', prototype.includes('<title>itunda, clickable prototype v186</title>') && prototype.includes("document.title='itunda, clickable prototype v186'")],
-  ['v186 loads the real backend bridge exactly once', (prototype.match(/<script src="/itunda-backend\.js"><\/script>/g) || []).length === 1],
+  ['v186 loads the real backend bridge exactly once', (prototype.split('<script src="/itunda-backend.js"></script>').length - 1) === 1],
   ['prototype-only phone-fill shortcut is removed', !prototype.includes('Prototype: fill a returning number') && !prototype.includes('phDemo();return false')],
   ['prototype skip-auth shortcut is removed', !prototype.includes('Skip (prototype)') && backend.includes("window.obSkip = function () { fail(new Error('Please sign in or create an account to continue.')); };")],
   ['phone validation does not rely on a cross-script helper', backend.includes("if (!/^7\\d{8}$/.test(String(S.ob.ph || ''))) { fail(new Error('Enter a valid phone number first.')); return; }") && !backend.includes('phOk(S.ob.ph)')],
