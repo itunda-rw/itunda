@@ -21,8 +21,15 @@
     if (/^\d{9}$/.test(v)) return '+250' + v;
     return v;
   }
+  // Keep phone validation local to the auth bridge; the prototype's phOk helper is not in this script's scope.
+  // Demo mode is explicitly opt-in via ?demo=1 and never creates an authenticated session.
+  const demoMode = new URLSearchParams(window.location.search).get('demo') === '1';
+  function phOk(value) {
+    return /^\+\d{8,15}$/.test(normalizePhone(value));
+  }
   async function api(path, options, retry) {
     options = options || {};
+    if (demoMode) throw new Error('Demo mode uses sample data only. Exit demo mode and sign in to use real account services.');
     const headers = Object.assign({ 'Content-Type': 'application/json' }, options.headers || {});
     const access = localStorage.getItem(ACCESS_KEY);
     if (access) headers.Authorization = 'Bearer ' + access;
@@ -137,7 +144,13 @@
   };
   window.obPhoneNext = function () { if (!phOk(S.ob.ph)) { fail(new Error('Enter a valid phone number first.')); return; } S.ob.pin = ''; S.obStep = 'backendLogin'; render('push'); };
   window.obNameNext = function () { if (String(S.ob.name || '').trim().length > 1) window.obGo('obTerms'); };
-  window.obSkip = function () { fail(new Error('Please sign in or create an account to continue.')); };
+  window.obSkip = function () {
+    if (!demoMode) return fail(new Error('Please sign in or create an account to continue.'));
+    // UI-only entry: no token is minted, no user session is persisted, and API calls are disabled.
+    S.auth = true; S.obStep = null; S.stack = []; S.tab = 'home'; S.first = true;
+    render('fade');
+    if (typeof window.toast === 'function') window.toast('Demo mode — sample data only');
+  };
 
   const previousObBack = window.obBack;
   window.obBack = function () {
@@ -159,6 +172,7 @@
         (date ? new Date(date).toLocaleDateString().replace(/[<>&"]/g, '') : '') + '</div></div>' +
         '<div class="r" style="color:' + (credit ? 'var(--ok)' : 'var(--tx)') + '">' + (credit ? '+' : '') + fmt(Math.abs(amount)) + ' RWF</div></div>';
     }).join('');
+    if (demoMode) return previousBankScreen() + '<div class="sec"><div class="sech">Demo account activity</div><div class="fine" style="padding:12px 0">Sample data only. This demo is not connected to a real account or ledger.</div></div>';
     return html + '<div class="sec"><div class="sech">Real account activity</div>' +
       (rows || '<div class="fine" style="padding:12px 0">No account transactions yet.</div>') +
       '<div class="fine" style="padding-top:8px">Loaded from your itunda account ledger.</div></div>';
@@ -360,7 +374,7 @@
   };
 
   (async function restoreSession() {
-    if (!localStorage.getItem(ACCESS_KEY)) return;
+    if (demoMode || !localStorage.getItem(ACCESS_KEY)) return;
     try {
       const saved = localStorage.getItem('itunda_web_user');
       if (saved) liveUser = JSON.parse(saved);

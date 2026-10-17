@@ -24,7 +24,7 @@ const runtimeV197 = "document.title='itunda, clickable prototype v197';";
 const runtimeV191 = "document.title='itunda, clickable prototype v191';";
 const checks = [
   ['production v197 matches canonical prototype apart from explicit auth bridge changes', productionEquivalent(reference) === productionEquivalent(prototype)],
-  ['consumer app route uses v197', index.includes('src="/itunda-prototype-v197.html"')],
+  ['consumer app route uses v197', index.includes('frame.src = "/itunda-prototype-v197.html"')],
   ['consumer app route no longer uses v192', !index.includes('src="/itunda-prototype-v192.html"')],
   ['host frame fills viewport', index.includes('height: 100dvh') && index.includes('width: 100%; height: 100%')],
   ['launch splash respects reduced-motion preferences', index.includes('@media (prefers-reduced-motion: reduce)')],
@@ -34,10 +34,14 @@ const checks = [
   ['prototype-only sign-in bypass links are absent', !/onclick="obSkip\(\);return false">[^<]*prototype/i.test(prototype)],
   ['prototype phone-fill shortcut and handler are absent', !prototype.includes('Prototype: fill a returning number') && !prototype.includes("window.phDemo=()=>{S.ob.ph='788123456';render('fade-none')};")],
   ['real sign-in endpoint is wired', backend.includes('/api/v1/auth/login')],
+  ['demo mode disables all backend API calls', backend.includes("if (demoMode) throw new Error('Demo mode uses sample data only. Exit demo mode and sign in to use real account services.')")],
+  ['demo mode does not restore a real saved session', backend.includes('if (demoMode || !localStorage.getItem(ACCESS_KEY)) return;')],
+  ['host exposes demo mode only with an explicit query flag', index.includes('get("demo") === "1"') && index.includes('DEMO MODE · Sample data only')],
   ['real P2P send endpoint is used', backend.includes("api('/api/v1/p2p/send'")],
   ['transfer uses idempotency key', backend.includes("headers: { 'Idempotency-Key': idempotencyKey }")],
   ['recipient must be verified before transfer', backend.includes('Verify the recipient name before sending money.')],
-  ['skip-auth handler is blocked', backend.includes("window.obSkip = function () { fail(new Error('Please sign in or create an account to continue.')); };")],
+  ['skip-auth is only available in explicit demo mode', backend.includes("if (!demoMode) return fail(new Error('Please sign in or create an account to continue.'))")],
+  ['phone validation helper is defined in the auth bridge', backend.includes('function phOk(value)') && backend.includes("if (!phOk(S.ob.ph))")],
   ['Nginx cache rules cover all protected entry points', protectedPaths.every((path) => nginx.includes('location = ' + path + ' {'))],
   ['Nginx disables caching for every protected entry point', protectedPaths.every((path) => { const block = nginx.split('location = ' + path + ' {')[1]?.split(/\n    \}/)[0]; return Boolean(block && block.includes(cacheHeader) && block.includes('add_header Pragma "no-cache" always;')); })],
   ['Nginx sends legacy no-cache headers for every protected entry point', (nginx.match(/add_header Pragma "no-cache" always;/g) || []).length >= protectedPaths.length]

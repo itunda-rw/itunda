@@ -15,7 +15,7 @@
       html, body, #prototype-root { width: 100%; height: 100%; min-height: 100%; margin: 0; overflow: hidden; }
       body { background: #E9EBF0; }
       #prototype-frame { display: block; width: 100%; height: 100%; height: 100dvh; border: 0; }
-      #itunda-launch-splash { position: fixed; inset: 0; z-index: 10000; background: #fff; display: grid; place-items: center; opacity: 1; transition: opacity .28s ease; pointer-events: auto; }
+      #itunda-demo-banner { position: fixed; top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 11000; display: none; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 999px; background: #171923; color: #fff; box-shadow: 0 6px 24px rgba(0,0,0,.22); font: 600 12px/1.2 system-ui, sans-serif; white-space: nowrap; } #itunda-demo-banner button { border: 0; border-radius: 999px; background: #8F89FF; color: #121216; font: 700 12px/1 system-ui, sans-serif; padding: 8px 10px; } #itunda-launch-splash { position: fixed; inset: 0; z-index: 10000; background: #fff; display: grid; place-items: center; opacity: 1; transition: opacity .28s ease; pointer-events: auto; }
       #itunda-launch-splash.is-hidden { opacity: 0; pointer-events: none; }
       #itunda-launch-splash img { width: 100%; height: 100%; object-fit: cover; }
       @media (prefers-color-scheme: dark) { body { background: #0A0A0D; } #itunda-launch-splash { background: #090B0F; } }
@@ -29,19 +29,40 @@
         <img src="/brand/itunda-splash-light.svg" alt="" />
       </picture>
     </div>
+    <div id="itunda-demo-banner" role="status" aria-live="polite"><span>DEMO MODE · Sample data only</span><button type="button" id="itunda-exit-demo">Exit demo</button></div>
     <main id="prototype-root">
-      <iframe id="prototype-frame" src="/itunda-prototype-v197.html" title="Itunda consumer app prototype" allow="clipboard-read; clipboard-write"></iframe>
+      <iframe id="prototype-frame" title="Itunda consumer app prototype" allow="clipboard-read; clipboard-write"></iframe>
     </main>
     <script>
       (function () {
         var splash = document.getElementById("itunda-launch-splash");
         var frame = document.getElementById("prototype-frame");
+        var banner = document.getElementById("itunda-demo-banner");
+        var demoMode = new URLSearchParams(window.location.search).get("demo") === "1";
+        var enteredDemo = false;
         var hide = function () {
           if (!splash) return;
           splash.classList.add("is-hidden");
           window.setTimeout(function () { splash.remove(); }, 320);
         };
-        frame.addEventListener("load", function () { window.setTimeout(hide, 180); }, { once: true });
+        if (demoMode) {
+          banner.style.display = "flex";
+          document.getElementById("itunda-exit-demo").addEventListener("click", function () {
+            window.location.replace(window.location.pathname);
+          });
+        }
+        frame.addEventListener("load", function () {
+          if (demoMode && !enteredDemo) {
+            enteredDemo = true;
+            window.setTimeout(function () {
+              try {
+                if (frame.contentWindow && typeof frame.contentWindow.obSkip === "function") frame.contentWindow.obSkip();
+              } catch (_) {}
+            }, 80);
+          }
+          window.setTimeout(hide, 180);
+        });
+        frame.src = "/itunda-prototype-v197.html" + (demoMode ? "?demo=1" : "");
         window.setTimeout(hide, 1800);
       })();
     </script>
