@@ -75,7 +75,16 @@ jobs:
           done
           grep -q 'manifest.webmanifest' /tmp/index.html
           grep -q 'itunda-splash-light.svg' /tmp/index.html
-          echo "Customer web app and canonical launch assets are live at ${URL}"
+          curl --fail --silent --show-error --location --max-time 30 "${URL}/itunda-prototype-v186.html" > /tmp/itunda-prototype.html
+          test -s /tmp/itunda-prototype.html
+          grep -q '<title>itunda, clickable prototype v186</title>' /tmp/itunda-prototype.html
+          grep -q '<script src="/itunda-backend.js"></script>' /tmp/itunda-prototype.html
+          ! grep -Fq 'onclick="obSkip();return false">Skip (prototype)' /tmp/itunda-prototype.html
+          ! grep -Fq 'Prototype: fill a returning number' /tmp/itunda-prototype.html
+          curl --fail --silent --show-error --location --max-time 30 "${URL}/itunda-backend.js" > /tmp/itunda-backend.js
+          grep -q '/api/v1/auth/login' /tmp/itunda-backend.js
+          grep -q '/api/v1/p2p/send' /tmp/itunda-backend.js
+          echo "Customer web app, v186 prototype and real-auth bridge are live at ${URL}"
           # Deployment is intentionally triggered from the current main revision so GCP cannot remain on an older web image.
           echo "Deployed image: ${IMAGE}"
           # Federation host/provider fixes must be built from this exact main revision.
