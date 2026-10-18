@@ -225,13 +225,17 @@
     }
     const rows = liveTransactions.slice(0, 8).map(function (tx) {
       const label = String(tx.description || tx.title || tx.type || tx.reference || 'Account activity').replace(/[<>&"]/g, '');
-      const amount = Number(tx.amount || 0);
-      const credit = amount > 0 || String(tx.direction || '').toUpperCase() === 'CREDIT';
+      const rawAmount = tx.amount;
+      const amountValid = rawAmount !== null && rawAmount !== undefined && rawAmount !== '' && Number.isFinite(Number(rawAmount));
+      const amount = amountValid ? Number(rawAmount) : null;
+      const credit = amount !== null ? amount > 0 : String(tx.direction || '').toUpperCase() === 'CREDIT';
       const date = tx.createdAt || tx.created_at || tx.timestamp;
+      const dateLabel = date ? new Date(date).toLocaleDateString().replace(/[<>&"]/g, '') : 'Date unavailable';
+      const amountLabel = amount === null ? 'Amount unavailable' : (credit ? '+' : '') + fmt(Math.abs(amount)) + ' RWF';
       return '<div class="row" style="cursor:default"><div class="ico">' + (credit ? '＋' : '−') + '</div>' +
         '<div style="min-width:0;flex:1"><div class="t">' + label + '</div><div class="s">' +
-        (date ? new Date(date).toLocaleDateString().replace(/[<>&"]/g, '') : '') + '</div></div>' +
-        '<div class="r" style="color:' + (credit ? 'var(--ok)' : 'var(--tx)') + '">' + (credit ? '+' : '') + fmt(Math.abs(amount)) + ' RWF</div></div>';
+        dateLabel + '</div></div>' +
+        '<div class="r" style="color:' + (credit ? 'var(--ok)' : 'var(--tx)') + '">' + amountLabel + '</div></div>';
     }).join('');
     if (demoMode) return previousBankScreen() + '<div class="sec"><div class="sech">Demo account activity</div><div class="fine" style="padding:12px 0">Sample data only. This demo is not connected to a real account or ledger.</div></div>';
     return html + '<div class="sec"><div class="sech">Real account activity</div>' +
