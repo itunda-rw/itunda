@@ -188,7 +188,10 @@
           method: 'POST',
           body: JSON.stringify({ phoneNumber: normalizePhone(S.ob.ph), password: S.ob.pin })
         }, false);
-        if (!session.accessToken || !session.refreshToken || !session.user) throw new Error('The server returned an incomplete session.');
+        if (!session || typeof session.accessToken !== 'string' || !session.accessToken.trim() ||
+            typeof session.refreshToken !== 'string' || !session.refreshToken.trim() || !session.user || typeof session.user !== 'object') {
+          throw new Error('The server returned an incomplete session.');
+        }
       } catch (error) {
         S.ob.pin = ''; render('fade-none');
         const errorNode = document.getElementById('web-login-error');
@@ -392,7 +395,10 @@
           password: S.ob.pin, acceptedTermsIds: acceptedTermsIds
         })
       }, false);
-      if (!session.accessToken || !session.refreshToken || !session.user) throw new Error('The server returned an incomplete session.');
+      if (!session || typeof session.accessToken !== 'string' || !session.accessToken.trim() ||
+            typeof session.refreshToken !== 'string' || !session.refreshToken.trim() || !session.user || typeof session.user !== 'object') {
+          throw new Error('The server returned an incomplete session.');
+        }
       localStorage.setItem(ACCESS_KEY, session.accessToken);
       localStorage.setItem(REFRESH_KEY, session.refreshToken);
       localStorage.setItem('itunda_web_user', JSON.stringify(session.user));
