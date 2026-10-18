@@ -68,16 +68,21 @@
   async function loadAccount() {
     const results = await Promise.all([
       api('/api/v1/account'),
-      api('/api/v1/account/transactions').catch(function () { return { transactions: [] }; }),
+      api('/api/v1/account/transactions'),
       api('/api/v1/auth/profile').catch(function () { return null; })
     ]);
     const accountList = Array.isArray(results[0].accounts) ? results[0].accounts : [];
-    liveTransactions = Array.isArray(results[1].transactions) ? results[1].transactions : [];
+    if (!Array.isArray(results[1].transactions)) throw new Error('Your account transaction history could not be read. Please retry.');
+    liveTransactions = results[1].transactions;
     if (results[2] && results[2].user) liveUser = results[2].user;
     const main = accountList.find(function (a) { return String(a.type || '').toUpperCase() === 'MAIN'; }) || accountList[0];
-    if (!main) throw new Error('No account balance is available for this user yet.');
+    if (!main || main.id === undefined || main.id === null || main.id === '') throw new Error('No account is available for this user yet.');
+    const balance = main.balance;
+    if (balance === undefined || balance === null || balance === '' || !Number.isFinite(Number(balance))) {
+      throw new Error('Your account balance is unavailable. Please retry; it has not been replaced with a sample value.');
+    }
     mainAccountId = main.id;
-    S.bank = Number(main.balance || 0);
+    S.bank = Number(balance);
     S.name = [liveUser && liveUser.firstName, liveUser && liveUser.lastName].filter(Boolean).join(' ') || S.name || '';
     if (Array.isArray(S.act)) {
       S.act = liveTransactions.map(function (tx) {
