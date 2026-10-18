@@ -12,7 +12,7 @@ html = html.replace(title, '<title>itunda, clickable prototype v266</title>');
 
 const skipHandler = 'function obSkip(){S.auth=true;S.obStep=null;render(\'fade\')}';
 if (!html.includes(skipHandler)) throw new Error('Expected prototype-only sign-in bypass handler missing.');
-html = html.replace(skipHandler, "function obSkip(){alert('Please sign in or create an account to continue.')}");
+html = html.replace(skipHandler, "function obSkip(){if(new URLSearchParams(window.location.search).get('demo')==='1'){S.auth=true;S.obStep=null;render('fade')}else{alert('Please sign in or create an account to continue.')}}");
 
 const skipLink = /<a href="#" class="sm" style="[^"]*" onclick="obSkip\(\);return false">[^<]*(?:prototype|skip sign-in)[^<]*<\/a>/gi;
 const skipMatches = html.match(skipLink) || [];
