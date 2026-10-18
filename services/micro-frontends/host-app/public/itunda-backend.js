@@ -217,6 +217,7 @@
       html = html.replace(/<div class="sec"><div class="sech">Recommended for you<\/div>[\s\S]*?(?=<div class="sec"><div class="sech">Save &amp; grow<\/div>)/, '<div class="sec"><div class="sech">Recommended for you</div><div class="fine" style="padding:12px 0">Personalized recommendations are not connected to your account yet.</div></div>');
       html = html.replace(/<div class="sec"><div class="sech">Save &amp; grow<\/div>[\s\S]*?(?=<div class="sec"><div class="sech">Borrow<\/div>)/, '<div class="sec"><div class="sech">Save &amp; grow</div><div class="fine" style="padding:12px 0">Savings products, rates and goals are not connected to your account yet.</div></div>');
       html = html.replace(/<div class="sec"><div class="sech">Insights<\/div>[\s\S]*?(?=<div class="sec"><div style="font-size:14px;font-weight:800">Deposit Protection Fund)/, '<div class="sec"><div class="sech">Insights</div><div class="fine" style="padding:12px 0">Spending insights are not available until real transaction analytics are connected.</div></div>');
+      html = html.replace(/<div class="sec"><div class="sech">Borrow<\/div>[\s\S]*?(?=<div class="sec"><div class="sech">Insights<\/div>)/, '<div class="sec"><div class="sech">Borrow</div><div class="fine" style="padding:12px 0">Loan and credit products are not connected to your account yet.</div></div>');
     }
     const rows = liveTransactions.slice(0, 8).map(function (tx) {
       const label = String(tx.description || tx.title || tx.type || tx.reference || 'Account activity').replace(/[<>&"]/g, '');
