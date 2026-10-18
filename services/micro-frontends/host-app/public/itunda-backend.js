@@ -224,7 +224,11 @@
   screens.sent = function () {
     let html = previousSentScreen();
     const reference = lastTransaction && lastTransaction.referenceNumber ? String(lastTransaction.referenceNumber) : '—';
-    return html.replace('IT-20481-7', reference.replace(/[<>&"]/g, ''));
+    const feeValue = lastTransaction && lastTransaction.fee != null ? Number(lastTransaction.fee) : null;
+    const feeLabel = feeValue !== null && Number.isFinite(feeValue) && feeValue >= 0 ? fmt(feeValue) + ' RWF' : '—';
+    html = html.replace('IT-20481-7', reference.replace(/[<>&"]/g, ''));
+    // Never present the prototype's sample zero fee as a real receipt value.
+    return html.replace('0 RWF', feeLabel);
   };
   const previousProfileScreen = screens.profile;
   screens.profile = function () {
