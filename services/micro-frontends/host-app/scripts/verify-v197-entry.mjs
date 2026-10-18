@@ -38,6 +38,7 @@ const checks = [
   ['unconnected savings samples are hidden for real accounts', backend.includes('Savings products, rates and goals are not connected to your account yet.') && backend.includes('html.replace(/<div class="sec"><div class="sech">Save &amp; grow')],
   ['sample personalized recommendations are not presented as live account data', backend.includes('Personalized recommendations are not connected to your account yet.')],
   ['sample spending insights are not presented as real analytics', backend.includes('Spending insights are not available until real transaction analytics are connected.')],
+  ['sample loan and credit offers are not presented as live products', backend.includes('Loan and credit products are not connected to your account yet.')],
   ['real-account sample-data guards stay inside the non-demo branch', backend.includes('if (!demoMode) {\n      const autoTransferLabel') && backend.includes('if (demoMode) return previousBankScreen()')],
   ['real sign-in endpoint is wired', backend.includes('/api/v1/auth/login')],
   ['demo mode disables all backend API calls', backend.includes("if (demoMode) throw new Error('Demo mode uses sample data only. Exit demo mode and sign in to use real account services.')")],
