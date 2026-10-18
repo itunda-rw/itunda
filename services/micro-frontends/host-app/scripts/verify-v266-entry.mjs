@@ -32,6 +32,11 @@ const checks = [
   ['account data loads through real API endpoints', backend.includes('/api/v1/account') && backend.includes('/api/v1/account/transactions')],
   ['demo mode is explicit and disables backend API calls', backend.includes("get('demo') === '1'") && backend.includes('if (demoMode) throw new Error')],
   ['real P2P send endpoint and idempotency key remain wired', backend.includes('/api/v1/p2p/send') && backend.includes('Idempotency-Key')],
+  ['new-account registration uses the real terms and register endpoints', backend.includes('/api/v1/auth/terms') && backend.includes('/api/v1/auth/register') && backend.includes('acceptedTermsIds')],
+  ['money transfer verifies the recipient before sending', backend.includes('/api/v1/p2p/recipient?identifier=') && backend.includes('Verify the recipient name before sending money.')],
+  ['transfer requires a real session and a known account', backend.includes("if (!localStorage.getItem(ACCESS_KEY) || !mainAccountId)")],
+  ['logout clears local session and calls the real logout endpoint', backend.includes('/api/v1/auth/logout') && backend.includes("localStorage.removeItem(ACCESS_KEY)")],
+  ['saved session restoration loads real account data and is disabled in demo mode', backend.includes('async function restoreSession()') && backend.includes('if (demoMode || !localStorage.getItem(ACCESS_KEY)) return;')],
   ['Nginx disables caching for every production entry point', protectedPaths.every((path) => nginx.includes('location = ' + path + ' {') && (() => { const block = nginx.split('location = ' + path + ' {')[1]?.split(/\n    \}/)[0]; return Boolean(block && block.includes(cacheHeader) && block.includes('add_header Pragma "no-cache" always;')); })())]
 ];
 const failed = checks.filter(([, passed]) => !passed);
