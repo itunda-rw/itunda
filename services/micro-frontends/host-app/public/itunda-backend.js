@@ -77,7 +77,10 @@
       api('/api/v1/p2p/auto-transfers').catch(function () { return null; })
     ]);
     const accountList = Array.isArray(results[0].accounts) ? results[0].accounts : [];
-    liveTransactions = Array.isArray(results[1].transactions) ? results[1].transactions : [];
+    if (!results[1] || !Array.isArray(results[1].transactions)) {
+      throw new Error('Transaction history is unavailable because the server returned an invalid response. Please retry.');
+    }
+    liveTransactions = results[1].transactions;
     if (results[2] && results[2].user) liveUser = results[2].user;
     const autoTransfers = results[3] && results[3].autoTransfers;
     liveAutoTransferCount = Array.isArray(autoTransfers)
