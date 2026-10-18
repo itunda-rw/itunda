@@ -93,15 +93,23 @@
     S.bank = Number(balanceValue);
     S.name = [liveUser && liveUser.firstName, liveUser && liveUser.lastName].filter(Boolean).join(' ') || S.name || '';
     if (Array.isArray(S.act)) {
-      S.act = liveTransactions.map(function (tx) {
+      // The prototype's compact activity rows require a numeric amount. Incomplete
+      // ledger records stay visible in the dedicated bank activity list, where their
+      // amount/date can be explicitly labeled unavailable instead of fabricated here.
+      S.act = liveTransactions.filter(function (tx) {
+        return tx.amount !== null && tx.amount !== undefined && tx.amount !== '' && Number.isFinite(Number(tx.amount));
+      }).map(function (tx) {
         const outgoing = Boolean((liveUser && tx.senderId === liveUser.id) || tx.fromAccountId === mainAccountId);
-        const amount = Number(tx.amount || 0) * (outgoing ? -1 : 1);
+        const amount = Number(tx.amount) * (outgoing ? -1 : 1);
         const type = String(tx.type || '').toUpperCase();
         const icon = type === 'INTEREST' ? 'coin' : (type === 'BILL' || type === 'AIRTIME' || type === 'PAYMENT' ? 'bill' : (outgoing ? 'send' : 'up'));
-        const date = tx.createdAt ? new Date(tx.createdAt) : new Date();
-        const status = String(tx.status || 'COMPLETED').toLowerCase();
+        const dateValue = tx.createdAt || tx.created_at || tx.timestamp;
+        const date = dateValue ? new Date(dateValue) : null;
+        const dateValid = date && Number.isFinite(date.getTime());
+        const dateLabel = dateValid ? date.toLocaleDateString() : 'Date unavailable';
+        const status = String(tx.status || 'unknown').toLowerCase();
         const label = outgoing ? 'Paid' : 'Received';
-        return [icon, String(tx.description || tx.type || 'Account activity'), label + ' · ' + date.toLocaleDateString(), amount, status, date.getTime()];
+        return [icon, String(tx.description || tx.type || 'Account activity'), label + ' · ' + dateLabel, amount, status, dateValid ? date.getTime() : 0];
       });
     }
   }
