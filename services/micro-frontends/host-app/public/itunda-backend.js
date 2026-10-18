@@ -230,6 +230,25 @@
     // Never present the prototype's sample zero fee as a real receipt value.
     return html.replace('0 RWF', feeLabel);
   };
+  // The prototype's share action embeds a sample reference and sample recipient
+  // names. Build the shared receipt from the real transfer response instead.
+  const previousShareReceipt = window.shareRcpt;
+  window.shareRcpt = function () {
+    if (demoMode) return previousShareReceipt();
+    const reference = lastTransaction && lastTransaction.referenceNumber ? String(lastTransaction.referenceNumber) : '—';
+    const recipient = String(S.to || '').replace(/[<>&"]/g, '');
+    const message = 'Sent ' + fmt(S.sentAmt) + ' RWF to ' + recipient + ' on itunda. Ref ' +
+      reference.replace(/[<>&"]/g, '');
+    if (!navigator.clipboard || !navigator.clipboard.writeText) {
+      return fail(new Error('Sharing is unavailable on this browser. You can copy the reference from the receipt.'));
+    }
+    navigator.clipboard.writeText(message).then(function () {
+      if (typeof window.toast === 'function') window.toast(t('cp'));
+    }).catch(function () {
+      fail(new Error('Could not copy the transfer receipt. Please try again.'));
+    });
+  };
+
   const previousProfileScreen = screens.profile;
   screens.profile = function () {
     let html = previousProfileScreen();
