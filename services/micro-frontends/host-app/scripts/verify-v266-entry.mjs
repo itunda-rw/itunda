@@ -30,6 +30,8 @@ const checks = [
   ['prototype phone-fill shortcut and sample phone handler are absent', !/onclick="phDemo\(\);return false">Prototype: fill a returning number<\/a>/.test(prototype) && !prototype.includes(demoHandler)],
   ['existing-account sign-in remains wired to the real backend', backend.includes('/api/v1/auth/login')],
   ['account data loads through real API endpoints', backend.includes('/api/v1/account') && backend.includes('/api/v1/account/transactions')],
+  ['transaction API failures are not silently converted into an empty history', backend.includes("api('/api/v1/account/transactions'),") && !backend.includes("api('/api/v1/account/transactions').catch(function () { return { transactions: [] }; })")],
+  ['missing or invalid account balances are not fabricated as zero', backend.includes('Your account balance is unavailable.') && backend.includes('S.bank = Number(balance);') && !backend.includes('S.bank = Number(main.balance || 0);')],
   ['demo mode is explicit and disables backend API calls', backend.includes("get('demo') === '1'") && backend.includes('if (demoMode) throw new Error')],
   ['real P2P send endpoint and idempotency key remain wired', backend.includes('/api/v1/p2p/send') && backend.includes('Idempotency-Key')],
   ['new-account registration uses the real terms and register endpoints', backend.includes('/api/v1/auth/terms') && backend.includes('/api/v1/auth/register') && backend.includes('acceptedTermsIds')],
