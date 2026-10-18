@@ -430,12 +430,20 @@
         headers: { 'Idempotency-Key': transferIdempotencyKey },
         body: JSON.stringify({ recipient: recipient, amount: amount, description: 'Transfer from itunda web app', fromAccountId: mainAccountId })
       });
-      // Clear only after the server returns success; network failures can safely retry this intent.
+      // The API contract returns success + the ledger transaction. A malformed 2xx
+      // response must not be rendered as a confirmed receipt; retain the idempotency
+      // key so the same intent can be safely retried/replayed.
+      if (!result || result.success !== true || !result.transaction) {
+        throw new Error('Transfer may have been submitted, but confirmation details are unavailable. Check your activity before retrying.');
+      }
       transferIdempotencyKey = null;
       transferIntentFingerprint = null;
       S.sentAmt = amount;
-      lastTransaction = result.transaction || null;
-      if (result.newBalance !== undefined) S.bank = Number(result.newBalance);
+      lastTransaction = result.transaction;
+      const returnedBalance = Number(result.newBalance);
+      if (result.newBalance !== null && result.newBalance !== undefined && result.newBalance !== '' && Number.isFinite(returnedBalance)) {
+        S.bank = returnedBalance;
+      }
       // Confirmation is the commit point. A later refresh failure must not make a
       // completed transfer look unsuccessful to the customer.
       await loadAccount().catch(function (refreshError) {
