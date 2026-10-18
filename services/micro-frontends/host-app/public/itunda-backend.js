@@ -239,6 +239,30 @@
     previousObBack();
   };
 
+  // Keep the compact home/activity surfaces honest when the ledger endpoint is down.
+  // A failed history request must not look like a genuinely empty account.
+  const previousHomeScreen = screens.home;
+  screens.home = function () {
+    let html = previousHomeScreen();
+    if (!demoMode && transactionHistoryUnavailable) {
+      const notice = '<div class="sec"><div class="fine" style="padding:12px 0">Recent activity is temporarily unavailable. Your account balance loaded successfully. <button type="button" class="chip" onclick="backendRetryTransactions()">Retry activity</button></div></div>';
+      html = html.replace('<div class="sec">', notice + '<div class="sec">');
+    }
+    return html;
+  };
+  const previousActivityScreen = screens.activity;
+  screens.activity = function () {
+    let html = previousActivityScreen();
+    if (!demoMode) {
+      html = html.replace('<div class="pad fine" style="padding-top:20px">Sample data for this prototype.</div>', '');
+      if (transactionHistoryUnavailable) {
+        html = html.replace('Nothing here yet.', 'Transaction history is temporarily unavailable. Please retry.');
+        html = html.replace('</div><div class="pad fine" style="padding-top:20px">Sample data for this prototype.</div>', '</div><div class="pad" style="padding-top:16px"><button type="button" class="btn sec2" onclick="backendRetryTransactions()">Retry transaction history</button></div>');
+      }
+    }
+    return html;
+  };
+
   const previousBankScreen = screens.bank;
   screens.bank = function () {
     let html = previousBankScreen();
