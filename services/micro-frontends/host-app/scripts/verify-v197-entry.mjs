@@ -46,6 +46,7 @@ const checks = [
   ['sample spending insights are not presented as real analytics', backend.includes('Spending insights are not available until real transaction analytics are connected.')],
   ['sample loan and credit offers are not presented as live products', backend.includes('Loan and credit products are not connected to your account yet.')],
   ['real-account profile never falls back to sample identity fields', backend.includes("html = html.replace('Amina Uwase', 'Name unavailable')") && backend.includes("html = html.replace('078 ••• 214', 'Phone unavailable')")],
+  ['authenticated home name never falls back to prototype sample identity', backend.includes("S.name = [liveUser && liveUser.firstName, liveUser && liveUser.lastName].filter(Boolean).join(' ') || String(liveUser && liveUser.name || '').trim();") && !backend.includes(".join(' ') || S.name || ''")],
   ['missing profile response is shown as unavailable rather than sample data', backend.includes('Your account profile could not be loaded. Please retry.')],
   ['real-account sample-data guards stay inside the non-demo branch', backend.includes('if (!demoMode) {\n      const autoTransferLabel') && backend.includes('if (demoMode) return previousBankScreen()')],
   ['real sign-in endpoint is wired', backend.includes('/api/v1/auth/login')],
