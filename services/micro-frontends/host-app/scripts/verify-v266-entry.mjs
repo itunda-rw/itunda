@@ -27,7 +27,7 @@ const checks = [
   ['page title and canonical prototype version are v266', prototype.includes('<title>itunda, clickable prototype v266</title>') && prototype.includes("document.title=document.title.replace(/v\\d+/,'v266')")],
   ['production backend bridge is loaded', prototype.includes(bridge)],
   ['prototype skip-sign-in shortcut is absent', !/onclick="obSkip\(\);return false">[^<]*(?:prototype|skip sign-in)/i.test(prototype) && !prototype.includes(skipHandler)],
-  ['prototype phone-fill shortcut and sample phone handler are absent', !prototype.includes('Prototype: fill a returning number') && !prototype.includes(demoHandler)],
+  ['prototype phone-fill shortcut and sample phone handler are absent', !/onclick="phDemo\(\);return false">Prototype: fill a returning number<\/a>/.test(prototype) && !prototype.includes(demoHandler)],
   ['existing-account sign-in remains wired to the real backend', backend.includes('/api/v1/auth/login')],
   ['account data loads through real API endpoints', backend.includes('/api/v1/account') && backend.includes('/api/v1/account/transactions')],
   ['demo mode is explicit and disables backend API calls', backend.includes("get('demo') === '1'") && backend.includes('if (demoMode) throw new Error')],
