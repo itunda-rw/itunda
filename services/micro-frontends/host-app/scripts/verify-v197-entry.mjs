@@ -62,7 +62,7 @@ const checks = [
   ['host exposes demo mode only with an explicit query flag', index.includes('get("demo") === "1"') && index.includes('DEMO MODE · Sample data only')],
   ['real P2P send endpoint is used', backend.includes("api('/api/v1/p2p/send'")],
   ['transfer retries reuse the same idempotency key for an unchanged intent', backend.includes("headers: { 'Idempotency-Key': transferIdempotencyKey }") && backend.includes('transferIntentFingerprint !== intentFingerprint') && backend.includes('transferIdempotencyKey = null;')],
-  ['malformed transfer success responses do not create a confirmed receipt', backend.includes("result.success !== true || !result.transaction") && backend.includes('Transfer may have been submitted, but confirmation details are unavailable.')],
+  ['malformed transfer success responses do not create a confirmed receipt', backend.includes("result.success !== true || !result.transaction || typeof result.transaction !== 'object' || Array.isArray(result.transaction)") && backend.includes("!String(result.transaction.id || result.transaction.referenceNumber || '').trim()") && backend.includes('Transfer may have been submitted, but confirmation details are unavailable.')],
   ['invalid returned transfer balances cannot poison the displayed balance', backend.includes('Number.isFinite(returnedBalance)') && backend.includes('S.bank = returnedBalance;')],
   ['transfer uses idempotency key', backend.includes("headers: { 'Idempotency-Key': transferIdempotencyKey }")],
   ['recipient must be verified before transfer', backend.includes('Verify the recipient name before sending money.')],
