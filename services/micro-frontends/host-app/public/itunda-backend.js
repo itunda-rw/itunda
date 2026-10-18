@@ -68,7 +68,7 @@
   async function loadAccount() {
     const results = await Promise.all([
       api('/api/v1/account'),
-      api('/api/v1/account/transactions').catch(function () { return { transactions: [] }; }),
+      api('/api/v1/account/transactions'),
       api('/api/v1/auth/profile').catch(function () { return null; })
     ]);
     const accountList = Array.isArray(results[0].accounts) ? results[0].accounts : [];
