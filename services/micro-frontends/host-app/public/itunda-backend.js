@@ -94,7 +94,7 @@
     }
     mainAccountId = main.id;
     S.bank = Number(balanceValue);
-    S.name = [liveUser && liveUser.firstName, liveUser && liveUser.lastName].filter(Boolean).join(' ') || S.name || '';
+    S.name = [liveUser && liveUser.firstName, liveUser && liveUser.lastName].filter(Boolean).join(' ') || String(liveUser && liveUser.name || '').trim();
     if (Array.isArray(S.act)) {
       // The prototype's compact activity rows require a numeric amount. Incomplete
       // ledger records stay visible in the dedicated bank activity list, where their
