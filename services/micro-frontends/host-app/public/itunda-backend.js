@@ -69,7 +69,7 @@
   async function loadAccount() {
     const results = await Promise.all([
       api('/api/v1/account'),
-      api('/api/v1/account/transactions').catch(function () { return { transactions: [] }; }),
+      api('/api/v1/account/transactions'),
       api('/api/v1/auth/profile').catch(function () { return null; }),
       api('/api/v1/p2p/auto-transfers').catch(function () { return null; })
     ]);
