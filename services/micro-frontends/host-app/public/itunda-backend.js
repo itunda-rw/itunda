@@ -6,6 +6,7 @@
   const REFRESH_KEY = 'itunda_web_refresh_token';
   let mainAccountId = null;
   let liveTransactions = [];
+  let transactionLoadError = null;
   let liveUser = null;
   let lastTransaction = null;
   let termsCatalog = [];
@@ -68,12 +69,19 @@
   async function loadAccount() {
     const results = await Promise.all([
       api('/api/v1/account'),
-      api('/api/v1/account/transactions'),
+      api('/api/v1/account/transactions').then(function (body) {
+        if (!Array.isArray(body.transactions)) throw new Error('Your account transaction history could not be read.');
+        transactionLoadError = null;
+        return body;
+      }).catch(function (error) {
+        transactionLoadError = error.message || 'Transaction history is temporarily unavailable.';
+        console.warn('[itunda backend] Transaction history unavailable:', transactionLoadError);
+        return null;
+      }),
       api('/api/v1/auth/profile').catch(function () { return null; })
     ]);
     const accountList = Array.isArray(results[0].accounts) ? results[0].accounts : [];
-    if (!Array.isArray(results[1].transactions)) throw new Error('Your account transaction history could not be read. Please retry.');
-    liveTransactions = results[1].transactions;
+    liveTransactions = results[1] ? results[1].transactions : [];
     if (results[2] && results[2].user) liveUser = results[2].user;
     const main = accountList.find(function (a) { return String(a.type || '').toUpperCase() === 'MAIN'; }) || accountList[0];
     if (!main || main.id === undefined || main.id === null || main.id === '') throw new Error('No account is available for this user yet.');
@@ -221,8 +229,11 @@
         '<div class="r" style="color:' + (credit ? 'var(--ok)' : 'var(--tx)') + '">' + (credit ? '+' : '') + fmt(Math.abs(amount)) + ' RWF</div></div>';
     }).join('');
     if (demoMode) return previousBankScreen() + '<div class="sec"><div class="sech">Demo account activity</div><div class="fine" style="padding:12px 0">Sample data only. This demo is not connected to a real account or ledger.</div></div>';
+    const activityState = transactionLoadError
+      ? '<div class="fine" role="status" style="padding:12px 0">Transaction history could not be loaded. Your account balance is unchanged. ' + String(transactionLoadError).replace(/[<>&"]/g, '') + '</div><button class="chip" onclick="backendRetryAccount()">Retry loading account</button>'
+      : (rows || '<div class="fine" style="padding:12px 0">No account transactions yet.</div>');
     return html + '<div class="sec"><div class="sech">Real account activity</div>' +
-      (rows || '<div class="fine" style="padding:12px 0">No account transactions yet.</div>') +
+      activityState +
       '<div class="fine" style="padding-top:8px">Loaded from your itunda account ledger.</div></div>';
   };
   const previousSentScreen = screens.sent;
