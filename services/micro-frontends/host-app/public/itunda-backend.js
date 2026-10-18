@@ -6,6 +6,7 @@
   const REFRESH_KEY = 'itunda_web_refresh_token';
   let mainAccountId = null;
   let liveTransactions = [];
+  let liveAutoTransferCount = null;
   let liveUser = null;
   let lastTransaction = null;
   let termsCatalog = [];
@@ -69,11 +70,16 @@
     const results = await Promise.all([
       api('/api/v1/account'),
       api('/api/v1/account/transactions').catch(function () { return { transactions: [] }; }),
-      api('/api/v1/auth/profile').catch(function () { return null; })
+      api('/api/v1/auth/profile').catch(function () { return null; }),
+      api('/api/v1/p2p/auto-transfers').catch(function () { return null; })
     ]);
     const accountList = Array.isArray(results[0].accounts) ? results[0].accounts : [];
     liveTransactions = Array.isArray(results[1].transactions) ? results[1].transactions : [];
     if (results[2] && results[2].user) liveUser = results[2].user;
+    const autoTransfers = results[3] && results[3].autoTransfers;
+    liveAutoTransferCount = Array.isArray(autoTransfers)
+      ? autoTransfers.filter(function (transfer) { return String(transfer.status || '').toUpperCase() === 'ACTIVE'; }).length
+      : null;
     const main = accountList.find(function (a) { return String(a.type || '').toUpperCase() === 'MAIN'; }) || accountList[0];
     if (!main) throw new Error('No account balance is available for this user yet.');
     mainAccountId = main.id;
@@ -204,7 +210,11 @@
 
   const previousBankScreen = screens.bank;
   screens.bank = function () {
-    const html = previousBankScreen();
+    let html = previousBankScreen();
+    if (!demoMode) {
+      const autoTransferLabel = liveAutoTransferCount === null ? 'Unavailable' : liveAutoTransferCount + ' active';
+      html = html.replace('2 active', autoTransferLabel);
+    }
     const rows = liveTransactions.slice(0, 8).map(function (tx) {
       const label = String(tx.description || tx.title || tx.type || tx.reference || 'Account activity').replace(/[<>&"]/g, '');
       const amount = Number(tx.amount || 0);
