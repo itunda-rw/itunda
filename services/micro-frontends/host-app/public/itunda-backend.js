@@ -293,7 +293,8 @@
       html = html.replace('March 2025', formatProfileDate(liveUser.createdAt));
       html = html.replace('2,000,000 RWF', 'Unavailable');
       const verificationStatus = liveUser.kycVerified === true ? 'Verified' : liveUser.kycVerified === false ? 'Not verified' : 'Unavailable';
-      html = html.replace('Verified', verificationStatus);
+      const verificationLabel = verificationStatus === 'Verified' ? 'Identity verified' : verificationStatus === 'Not verified' ? 'Identity not verified' : 'Identity status unavailable';
+      html = html.replace('Identity verified', verificationLabel);
       html = html.replace('Amina Uwase', fullName || 'Name unavailable');
     } else {
       html = html.replace('Amina Uwase', 'Name unavailable');
