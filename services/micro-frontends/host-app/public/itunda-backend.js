@@ -392,7 +392,18 @@
       localStorage.setItem(REFRESH_KEY, session.refreshToken);
       localStorage.setItem('itunda_web_user', JSON.stringify(session.user));
       liveUser = session.user;
-      await loadAccount();
+      try {
+        await loadAccount();
+      } catch (error) {
+        // Registration succeeded and the session is real. Do not report account
+        // creation failure or invite a duplicate registration when only data loading failed.
+        S.ob.pin = '';
+        S.obStep = 'backendLogin';
+        render('fade-none');
+        showAccountLoadRetry('Your account was created and you are signed in, but account data could not be loaded. Retry without creating another account or entering your PIN again.');
+        console.warn('[itunda backend] Account created; initial account load failed:', error.message);
+        return;
+      }
       S.auth = true; S.obStep = null; S.stack = []; S.tab = 'home'; S.first = true;
       render('fade'); window.toast('Your itunda account is ready');
     } catch (error) {
