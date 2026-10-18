@@ -484,7 +484,7 @@
       // The API contract returns success + the ledger transaction. A malformed 2xx
       // response must not be rendered as a confirmed receipt; retain the idempotency
       // key so the same intent can be safely retried/replayed.
-      if (!result || result.success !== true || !result.transaction || typeof result.transaction !== 'object' || Array.isArray(result.transaction) || !String(result.transaction.id || result.transaction.referenceNumber || '').trim()) {
+      if (!result || result.success !== true || !result.transaction || typeof result.transaction !== 'object' || Array.isArray(result.transaction) || !String(result.transaction.id || result.transaction.referenceNumber || '').trim() || result.transaction.amount === null || result.transaction.amount === undefined || result.transaction.amount === '' || !Number.isFinite(Number(result.transaction.amount)) || Number(result.transaction.amount) !== amount) {
         throw new Error('Transfer may have been submitted, but confirmation details are unavailable. Check your activity before retrying.');
       }
       transferIdempotencyKey = null;
