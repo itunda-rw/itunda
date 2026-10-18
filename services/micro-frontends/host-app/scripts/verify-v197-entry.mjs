@@ -38,7 +38,7 @@ const checks = [
   ['demo mode does not restore a real saved session', backend.includes('if (demoMode || !localStorage.getItem(ACCESS_KEY)) return;')],
   ['host exposes demo mode only with an explicit query flag', index.includes('get("demo") === "1"') && index.includes('DEMO MODE · Sample data only')],
   ['real P2P send endpoint is used', backend.includes("api('/api/v1/p2p/send'")],
-  ['transfer uses idempotency key', backend.includes("headers: { 'Idempotency-Key': idempotencyKey }")],
+  ['transfer uses stable idempotency key for the same intent', backend.includes("headers: { 'Idempotency-Key': transferIdempotencyKey }") && backend.includes('transferIntentFingerprint !== intentFingerprint')],
   ['recipient must be verified before transfer', backend.includes('Verify the recipient name before sending money.')],
   ['skip-auth is only available in explicit demo mode', backend.includes("if (!demoMode) return fail(new Error('Please sign in or create an account to continue.'))")],
   ['phone validation helper is defined in the auth bridge', backend.includes('function phOk(value)') && backend.includes("if (!phOk(S.ob.ph))")],
