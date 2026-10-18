@@ -33,6 +33,8 @@ const checks = [
   ['production prototype loads backend bridge', prototype.includes('<script src="/itunda-backend.js"></script>')],
   ['prototype-only sign-in bypass links are absent', !/onclick="obSkip\(\);return false">[^<]*prototype/i.test(prototype)],
   ['prototype phone-fill shortcut and handler are absent', !prototype.includes('Prototype: fill a returning number') && !prototype.includes("window.phDemo=()=>{S.ob.ph='788123456';render('fade-none')};")],
+  ['auto-transfer count is sourced from the authenticated API', backend.includes("api('/api/v1/p2p/auto-transfers').catch(function () { return null; })") && backend.includes("String(transfer.status || '').toUpperCase() === 'ACTIVE'")],
+  ['unavailable auto-transfer data is not replaced with the prototype count', backend.includes("liveAutoTransferCount === null ? 'Unavailable' : liveAutoTransferCount + ' active'") && backend.includes("html.replace('2 active', autoTransferLabel)")],
   ['real sign-in endpoint is wired', backend.includes('/api/v1/auth/login')],
   ['demo mode disables all backend API calls', backend.includes("if (demoMode) throw new Error('Demo mode uses sample data only. Exit demo mode and sign in to use real account services.')")],
   ['demo mode does not restore a real saved session', backend.includes('if (demoMode || !localStorage.getItem(ACCESS_KEY)) return;')],
