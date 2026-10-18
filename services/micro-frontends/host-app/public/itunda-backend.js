@@ -256,7 +256,7 @@
     if (!demoMode) {
       html = html.replace('<div class="pad fine" style="padding-top:20px">Sample data for this prototype.</div>', '');
       if (transactionHistoryUnavailable) {
-        html = html.replace('Nothing here yet.', 'Transaction history is temporarily unavailable. Please retry.');
+        html = html.replace('Nothing here yet.', 'Transaction history is temporarily unavailable. <button type="button" class="chip" onclick="backendRetryTransactions()">Retry</button>');
         html = html.replace('</div><div class="pad fine" style="padding-top:20px">Sample data for this prototype.</div>', '</div><div class="pad" style="padding-top:16px"><button type="button" class="btn sec2" onclick="backendRetryTransactions()">Retry transaction history</button></div>');
       }
     }
