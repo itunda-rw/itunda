@@ -11,6 +11,10 @@
   let termsCatalog = [];
   let busy = false;
   let transferBusy = false;
+  // Reuse one idempotency key for retries of the same transfer intent. If the
+  // response is lost after the server commits, a retry must not become a new send.
+  let transferIdempotencyKey = null;
+  let transferIntentFingerprint = null;
   let refreshInFlight = null;
 
   function normalizePhone(value) {
@@ -380,13 +384,21 @@
     }
     transferBusy = true;
     try {
-      const idempotencyKey = window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() :
-        'web-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+      const intentFingerprint = JSON.stringify({ recipient: recipient, amount: amount, fromAccountId: mainAccountId });
+      if (!transferIdempotencyKey || transferIntentFingerprint !== intentFingerprint) {
+        transferIdempotencyKey = window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() :
+          'web-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+        transferIntentFingerprint = intentFingerprint;
+      }
       const result = await api('/api/v1/p2p/send', {
         method: 'POST',
-        headers: { 'Idempotency-Key': idempotencyKey },
+        headers: { 'Idempotency-Key': transferIdempotencyKey },
         body: JSON.stringify({ recipient: recipient, amount: amount, description: 'Transfer from itunda web app', fromAccountId: mainAccountId })
       });
+      // A successful HTTP response means this intent has a final result. Clear its
+      // key so a later, deliberately initiated transfer gets a fresh idempotency key.
+      transferIdempotencyKey = null;
+      transferIntentFingerprint = null;
       S.sentAmt = amount;
       lastTransaction = result.transaction || null;
       if (result.newBalance !== undefined) S.bank = Number(result.newBalance);
