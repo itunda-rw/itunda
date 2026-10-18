@@ -276,6 +276,12 @@
     return fail(new Error('Changing your profile name is not connected to a supported account service yet. No changes were saved.'));
   };
 
+  function formatProfileDate(value) {
+    if (value === null || value === undefined || value === '') return 'Unavailable';
+    const date = new Date(value);
+    return Number.isFinite(date.getTime()) ? date.toLocaleDateString() : 'Unavailable';
+  }
+
   const previousProfileScreen = screens.profile;
   screens.profile = function () {
     let html = previousProfileScreen();
@@ -284,7 +290,7 @@
       const fullName = [liveUser.firstName, liveUser.lastName].filter(Boolean).join(' ').replace(/[<>&"]/g, '');
       html = html.replace('078 ••• 214', String(liveUser.phoneNumber || 'Phone unavailable').replace(/[<>&"]/g, ''));
       html = html.replace('Your details are sample data.', 'Your details are loaded from your itunda account.');
-      html = html.replace('March 2025', liveUser.createdAt ? new Date(liveUser.createdAt).toLocaleDateString() : 'Unavailable');
+      html = html.replace('March 2025', formatProfileDate(liveUser.createdAt));
       html = html.replace('2,000,000 RWF', 'Unavailable');
       const verificationStatus = liveUser.kycVerified === true ? 'Verified' : liveUser.kycVerified === false ? 'Not verified' : 'Unavailable';
       html = html.replace('Verified', verificationStatus);
