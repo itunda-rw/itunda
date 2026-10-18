@@ -52,6 +52,11 @@
             });
             if (!refreshed.ok) return false;
             const session = await refreshed.json();
+            if (!session || typeof session.accessToken !== 'string' || !session.accessToken.trim() ||
+                typeof session.refreshToken !== 'string' || !session.refreshToken.trim()) {
+              console.warn('[itunda backend] Token refresh returned an incomplete session.');
+              return false;
+            }
             localStorage.setItem(ACCESS_KEY, session.accessToken);
             localStorage.setItem(REFRESH_KEY, session.refreshToken);
             return true;
