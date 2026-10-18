@@ -6,6 +6,7 @@
   const REFRESH_KEY = 'itunda_web_refresh_token';
   let mainAccountId = null;
   let liveTransactions = [];
+  let transactionHistoryUnavailable = false;
   let liveAutoTransferCount = null;
   let liveUser = null;
   let lastTransaction = null;
@@ -75,17 +76,21 @@
     return body;
   }
   async function loadAccount() {
+    // Account availability must not depend on the transaction-history service.
+    // Keep history failures explicit so the UI never turns an API error into an empty ledger.
     const results = await Promise.all([
       api('/api/v1/account'),
-      api('/api/v1/account/transactions'),
+      api('/api/v1/account/transactions').catch(function (error) {
+        console.warn('[itunda backend] Transaction history unavailable:', error.message);
+        return null;
+      }),
       api('/api/v1/auth/profile').catch(function () { return null; }),
       api('/api/v1/p2p/auto-transfers').catch(function () { return null; })
     ]);
     const accountList = Array.isArray(results[0].accounts) ? results[0].accounts : [];
-    if (!results[1] || !Array.isArray(results[1].transactions)) {
-      throw new Error('Transaction history is unavailable because the server returned an invalid response. Please retry.');
-    }
-    liveTransactions = results[1].transactions;
+    const transactionResponse = results[1];
+    transactionHistoryUnavailable = !transactionResponse || !Array.isArray(transactionResponse.transactions);
+    liveTransactions = transactionHistoryUnavailable ? [] : transactionResponse.transactions;
     if (results[2] && results[2].user) liveUser = results[2].user;
     const autoTransfers = results[3] && results[3].autoTransfers;
     liveAutoTransferCount = Array.isArray(autoTransfers)
@@ -264,9 +269,44 @@
     }).join('');
     if (demoMode) return previousBankScreen() + '<div class="sec"><div class="sech">Demo account activity</div><div class="fine" style="padding:12px 0">Sample data only. This demo is not connected to a real account or ledger.</div></div>';
     return html + '<div class="sec"><div class="sech">Real account activity</div>' +
-      (rows || '<div class="fine" style="padding:12px 0">No account transactions yet.</div>') +
+      (transactionHistoryUnavailable
+        ? '<div class="fine" style="padding:12px 0">Transaction history is temporarily unavailable. Your account balance loaded, but activity could not be refreshed. <button type="button" class="chip" onclick="backendRetryTransactions()">Retry</button></div>'
+        : (rows || '<div class="fine" style="padding:12px 0">No account transactions yet.</div>')) +
       '<div class="fine" style="padding-top:8px">Loaded from your itunda account ledger.</div></div>';
   };
+  window.backendRetryTransactions = async function () {
+    if (demoMode) return;
+    try {
+      const response = await api('/api/v1/account/transactions');
+      if (!response || !Array.isArray(response.transactions)) {
+        throw new Error('Transaction history returned an invalid response.');
+      }
+      liveTransactions = response.transactions;
+      transactionHistoryUnavailable = false;
+      if (Array.isArray(S.act)) {
+        S.act = liveTransactions.filter(function (tx) {
+          return tx.amount !== null && tx.amount !== undefined && tx.amount !== '' && Number.isFinite(Number(tx.amount));
+        }).map(function (tx) {
+          const outgoing = Boolean((liveUser && tx.senderId === liveUser.id) || tx.fromAccountId === mainAccountId);
+          const amount = Number(tx.amount) * (outgoing ? -1 : 1);
+          const type = String(tx.type || '').toUpperCase();
+          const icon = type === 'INTEREST' ? 'coin' : (type === 'BILL' || type === 'AIRTIME' || type === 'PAYMENT' ? 'bill' : (outgoing ? 'send' : 'up'));
+          const dateValue = tx.createdAt || tx.created_at || tx.timestamp;
+          const date = dateValue ? new Date(dateValue) : null;
+          const dateValid = date && Number.isFinite(date.getTime());
+          const dateLabel = dateValid ? date.toLocaleDateString() : 'Date unavailable';
+          const status = String(tx.status || 'unknown').toLowerCase();
+          return [icon, String(tx.description || tx.type || 'Account activity'), (outgoing ? 'Paid' : 'Received') + ' · ' + dateLabel, amount, status, dateValid ? date.getTime() : 0];
+        });
+      }
+      render('fade-none');
+    } catch (error) {
+      transactionHistoryUnavailable = true;
+      fail(new Error('Transaction history is still unavailable. Your balance is unchanged; please retry.'));
+      render('fade-none');
+    }
+  };
+
   const previousSentScreen = screens.sent;
   screens.sent = function () {
     let html = previousSentScreen();
