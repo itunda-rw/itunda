@@ -12,6 +12,9 @@
   let termsCatalog = [];
   let busy = false;
   let transferBusy = false;
+  // Preserve one idempotency key across retries of the same transfer intent.
+  let transferIdempotencyKey = null;
+  let transferIntentFingerprint = null;
   let refreshInFlight = null;
 
   function normalizePhone(value) {
@@ -408,13 +411,20 @@
     }
     transferBusy = true;
     try {
-      const idempotencyKey = window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() :
-        'web-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+      const intentFingerprint = JSON.stringify({ recipient: recipient, amount: amount, fromAccountId: mainAccountId });
+      if (!transferIdempotencyKey || transferIntentFingerprint !== intentFingerprint) {
+        transferIdempotencyKey = window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() :
+          'web-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+        transferIntentFingerprint = intentFingerprint;
+      }
       const result = await api('/api/v1/p2p/send', {
         method: 'POST',
-        headers: { 'Idempotency-Key': idempotencyKey },
+        headers: { 'Idempotency-Key': transferIdempotencyKey },
         body: JSON.stringify({ recipient: recipient, amount: amount, description: 'Transfer from itunda web app', fromAccountId: mainAccountId })
       });
+      // Clear only after the server returns success; network failures can safely retry this intent.
+      transferIdempotencyKey = null;
+      transferIntentFingerprint = null;
       S.sentAmt = amount;
       lastTransaction = result.transaction || null;
       if (result.newBalance !== undefined) S.bank = Number(result.newBalance);
