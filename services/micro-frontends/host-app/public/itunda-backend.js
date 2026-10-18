@@ -241,7 +241,10 @@
       const amount = amountValid ? Number(rawAmount) : null;
       const credit = amount !== null ? amount > 0 : String(tx.direction || '').toUpperCase() === 'CREDIT';
       const date = tx.createdAt || tx.created_at || tx.timestamp;
-      const dateLabel = date ? new Date(date).toLocaleDateString().replace(/[<>&"]/g, '') : 'Date unavailable';
+      const parsedDate = date ? new Date(date) : null;
+      const dateLabel = parsedDate && Number.isFinite(parsedDate.getTime())
+        ? parsedDate.toLocaleDateString().replace(/[<>&"]/g, '')
+        : 'Date unavailable';
       const amountLabel = amount === null ? 'Amount unavailable' : (credit ? '+' : '') + fmt(Math.abs(amount)) + ' RWF';
       return '<div class="row" style="cursor:default"><div class="ico">' + (credit ? '＋' : '−') + '</div>' +
         '<div style="min-width:0;flex:1"><div class="t">' + label + '</div><div class="s">' +
