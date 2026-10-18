@@ -265,6 +265,17 @@
     const reference = lastTransaction && lastTransaction.referenceNumber ? String(lastTransaction.referenceNumber) : '—';
     return html.replace('IT-20481-7', reference.replace(/[<>&"]/g, ''));
   };
+  // Profile-name editing is prototype-only: the canonical backend currently exposes
+  // profile reads and specific profile subresources, but no supported name-update API.
+  // Never report a local-only edit as persisted for a signed-in account.
+  const prototypeSaveProfileName = window.pSave;
+  window.pSave = function () {
+    if (demoMode && typeof prototypeSaveProfileName === 'function') {
+      return prototypeSaveProfileName.apply(this, arguments);
+    }
+    return fail(new Error('Changing your profile name is not connected to a supported account service yet. No changes were saved.'));
+  };
+
   const previousProfileScreen = screens.profile;
   screens.profile = function () {
     let html = previousProfileScreen();
@@ -274,11 +285,14 @@
       html = html.replace('078 ••• 214', String(liveUser.phoneNumber || 'Phone unavailable').replace(/[<>&"]/g, ''));
       html = html.replace('Your details are sample data.', 'Your details are loaded from your itunda account.');
       html = html.replace('March 2025', liveUser.createdAt ? new Date(liveUser.createdAt).toLocaleDateString() : 'Unavailable');
+      html = html.replace('2,000,000 RWF', 'Unavailable');
       html = html.replace('Amina Uwase', fullName || 'Name unavailable');
     } else {
       html = html.replace('Amina Uwase', 'Name unavailable');
       html = html.replace('078 ••• 214', 'Phone unavailable');
       html = html.replace('March 2025', 'Unavailable');
+      html = html.replace('2,000,000 RWF', 'Unavailable');
+      html = html.replace('Verified', 'Unavailable');
       html = html.replace('Your details are sample data.', 'Your account profile could not be loaded. Please retry.');
     }
     return html;
