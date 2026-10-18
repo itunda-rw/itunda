@@ -286,6 +286,8 @@
       html = html.replace('Your details are sample data.', 'Your details are loaded from your itunda account.');
       html = html.replace('March 2025', liveUser.createdAt ? new Date(liveUser.createdAt).toLocaleDateString() : 'Unavailable');
       html = html.replace('2,000,000 RWF', 'Unavailable');
+      const verificationStatus = liveUser.kycVerified === true ? 'Verified' : liveUser.kycVerified === false ? 'Not verified' : 'Unavailable';
+      html = html.replace('Verified', verificationStatus);
       html = html.replace('Amina Uwase', fullName || 'Name unavailable');
     } else {
       html = html.replace('Amina Uwase', 'Name unavailable');
