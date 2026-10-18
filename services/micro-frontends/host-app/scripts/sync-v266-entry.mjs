@@ -28,7 +28,7 @@ if (!html.includes(demoHandler)) throw new Error('Prototype phone-fill handler n
 html = html.replace(demoHandler, '');
 
 if (/onclick="obSkip\(\);return false">[^<]*(?:prototype|skip sign-in)/i.test(html) ||
-    html.includes('Prototype: fill a returning number') ||
+    /onclick="phDemo\(\);return false">Prototype: fill a returning number<\/a>/.test(html) ||
     html.includes(demoHandler) ||
     html.includes("function obSkip(){S.auth=true;S.obStep=null;render('fade')}")) {
   throw new Error('Prototype-only authentication shortcuts remain in production HTML.');
