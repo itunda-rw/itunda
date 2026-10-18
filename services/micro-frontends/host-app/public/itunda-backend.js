@@ -150,15 +150,24 @@
     if (busy) return;
     busy = true;
     const errorNode = document.getElementById('web-login-error');
+    const fromLogin = Boolean(errorNode);
     if (errorNode) errorNode.textContent = 'Loading your account…';
     try {
       await loadAccount();
-      S.auth = true; S.obStep = null; S.stack = []; S.tab = 'home'; S.first = true;
-      render('fade');
-      window.toast('Your account is ready');
+      if (fromLogin) {
+        S.auth = true; S.obStep = null; S.stack = []; S.tab = 'home'; S.first = true;
+        render('fade');
+      } else {
+        render('fade-none');
+      }
+      window.toast(transactionLoadError ? 'Account loaded; transaction history is still unavailable' : 'Your account is up to date');
     } catch (error) {
-      showAccountLoadRetry('You are signed in, but account data is still unavailable. Please retry.');
-      console.warn('[itunda backend] Account load after sign-in failed:', error.message);
+      if (fromLogin) {
+        showAccountLoadRetry('You are signed in, but account data is still unavailable. Please retry.');
+      } else {
+        fail(new Error('Account data could not be refreshed. Your displayed balance has not been replaced. ' + (error.message || 'Please try again.')));
+      }
+      console.warn('[itunda backend] Account refresh failed:', error.message);
     } finally { busy = false; }
   };
   window.backendLogin = async function () {
