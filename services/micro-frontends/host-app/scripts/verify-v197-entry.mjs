@@ -55,6 +55,7 @@ const checks = [
   ['real-account sample-data guards stay inside the non-demo branch', backend.includes('if (!demoMode) {\n      const autoTransferLabel') && backend.includes('if (demoMode) return previousBankScreen()')],
   ['real sign-in endpoint is wired', backend.includes('/api/v1/auth/login')],
   ['incomplete token-refresh responses are rejected before replacing stored credentials', backend.includes("typeof session.accessToken !== 'string'") && backend.includes("typeof session.refreshToken !== 'string'") && backend.includes("Token refresh returned an incomplete session.")],
+  ['login and registration reject non-string or empty session tokens', (backend.match(/typeof session\.accessToken !== 'string'/g) || []).length >= 3 && (backend.match(/typeof session\.refreshToken !== 'string'/g) || []).length >= 3 && backend.includes("typeof session.user !== 'object'")],
   ['registration success is not misreported when initial account loading fails', backend.includes("Your account was created and you are signed in, but account data could not be loaded.") && backend.includes("[itunda backend] Account created; initial account load failed:") && backend.includes("S.obStep = 'backendLogin';") && backend.includes('showAccountLoadRetry(')],
   ['demo mode disables all backend API calls', backend.includes("if (demoMode) throw new Error('Demo mode uses sample data only. Exit demo mode and sign in to use real account services.')")],
   ['demo mode does not restore a real saved session', backend.includes('if (demoMode || !localStorage.getItem(ACCESS_KEY)) return;')],
