@@ -82,8 +82,12 @@
       : null;
     const main = accountList.find(function (a) { return String(a.type || '').toUpperCase() === 'MAIN'; }) || accountList[0];
     if (!main) throw new Error('No account balance is available for this user yet.');
+    const balanceValue = main.balance;
+    if (balanceValue === null || balanceValue === undefined || balanceValue === '' || !Number.isFinite(Number(balanceValue))) {
+      throw new Error('Account balance is unavailable. Please retry.');
+    }
     mainAccountId = main.id;
-    S.bank = Number(main.balance || 0);
+    S.bank = Number(balanceValue);
     S.name = [liveUser && liveUser.firstName, liveUser && liveUser.lastName].filter(Boolean).join(' ') || S.name || '';
     if (Array.isArray(S.act)) {
       S.act = liveTransactions.map(function (tx) {
