@@ -49,6 +49,7 @@ const checks = [
   ['authenticated home name never falls back to prototype sample identity', backend.includes("S.name = [liveUser && liveUser.firstName, liveUser && liveUser.lastName].filter(Boolean).join(' ') || String(liveUser && liveUser.name || '').trim();") && !backend.includes(".join(' ') || S.name || ''")],
   ['real-account profile name save cannot report a local-only edit as persisted', backend.includes('const prototypeSaveProfileName = window.pSave;') && backend.includes('Changing your profile name is not connected to a supported account service yet. No changes were saved.') && backend.includes('if (demoMode && typeof prototypeSaveProfileName')],
   ['prototype profile limit is not presented as a real account limit', backend.includes("html = html.replace('2,000,000 RWF', 'Unavailable');")],
+  ['profile verification label reflects backend KYC status rather than prototype default', backend.includes("liveUser.kycVerified === true ? 'Verified' : liveUser.kycVerified === false ? 'Not verified' : 'Unavailable'")],
   ['missing profile response is shown as unavailable rather than sample data', backend.includes('Your account profile could not be loaded. Please retry.')],
   ['real-account sample-data guards stay inside the non-demo branch', backend.includes('if (!demoMode) {\n      const autoTransferLabel') && backend.includes('if (demoMode) return previousBankScreen()')],
   ['real sign-in endpoint is wired', backend.includes('/api/v1/auth/login')],
