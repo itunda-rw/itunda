@@ -243,12 +243,18 @@
   const previousProfileScreen = screens.profile;
   screens.profile = function () {
     let html = previousProfileScreen();
+    if (demoMode) return html;
     if (liveUser) {
       const fullName = [liveUser.firstName, liveUser.lastName].filter(Boolean).join(' ').replace(/[<>&"]/g, '');
-      html = html.replace('078 ••• 214', String(liveUser.phoneNumber || '').replace(/[<>&"]/g, ''));
+      html = html.replace('078 ••• 214', String(liveUser.phoneNumber || 'Phone unavailable').replace(/[<>&"]/g, ''));
       html = html.replace('Your details are sample data.', 'Your details are loaded from your itunda account.');
-      html = html.replace('March 2025', liveUser.createdAt ? new Date(liveUser.createdAt).toLocaleDateString() : '—');
-      if (fullName) html = html.replace('Amina Uwase', fullName);
+      html = html.replace('March 2025', liveUser.createdAt ? new Date(liveUser.createdAt).toLocaleDateString() : 'Unavailable');
+      html = html.replace('Amina Uwase', fullName || 'Name unavailable');
+    } else {
+      html = html.replace('Amina Uwase', 'Name unavailable');
+      html = html.replace('078 ••• 214', 'Phone unavailable');
+      html = html.replace('March 2025', 'Unavailable');
+      html = html.replace('Your details are sample data.', 'Your account profile could not be loaded. Please retry.');
     }
     return html;
   };
