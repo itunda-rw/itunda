@@ -13,7 +13,7 @@ const demoHandler = "window.phDemo=()=>{S.ob.ph='788123456';render('fade-none')}
 const bridge = '<script src="/itunda-backend.js"></script>';
 const transform = (source) => {
   let html = source.replace('<title>itunda, clickable prototype v256</title>', '<title>itunda, clickable prototype v266</title>');
-  html = html.replace(skipHandler, "function obSkip(){alert('Please sign in or create an account to continue.')}");
+  html = html.replace(skipHandler, "function obSkip(){if(new URLSearchParams(window.location.search).get('demo')==='1'){S.auth=true;S.obStep=null;render('fade')}else{alert('Please sign in or create an account to continue.')}}");
   html = html.replace(/<a href="#" class="sm" style="[^"]*" onclick="obSkip\(\);return false">[^<]*(?:prototype|skip sign-in)[^<]*<\/a>/gi, '');
   html = html.replace(/<a href="#" class="sm" style="color:var\(--lk\);font-weight:700;display:inline-block;margin-top:6px" onclick="phDemo\(\);return false">Prototype: fill a returning number<\/a>/, '');
   html = html.replace(demoHandler, '');
