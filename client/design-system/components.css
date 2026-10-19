@@ -36,7 +36,8 @@
 .tds-field{display:grid;gap:8px}.tds-label{font-size:13px;font-weight:var(--itunda-weight-bold);color:var(--itunda-color-text-strong)}
 .tds-input,.tds-select,.tds-textarea{width:100%;min-height:52px;padding:0 16px;border:1px solid var(--itunda-color-border-strong);border-radius:var(--itunda-radius-md);background:var(--itunda-color-surface);color:var(--itunda-color-text);font:inherit;outline:0;transition:border var(--itunda-motion-fast) var(--itunda-ease),box-shadow var(--itunda-motion-fast) var(--itunda-ease)}
 .tds-textarea{padding:14px 16px;min-height:120px;resize:vertical}.tds-input::placeholder,.tds-textarea::placeholder{color:var(--itunda-color-text-subtle)}
-.tds-input:focus,.tds-select:focus,.tds-textarea:focus{border-color:var(--itunda-color-brand);box-shadow:0 0 0 4px color-mix(in srgb,var(--itunda-color-brand) 18%,transparent)}
+.tds-input:focus,.tds-select:focus,.tds-textarea:focus{border-color:var(--itunda-color-brand)}
+.tds-input:focus-visible,.tds-select:focus-visible,.tds-textarea:focus-visible{box-shadow:0 0 0 4px color-mix(in srgb,var(--itunda-color-brand) 22%,transparent)}
 .tds-help{font-size:12px;color:var(--itunda-color-text-muted)}.tds-error{font-size:12px;color:var(--itunda-color-error)}
 .tds-checkbox,.tds-radio{accent-color:var(--itunda-color-brand)}
 
@@ -82,7 +83,7 @@
 .tds-menu{min-width:220px;padding:var(--tds-space-2);border:1px solid var(--tds-border);border-radius:var(--tds-radius-16);background:var(--tds-surface);box-shadow:var(--tds-shadow-lg);display:grid;gap:2px}
 .tds-menu-item{min-height:var(--tds-control-md);padding:0 var(--tds-space-3);border:0;border-radius:var(--tds-radius-12);background:transparent;color:var(--tds-text);display:flex;align-items:center;gap:var(--tds-space-3);font:inherit;text-align:left;cursor:pointer}
 .tds-menu-item:hover{background:var(--tds-surface-sunken)}
-.tds-menu-item:focus-visible{outline:none;box-shadow:0 0 0 3px var(--tds-focus)}
+.tds-menu-item:focus-visible{outline:3px solid var(--itunda-focus);outline-offset:2px;box-shadow:none}
 .tds-menu-item[aria-disabled="true"],.tds-menu-item:disabled{opacity:.45;cursor:not-allowed}
 .tds-menu-separator{height:1px;background:var(--tds-border);margin:var(--tds-space-2) 0}
 .tds-toast{display:flex;align-items:flex-start;gap:var(--tds-space-3);max-width:min(420px,calc(100vw - 32px));padding:var(--tds-space-4);border:1px solid var(--tds-border);border-radius:var(--tds-radius-16);background:var(--tds-surface);box-shadow:var(--tds-shadow-lg);color:var(--tds-text)}
@@ -105,3 +106,6 @@
 .tds-dialog[open]{animation:tds-dialog-in 220ms var(--tds-ease-out)}
 @keyframes tds-dialog-in{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.tds-dialog[open]{animation:none}}
+
+/* Explicit high-contrast focus fallback for keyboard and assistive-technology users. */
+@media(forced-colors:active){.tds-focus:focus-visible,.tds-button:focus-visible,.tds-tab:focus-visible,.tds-input:focus-visible,.tds-select:focus-visible,.tds-textarea:focus-visible,.tds-link:focus-visible,.tds-icon-button:focus-visible,.tds-menu-item:focus-visible{outline:2px solid Highlight;outline-offset:3px;box-shadow:none}}
