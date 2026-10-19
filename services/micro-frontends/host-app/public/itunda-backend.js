@@ -783,10 +783,10 @@
     window.mpOpenPoi = function (id) {
       const place = Array.isArray(window.POI) ? window.POI.find(function (p) { return p.id === id; }) : null;
       if (place && Number.isFinite(Number(place.latitude)) && Number.isFinite(Number(place.longitude))) {
-        window.itundaMapsSelectedPlace = Object.freeze({
+        selectRealDestination({
           displayName: place.n, latitude: Number(place.latitude), longitude: Number(place.longitude)
         });
-        loadSelectedRoute(window.itundaMapsSelectedPlace, 'bus');
+        return;
       }
       return originalOpenPoi(id);
     };
