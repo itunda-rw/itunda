@@ -22,7 +22,7 @@ const transform = (source) => {
 const cacheHeader = 'no-store, no-cache, must-revalidate, max-age=0';
 const protectedPaths = ['/', '/index.html', '/itunda-prototype-v266.html', '/itunda-backend.js'];
 const checks = [
-  ['generated v266 page preserves canonical prototype content with required production transformations', prototype.length > reference.length - 2000 && prototype.includes('<title>itunda, clickable prototype v266</title>') && prototype.includes(bridge) && !prototype.includes(skipHandler) && !prototype.includes(demoHandler) && !/onclick="obSkip\\(\\);return false">[^<]*(?:prototype|skip sign-in)/i.test(prototype) && !/onclick="phDemo\\(\\);return false">Prototype: fill a returning number<\\/a>/.test(prototype)],
+  ['generated v266 page preserves canonical prototype content with required production transformations', prototype.length > reference.length - 2000 && prototype.includes('<title>itunda, clickable prototype v266</title>') && prototype.includes(bridge) && !prototype.includes(skipHandler) && !prototype.includes(demoHandler) && !/onclick="obSkip\\(\\);return false">[^<]*(?:prototype|skip sign-in)/i.test(prototype) && !/onclick="phDemo\\(\\);return false">Prototype: fill a returning number<\/a>/.test(prototype)],
   ['consumer app iframe points to v266', index.includes('frame.src = "/itunda-prototype-v266.html"') && !index.includes('frame.src = "/itunda-prototype-v197.html"')],
   ['page title and canonical prototype version are v266', prototype.includes('<title>itunda, clickable prototype v266</title>') && prototype.includes("document.title=document.title.replace(/v\\d+/,'v266')")],
   ['production backend bridge is loaded', prototype.includes(bridge)],
