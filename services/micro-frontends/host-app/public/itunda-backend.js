@@ -905,9 +905,19 @@
           ? await window.itundaBackend.marketplace.search(query, { page: 0, size: 30 })
           : category === 'Mine'
             ? await window.itundaBackend.marketplace.myListings({ page: 0, size: 30 })
-            : await window.itundaBackend.marketplace.browse({ page: 0, size: 30, category: category && category !== 'All' ? ({ Phones: 'Electronics', Home: 'Home & Kitchen', Kids: 'Kids & Baby', Sports: 'Sports & Outdoors' }[category] || category) : undefined });
+            : await window.itundaBackend.marketplace.browse({ page: 0, size: 30 });
       if (request !== marketplaceRequest) return;
-      const records = Array.isArray(response && response.listings) ? response.listings : Array.isArray(response && response.favorites) ? response.favorites : [];
+      let records = Array.isArray(response && response.listings) ? response.listings : [];
+      if (Array.isArray(response && response.favorites)) {
+        records = await Promise.all(response.favorites.map(async function (favorite) {
+          try {
+            const detail = await window.itundaBackend.marketplace.listing(favorite.listingId);
+            return detail && detail.listing ? detail.listing : null;
+          } catch (_) { return null; }
+        }));
+        records = records.filter(Boolean);
+      }
+      if (request !== marketplaceRequest) return;
       marketplaceRealByUiId = Object.create(null);
       marketplaceUiId = 0;
       H.items = records.map(function (record) { const item = marketplaceUiListing(record); if (category === 'Mine') item.who = 'You'; return item; });
