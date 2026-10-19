@@ -29,7 +29,7 @@ if (skipCount < 1) {
 }
 html = html.split(skipLabel).join(signInLabel);
 // Remove any additional prototype-only skip link regardless of its label wording.
-html = html.replace(/<a\\b[^>]*onclick=[\"']obSkip\\(\\);return false[\"'][^>]*>[^<]*prototype[^<]*<\\/a>/gi, '');
+html = html.replace(/<a\b[^>]*onclick=["']obSkip\(\);return false["'][^>]*>[^<]*prototype[^<]*<\/a>/gi, '');
 
 // Remove the prefilled sample phone shortcut and its handler from the production entry.
 const demoShortcut = /<a href="#" class="sm" style="color:var\(--lk\);font-weight:700;display:inline-block;margin-top:6px" onclick="phDemo\(\);return false">Prototype: fill a returning number<\/a>/;
