@@ -61,6 +61,8 @@ export type TranslationKey =
   | 'login.next'
   | 'login.enterPin'
   | 'login.checkingDevice'
+  | 'login.networkError'
+  | 'login.serverError'
   // Real second slice (2026-08-08): account overview, itunda's own second-highest-traffic
   // screen (the one every user lands on right after login) -- following the exact phased
   // rollout named in docs/DESIGN_REFERENCES.md Section 19's own "real next steps" list.

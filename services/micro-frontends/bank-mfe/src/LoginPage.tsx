@@ -50,7 +50,12 @@ export default function LoginPage({ onLogin, onCreateAccount }: { onLogin: () =>
       onLogin();
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(err.message);
+        // Server failures are not caused by the user's PIN. Keep the explanation
+        // actionable and avoid leaking internal exception details into the UI.
+        setError(err.status >= 500 ? t('login.serverError') : (err.message || t('common.actionError')));
+      } else if (err instanceof TypeError) {
+        // fetch() commonly throws TypeError when the device cannot reach the API.
+        setError(t('login.networkError'));
       } else {
         setError(t('common.actionError'));
       }
