@@ -837,6 +837,18 @@
   };
   window.itundaBackend.marketplace = {
     categories: function () { return api('/api/v1/marketplace/categories'); },
+    createListing: function (listing) {
+      if (!listing || typeof listing !== 'object') return Promise.reject(new Error('Listing details are required.'));
+      const title = String(listing.title || '').trim();
+      const description = String(listing.description || '').trim();
+      const price = Number(listing.price);
+      const category = String(listing.category || '').trim();
+      if (!title || title.length > 160) return Promise.reject(new Error('Enter a title up to 160 characters.'));
+      if (!description || description.length > 5000) return Promise.reject(new Error('Enter a description up to 5,000 characters.'));
+      if (!Number.isFinite(price) || price <= 0) return Promise.reject(new Error('Enter a price greater than zero.'));
+      if (!category) return Promise.reject(new Error('Choose a listing category.'));
+      return api('/api/v1/marketplace/listings', { method: 'POST', body: JSON.stringify({ title: title, description: description, price: price, category: category }) });
+    },
     browse: function (options) { return api('/api/v1/marketplace/listings' + queryString(options)); },
     search: function (query, options) {
       const q = String(query || '').trim();
@@ -998,13 +1010,48 @@
       favoriteBusy[id] = false;
     }
   };
-  const prototypeHdPostGo = window.hdPostGo;
-  window.hdPostGo = function () {
-    if (S.hd === 'market') {
-      fail(new Error('Publishing listings is not connected to a verified create-listing API flow yet. Nothing was published.'));
+  const prototypeHdPost = window.hdPost;
+  window.hdPost = function () {
+    if (S.hd !== 'market') {
+      if (typeof prototypeHdPost === 'function') return prototypeHdPost();
       return;
     }
-    if (typeof prototypeHdPostGo === 'function') return prototypeHdPostGo();
+    document.getElementById('layer').innerHTML =
+      '<div class="sheetbg" onclick="closeSheet()"></div><div class="sheet">' +
+      '<div class="h1" style="font-size:22px;line-height:30px;margin-bottom:8px">Sell something</div>' +
+      '<div class="lab" style="margin-top:6px">Title</div><input class="in" id="hdt" maxlength="160" placeholder="What are you selling?" style="font-size:17px;height:46px">' +
+      '<div class="lab">Description</div><textarea class="in" id="hdd" maxlength="5000" placeholder="Describe condition, pickup and details" style="height:100px;padding-top:12px;resize:vertical"></textarea>' +
+      '<div class="lab">Price (RWF)</div><input class="in" id="hdp" inputmode="numeric" type="number" min="1" placeholder="25,000" style="font-size:17px;height:46px">' +
+      '<div class="lab">Category</div><select class="in" id="hdcategory" style="font-size:17px;height:46px"><option value="Electronics">Electronics</option><option value="Furniture">Furniture</option><option value="Home & Kitchen">Home &amp; Kitchen</option><option value="Fashion">Fashion</option><option value="Kids & Baby">Kids &amp; Baby</option><option value="Sports & Outdoors">Sports &amp; Outdoors</option><option value="Other">Other</option></select>' +
+      '<button class="btn" id="hdpostsubmit" style="margin-top:20px" onclick="hdPostGo()">Publish listing</button></div>';
+  };
+  window.hdPostGo = async function () {
+    if (S.hd !== 'market') {
+      if (typeof prototypeHdPostGo === 'function') return prototypeHdPostGo();
+      return;
+    }
+    const title = String((document.getElementById('hdt') || {}).value || '').trim();
+    const description = String((document.getElementById('hdd') || {}).value || '').trim();
+    const price = Number((document.getElementById('hdp') || {}).value);
+    const category = String((document.getElementById('hdcategory') || {}).value || '').trim();
+    const button = document.getElementById('hdpostsubmit');
+    if (!title || !description || !Number.isFinite(price) || price <= 0 || !category) {
+      fail(new Error('Enter a title, description, valid price and category.'));
+      return;
+    }
+    if (button) { button.disabled = true; button.textContent = 'Publishing…'; }
+    try {
+      await window.itundaBackend.marketplace.createListing({ title: title, description: description, price: price, category: category });
+      closeSheet();
+      S.mkCat = 'All';
+      S.mkQ = '';
+      await loadRealMarketplace('', 'All');
+      render('fade-none');
+      toast('Listing published');
+    } catch (error) {
+      if (button) { button.disabled = false; button.textContent = 'Publish listing'; }
+      fail(error);
+    }
   };
   const prototypeHdChat = window.hdChat;
   window.hdChat = function (type, id) {
