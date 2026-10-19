@@ -730,17 +730,25 @@ export default function MapView() {
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = query.trim();
-    if (!trimmed) return;
-    searchRequestIdRef.current += 1;
+    if (trimmed.length < 2) {
+      setSearchResults(null);
+      setError(null);
+      return;
+    }
+    // Keep explicit submit and debounced typing on the same latest-request-wins
+    // contract. A slow response for an older query must never replace newer results.
+    const requestId = ++searchRequestIdRef.current;
     setSearching(true);
     setError(null);
     try {
       const results = await searchPlaces(trimmed);
-      setSearchResults(results);
+      if (searchRequestIdRef.current === requestId) setSearchResults(results);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('maps.searchError'));
+      if (searchRequestIdRef.current === requestId) {
+        setError(err instanceof ApiError ? err.message : t('maps.searchError'));
+      }
     } finally {
-      setSearching(false);
+      if (searchRequestIdRef.current === requestId) setSearching(false);
     }
   };
 
@@ -1443,10 +1451,15 @@ export default function MapView() {
           })}
         </div>
 
-        {(searchResults !== null || error) && (
+        {(searchResults !== null || error || (searching && query.trim().length >= 2)) && (
           <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px', maxHeight: '160px', overflowY: 'auto', boxShadow: 'var(--itunda-shadow-sm)' }}>
-            {searchResults !== null && (searchResults.length === 0 ? (
-              <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', padding: '8px' }}>No real places found for that search.</p>
+            {searching && query.trim().length >= 2 && (
+              <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', padding: '8px' }} role="status" aria-live="polite">
+                {t('maps.searching')}
+              </p>
+            )}
+            {!searching && searchResults !== null && (searchResults.length === 0 ? (
+              <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', padding: '8px' }}>{t('maps.searchEmpty')}</p>
             ) : (
               searchResults.map((place, i) => (
                 <button
