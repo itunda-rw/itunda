@@ -877,7 +877,7 @@
   }
   function marketplaceCategory(value) {
     const v = String(value || '').toLowerCase();
-    const known = { electronics: 'Electronics', phones: 'Phones', home: 'Home', fashion: 'Fashion', kids: 'Kids', sports: 'Sports' };
+    const known = { electronics: 'Electronics', phones: 'Electronics', home: 'Home & Kitchen', fashion: 'Fashion', kids: 'Kids & Baby', sports: 'Sports & Outdoors', furniture: 'Furniture', beauty: 'Beauty & Health', books: 'Books & Media', toys: 'Toys & Games', pets: 'Pet Supplies', vehicles: 'Vehicles', other: 'Other' };
     return known[v] || String(value || 'Other');
   }
   function marketplaceUiListing(listing) {
@@ -904,7 +904,7 @@
         ? await window.itundaBackend.marketplace.search(query, { page: 0, size: 30 })
         : category === 'Mine'
           ? await window.itundaBackend.marketplace.myListings({ page: 0, size: 30 })
-          : await window.itundaBackend.marketplace.browse({ page: 0, size: 30, category: category && category !== 'All' ? String(category).toUpperCase().replace(/[^A-Z0-9]+/g, '_') : undefined });
+          : await window.itundaBackend.marketplace.browse({ page: 0, size: 30, category: category && category !== 'All' ? ({ Phones: 'Electronics', Home: 'Home & Kitchen', Kids: 'Kids & Baby', Sports: 'Sports & Outdoors' }[category] || category) : undefined });
       if (request !== marketplaceRequest) return;
       const records = Array.isArray(response && response.listings) ? response.listings : [];
       marketplaceRealByUiId = Object.create(null);
