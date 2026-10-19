@@ -41,10 +41,11 @@ if (!html.includes(demoHandler)) {
 }
 html = html.replace(demoHandler, '');
 
-if (html.includes('Skip (prototype)') ||
-    html.includes('Prototype: fill a returning number') ||
+if (html.includes(skipLabel) ||
+    /onclick="obSkip\(\);return false"/i.test(html) ||
+    html.includes(demoShortcut.source.replace(/^\\?/, '')) ||
     html.includes(demoHandler) ||
-    /onclick="obSkip\(\);return false">[^<]*prototype/i.test(html)) {
+    /onclick="phDemo\(\);return false"/i.test(html)) {
   throw new Error('Prototype-only authentication shortcuts remain in production HTML.');
 }
 html = html.replace('</body>', bridge + '</body>');
