@@ -129,6 +129,7 @@ function AiChatBubble({ message }: { message: AiChatMessage }) {
 
 export function TalkAiChatThread({ onBack }: { onBack: () => void }) {
   const [messages, setMessages] = useState<AiChatMessage[] | null>(null);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   const showSkeleton = useDeferredLoading(messages === null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
@@ -143,11 +144,15 @@ export function TalkAiChatThread({ onBack }: { onBack: () => void }) {
   const [olderMessagesHasMore, setOlderMessagesHasMore] = useState(false);
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
 
-  useEffect(() => {
+  const loadHistory = () => {
+    setHistoryError(null);
+    setMessages(null);
     fetchAiChatHistory(0)
-      .then((r) => { setMessages(r.messages.reverse()); setOlderMessagesHasMore(r.page + 1 < r.totalPages); })
-      .catch(() => setMessages([]));
-  }, []);
+      .then((r) => { setMessages(r.messages.reverse()); setHistoryPage(0); setOlderMessagesHasMore(r.page + 1 < r.totalPages); })
+      .catch((err) => setHistoryError(err instanceof ApiError ? err.message : 'Could not load chat history. Check your connection and try again.'));
+  };
+
+  useEffect(() => { loadHistory(); }, []);
 
   const loadOlderMessages = () => {
     const nextPage = historyPage + 1;
@@ -182,8 +187,9 @@ export function TalkAiChatThread({ onBack }: { onBack: () => void }) {
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100svh - 180px)' }}>
       <ThreadHeader title="itunda AI" subtitle="Real self-hosted assistant, short answers only" onBack={onBack} />
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingBottom: '8px' }}>
-        {messages === null && showSkeleton && <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />}
-        {messages?.length === 0 && (
+        {historyError && <ErrorCard message={historyError} onRetry={loadHistory} />}
+        {!historyError && messages === null && showSkeleton && <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />}
+        {!historyError && messages?.length === 0 && (
           <EmptyState message="Ask itunda AI anything about the app. Replies are short and come from a small self-hosted model." />
         )}
         {olderMessagesHasMore && (

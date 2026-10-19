@@ -52,11 +52,7 @@ struct MerchantOrdersView: View {
     var body: some View {
         Group {
             if let error {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(error).foregroundColor(.red).font(.subheadline)
-                    Button("Retry") { Task { await load() } }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                ErrorCardView(error, onRetry: { Task { await load() } })
                 // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
                 // a lone error state.
                 .padding(20)
@@ -140,12 +136,15 @@ struct MerchantOrdersView: View {
 
 struct MerchantReturnQueueView: View {
     @State private var requests: [OrderReturnRequestDto]?
+    @State private var loadError: String?
     @State private var error: String?
     @State private var busyId: String?
 
     var body: some View {
         Group {
-            if let error {
+            if let loadError {
+                ErrorCardView(loadError, onRetry: { Task { await load() } })
+            } else if let error {
                 Text(error).foregroundColor(.red).font(.footnote)
             } else if let requests {
                 let open = requests.filter { $0.status == "REQUESTED" }
@@ -196,11 +195,13 @@ struct MerchantReturnQueueView: View {
     private func load() async {
         do {
             requests = try await NetworkClient.shared.getMerchantReturnQueue().returnRequests
+            loadError = nil
             error = nil
         } catch NetworkError.httpError(let statusCode) where statusCode == 404 {
             requests = []
+            loadError = nil
         } catch {
-            self.error = "Could not load return requests."
+            loadError = "Could not load return requests."
         }
     }
 
@@ -238,11 +239,7 @@ struct MyCommerceOrdersView: View {
             MyReturnRequestsView()
             Group {
                 if let error {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(error).foregroundColor(.red).font(.subheadline)
-                        Button("Retry") { Task { await load() } }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    ErrorCardView(error, onRetry: { Task { await load() } })
                     // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
                     // a lone error state.
                     .padding(20)

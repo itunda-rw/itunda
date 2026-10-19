@@ -365,11 +365,7 @@ public struct CommerceShopContent: View {
                         )
 
                         if let error {
-                            VStack(alignment: .leading, spacing: 10) {
-                                Text(error).foregroundColor(.red).font(.subheadline)
-                                Button("Retry") { Task { await loadMerchants() } }
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                            ErrorCardView(error, onRetry: { Task { await loadMerchants() } })
                             .padding(.vertical, 10)
                         } else if merchants == nil {
                             SkeletonBlock(height: 120)

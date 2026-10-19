@@ -87,7 +87,7 @@ private struct Grow31SavingsListContent: View {
     var body: some View {
         VStack(spacing: 10) {
             if let error {
-                Grow31SavingsErrorCard(message: error, onRetry: onRetry)
+                ErrorCardView(error, onRetry: onRetry)
             } else if !loaded {
                 ProgressView().frame(maxWidth: .infinity).padding(40)
             } else if plans.isEmpty {
@@ -134,7 +134,7 @@ private struct Grow31SavingsPlanRow: View {
                     let bonus = Grow31SavingsConstants.bonusRate(forStreak: plan.longestStreak)
                     Text(bonus > 0 ? "+\(Int(bonus))% bonus locked in" : "Save 3 days in a row for a bonus")
                         .font(.caption2).bold()
-                        .foregroundColor(bonus > 0 ? .green : IDS.Colors.textTertiary)
+                        .foregroundColor(bonus > 0 ? IDS.Colors.success : IDS.Colors.textTertiary)
                 }
             }
             .padding(.vertical, 10)
@@ -169,21 +169,6 @@ private struct Grow31SavingsProgressBar: View {
     }
 }
 
-private struct Grow31SavingsErrorCard: View {
-    let message: String
-    let onRetry: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(message).font(.caption).foregroundColor(.red)
-            Button("Retry", action: onRetry).font(.caption).bold().foregroundColor(IDS.Colors.brand)
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(IDS.Colors.card)
-        .cornerRadius(14).idsCardBorder(cornerRadius: 14)
-    }
-}
 
 // MARK: - Detail
 
@@ -249,7 +234,7 @@ private struct Grow31SavingsDetailContent: View {
                         HStack {
                             Text("Streak bonus (longest run)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             Spacer()
-                            Text(bonus > 0 ? "+\(Int(bonus))%" : "Not unlocked yet").font(.caption).bold().foregroundColor(bonus > 0 ? .green : IDS.Colors.textPrimary)
+                            Text(bonus > 0 ? "+\(Int(bonus))%" : "Not unlocked yet").font(.caption).bold().foregroundColor(bonus > 0 ? IDS.Colors.success : IDS.Colors.textPrimary)
                         }
                         if let totalInterestPaid = plan.totalInterestPaid {
                             HStack {
@@ -308,7 +293,7 @@ private struct Grow31SavingsDetailContent: View {
                                     .disabled(submitting)
                                 } else {
                                     Text("You've already saved today -- come back tomorrow to keep your streak.")
-                                        .font(.caption).bold().foregroundColor(.green)
+                                        .font(.caption).bold().foregroundColor(IDS.Colors.success)
                                 }
                                 Button(action: { confirmingCancel = true }) {
                                     Text("Cancel plan (early withdrawal)")

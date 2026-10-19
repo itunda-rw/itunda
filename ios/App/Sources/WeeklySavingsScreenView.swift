@@ -86,7 +86,7 @@ private struct WeeklySavingsListContent: View {
     var body: some View {
         VStack(spacing: 10) {
             if let error {
-                WeeklySavingsErrorCard(message: error, onRetry: onRetry)
+                ErrorCardView(error, onRetry: onRetry)
             } else if !loaded {
                 ProgressView().frame(maxWidth: .infinity).padding(40)
             } else if plans.isEmpty {
@@ -132,7 +132,7 @@ private struct WeeklySavingsPlanRow: View {
                     Spacer()
                     Text(plan.status == "ACTIVE" ? (plan.streakBroken ? "Streak broken -- bonus forfeited" : "On streak -- bonus on track") : statusLabel(plan))
                         .font(.caption2).bold()
-                        .foregroundColor(plan.status == "ACTIVE" && plan.streakBroken ? .red : (plan.status == "ACTIVE" ? .green : IDS.Colors.textTertiary))
+                        .foregroundColor(plan.status == "ACTIVE" && plan.streakBroken ? .red : (plan.status == "ACTIVE" ? IDS.Colors.success : IDS.Colors.textTertiary))
                 }
             }
             .padding(.vertical, 10)
@@ -170,21 +170,6 @@ private struct WeeklySavingsProgressBar: View {
     }
 }
 
-private struct WeeklySavingsErrorCard: View {
-    let message: String
-    let onRetry: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(message).font(.caption).foregroundColor(.red)
-            Button("Retry", action: onRetry).font(.caption).bold().foregroundColor(IDS.Colors.brand)
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(IDS.Colors.card)
-        .cornerRadius(14).idsCardBorder(cornerRadius: 14)
-    }
-}
 
 // MARK: - Detail
 
@@ -207,7 +192,7 @@ private struct WeeklySavingsDetailContent: View {
     var body: some View {
         ScrollView {
             if let loadError {
-                WeeklySavingsErrorCard(message: loadError, onRetry: load)
+                ErrorCardView(loadError, onRetry: load)
                     .padding(.horizontal)
             } else if let plan {
                 // Real fix (2026-08-24, flat-design sweep): dropped every Card wrapper in
@@ -235,7 +220,7 @@ private struct WeeklySavingsDetailContent: View {
                             Spacer()
                             Text(plan.streakBroken ? "Streak broken -- bonus forfeited" : "On streak -- bonus on track")
                                 .font(.caption).bold()
-                                .foregroundColor(plan.streakBroken ? .red : .green)
+                                .foregroundColor(plan.streakBroken ? .red : IDS.Colors.success)
                         }
                         HStack {
                             Text("Base rate").font(.caption).foregroundColor(IDS.Colors.textSecondary)

@@ -85,7 +85,7 @@ struct EatsCheckoutView: View {
                             }
                         )
                         if addressLatitude != nil {
-                            Text("Pinned -- real distance-based delivery fee applies").font(.caption).foregroundColor(.green)
+                            Text("Pinned -- real distance-based delivery fee applies").font(.caption).foregroundColor(IDS.Colors.success)
                         }
                         TextField("Delivery notes (optional) -- e.g. Leave at the gate", text: Binding(
                             get: { deliveryNotes },
@@ -206,7 +206,7 @@ struct DineInOrderConfirmationView: View {
     var body: some View {
         VStack(spacing: 12) {
             Spacer()
-            Image(systemName: "checkmark.seal.fill").font(IDS.scaledFont(size: 44, weight: .regular, relativeTo: .largeTitle)).foregroundColor(.green)
+            Image(systemName: "checkmark.seal.fill").font(IDS.scaledFont(size: 44, weight: .regular, relativeTo: .largeTitle)).foregroundColor(IDS.Colors.success)
             Text("Order placed").font(IDS.Typography.title).foregroundColor(IDS.Colors.textPrimary)
             Text("\(formatAmount(Int(order.totalAmount))) RWF").font(IDS.Typography.largeAmount).foregroundColor(IDS.Colors.textPrimary)
             Text("Table \(order.tableNumber)").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
@@ -235,7 +235,7 @@ struct EatsOrderConfirmationView: View {
             // Real Baemin-style tiered order-amount promotion (2026-08-16) -- see
             // EatsPromotionCalculator's own doc comment on the backend.
             if order.promotionDiscount > 0 {
-                Text("\(formatAmount(Int(order.promotionDiscount))) RWF off, on us").font(.caption).foregroundColor(.green)
+                Text("\(formatAmount(Int(order.promotionDiscount))) RWF off, on us").font(.caption).foregroundColor(IDS.Colors.success)
             }
             Text("Delivering to \(order.deliveryAddress)").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
             Spacer()

@@ -307,7 +307,7 @@ private struct GroupAccountDetailContent: View {
                                 Spacer()
                                 Text(m.paid ? "✓ Paid" : "\(formatMoney(m.contributedAmount)) / \(formatMoney(duesAmount))")
                                     .font(.footnote).bold(m.paid)
-                                    .foregroundColor(m.paid ? .green : IDS.Colors.textSecondary)
+                                    .foregroundColor(m.paid ? IDS.Colors.success : IDS.Colors.textSecondary)
                             }
                         }
                         if isOwner {

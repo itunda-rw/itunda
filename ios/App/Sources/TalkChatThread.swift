@@ -79,7 +79,7 @@ struct ChatThreadScreen: View {
                     if let otherOnline {
                         Text(otherOnline ? "Online" : "Offline")
                             .font(.caption)
-                            .foregroundColor(otherOnline ? .green : IDS.Colors.textSecondary)
+                            .foregroundColor(otherOnline ? IDS.Colors.success : IDS.Colors.textSecondary)
                     }
                 }
                 Spacer()

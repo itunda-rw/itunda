@@ -162,11 +162,7 @@ struct JobsContent: View {
                 } else if view == .wishlist {
                     JobPostWishlistView(onRemoved: { Task { await loadFavoriteIds() } })
                 } else if let error {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(error).foregroundColor(.red).font(.subheadline)
-                        Button("Retry") { Task { await load() } }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    ErrorCardView(error, onRetry: { Task { await load() } })
                     .padding(.vertical, 10)
                 } else if posts == nil {
                     HoodFeedSkeleton()

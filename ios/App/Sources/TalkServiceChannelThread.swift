@@ -54,7 +54,8 @@ struct TalkServiceChannelThread: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 10) {
                     if let error {
-                        Text(error).foregroundColor(.red).font(.subheadline).padding(.horizontal, IDS.Layout.screenHorizontal)
+                        ErrorCardView(error, onRetry: { Task { await load() } })
+                            .padding(.horizontal, IDS.Layout.screenHorizontal)
                     } else if bubbles == nil {
                         SkeletonBlock(height: 100).padding(.horizontal, IDS.Layout.screenHorizontal).padding(.top, 12)
                     } else if bubbles!.isEmpty {

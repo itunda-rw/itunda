@@ -18,12 +18,16 @@ struct AgentCashOutScreenView: View {
     @State private var amountText = ""
     @State private var creating = false
     @State private var error: String?
+    @State private var loadError: String?
 
     private func load() async {
         do {
-            authorizations = try await NetworkClient.shared.getAgentWithdrawalAuthorizations().authorizations
+            let result = try await NetworkClient.shared.getAgentWithdrawalAuthorizations().authorizations
+            authorizations = result
+            loadError = nil
         } catch {
-            authorizations = []
+            // A failed request must not look like a successful empty history.
+            loadError = "Couldn't load withdrawal codes. Check your connection and try again."
         }
     }
 
@@ -94,7 +98,9 @@ struct AgentCashOutScreenView: View {
 
                     Text("Your codes (\(activeCount) active)").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
 
-                    if authorizations == nil {
+                    if let loadError {
+                        ErrorCardView(loadError, onRetry: { Task { await load() } })
+                    } else if authorizations == nil {
                         SkeletonBlock(height: 120)
                     } else if authorizations!.isEmpty {
                         Text("No withdrawal codes yet.").foregroundColor(IDS.Colors.textSecondary)

@@ -121,15 +121,9 @@ struct DirectMessagesList: View {
                 ? archivedConversations
                 : conversations?.sorted { a, b in (a.pinnedToTop ?? false) && !(b.pinnedToTop ?? false) }
             if let error {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(error).foregroundColor(.red).font(.subheadline)
-                    Button("Retry", action: onRetry)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
-                // a lone error state.
-                .padding(20)
-                .padding(.horizontal, IDS.Layout.screenHorizontal)
+                ErrorCardView(error, onRetry: onRetry)
+                    .padding(.horizontal, IDS.Layout.screenHorizontal)
+                    .padding(.top, 12)
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)

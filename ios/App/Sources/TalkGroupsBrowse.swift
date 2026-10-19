@@ -25,12 +25,7 @@ struct FriendsList: View {
             if let error {
                 // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
                 // the whole screen's content at this point (docs/UI_UX_GUIDELINES.md §10).
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(error).foregroundColor(.red).font(.subheadline)
-                    Button("Retry") { Task { await load() } }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(20)
+                ErrorCardView(error, onRetry: { Task { await load() } })
             } else if contacts == nil {
                 SkeletonBlock(height: 120)
             } else if contacts!.isEmpty {
@@ -210,12 +205,8 @@ struct GroupsList: View {
                 OpenChatCard(onCreated: onCreated, onJoined: onCreated)
 
                 if let error {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(error).foregroundColor(.red).font(.subheadline)
-                        Button("Retry", action: onRetry)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(20)
+                    ErrorCardView(error, onRetry: onRetry)
+                        .padding(20)
                 } else if groups == nil {
                     SkeletonBlock(height: 120)
                 } else if groups!.isEmpty {

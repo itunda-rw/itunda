@@ -32,9 +32,9 @@ echo "== iOS: native Tuist/Xcode build =="
 # The generated Xcode project is included explicitly because Tuist artifacts
 # are intentionally gitignored in this repository.
 if command -v mise >/dev/null 2>&1; then
-  (cd ios && mise install tuist@3.42.3 && mise exec tuist@3.42.3 -- tuist generate --no-open)
+  (cd ios && mise install tuist@4.205.0 && mise exec tuist@4.205.0 -- tuist generate --no-open)
 elif command -v tuist >/dev/null 2>&1; then
-  echo "WARNING: using the installed Tuist; this repository's verified iOS generation line is 3.42.3."
+  echo "WARNING: using the installed Tuist; this repository's verified iOS generation line is 4.205.0."
   (cd ios && tuist generate --no-open)
 else
   echo "INFO: Tuist 3.42.3 is required for native iOS project generation."

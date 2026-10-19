@@ -1,12 +1,67 @@
 {
-  "version": "1.0.0",
+  "version": "1.8.1",
   "purpose": "IDS component API and state parity contract. Platform implementations may use native APIs, but public behavior must satisfy the same contract.",
   "components": {
     "button": {
       "variants": [
         "filled",
-        "tinted"
+        "tinted",
+        "tertiary",
+        "destructive"
       ],
+      "platformVariants": {
+        "android": [
+          "Filled",
+          "Tinted",
+          "Tertiary",
+          "Destructive"
+        ],
+        "ios": [
+          "filled",
+          "tinted",
+          "tertiary",
+          "destructive"
+        ],
+        "web": [
+          "tds-button-primary",
+          "tds-button-secondary",
+          "tds-button-weak",
+          "tds-button-success",
+          "tds-button-error",
+          "tds-text-button"
+        ]
+      },
+      "semanticMappingAudit": {
+        "status": "mapping_proposed_not_verified",
+        "mappings": {
+          "filled": {
+            "android": "Filled",
+            "ios": "filled",
+            "web": "tds-button-primary"
+          },
+          "tinted": {
+            "android": "Tinted",
+            "ios": "tinted",
+            "web": "tds-button-weak"
+          },
+          "tertiary": {
+            "android": "Tertiary",
+            "ios": "tertiary",
+            "web": "tds-text-button"
+          },
+          "destructive": {
+            "android": "Destructive",
+            "ios": "destructive",
+            "web": "tds-button-error"
+          }
+        },
+        "knownDifferences": [
+          "Web exposes additional secondary and success styling classes without an exact one-to-one native variant in the current contract.",
+          "Class or enum presence does not establish contrast, touch-target, focus, screen-reader, loading, or runtime visual equivalence.",
+          "Runtime contrast, touch-target, focus, screen-reader, loading, and rendered light/dark visual equivalence remain unverified by source-marker checks."
+        ],
+        "completionGate": "Do not mark cross-platform variant parity complete until each proposed mapping is reviewed against rendered light/dark screenshots, interaction-state tests, accessibility checks, and product-owner approval."
+      },
       "sizes": [
         "large",
         "medium",
@@ -27,6 +82,7 @@
         "state-not-color-only",
         "minimum-touch-target"
       ],
+      "parityNote": "Variant names and styling primitives differ by platform. The semantic mapping above is a review hypothesis based on source implementation, not proof of equivalence.",
       "sources": {
         "android": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt",
         "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift",
@@ -52,7 +108,33 @@
       ],
       "sources": {
         "android": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsTextField.kt",
+        "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift",
         "web": "client/design-system/components.css"
+      },
+      "knownImplementationGaps": [
+        "Android exposes explicit loading stateDescription and disables editing while loading; iOS initializer does not currently expose disabled or loading parameters; web styling supports disabled and aria-invalid selectors but runtime markup must provide those attributes.",
+        "Android and iOS expose error and success supporting text through component APIs; the shared web CSS only styles .tds-error and does not itself bind validation messages or accessible descriptions.",
+        "CSS styling alone does not establish screen-reader announcement, focus order, keyboard type, or successful runtime behavior."
+      ],
+      "completionGate": "Before declaring text-field parity, verify disabled/loading API behavior on all platforms, ensure invalid state is programmatically exposed, connect visible error text through accessible descriptions, and run keyboard plus screen-reader checks in light and dark themes.",
+      "platformVariants": {
+        "android": [
+          "isError",
+          "isSuccess",
+          "loading",
+          "enabled"
+        ],
+        "ios": [
+          "errorText",
+          "successText",
+          "autoFocus",
+          "isSecure"
+        ],
+        "web": [
+          ".tds-input",
+          ".tds-input:disabled",
+          ".tds-input[aria-invalid"
+        ]
       }
     },
     "listRow": {
@@ -71,9 +153,34 @@
       ],
       "sources": {
         "android": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsListRow.kt",
-        "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift",
+        "ios": "ios/Core/DesignSystem/Sources/Components/IdsListRow.swift",
         "web": "client/design-system/components.css"
-      }
+      },
+      "platformVariants": {
+        "android": [
+          "enabled: Boolean = true",
+          "selected: Boolean = false",
+          "loading: Boolean = false",
+          "Role.Button"
+        ],
+        "ios": [
+          "public struct IdsListRow: View",
+          "isSelected: Bool = false",
+          ".accessibilityAddTraits(isSelected ? .isSelected : [])"
+        ],
+        "web": [
+          ".tds-list-row:active",
+          ".tds-list-row:focus-visible",
+          ".tds-list-row[aria-selected=",
+          ".tds-list-row[aria-disabled="
+        ]
+      },
+      "knownImplementationGaps": [
+        "iOS now exposes enabled, loading, and selected API states, with loading feedback and accessibility selected traits; visual parity still requires runtime review against Android and web.",
+        "Android announces loading in its row content description, while iOS exposes Loading through a progress indicator and accessibility value; announcement timing may differ by platform.",
+        "The web CSS styles active, focus-visible, aria-selected and aria-disabled states, but consuming markup must supply correct semantics and disable interaction; CSS alone does not make a row keyboard-operable."
+      ],
+      "completionGate": "Verify pointer and keyboard activation, disabled interaction, selected-state announcements, loading behavior, focus visibility, and 44pt/48dp touch targets on Android, iOS and web in light and dark themes. Confirm rendered visual and screen-reader behavior before marking parity complete."
     },
     "emptyState": {
       "states": [
@@ -86,10 +193,33 @@
         "localized-content"
       ],
       "sources": {
-        "android": "android/core/designsystem",
+        "android": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt",
         "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift",
-        "web": "client/design-system/components.css"
-      }
+        "web": "services/micro-frontends/bank-mfe/src/EmptyState.tsx"
+      },
+      "platformVariants": {
+        "android": [
+          "fun IdsEmptyState(",
+          "actionText: String? = null",
+          "if (actionText != null && onAction != null)"
+        ],
+        "ios": [
+          "public struct IdsEmptyState: View",
+          "actionTitle: String? = nil",
+          "accessibilityElement(children: .contain)"
+        ],
+        "web": [
+          "export function EmptyState({ message",
+          "icon: Icon = Inbox",
+          "textAlign: 'center'"
+        ]
+      },
+      "knownImplementationGaps": [
+        "Android renders a text-first empty state and uses IdsButton for its optional action; iOS adds a decorative SF Symbol and uses a tinted button; web CSS supports icon/title/copy slots but CSS alone does not prove semantic heading or action markup.",
+        "Android message text fills the available width; iOS explicitly wraps multiline copy; web constrains copy to max-width 360px. Long localized strings need rendered checks at narrow widths.",
+        "The three APIs differ in icon support and action naming, so source-level presence is not pixel or behavior parity."
+      ],
+      "completionGate": "Render empty states with no action and with an action, long localized text, narrow screens, light/dark themes, and screen readers. Verify the action is a real accessible button and that heading/message reading order is meaningful before marking parity complete."
     },
     "errorState": {
       "states": [
@@ -102,10 +232,48 @@
         "preserve-context"
       ],
       "sources": {
-        "android": "android/core/designsystem",
+        "android": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/HoodShared.kt",
         "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift",
-        "web": "client/design-system/components.css"
-      }
+        "web": "services/micro-frontends/bank-mfe/src/EmptyState.tsx"
+      },
+      "platformVariants": {
+        "android": [
+          "fun ErrorCard(message: String, onRetry: () -> Unit)",
+          "IdsButton(text = \"Retry\"",
+          "Ids.colors.danger"
+        ],
+        "ios": [
+          "public struct ErrorCardView: View",
+          "IdsButton(text: \"Retry\", action: onRetry)",
+          "IDS.Colors.dangerTint"
+        ],
+        "web": [
+          "export function ErrorCard({ message, onRetry",
+          "onClick={onRetry}",
+          "Retry"
+        ]
+      },
+      "knownImplementationGaps": [
+        "Bank and merchant web ErrorCard components share the centered error icon, message, primary Retry treatment and decorative-icon accessibility behavior, but remain separately implemented; a package-level shared component is not yet established.",
+        "Web ErrorCard messages use role=\"alert\". Redundant role=\"alert\" plus aria-live=\"polite\" was removed from merchant registration and ops login errors. Real screen-reader behavior still needs runtime verification for useful, non-duplicated announcements.",
+        "iOS weekly savings, 31-day savings, wealth portfolio/market, vehicle valuation, delayed transfers, auto-transfers, merchant updates, bucket transaction history, asset overview initial-load failures, call history, direct-message list load failures, job sub-screen failures, resume-builder initial-load failures, friends-list and group-list load/action failures, service-channel thread load failures, merchant-order and return-queue load failures (return-decision failures remain inline action feedback), job feed, marketplace listings/reviews, property listings, community feed, merchant discovery, and restaurant discovery failures, shop-order/favorites/subscription/inquiry failures, and Eats order/favorites failures use shared ErrorCardView with retry actions where appropriate. Asset-link/mutation errors stay inline to preserve the form and its context.",
+        "Android Talk call history and service-channel thread now launch their existing reload functions from Retry instead of using no-op callbacks.",
+        "Group announcement and poll initial loading now fails into a shared retry state instead of silently presenting failed requests as no announcement/no polls; posting, poll creation, and vote failures remain inline action feedback.",
+        "Agent cash-out authorization history on iOS and bank web now distinguishes load failure from an empty history and offers Retry; create/cancel action errors remain separate from history-load recovery.",
+        "Bank web Talk call history and AI chat history now show retryable load errors instead of converting failed requests into empty histories; actual empty results still use the empty state.",
+        "Call-history Retry uses an explicit loading guard so clearing the prior error cannot trigger a duplicate request through the tab effect.",
+        "iOS Talk AI history distinguishes a failed fetch from an empty conversation and exposes the shared ErrorCardView retry action.",
+        "iOS Talk message forwarding now surfaces failed conversation/group destination loads through ErrorCardView Retry instead of showing empty destination sections.",
+        "iOS product Q&A separates failed initial loads from a genuine no-questions state and provides shared ErrorCardView Retry.",
+        "iOS legal-document loading now distinguishes network failure and unavailable document from loaded content, with a shared ErrorCardView Retry.",
+        "iOS product written-review loading distinguishes failed fetches from a genuine empty review list and exposes shared ErrorCardView Retry.",
+        "iOS Shop product Q&A and written-review pagination failures preserve loaded rows and expose shared ErrorCardView Retry for the next page.",
+        "iOS ride-history initial fetch and past-trip pagination failures expose shared ErrorCardView Retry without discarding previously loaded trips.",
+        "iOS active-ride stops and verification-PIN loading failures expose a shared ErrorCardView Retry instead of silently presenting incomplete ride details.",
+        "iOS device management distinguishes a failed device-list request from a genuine empty device list and provides localized shared ErrorCardView Retry.",
+        "Native Android/iOS announcement behavior, localized recovery wording, retry loading/failure states, contrast, preservation of user-entered context, and full device/simulator behavior still require runtime validation."
+      ],
+      "completionGate": "Verify recoverable and terminal errors, retry loading/failure states, preserved form context, accessible error announcement, keyboard/screen-reader order, and light/dark contrast on each platform before marking parity complete."
     },
     "skeleton": {
       "states": [
@@ -117,9 +285,40 @@
         "no-essential-information-only-in-animation"
       ],
       "sources": {
-        "android": "android/core/designsystem",
+        "android": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/HoodShared.kt",
+        "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift",
         "web": "client/design-system/components.css"
-      }
+      },
+      "platformVariants": {
+        "android": [
+          "fun SkeletonBlock(",
+          "ValueAnimator.areAnimatorsEnabled()",
+          "delay(200)",
+          "rememberInfiniteTransition",
+          "clearAndSetSemantics { }"
+        ],
+        "ios": [
+          "struct SkeletonBlock: View",
+          "@Environment(\\.accessibilityReduceMotion)",
+          "try? await Task.sleep",
+          "repeatForever",
+          ".accessibilityHidden(true)"
+        ],
+        "web": [
+          ".tds-skeleton{",
+          "animation:tds-shimmer 1.3s infinite",
+          "@media (prefers-reduced-motion:reduce)"
+        ]
+      },
+      "knownImplementationGaps": [
+        "Android and iOS delay showing the placeholder by about 200 ms, while web CSS animates whenever the .tds-skeleton class is present; consuming views decide when to mount it.",
+        "Android uses a gradient brush, iOS uses a clipped LinearGradient, and web uses a pseudo-element shimmer. Similar motion does not establish equivalent contrast or layout.",
+        "Android checks the system animator scale and keeps the placeholder static when system animations are disabled; iOS checks accessibilityReduceMotion and web honors prefers-reduced-motion. Re-check whether native system-setting changes are reflected immediately while a screen remains mounted.",
+        "SkeletonBlock exposes a height and fills available width on native platforms; web sizing is supplied by markup. Verify placeholder geometry matches the content it replaces.",
+        "Android and iOS decorative skeleton shapes are hidden from the accessibility tree. Web markup must set aria-hidden=true on decorative skeletons; the CSS class alone cannot provide ARIA semantics.",
+        "The inspected source contract does not establish that loading announcements are announced exactly once; that responsibility belongs to the loading container or screen."
+      ],
+      "completionGate": "Verify layout stability before/after load, short loads that should not flash, live changes to reduced-motion settings, light/dark contrast, decorative skeleton accessibility hiding, exactly-once loading announcements at the containing screen, web aria-hidden markup, and real content geometry. Keep this component marked in-progress until runtime checks pass."
     },
     "bottomCta": {
       "states": [
@@ -134,10 +333,38 @@
         "accessible-label"
       ],
       "sources": {
-        "android": "android/core/designsystem",
+        "android": "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsKeyboardDockedButton.kt",
         "ios": "ios/Core/DesignSystem/Sources/Components/Components.swift",
         "web": "client/design-system/components.css"
-      }
+      },
+      "platformVariants": {
+        "android": [
+          "fun FixedBottomCta(",
+          "verticalScroll(rememberScrollState())",
+          "Ids.colors.divider",
+          "Ids.colors.background"
+        ],
+        "ios": [
+          "public struct FixedBottomCTA<Content: View, CTA: View>",
+          "ScrollView",
+          "padding(.horizontal, 20)",
+          "IDS.Colors.backgroundPrimary"
+        ],
+        "web": [
+          ".tds-bottom-cta",
+          "position:sticky",
+          "env(safe-area-inset-bottom)",
+          "border-top",
+          "backdrop-filter"
+        ]
+      },
+      "knownImplementationGaps": [
+        "Android's FixedBottomCta pins the action below a weighted scrolling column but does not itself apply explicit navigation-bar or IME insets; the app window configuration and real keyboard/device behavior must be tested.",
+        "iOS FixedBottomCTA uses a ScrollView above the CTA and relies on SwiftUI safe-area and keyboard behavior; it does not explicitly document or configure keyboard dismissal, focus scrolling, or CTA behavior when the keyboard is open.",
+        "Web .tds-bottom-cta is sticky and includes safe-area padding, but it depends on the correct scroll container and a consumer-provided accessible button/action state; CSS alone cannot guarantee keyboard viewport behavior.",
+        "Platform layout mechanics differ (weighted column, SwiftUI VStack, CSS sticky), so equivalent behavior must be verified on long and short content, keyboard-open forms, small screens, and screen readers."
+      ],
+      "completionGate": "Test one- and two-action CTAs, long and short content, scroll independence, virtual keyboard and system-bar insets, focus scrolling, disabled/loading states, accessible labels, and viewport changes on Android, iOS and web. Compare light/dark rendering and confirm no content or action is obscured before marking parity complete."
     }
   },
   "completionRule": "A component is IDS-complete only when anatomy, variants, states, accessibility, localization, dark mode, responsive/platform behavior and recovery behavior are documented and tested."

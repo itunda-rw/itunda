@@ -189,8 +189,7 @@ struct AutoTransferListScreen: View {
                     .padding(.horizontal, IDS.Layout.screenHorizontal)
 
                 if let loadError {
-                    Text(loadError)
-                        .font(.caption).foregroundColor(IDS.Colors.danger)
+                    ErrorCardView(loadError, onRetry: { Task { await load() } })
                         .padding(.horizontal, IDS.Layout.screenHorizontal)
                         .padding(.top, 8)
                 }

@@ -128,7 +128,7 @@ struct ProductPriceRow: View {
             }
             if let bestTier {
                 Text("Buy \(bestTier.minQuantity)+ for \(formatAmount(Int(bestTier.unitPrice))) RWF each")
-                    .font(.caption2).bold().foregroundColor(.green)
+                    .font(.caption2).bold().foregroundColor(IDS.Colors.success)
             }
         }
     }

@@ -34,6 +34,10 @@ The production Cloud Run inventory includes the app services and dedicated publi
 
 This is verified load-balancer configuration, not proof of successful end-to-end browser rendering, authentication, or API calls. Independently smoke-test each HTTPS hostname and app login journey before declaring production acceptance. The URL-map default remains `itunda-web-backend`; every distinct hostname must continue to have an explicit host rule.
 
+## Pull-request preview policy
+
+Production and preview hosting are separate concerns. Production websites and APIs must deploy to the dedicated GCP Cloud Run services above; GitHub Actions is the CI runner, not a hosting provider. Do not use GitHub Pages or Cloudflare Pages for production, and do not add `.pages.dev` preview origins to production API CORS. If a repository integration creates third-party preview deployments on pull requests, disable that integration or migrate previews to an approved GCP preview service; preview-bot comments are not evidence of production deployment. The repository workflow files do not necessarily control provider integrations configured in GitHub repository settings, so verify the external integration separately.
+
 ## App deployment contracts
 
 - Consumer app source: `services/micro-frontends/host-app` plus its bundled remotes; image build: `services/micro-frontends/Dockerfile.gcp`; Cloud Run service: `itunda-web`.

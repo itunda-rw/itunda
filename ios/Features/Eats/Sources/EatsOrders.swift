@@ -112,12 +112,8 @@ struct MyEatsOrdersView: View {
             // Real fix (2026-08-24, flat-design sweep): dropped this error-state Card --
             // the whole screen's content at this point (docs/UI_UX_GUIDELINES.md §10).
             if let error {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(error).foregroundColor(.red).font(.subheadline)
-                    Button("Retry") { Task { await load() } }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(20)
+                ErrorCardView(error, onRetry: { Task { await load() } })
+                    .padding(20)
             } else if orders == nil {
                 SkeletonBlock(height: 120)
             } else if allOrders.isEmpty {
@@ -223,12 +219,8 @@ struct MyDineInOrdersView: View {
         Group {
             // Real fix (2026-08-24, flat-design sweep): dropped this error-state Card.
             if let error {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(error).foregroundColor(.red).font(.subheadline)
-                    Button("Retry") { Task { await load() } }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(20)
+                ErrorCardView(error, onRetry: { Task { await load() } })
+                    .padding(20)
             } else if orders == nil {
                 SkeletonBlock(height: 80)
             } else if orders!.isEmpty {
@@ -354,12 +346,8 @@ struct FavoriteRestaurantsView: View {
             // FamilyLinkScreen's identical entity-list conversion, no divider
             // (docs/UI_UX_GUIDELINES.md §10).
             if let error {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(error).foregroundColor(.red).font(.subheadline)
-                    Button("Retry") { Task { await load() } }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(20)
+                ErrorCardView(error, onRetry: { Task { await load() } })
+                    .padding(20)
             } else if favorites == nil {
                 SkeletonBlock(height: 120)
             } else if favorites!.isEmpty {

@@ -163,7 +163,7 @@ public struct IdsButton: View {
             Group {
                 if isLoading {
                     ProgressView()
-                        .tint(variant == .filled ? IDS.Colors.onBrand : IDS.Colors.brand)
+                        .tint(variant == .filled ? IDS.Colors.onBrand : variant == .destructive ? IDS.Colors.onBrand : IDS.Colors.textBrand)
                 } else {
                     Text(text)
                         .font(IdsTypeScale.button)
@@ -173,15 +173,15 @@ public struct IdsButton: View {
             .frame(minWidth: fullWidth ? nil : 44, minHeight: size.height)
         }
         .foregroundColor(
-            !isEnabled ? IDS.Colors.textTertiary :
-            variant == .filled ? IDS.Colors.textBrand :
-            variant == .destructive ? IDS.Colors.danger :
-            IDS.Colors.brand
+            !isEnabled ? (variant == .destructive ? IDS.Colors.onBrand : variant == .filled ? IDS.Colors.onBrand : IDS.Colors.textTertiary) :
+            variant == .filled ? IDS.Colors.onBrand :
+            variant == .destructive ? IDS.Colors.onBrand :
+            IDS.Colors.textBrand
         )
         .background(
-            !isEnabled ? IDS.Colors.divider :
+            !isEnabled ? (variant == .filled ? IDS.Colors.brand.opacity(0.35) : variant == .destructive ? IDS.Colors.danger.opacity(0.35) : variant == .tinted ? IDS.Colors.divider : Color.clear) :
             variant == .filled ? IDS.Colors.brand :
-            variant == .destructive ? IDS.Colors.dangerTint :
+            variant == .destructive ? IDS.Colors.danger :
             variant == .tinted ? IDS.Colors.chipBackground :
             Color.clear
         )
@@ -396,6 +396,7 @@ public struct IdsBadge: View {
 // delay elapses, so a response that lands first never shows a skeleton at all.
 public struct SkeletonBlock: View {
     let height: CGFloat
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var animating = false
     @State private var showSkeleton = false
 
@@ -419,6 +420,7 @@ public struct SkeletonBlock: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: height)
                     .onAppear {
+                        guard !reduceMotion else { return }
                         withAnimation(.linear(duration: 1).repeatForever(autoreverses: false)) {
                             animating = true
                         }
@@ -429,6 +431,7 @@ public struct SkeletonBlock: View {
             try? await Task.sleep(nanoseconds: 200_000_000)
             showSkeleton = true
         }
+        .accessibilityHidden(true)
     }
 }
 
@@ -475,57 +478,6 @@ public struct IdsErrorText: View {
     }
 }
 
-public struct IdsListRow: View {
-    let title: String
-    let subtitle: String?
-    let rightText: String?
-    let action: () -> Void
-
-    public init(title: String, subtitle: String? = nil, rightText: String? = nil, action: @escaping () -> Void) {
-        self.title = title
-        self.subtitle = subtitle
-        self.rightText = rightText
-        self.action = action
-    }
-
-    public var body: some View {
-        Button(action: action) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(IdsTypeScale.subtitle1)
-                        .foregroundColor(IDS.Colors.textPrimary)
-
-                    if let subtitle = subtitle {
-                        Text(subtitle)
-                            .font(IdsTypeScale.body2)
-                            .foregroundColor(IDS.Colors.textSecondary)
-                    }
-                }
-                Spacer()
-                if let rightText = rightText {
-                    Text(rightText)
-                        .font(IdsTypeScale.subtitle1)
-                        .foregroundColor(IDS.Colors.textPrimary)
-                }
-            }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 16)
-            // Real fix (2026-07-13): same static-vs-reactive bug as IdsButton above --
-            // this row's background stayed light-mode white in dark mode.
-            .background(IDS.Colors.card)
-            // Real fix (2026-08-24): a flat full-width row, not a rounded card (no
-            // cornerRadius anywhere on this component) -- IDS.Colors.backgroundPrimary
-            // is now white in light mode too, so this needed a hairline bottom divider,
-            // not idsCardBorder's rounded-rect stroke, matching web's identical
-            // .itunda-flat-section row-divider treatment for the same flat-row shape.
-            .overlay(Rectangle().fill(IDS.Colors.divider).frame(height: 1), alignment: .bottom)
-        }
-        .buttonStyle(PressScaleButtonStyle())
-        .accessibilityLabel(Text(title))
-        .accessibilityValue(Text([subtitle, rightText].compactMap { $0 }.joined(separator: ". ")))
-    }
-}
 
 // Real shared 5-star input row -- moved here from App/Sources/ShopBrowseComponents.swift
 // (2026-08-25, real reviews needed this from a Features/ module too, see

@@ -157,20 +157,25 @@ struct ForwardPickerView: View {
     @State private var groups: [GroupSummaryDto] = []
     @State private var sending = false
     @State private var error: String?
+    @State private var destinationsLoadError: String?
 
     var body: some View {
         NavigationView {
             List {
-                Section("Direct messages") {
-                    ForEach(conversations) { c in
-                        Button(c.otherUserName) { Task { await forward(to: "DIRECT", id: c.conversationId) } }
-                            .disabled(sending)
+                if let destinationsLoadError {
+                    ErrorCardView(destinationsLoadError, onRetry: { Task { await loadDestinations() } })
+                } else {
+                    Section("Direct messages") {
+                        ForEach(conversations) { c in
+                            Button(c.otherUserName) { Task { await forward(to: "DIRECT", id: c.conversationId) } }
+                                .disabled(sending)
+                        }
                     }
-                }
-                Section("Groups") {
-                    ForEach(groups) { g in
-                        Button(g.name) { Task { await forward(to: "GROUP", id: g.groupId) } }
-                            .disabled(sending)
+                    Section("Groups") {
+                        ForEach(groups) { g in
+                            Button(g.name) { Task { await forward(to: "GROUP", id: g.groupId) } }
+                                .disabled(sending)
+                        }
                     }
                 }
             }
@@ -178,13 +183,23 @@ struct ForwardPickerView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel", action: onDismiss) }
             }
-            .task {
-                conversations = (try? await NetworkClient.shared.getConversations().conversations) ?? []
-                groups = (try? await NetworkClient.shared.getMyGroups().groups) ?? []
-            }
+            .task { await loadDestinations() }
             if let error {
                 Text(error).font(.caption).foregroundColor(.red)
             }
+        }
+    }
+
+    private func loadDestinations() async {
+        do {
+            let conversationResult = try await NetworkClient.shared.getConversations()
+            let groupResult = try await NetworkClient.shared.getMyGroups()
+            conversations = conversationResult.conversations
+            groups = groupResult.groups
+            destinationsLoadError = nil
+        } catch {
+            // Failed destination lookups must not look like a valid empty picker.
+            destinationsLoadError = "Couldn't load forwarding destinations. Check your connection and try again."
         }
     }
 

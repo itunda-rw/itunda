@@ -164,7 +164,7 @@ struct MotoFareCollectScreenView: View {
                 Spacer()
                 VStack(alignment: .trailing) {
                     Text("Total (last \(trips.count))").font(.caption2).foregroundColor(IDS.Colors.textTertiary)
-                    Text("\(formatMoney(trips.reduce(0) { $0 + $1.fare })) RWF").font(.headline).foregroundColor(isDriver ? .green : IDS.Colors.textPrimary)
+                    Text("\(formatMoney(trips.reduce(0) { $0 + $1.fare })) RWF").font(.headline).foregroundColor(isDriver ? IDS.Colors.success : IDS.Colors.textPrimary)
                 }
             }
             ForEach(trips.prefix(5)) { trip in
@@ -211,7 +211,7 @@ struct MotoFareCollectScreenView: View {
 
     private func collectedView(_ result: MotoFareCollectResultDto) -> some View {
         VStack(spacing: 8) {
-            Text("Collected").font(.system(size: 28, weight: .heavy)).foregroundColor(.green)
+            Text("Collected").font(.system(size: 28, weight: .heavy)).foregroundColor(IDS.Colors.success)
             Text("\(formatMoney(result.fare)) RWF").font(.headline)
             CardActionButton(title: "Collect next fare", disabled: false, action: reset)
         }

@@ -50,9 +50,10 @@ function emptyConversationsMessage(showArchived: boolean, filterTab: 'all' | 'un
 // persisted CallSession rows. No "place a call" affordance yet -- that's a separate,
 // later piece once the calling UI itself (WebRTC/dial screen) is built.
 function TalkCallLog({
-  calls, currentUserId, hasMore, loadingMore, onLoadMore,
-}: { calls: CallSession[] | null; currentUserId: string | null; hasMore: boolean; loadingMore: boolean; onLoadMore: () => void }) {
+  calls, currentUserId, hasMore, loadingMore, onLoadMore, error, onRetry,
+}: { calls: CallSession[] | null; currentUserId: string | null; hasMore: boolean; loadingMore: boolean; onLoadMore: () => void; error: string | null; onRetry: () => void }) {
   const showSkeleton = useDeferredLoading(calls === null);
+  if (error) return <ErrorCard message={error} onRetry={onRetry} />;
   if (calls === null) {
     return showSkeleton ? <div className="skeleton" style={{ height: '120px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
   }
@@ -125,6 +126,8 @@ export function DirectMessagesList({ initialConversationId, onConsumedInitial }:
   // conversation list, fetched only when that tab is actually selected.
   const [filterTab, setFilterTab] = useState<'all' | 'unread' | 'calls'>('all');
   const [callHistory, setCallHistory] = useState<CallSession[] | null>(null);
+  const [callHistoryError, setCallHistoryError] = useState<string | null>(null);
+  const [callHistoryLoading, setCallHistoryLoading] = useState(false);
   const [callHistoryPage, setCallHistoryPage] = useState(0);
   const [callHistoryHasMore, setCallHistoryHasMore] = useState(false);
   const [loadingMoreCallHistory, setLoadingMoreCallHistory] = useState(false);
@@ -186,13 +189,18 @@ export function DirectMessagesList({ initialConversationId, onConsumedInitial }:
 
   useEffect(load, []);
 
+  const loadCallHistory = () => {
+    setCallHistoryLoading(true);
+    setCallHistoryError(null);
+    fetchCallHistory(0)
+      .then((r) => { setCallHistory(r.calls); setCallHistoryPage(0); setCallHistoryHasMore(r.page + 1 < r.totalPages); })
+      .catch((err) => setCallHistoryError(err instanceof ApiError ? err.message : t('common.loadError')))
+      .finally(() => setCallHistoryLoading(false));
+  };
+
   useEffect(() => {
-    if (filterTab === 'calls' && callHistory === null) {
-      fetchCallHistory(0)
-        .then((r) => { setCallHistory(r.calls); setCallHistoryHasMore(r.page + 1 < r.totalPages); })
-        .catch(() => setCallHistory([]));
-    }
-  }, [filterTab, callHistory]);
+    if (filterTab === 'calls' && callHistory === null && !callHistoryError && !callHistoryLoading) loadCallHistory();
+  }, [filterTab, callHistory, callHistoryError, callHistoryLoading]);
 
   const loadMoreCallHistory = () => {
     const nextPage = callHistoryPage + 1;
@@ -314,6 +322,8 @@ export function DirectMessagesList({ initialConversationId, onConsumedInitial }:
           hasMore={callHistoryHasMore}
           loadingMore={loadingMoreCallHistory}
           onLoadMore={loadMoreCallHistory}
+          error={callHistoryError}
+          onRetry={loadCallHistory}
         />
       ) : (
         <>

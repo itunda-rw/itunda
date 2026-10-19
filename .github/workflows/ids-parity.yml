@@ -11,6 +11,32 @@ on:
       - "packages/design-tokens/brand-themes.json"
       - "scripts/design-system-parity.mjs"
       - "scripts/brand-v3-surface-audit.mjs"
+      - "scripts/validate-component-parity.mjs"
+      - "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt"
+      - "ios/Core/DesignSystem/Sources/Components/Components.swift"
+      - "client/index.html"
+      - "client/**/index.html"
+      - "data/index.html"
+      - "identity/index.html"
+      - "services/index.html"
+      - "everyday/index.html"
+      - "platform/index.html"
+      - "site/index.html"
+      - "business/index.html"
+      - "business/developers/index.html"
+      - "sites/**/index.html"
+      - "sites/public/ids.css"
+      - "packages/brand-assets/canonical/itunda-brand/tokens/itunda-colors.css"
+      - ".github/workflows/ids-parity.yml"
+  pull_request:
+    paths:
+      - "client/design-system/**"
+      - "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/theme/IdsSemanticColors.kt"
+      - "ios/Core/DesignSystem/Sources/IDS.swift"
+      - "packages/design-tokens/brand-themes.json"
+      - "scripts/design-system-parity.mjs"
+      - "scripts/brand-v3-surface-audit.mjs"
+      - "scripts/validate-component-parity.mjs"
       - "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/IdsButton.kt"
       - "ios/Core/DesignSystem/Sources/Components/Components.swift"
       - "client/index.html"
@@ -39,5 +65,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check IDS semantic parity
         run: node scripts/design-system-parity.mjs
+      - name: Validate IDS component parity contract and sources
+        run: node scripts/validate-component-parity.mjs
       - name: Audit v3 brand across product surfaces
         run: node scripts/brand-v3-surface-audit.mjs

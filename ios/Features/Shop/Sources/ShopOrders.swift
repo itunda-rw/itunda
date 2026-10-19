@@ -58,12 +58,8 @@ struct ProductWishlistView: View {
     var body: some View {
         Group {
             if let error {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(error).foregroundColor(.red).font(.subheadline)
-                    Button("Retry") { Task { await load() } }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 10)
+                ErrorCardView(error, onRetry: { Task { await load() } })
+                    .padding(.vertical, 10)
             } else if favorites == nil {
                 SkeletonBlock(height: 120)
             } else if favorites!.isEmpty {
@@ -136,12 +132,8 @@ struct MyProductSubscriptionsView: View {
     var body: some View {
         Group {
             if let error {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(error).foregroundColor(.red).font(.subheadline)
-                    Button("Retry") { Task { await load() } }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 10)
+                ErrorCardView(error, onRetry: { Task { await load() } })
+                    .padding(.vertical, 10)
             } else if subscriptions == nil {
                 SkeletonBlock(height: 120)
             } else if subscriptions!.isEmpty {
@@ -263,12 +255,8 @@ struct MyProductInquiriesView: View {
     var body: some View {
         Group {
             if let error {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(error).foregroundColor(.red).font(.subheadline)
-                    Button("Retry") { Task { await load() } }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 10)
+                ErrorCardView(error, onRetry: { Task { await load() } })
+                    .padding(.vertical, 10)
             } else if inquiries == nil {
                 SkeletonBlock(height: 120)
             } else if inquiries!.isEmpty {

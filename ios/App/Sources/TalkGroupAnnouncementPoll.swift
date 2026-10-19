@@ -14,6 +14,7 @@ struct TalkGroupAnnouncementPollView: View {
     @State private var announcement: GroupAnnouncementDto?
     @State private var polls: [GroupPollWithOptionsDto]?
     @State private var error: String?
+    @State private var loadError: String?
     @State private var showComposeAnnouncement = false
     @State private var showCreatePoll = false
     @State private var draftAnnouncement = ""
@@ -22,11 +23,16 @@ struct TalkGroupAnnouncementPollView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    announcementSection
-                    pollsSection
+                if let loadError {
+                    ErrorCardView(loadError, onRetry: { Task { await load() } })
+                        .padding(20)
+                } else {
+                    VStack(alignment: .leading, spacing: 20) {
+                        announcementSection
+                        pollsSection
+                    }
+                    .padding(20)
                 }
-                .padding(20)
             }
             .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
             .navigationTitle("Announcement & polls")
@@ -92,10 +98,17 @@ struct TalkGroupAnnouncementPollView: View {
     }
 
     private func load() async {
-        async let a = try? NetworkClient.shared.getGroupAnnouncement(groupId: groupId)
-        async let p = try? NetworkClient.shared.getGroupPolls(groupId: groupId)
-        announcement = await a?.announcement
-        polls = await p?.polls ?? []
+        do {
+            async let announcementResponse = NetworkClient.shared.getGroupAnnouncement(groupId: groupId)
+            async let pollsResponse = NetworkClient.shared.getGroupPolls(groupId: groupId)
+            let (announcementResult, pollsResult) = try await (announcementResponse, pollsResponse)
+            announcement = announcementResult.announcement
+            polls = pollsResult.polls
+            loadError = nil
+        } catch {
+            // Do not turn a failed request into a misleading empty announcement/poll state.
+            loadError = "Couldn't load announcements and polls. Check your connection and try again."
+        }
     }
 
     private func postAnnouncement() async {

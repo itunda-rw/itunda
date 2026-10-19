@@ -18,6 +18,7 @@ struct DeviceListScreen: View {
 
     @State private var devices: [TrustedDeviceDto] = []
     @State private var loaded = false
+    @State private var loadError: String?
     @State private var locale: AppLocale = loadStoredLocale()
     // Real gap found 2026-09-05: revoke() used try? to silently discard a failed
     // revoke -- a security-relevant action (removing a device's ability to send
@@ -31,18 +32,21 @@ struct DeviceListScreen: View {
             "trusted": "Trusted -- can send money", "notVerified": "Not verified -- can't send money yet",
             "remove": "Remove", "empty": "No devices found.",
             "removeFailed": "Couldn't remove this device. Try again.",
+            "loadFailed": "Couldn't load your devices. Check your connection and try again.",
         ],
         .rw: [
             "title": "Ibikoresho", "unknownDevice": "Ikoresho kitazwi", "thisDevice": " (iki gikoresho)",
             "trusted": "Byemewe -- gishobora kohereza amafaranga", "notVerified": "Ntibyemejwe -- ntigishobora kohereza amafaranga",
             "remove": "Kuraho", "empty": "Nta bikoresho biboneka.",
             "removeFailed": "Ntibishoboka gukuraho iki gikoresho. Wongere ugerageze.",
+            "loadFailed": "Ntibishobotse gupakira ibikoresho byawe. Reba internet wongere ugerageze.",
         ],
         .fr: [
             "title": "Appareils", "unknownDevice": "Appareil inconnu", "thisDevice": " (cet appareil)",
             "trusted": "Approuvé -- peut envoyer de l'argent", "notVerified": "Non vérifié -- ne peut pas encore envoyer d'argent",
             "remove": "Retirer", "empty": "Aucun appareil trouvé.",
             "removeFailed": "Impossible de retirer cet appareil. Réessayez.",
+            "loadFailed": "Impossible de charger vos appareils. Vérifiez votre connexion et réessayez.",
         ],
     ]
 
@@ -51,7 +55,12 @@ struct DeviceListScreen: View {
     }
 
     private func load() async {
-        devices = (try? await NetworkClient.shared.getMyDevices().devices) ?? []
+        do {
+            devices = try await NetworkClient.shared.getMyDevices().devices
+            loadError = nil
+        } catch {
+            loadError = t("loadFailed")
+        }
         loaded = true
     }
 
@@ -92,9 +101,14 @@ struct DeviceListScreen: View {
                     .padding(.bottom, 8)
             }
 
+            if let loadError {
+                ErrorCardView(loadError, onRetry: { Task { await load() } })
+                    .padding(.horizontal, 24)
+            }
+
             if !loaded {
                 Spacer()
-            } else if devices.isEmpty {
+            } else if devices.isEmpty && loadError == nil {
                 Text(t("empty"))
                     .font(IDS.scaledFont(size: 14, weight: .regular, relativeTo: .callout))
                     .foregroundColor(IDS.Colors.textSecondary)
