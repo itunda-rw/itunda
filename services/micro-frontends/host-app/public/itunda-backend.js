@@ -920,7 +920,21 @@
       if (request !== marketplaceRequest) return;
       marketplaceRealByUiId = Object.create(null);
       marketplaceUiId = 0;
-      H.items = records.map(function (record) { const item = marketplaceUiListing(record); if (category === 'Mine') item.who = 'You'; return item; });
+      H.items = records.map(function (record) {
+        const item = marketplaceUiListing(record);
+        if (category === 'Mine') item.who = 'You';
+        if (category === 'Saved') S.hdFav['market:' + item.id] = true;
+        return item;
+      });
+      if (category !== 'Saved') {
+        try {
+          const favoriteResponse = await window.itundaBackend.marketplace.favorites({ page: 0, size: 100 });
+          const favoriteIds = new Set((Array.isArray(favoriteResponse && favoriteResponse.favorites) ? favoriteResponse.favorites : []).map(function (favorite) { return String(favorite.listingId); }));
+          H.items.forEach(function (item) { S.hdFav['market:' + item.id] = favoriteIds.has(String(marketplaceRealByUiId[item.id] && marketplaceRealByUiId[item.id].id)); });
+        } catch (_) {
+          // Browse remains usable if favorite state cannot be refreshed; favorite actions still require server confirmation.
+        }
+      }
       if (!records.length) {
         marketplaceMessage('No real listings found. Try another search or category.', false);
         return;
