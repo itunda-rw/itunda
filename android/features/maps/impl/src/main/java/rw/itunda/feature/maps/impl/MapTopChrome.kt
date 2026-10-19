@@ -265,7 +265,31 @@ internal fun MapTopChrome(
 
             searchResults?.let { results ->
                 if (results.isEmpty()) {
-                    Text("No real places found for that search.", color = Ids.colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(14.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            "No real places found for that search.",
+                            color = Ids.colors.textSecondary,
+                            fontSize = 13.sp,
+                        )
+                        Text(
+                            "Try a shorter name or a nearby town.",
+                            color = Ids.colors.textSecondary,
+                            fontSize = 12.sp,
+                        )
+                        Text(
+                            "Search again",
+                            color = Ids.colors.brand,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.pressScaleClickable(enabled = !searching) { onRunSearch() }
+                                .padding(vertical = 6.dp),
+                        )
+                    }
                 } else {
                     results.forEach { place ->
                         val (name, address) = splitPlaceName(place.displayName)
