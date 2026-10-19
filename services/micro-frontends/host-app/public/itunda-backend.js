@@ -520,7 +520,7 @@
     billBusy = true;
     try {
       const airtime = /airtime/i.test(bill.p);
-      const rail = /airtel/i.test(bill.p) ? 'Airtel Money' : 'MTN MoMo';
+      const rail = airtime ? (/airtel/i.test(bill.p) ? 'Airtel Money' : 'MTN Mobile Money') : provider.name;
       const payload = airtime
         ? { phoneNumber: normalizePhone(bill.num), amount: Number(bill.amt), provider: rail }
         : { billId: provider.id, amount: Number(bill.amt), accountNumber: bill.num, provider: rail };
