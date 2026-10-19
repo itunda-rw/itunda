@@ -1,0 +1,18 @@
+name: Actions Registry Check
+
+on:
+  push:
+    branches:
+      - "ci/runner-diagnostic"
+  workflow_dispatch:
+
+jobs:
+  registry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Registry reached
+        run: |
+          echo "ACTIONS_REGISTRY_CHECK_OK"
+          date -u
+          uname -a

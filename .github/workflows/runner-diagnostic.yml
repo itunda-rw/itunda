@@ -1,0 +1,19 @@
+name: Runner Diagnostic
+
+on:
+  push:
+    branches:
+      - "ci/runner-diagnostic"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  runner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Runner reached
+        run: |
+          echo "RUNNER_DIAGNOSTIC_OK"
+          uname -a
+          node --version
