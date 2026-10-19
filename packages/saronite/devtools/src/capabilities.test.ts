@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { permissionFor, SARONITE_CAPABILITIES } from './capabilities';
+import { permissionFor, SARONITE_CAPABILITIES } from './capabilities.ts';
 
 assert.equal(SARONITE_CAPABILITIES.identity.read, 'identity:read');
 assert.equal(SARONITE_CAPABILITIES.location.read, 'location:read');

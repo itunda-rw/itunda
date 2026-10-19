@@ -1,6 +1,5 @@
 import type { SaroniteMockHost } from '@itunda/saronite-devtools';
 import './style.css';
-import canonicalItundaSymbolUrl from '../../../../packages/brand-assets/canonical/itunda-brand/symbol/itunda-symbol.svg';
 
 type DemoState = {
   result: string;
@@ -16,7 +15,6 @@ const app = document.querySelector<HTMLDivElement>('#app')!;
 
 app.innerHTML = `
   <section class="shell">
-    <img class="brand-mark" src="${canonicalItundaSymbolUrl}" alt="" aria-hidden="true" />
     <p class="eyebrow">Apps in Itunda</p>
     <h1>Saronite Web Mini-App</h1>
     <p class="lede">
