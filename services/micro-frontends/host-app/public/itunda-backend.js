@@ -861,6 +861,100 @@
     unhide: function (id) { return api('/api/v1/marketplace/listings/' + requireRecordId(id, 'listing id') + '/hide', { method: 'DELETE' }); }
   };
 
+
+  // Bind the prototype's Maps search field to authenticated Rwanda geocoding.
+  // Never fall back to the prototype's bundled POI list when a live request fails.
+  let mapSearchRequest = 0;
+  let liveMapResults = [];
+  let selectedMapResult = null;
+  function mapText(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function (ch) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+    });
+  }
+  function mapSearchMessage(message, alert) {
+    const el = document.getElementById('mpres');
+    if (!el) return;
+    el.innerHTML = '<div class="pad ' + (alert ? '' : 'mu') + '" ' + (alert ? 'role="alert" ' : '') +
+      'style="text-align:center;padding-top:24px">' + mapText(message) + '</div>';
+  }
+  window.itundaSelectMapSearchResult = function (index) {
+    const place = liveMapResults[index];
+    if (!place) return;
+    selectedMapResult = place;
+    const el = document.getElementById('mpres');
+    if (!el) return;
+    el.innerHTML = '<div class="pad" style="padding-top:12px">' +
+      '<button class="chip" onclick="itundaBackToMapSearch()">← ' + mapText(typeof L === 'function' ? L('Search results','Ibisubizo','Résultats') : 'Search results') + '</button>' +
+      '<div style="font-size:19px;font-weight:800;line-height:26px;margin-top:16px">' + mapText(place.displayName) + '</div>' +
+      '<div class="sm mu" style="margin-top:8px">GPS ' + Number(place.latitude).toFixed(5) + ', ' + Number(place.longitude).toFixed(5) + '</div>' +
+      '<button class="btn" style="margin-top:16px" onclick="itundaSaveMapSearchResult()">' +
+      mapText(typeof L === 'function' ? L('Save place','Bika aha hantu','Enregistrer le lieu') : 'Save place') + '</button>' +
+      '<div id="itunda-map-save-status" class="sm mu" role="status" style="margin-top:8px"></div></div>';
+  };
+  window.itundaBackToMapSearch = function () {
+    selectedMapResult = null;
+    const input = document.getElementById('mpq');
+    if (input) window.mpQ(input.value);
+  };
+  window.itundaSaveMapSearchResult = async function () {
+    const place = selectedMapResult;
+    const status = document.getElementById('itunda-map-save-status');
+    if (!place || !window.itundaBackend || !window.itundaBackend.maps) return;
+    const button = document.querySelector('#mpres button.btn');
+    if (button) button.disabled = true;
+    if (status) status.textContent = 'Saving…';
+    try {
+      await window.itundaBackend.maps.addBookmark({
+        displayName: String(place.displayName),
+        latitude: Number(place.latitude),
+        longitude: Number(place.longitude)
+      });
+      if (status) status.textContent = 'Place saved to your Itunda account.';
+      if (typeof toast === 'function') toast('Place saved');
+    } catch (error) {
+      if (status) status.textContent = String(error && error.message || 'Could not save this place.');
+      if (button) button.disabled = false;
+    }
+  };
+  const prototypeMapSearch = window.mpQ;
+  window.mpQ = async function (value) {
+    const query = String(value || '').trim();
+    const request = ++mapSearchRequest;
+    selectedMapResult = null;
+    const el = document.getElementById('mpres');
+    const rec = document.getElementById('mprec');
+    if (!el) {
+      if (typeof prototypeMapSearch === 'function' && query.length < 2) prototypeMapSearch(value);
+      return;
+    }
+    if (rec) rec.style.display = query ? 'none' : '';
+    if (query.length < 2) {
+      liveMapResults = [];
+      el.innerHTML = query ? '<div class="pad mu" style="text-align:center;padding-top:24px">Enter at least 2 characters to search real places.</div>' : '';
+      return;
+    }
+    mapSearchMessage('Searching real places…', false);
+    try {
+      const response = await window.itundaBackend.maps.search(query);
+      if (request !== mapSearchRequest) return;
+      liveMapResults = Array.isArray(response && response.results) ? response.results : [];
+      if (!liveMapResults.length) {
+        mapSearchMessage('No real places found. Try another search.', false);
+        return;
+      }
+      el.innerHTML = liveMapResults.map(function (place, index) {
+        return '<button type="button" class="pl tap" style="width:100%;text-align:left;background:transparent;border:0;color:inherit" onclick="itundaSelectMapSearchResult(' + index + ')">' +
+          '<i style="font-style:normal;font-size:20px">⌖</i><span style="flex:1;min-width:0"><b style="display:block;font-size:16px;font-weight:700">' +
+          mapText(place.displayName) + '</b><span class="sm mu">GPS ' + Number(place.latitude).toFixed(5) + ', ' + Number(place.longitude).toFixed(5) + '</span></span></button>';
+      }).join('');
+    } catch (error) {
+      if (request !== mapSearchRequest) return;
+      liveMapResults = [];
+      mapSearchMessage(String(error && error.message || 'Could not search real places. Check your connection and try again.'), true);
+    }
+  };
+
   (async function restoreSession() {
     if (demoMode || !localStorage.getItem(ACCESS_KEY)) return;
     try {
