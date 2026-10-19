@@ -23,7 +23,7 @@ if (!html.includes(demoHandler)) throw new Error('Prototype phone-fill handler n
 html = html.replace(demoHandler, '');
 
 if (/onclick="obSkip\(\);return false">[^<]*prototype/i.test(html) ||
-    /<a href="#" class="sm" style="color:var\\(--lk\\);font-weight:700;display:inline-block;margin-top:6px" onclick="phDemo\\(\\);return false">Prototype: fill a returning number<\\/a>/.test(html) ||
+    /<a href="#" class="sm" style="color:var\(--lk\);font-weight:700;display:inline-block;margin-top:6px" onclick="phDemo\(\);return false">Prototype: fill a returning number<\/a>/.test(html) ||
     html.includes(demoHandler)) {
   throw new Error('Prototype-only authentication shortcuts remain in production HTML.');
 }
