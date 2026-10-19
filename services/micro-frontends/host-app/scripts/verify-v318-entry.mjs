@@ -25,18 +25,18 @@ const checks = [
   ['unsupported savings deletion is not simulated locally', backend.includes('Deleting savings goals is not supported by the backend yet.')],
   ['requests use an idempotency key', backend.includes("'Idempotency-Key': idempotencyKey")],
   ['recipient verification is required', backend.includes('Verify the recipient name before sending money.')],
-  ['cache rules cover app and bridge routes', protectedPaths.every((path) => nginx.includes('location = ' + path + ' {'))],
-  ['cache is disabled on app and bridge routes', protectedPaths.every((path) => {
-    const block = nginx.split('location = ' + path + ' {')[1]?.split(/\n    \}/)[0];
-    return Boolean(block && block.includes(cacheHeader) && block.includes('add_header Pragma "no-cache" always;'));
-  })]
-];
   ['Maps adapter exposes real search, nearby, directions and bookmarks endpoints',
     backend.includes("window.itundaBackend.maps = {") && backend.includes("api('/api/v1/maps/search' + queryString({ q: q }))") && backend.includes("api('/api/v1/maps/nearby' + queryString(") && backend.includes("api('/api/v1/maps/directions' + queryString(") && backend.includes("api('/api/v1/maps/bookmarks'")],
   ['Marketplace adapter exposes authenticated browse, search and listing actions',
     backend.includes("window.itundaBackend.marketplace = {") && backend.includes("api('/api/v1/marketplace/listings' + queryString(options))") && backend.includes("api('/api/v1/marketplace/listings/search' + queryString(") && backend.includes("api('/api/v1/marketplace/my-listings' + queryString(options))") && backend.includes("/like', { method: 'POST'") && backend.includes("/hide', { method: 'POST'")],
   ['Maps and Marketplace adapters do not fabricate successful fallback records',
     !backend.includes("maps.search = function (query) { return Promise.resolve([])") && !backend.includes("marketplace.browse = function (options) { return Promise.resolve([])")],
+  ['cache rules cover app and bridge routes', protectedPaths.every((path) => nginx.includes('location = ' + path + ' {'))],
+  ['cache is disabled on app and bridge routes', protectedPaths.every((path) => {
+    const block = nginx.split('location = ' + path + ' {')[1]?.split(/\n    \}/)[0];
+    return Boolean(block && block.includes(cacheHeader) && block.includes('add_header Pragma "no-cache" always;'));
+  })]
+];
 const failed = checks.filter(([, passed]) => !passed);
 for (const [label, passed] of checks) process.stdout.write((passed ? 'PASS ' : 'FAIL ') + label + '\n');
 if (failed.length) process.exitCode = 1;
