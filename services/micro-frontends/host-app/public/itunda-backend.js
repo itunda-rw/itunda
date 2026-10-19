@@ -896,14 +896,20 @@
     const request = ++marketplaceRequest;
     marketplaceMessage(query ? 'Searching real listings…' : 'Loading real listings…', false);
     try {
+      if (!query && category === 'Saved') {
+        if (request === marketplaceRequest) marketplaceMessage('Saved-listing retrieval is not exposed by the current backend API yet.', true);
+        return;
+      }
       const response = query
         ? await window.itundaBackend.marketplace.search(query, { page: 0, size: 30 })
-        : await window.itundaBackend.marketplace.browse({ page: 0, size: 30, category: category && !['All', 'Saved', 'Mine'].includes(category) ? category : undefined });
+        : category === 'Mine'
+          ? await window.itundaBackend.marketplace.myListings({ page: 0, size: 30 })
+          : await window.itundaBackend.marketplace.browse({ page: 0, size: 30, category: category && category !== 'All' ? String(category).toUpperCase().replace(/[^A-Z0-9]+/g, '_') : undefined });
       if (request !== marketplaceRequest) return;
       const records = Array.isArray(response && response.listings) ? response.listings : [];
       marketplaceRealByUiId = Object.create(null);
       marketplaceUiId = 0;
-      H.items = records.map(marketplaceUiListing);
+      H.items = records.map(function (record) { const item = marketplaceUiListing(record); if (category === 'Mine') item.who = 'You'; return item; });
       if (!records.length) {
         marketplaceMessage('No real listings found. Try another search or category.', false);
         return;
