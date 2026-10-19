@@ -663,8 +663,9 @@
     }
     const targetDate = new Date();
     targetDate.setMonth(targetDate.getMonth() + months);
+    const targetDateValue = targetDate.getFullYear() + '-' + String(targetDate.getMonth() + 1).padStart(2, '0') + '-' + String(targetDate.getDate()).padStart(2, '0');
     const payload = { name: String(d.n).trim(), targetAmount: targetAmount,
-      monthlyContribution: Math.ceil(targetAmount / months), targetDate: targetDate.toISOString().slice(0, 10), category: String(d.n).toLowerCase().replace(/[^a-z0-9]+/g, '_') };
+      monthlyContribution: Math.ceil(targetAmount / months), targetDate: targetDateValue, category: String(d.n).toLowerCase().replace(/[^a-z0-9]+/g, '_') };
     const fingerprint = JSON.stringify(payload);
     if (!savingsCreateKey || savingsCreateFingerprint !== fingerprint) {
       savingsCreateKey = window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() :
@@ -676,7 +677,13 @@
       const result = await api('/api/v1/savings/goals', { method: 'POST',
         headers: { 'Idempotency-Key': savingsCreateKey }, body: JSON.stringify(payload) });
       savingsCreateKey = null; savingsCreateFingerprint = null;
-      await reloadSavingsGoals();
+      await reloadSavingsGoals().catch(function (refreshError) {
+        console.warn('[itunda savings] Goal created; list refresh failed:', refreshError.message);
+        if (result.goal && result.goal.id) {
+          liveSavingsGoals = liveSavingsGoals.filter(function (goal) { return goal.id !== result.goal.id; });
+          liveSavingsGoals.unshift(result.goal); S.liveGoals = liveSavingsGoals; savingsGoalsLoaded = true;
+        }
+      });
       const created = result.goal && liveSavingsGoals.find(function (goal) { return goal.id === result.goal.id; });
       S.goal = mapSavingsGoal(created || result.goal);
       render('fade-none');
@@ -711,8 +718,16 @@
         headers: { 'Idempotency-Key': savingsDepositKey }, body: JSON.stringify(payload) });
       savingsDepositKey = null; savingsDepositFingerprint = null;
       closeSheet();
-      await loadAccount();
-      await reloadSavingsGoals();
+      await loadAccount().catch(function (refreshError) {
+        console.warn('[itunda savings] Deposit confirmed; account refresh failed:', refreshError.message);
+      });
+      await reloadSavingsGoals().catch(function (refreshError) {
+        console.warn('[itunda savings] Deposit confirmed; goal refresh failed:', refreshError.message);
+        if (result.goal && result.goal.id) {
+          liveSavingsGoals = liveSavingsGoals.map(function (item) { return item.id === result.goal.id ? result.goal : item; });
+          S.liveGoals = liveSavingsGoals;
+        }
+      });
       const updated = result.goal && liveSavingsGoals.find(function (item) { return item.id === result.goal.id; });
       S.goal = mapSavingsGoal(updated || result.goal);
       render('fade-none');
