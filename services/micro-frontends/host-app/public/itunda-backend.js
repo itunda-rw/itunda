@@ -500,7 +500,7 @@
     }
   });
 
-  // Real nearby results now drive the existing prototype map pins and category chips.
+  // Real nearby results drive the prototype's existing POI array and category chips.
   const mapCategoryByChip = {
     all: 'RESTAURANT', cafe: 'CAFE', food: 'RESTAURANT', bus: 'BUS_STOP',
     pharm: 'PHARMACY', atm: 'ATM'
@@ -509,70 +509,53 @@
     RESTAURANT: 'food', CAFE: 'cafe', BUS_STOP: 'bus', PHARMACY: 'pharm', ATM: 'atm'
   };
   let nearbySequence = 0;
-  function mapCoordinateToCanvas(latitude, longitude, places) {
-    const centerLat = -1.9441, centerLng = 30.0619;
-    const points = places.map(function (p) { return [Number(p.latitude), Number(p.longitude)]; })
-      .filter(function (p) { return Number.isFinite(p[0]) && Number.isFinite(p[1]); });
-    const lats = points.map(function (p) { return p[0]; });
-    const lngs = points.map(function (p) { return p[1]; });
-    const minLat = Math.min(centerLat - 0.02, ...(lats.length ? lats : [centerLat]));
-    const maxLat = Math.max(centerLat + 0.02, ...(lats.length ? lats : [centerLat]));
-    const minLng = Math.min(centerLng - 0.025, ...(lngs.length ? lngs : [centerLng]));
-    const maxLng = Math.max(centerLng + 0.025, ...(lngs.length ? lngs : [centerLng]));
-    return {
-      x: 20 + ((Number(longitude) - minLng) / Math.max(0.00001, maxLng - minLng)) * 300,
-      y: 20 + ((maxLat - Number(latitude)) / Math.max(0.00001, maxLat - minLat)) * 440
-    };
-  }
   function replacePrototypePois(places, category) {
     if (!Array.isArray(window.POI)) return;
     const usable = places.filter(function (p) {
       return p && String(p.displayName || '').trim() &&
         Number.isFinite(Number(p.latitude)) && Number.isFinite(Number(p.longitude));
     });
-    const coords = usable.map(function (p) { return mapCoordinateToCanvas(p.latitude, p.longitude, usable); });
     window.POI.splice(0, window.POI.length);
     usable.forEach(function (place, index) {
-      const pos = coords[index];
-      const id = 'real-map-place-' + index;
-      const name = String(place.displayName);
+      const lat = Number(place.latitude), lng = Number(place.longitude);
       window.POI.push({
-        id: id, c: category || 'food', e: '📍', n: name,
-        x: Math.max(16, Math.min(324, pos.x)), y: Math.max(20, Math.min(460, pos.y)),
-        k: String(place.distanceKm == null ? 'Nearby place' : Number(place.distanceKm).toFixed(1) + ' km away'),
+        id: 'real-map-place-' + index, c: category || 'food', e: '📍', n: String(place.displayName),
+        x: Math.max(-200, Math.min(640, 250 + (lng - 30.0619) * 3500)),
+        y: Math.max(-120, Math.min(900, 440 - (lat + 1.9441) * 3500)),
+        k: String(place.distanceKm == null ? 'Verified nearby place' : Number(place.distanceKm).toFixed(1) + ' km away'),
         r: '', d: place.distanceKm == null ? '' : Number(place.distanceKm).toFixed(1) + ' km',
-        o: '', latitude: Number(place.latitude), longitude: Number(place.longitude)
+        o: '', latitude: lat, longitude: lng
       });
     });
   }
   async function loadRealNearby(categoryChip) {
     const sequence = ++nearbySequence;
     const category = mapCategoryByChip[categoryChip] || 'RESTAURANT';
-    const canvas = document.querySelector('.screen');
     try {
       const places = await window.itundaMaps.searchNearby(category, -1.9441, 30.0619, 5);
-      if (sequence !== nearbySequence || !Array.isArray(window.POI)) return;
+      if (sequence !== nearbySequence) return;
       replacePrototypePois(places, mapChipByCategory[category] || categoryChip);
       if (typeof window.render === 'function') window.render('fade-none');
+      if (!places.length && typeof window.toast === 'function') window.toast('No real nearby places were found for this category.');
     } catch (error) {
       if (sequence !== nearbySequence) return;
       if (Array.isArray(window.POI)) window.POI.splice(0, window.POI.length);
-      if (typeof window.toast === 'function') window.toast('Nearby places unavailable: ' + (error.message || 'try again'));
       if (typeof window.render === 'function') window.render('fade-none');
+      if (typeof window.toast === 'function') window.toast('Nearby places unavailable: ' + (error.message || 'try again'));
     }
   }
   if (typeof window.mpCat === 'function') {
+    const originalMapCategory = window.mpCat;
     window.mpCat = function (chip) {
-      M.cat = chip;
-      M.sel = null;
+      originalMapCategory(chip);
       loadRealNearby(chip);
     };
   }
   if (typeof window.openMaps === 'function') {
-    const openMapsWithLivePlaces = window.openMaps;
+    const originalOpenMaps = window.openMaps;
     window.openMaps = function () {
-      openMapsWithLivePlaces();
-      loadRealNearby(M && M.cat && M.cat !== 'all' ? M.cat : 'all');
+      originalOpenMaps();
+      loadRealNearby('all');
     };
   }
 
