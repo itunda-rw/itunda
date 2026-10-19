@@ -49,4 +49,4 @@ if (html.includes('Skip (prototype)') ||
 }
 html = html.replace('</body>', bridge + '</body>');
 writeFileSync(outputPath, html);
-process.stdout.write('Synced canonical v318 with real auth bridge; removed prototype-only auth shortcuts.\\n');
+process.stdout.write('Synced canonical v318 with real auth bridge; removed prototype-only auth shortcuts.\n');
