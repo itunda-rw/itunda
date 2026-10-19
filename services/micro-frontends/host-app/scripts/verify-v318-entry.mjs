@@ -17,6 +17,7 @@ const demoHandler = "window.phDemo=()=>{S.ob.ph='788123456';render('fade-none')}
 const productionEquivalent = (html) => html
   .replace(/\r?\n/g, '')
   .split(skipLabel).join(signInLabel)
+  .replace(/<a\\b[^>]*onclick=[\"']obSkip\\(\\);return false[\"'][^>]*>[^<]*prototype[^<]*<\\/a>/gi, '')
   .replace(demoShortcut, '')
   .replace(demoHandler, '')
   .replace(bridge, '');
