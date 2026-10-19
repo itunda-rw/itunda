@@ -43,7 +43,7 @@ html = html.replace(demoHandler, '');
 
 if (html.includes(skipLabel) ||
     /onclick="obSkip\(\);return false"/i.test(html) ||
-    html.includes(demoShortcut.source.replace(/^\\?/, '')) ||
+    demoShortcut.test(html) ||
     html.includes(demoHandler) ||
     /onclick="phDemo\(\);return false"/i.test(html)) {
   throw new Error('Prototype-only authentication shortcuts remain in production HTML.');
