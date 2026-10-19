@@ -1,27 +1,3 @@
-import { readFileSync } from 'node:fs';
-
-const root = new URL('../', import.meta.url);
-const read = (path) => readFileSync(new URL(path, root), 'utf8');
-const index = read('index.html');
-const prototype = read('public/itunda-prototype-v318.html');
-const reference = read('../../../itunda__clickable_prototype_v318.html');
-const backend = read('public/itunda-backend.js');
-const nginx = read('../nginx.conf');
-const cacheHeader = 'no-store, no-cache, must-revalidate, max-age=0';
-const bridge = '<script src="/itunda-backend.js"></script>';
-const protectedPaths = ['/', '/index.html', '/itunda-prototype-v318.html', '/itunda-backend.js'];
-const skipLabel = 'onclick="obSkip();return false">Skip (prototype)';
-const signInLabel = 'onclick="obPhoneNext();return false">Continue';
-const demoShortcut = /<a href="#" class="sm" style="color:var\(--lk\);font-weight:700;display:inline-block;margin-top:6px" onclick="phDemo\(\);return false">Prototype: fill a returning number<\/a>/;
-const demoHandler = "window.phDemo=()=>{S.ob.ph='788123456';render('fade-none')};";
-const productionEquivalent = (html) => html
-  .replace(/\r?\n/g, '')
-  .split(skipLabel).join(signInLabel)
-  .replace(/<a\b[^>]*onclick=["']obSkip\(\);return false["'][^>]*>[^<]*prototype[^<]*<\/a>/gi, '')
-  .replace(demoShortcut, '')
-  .replace(demoHandler, '')
-  .replace(bridge, '');
-
 const checks = [
   ['generated v318 matches canonical except real-auth production transformations', productionEquivalent(prototype) === productionEquivalent(reference)],
   ['app route uses v318', index.includes('frame.src = "/itunda-prototype-v318.html"')],
@@ -55,6 +31,12 @@ const checks = [
     return Boolean(block && block.includes(cacheHeader) && block.includes('add_header Pragma "no-cache" always;'));
   })]
 ];
+  ['Maps adapter exposes real search, nearby, directions and bookmarks endpoints',
+    backend.includes("window.itundaBackend.maps = {") && backend.includes("api('/api/v1/maps/search' + queryString({ q: q }))") && backend.includes("api('/api/v1/maps/nearby' + queryString(") && backend.includes("api('/api/v1/maps/directions' + queryString(") && backend.includes("api('/api/v1/maps/bookmarks'")],
+  ['Marketplace adapter exposes authenticated browse, search and listing actions',
+    backend.includes("window.itundaBackend.marketplace = {") && backend.includes("api('/api/v1/marketplace/listings' + queryString(options))") && backend.includes("api('/api/v1/marketplace/listings/search' + queryString(") && backend.includes("api('/api/v1/marketplace/my-listings' + queryString(options))") && backend.includes("/like', { method: 'POST'") && backend.includes("/hide', { method: 'POST'")],
+  ['Maps and Marketplace adapters do not fabricate successful fallback records',
+    !backend.includes("maps.search = function (query) { return Promise.resolve([])") && !backend.includes("marketplace.browse = function (options) { return Promise.resolve([])")],
 const failed = checks.filter(([, passed]) => !passed);
 for (const [label, passed] of checks) process.stdout.write((passed ? 'PASS ' : 'FAIL ') + label + '\n');
 if (failed.length) process.exitCode = 1;
