@@ -6,6 +6,7 @@
   const REFRESH_KEY = 'itunda_web_refresh_token';
   let mainAccountId = null;
   let liveTransactions = [];
+  let transactionLoadError = null;
   let liveUser = null;
   let lastTransaction = null;
   let termsCatalog = [];
@@ -68,16 +69,28 @@
   async function loadAccount() {
     const results = await Promise.all([
       api('/api/v1/account'),
-      api('/api/v1/account/transactions').catch(function () { return { transactions: [] }; }),
+      api('/api/v1/account/transactions').then(function (body) {
+        if (!Array.isArray(body.transactions)) throw new Error('Your account transaction history could not be read.');
+        transactionLoadError = null;
+        return body;
+      }).catch(function (error) {
+        transactionLoadError = error.message || 'Transaction history is temporarily unavailable.';
+        console.warn('[itunda backend] Transaction history unavailable:', transactionLoadError);
+        return null;
+      }),
       api('/api/v1/auth/profile').catch(function () { return null; })
     ]);
     const accountList = Array.isArray(results[0].accounts) ? results[0].accounts : [];
-    liveTransactions = Array.isArray(results[1].transactions) ? results[1].transactions : [];
+    liveTransactions = results[1] ? results[1].transactions : [];
     if (results[2] && results[2].user) liveUser = results[2].user;
     const main = accountList.find(function (a) { return String(a.type || '').toUpperCase() === 'MAIN'; }) || accountList[0];
-    if (!main) throw new Error('No account balance is available for this user yet.');
+    if (!main || main.id === undefined || main.id === null || main.id === '') throw new Error('No account is available for this user yet.');
+    const balance = main.balance;
+    if (balance === undefined || balance === null || balance === '' || !Number.isFinite(Number(balance))) {
+      throw new Error('Your account balance is unavailable. Please retry; it has not been replaced with a sample value.');
+    }
     mainAccountId = main.id;
-    S.bank = Number(main.balance || 0);
+    S.bank = Number(balance);
     S.name = [liveUser && liveUser.firstName, liveUser && liveUser.lastName].filter(Boolean).join(' ') || S.name || '';
     if (Array.isArray(S.act)) {
       S.act = liveTransactions.map(function (tx) {
@@ -137,15 +150,24 @@
     if (busy) return;
     busy = true;
     const errorNode = document.getElementById('web-login-error');
+    const fromLogin = Boolean(errorNode);
     if (errorNode) errorNode.textContent = 'Loading your account…';
     try {
       await loadAccount();
-      S.auth = true; S.obStep = null; S.stack = []; S.tab = 'home'; S.first = true;
-      render('fade');
-      window.toast('Your account is ready');
+      if (fromLogin) {
+        S.auth = true; S.obStep = null; S.stack = []; S.tab = 'home'; S.first = true;
+        render('fade');
+      } else {
+        render('fade-none');
+      }
+      window.toast(transactionLoadError ? 'Account loaded; transaction history is still unavailable' : 'Your account is up to date');
     } catch (error) {
-      showAccountLoadRetry('You are signed in, but account data is still unavailable. Please retry.');
-      console.warn('[itunda backend] Account load after sign-in failed:', error.message);
+      if (fromLogin) {
+        showAccountLoadRetry('You are signed in, but account data is still unavailable. Please retry.');
+      } else {
+        fail(new Error('Account data could not be refreshed. Your displayed balance has not been replaced. ' + (error.message || 'Please try again.')));
+      }
+      console.warn('[itunda backend] Account refresh failed:', error.message);
     } finally { busy = false; }
   };
   window.backendLogin = async function () {
@@ -216,8 +238,11 @@
         '<div class="r" style="color:' + (credit ? 'var(--ok)' : 'var(--tx)') + '">' + (credit ? '+' : '') + fmt(Math.abs(amount)) + ' RWF</div></div>';
     }).join('');
     if (demoMode) return previousBankScreen() + '<div class="sec"><div class="sech">Demo account activity</div><div class="fine" style="padding:12px 0">Sample data only. This demo is not connected to a real account or ledger.</div></div>';
+    const activityState = transactionLoadError
+      ? '<div class="fine" role="status" style="padding:12px 0">Transaction history could not be loaded. Your account balance is unchanged. ' + String(transactionLoadError).replace(/[<>&"]/g, '') + '</div><button class="chip" onclick="backendRetryAccount()">Retry loading account</button>'
+      : (rows || '<div class="fine" style="padding:12px 0">No account transactions yet.</div>');
     return html + '<div class="sec"><div class="sech">Real account activity</div>' +
-      (rows || '<div class="fine" style="padding:12px 0">No account transactions yet.</div>') +
+      activityState +
       '<div class="fine" style="padding-top:8px">Loaded from your itunda account ledger.</div></div>';
   };
   const previousSentScreen = screens.sent;
@@ -415,6 +440,380 @@
     liveUser = null; mainAccountId = null; liveTransactions = [];
     if (oldLogOut) oldLogOut();
   };
+
+  // Real Maps API adapter for the v266 shell. Uses the existing authenticated API
+  // helper and the backend's established response contracts; never substitutes demo
+  // places when the service fails. Prototype screens can call these methods directly.
+  window.itundaMaps = Object.freeze({
+    searchPlaces: async function (query) {
+      const q = String(query || '').trim();
+      if (q.length < 2) return [];
+      const body = await api('/api/v1/maps/search?q=' + encodeURIComponent(q));
+      if (!Array.isArray(body.results)) throw new Error('Maps search returned an invalid response.');
+      return body.results.map(function (place) {
+        const latitude = Number(place.latitude);
+        const longitude = Number(place.longitude);
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+        return {
+          displayName: String(place.displayName || place.display_name || ''),
+          latitude: latitude,
+          longitude: longitude
+        };
+      }).filter(function (place) { return place && place.displayName; });
+    },
+    fetchCategories: async function () {
+      const body = await api('/api/v1/maps/categories');
+      if (!Array.isArray(body.categories)) throw new Error('Maps categories returned an invalid response.');
+      return body.categories;
+    },
+    searchNearby: async function (category, latitude, longitude, radiusKm) {
+      const lat = Number(latitude), lng = Number(longitude);
+      const radius = radiusKm === undefined ? 2 : Number(radiusKm);
+      if (!String(category || '').trim() || !Number.isFinite(lat) || !Number.isFinite(lng) ||
+          !Number.isFinite(radius) || radius <= 0 || radius > 50) {
+        throw new Error('Choose a place category and a valid map location.');
+      }
+      const query = '/api/v1/maps/nearby?category=' + encodeURIComponent(String(category)) +
+        '&lat=' + encodeURIComponent(String(lat)) + '&lng=' + encodeURIComponent(String(lng)) +
+        '&radiusKm=' + encodeURIComponent(String(radius));
+      const body = await api(query);
+      if (!Array.isArray(body.places)) throw new Error('Nearby places returned an invalid response.');
+      return body.places;
+    },
+    getDirections: async function (fromLatitude, fromLongitude, toLatitude, toLongitude, mode) {
+      const values = [fromLatitude, fromLongitude, toLatitude, toLongitude].map(Number);
+      if (!values.every(Number.isFinite) ||
+          values[0] < -90 || values[0] > 90 || values[2] < -90 || values[2] > 90 ||
+          values[1] < -180 || values[1] > 180 || values[3] < -180 || values[3] > 180) {
+        throw new Error('Choose a valid origin and destination.');
+      }
+      const travelMode = mode || 'DRIVING';
+      if (!['DRIVING', 'WALKING', 'BIKING'].includes(travelMode)) throw new Error('Unsupported travel mode.');
+      const path = '/api/v1/maps/directions/alternatives?fromLat=' + encodeURIComponent(String(values[0])) +
+        '&fromLng=' + encodeURIComponent(String(values[1])) + '&toLat=' + encodeURIComponent(String(values[2])) +
+        '&toLng=' + encodeURIComponent(String(values[3])) + '&mode=' + encodeURIComponent(travelMode);
+      const body = await api(path);
+      if (!Array.isArray(body.routes)) throw new Error('Directions returned an invalid response.');
+      return body.routes;
+    },
+    getTransitDirections: async function (fromLatitude, fromLongitude, toLatitude, toLongitude) {
+      const values = [fromLatitude, fromLongitude, toLatitude, toLongitude].map(Number);
+      if (!values.every(Number.isFinite) ||
+          values[0] < -90 || values[0] > 90 || values[2] < -90 || values[2] > 90 ||
+          values[1] < -180 || values[1] > 180 || values[3] < -180 || values[3] > 180) {
+        throw new Error('Choose a valid origin and destination.');
+      }
+      const path = '/api/v1/maps/directions/transit?fromLat=' + encodeURIComponent(String(values[0])) +
+        '&fromLng=' + encodeURIComponent(String(values[1])) + '&toLat=' + encodeURIComponent(String(values[2])) +
+        '&toLng=' + encodeURIComponent(String(values[3]));
+      const body = await api(path);
+      if (!Array.isArray(body.journeys)) throw new Error('Transit directions returned an invalid response.');
+      return body.journeys;
+    }
+  });
+
+  // Real nearby results drive the prototype's existing POI array and category chips.
+  const mapCategoryByChip = {
+    all: 'RESTAURANT', cafe: 'CAFE', food: 'RESTAURANT', bus: 'BUS_STOP',
+    pharm: 'PHARMACY', atm: 'ATM'
+  };
+  const mapChipByCategory = {
+    RESTAURANT: 'food', CAFE: 'cafe', BUS_STOP: 'bus', PHARMACY: 'pharm', ATM: 'atm'
+  };
+  let nearbySequence = 0;
+  function replacePrototypePois(places, category) {
+    if (!Array.isArray(window.POI)) return;
+    const usable = places.filter(function (p) {
+      return p && String(p.displayName || '').trim() &&
+        Number.isFinite(Number(p.latitude)) && Number.isFinite(Number(p.longitude));
+    });
+    window.POI.splice(0, window.POI.length);
+    usable.forEach(function (place, index) {
+      const lat = Number(place.latitude), lng = Number(place.longitude);
+      window.POI.push({
+        id: 'real-map-place-' + index, c: mapChipByCategory[place.__itundaCategory] || category || 'food', e: '📍', n: String(place.displayName),
+        x: Math.max(-200, Math.min(640, 250 + (lng - 30.0619) * 3500)),
+        y: Math.max(-120, Math.min(900, 440 - (lat + 1.9441) * 3500)),
+        k: String(place.distanceKm == null ? 'Verified nearby place' : Number(place.distanceKm).toFixed(1) + ' km away'),
+        r: '', d: place.distanceKm == null ? '' : Number(place.distanceKm).toFixed(1) + ' km',
+        o: '', latitude: lat, longitude: lng
+      });
+    });
+  }
+  async function loadRealNearby(categoryChip) {
+    const sequence = ++nearbySequence;
+    const category = mapCategoryByChip[categoryChip] || 'RESTAURANT';
+    try {
+      let places;
+      if (categoryChip === 'all') {
+        const categories = ['RESTAURANT', 'CAFE', 'BUS_STOP', 'PHARMACY', 'ATM'];
+        const grouped = await Promise.all(categories.map(async function (kind) {
+          const results = await window.itundaMaps.searchNearby(kind, -1.9441, 30.0619, 5);
+          return results.map(function (place) { return Object.assign({}, place, { __itundaCategory: kind }); });
+        }));
+        const seen = new Set();
+        places = grouped.flat().filter(function (place) {
+          const key = String(place.displayName || '').toLowerCase() + ':' + Number(place.latitude).toFixed(5) + ':' + Number(place.longitude).toFixed(5);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      } else {
+        places = await window.itundaMaps.searchNearby(category, -1.9441, 30.0619, 5);
+      }
+      if (sequence !== nearbySequence) return;
+      replacePrototypePois(places, mapChipByCategory[category] || categoryChip);
+      if (typeof window.render === 'function') window.render('fade-none');
+      if (!places.length && typeof window.toast === 'function') window.toast('No real nearby places were found for this category.');
+    } catch (error) {
+      if (sequence !== nearbySequence) return;
+      if (Array.isArray(window.POI)) window.POI.splice(0, window.POI.length);
+      if (typeof window.render === 'function') window.render('fade-none');
+      if (typeof window.toast === 'function') window.toast('Nearby places unavailable: ' + (error.message || 'try again'));
+    }
+  }
+  if (typeof window.mpCat === 'function') {
+    const originalMapCategory = window.mpCat;
+    window.mpCat = function (chip) {
+      originalMapCategory(chip);
+      loadRealNearby(chip);
+    };
+  }
+  if (typeof window.openMaps === 'function') {
+    const originalOpenMaps = window.openMaps;
+    window.openMaps = function () {
+      originalOpenMaps();
+      loadRealNearby('all');
+    };
+  }
+
+  // Replace prototype-only POI matching with real backend Maps search results.
+  let mapsSearchSequence = 0;
+  let mapsSearchResults = [];
+  window.itundaMapsChoosePlace = function (index) {
+    const place = mapsSearchResults[index];
+    if (!place) return;
+    window.itundaMapsSelectedPlace = Object.freeze({
+      displayName: place.displayName, latitude: place.latitude, longitude: place.longitude
+    });
+    if (M) M.realPlace = window.itundaMapsSelectedPlace;
+    if (PLACE) { PLACE.n = place.displayName; PLACE.addr = place.displayName; }
+    if (typeof window.toast === 'function') window.toast(place.displayName + ' · ' + place.latitude.toFixed(5) + ', ' + place.longitude.toFixed(5));
+    if (typeof window.mpGo === 'function') window.mpGo('route');
+  };
+  if (typeof window.mpQ === 'function') {
+    window.mpQ = async function (value) {
+      const query = String(value || '').trim();
+      const sequence = ++mapsSearchSequence;
+      const root = document.getElementById('mpres');
+      const recent = document.getElementById('mprec');
+      if (!root) return;
+      if (recent) recent.style.display = query ? 'none' : '';
+      root.replaceChildren();
+      mapsSearchResults = [];
+      if (query.length < 2) return;
+      const status = document.createElement('div');
+      status.className = 'pad mu';
+      status.setAttribute('role', 'status');
+      status.textContent = 'Searching real places…';
+      root.appendChild(status);
+      try {
+        const results = await window.itundaMaps.searchPlaces(query);
+        if (sequence !== mapsSearchSequence || !document.getElementById('mpres')) return;
+        mapsSearchResults = results;
+        root.replaceChildren();
+        if (!results.length) {
+          status.textContent = 'No real places matched this search.';
+          root.appendChild(status);
+          return;
+        }
+        results.forEach(function (place, index) {
+          const row = document.createElement('button');
+          row.type = 'button';
+          row.className = 'pl tap';
+          row.style.cssText = 'width:100%;text-align:left;border:0;background:transparent;color:var(--tx);cursor:pointer';
+          const pin = document.createElement('i');
+          pin.style.fontStyle = 'normal';
+          pin.textContent = '📍';
+          const details = document.createElement('div');
+          details.style.cssText = 'flex:1;min-width:0';
+          const name = document.createElement('b');
+          name.style.cssText = 'display:block;font-size:16px;font-weight:600';
+          name.textContent = place.displayName;
+          const coordinates = document.createElement('span');
+          coordinates.textContent = place.latitude.toFixed(5) + ', ' + place.longitude.toFixed(5);
+          details.append(name, coordinates);
+          row.append(pin, details);
+          row.addEventListener('click', function () { window.itundaMapsChoosePlace(index); });
+          root.appendChild(row);
+        });
+      } catch (error) {
+        if (sequence !== mapsSearchSequence || !document.getElementById('mpres')) return;
+        root.replaceChildren();
+        const message = document.createElement('div');
+        message.className = 'pad mu';
+        message.setAttribute('role', 'alert');
+        message.textContent = error.message || 'Maps search is temporarily unavailable.';
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.className = 'chip';
+        retry.textContent = 'Retry search';
+        retry.addEventListener('click', function () {
+          const input = document.getElementById('mpq');
+          window.mpQ(input ? input.value : query);
+        });
+        message.appendChild(retry);
+        root.appendChild(message);
+      }
+    };
+  }
+
+  // Load genuine OSRM or GTFS transit directions and patch the existing route screen.
+  let selectedRouteKey = '';
+  let selectedRoutePending = '';
+  let selectedRouteResult = null;
+  function projectRouteGeometry(geometry, width, height) {
+    if (!Array.isArray(geometry) || geometry.length < 2) return '';
+    const pts = geometry.map(function (pair) { return [Number(pair[0]), Number(pair[1])]; })
+      .filter(function (p) { return Number.isFinite(p[0]) && Number.isFinite(p[1]); });
+    if (pts.length < 2) return '';
+    const minLat = Math.min.apply(null, pts.map(function (p) { return p[0]; }));
+    const maxLat = Math.max.apply(null, pts.map(function (p) { return p[0]; }));
+    const minLng = Math.min.apply(null, pts.map(function (p) { return p[1]; }));
+    const maxLng = Math.max.apply(null, pts.map(function (p) { return p[1]; }));
+    return pts.map(function (p, i) {
+      const x = 18 + ((p[1] - minLng) / Math.max(0.000001, maxLng - minLng)) * (width - 36);
+      const y = 18 + ((maxLat - p[0]) / Math.max(0.000001, maxLat - minLat)) * (height - 36);
+      return (i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1);
+    }).join(' ');
+  }
+  function patchRouteView(result, mode) {
+    const svg = document.querySelector('svg[aria-label="Route map"]');
+    if (!svg) return;
+    let path = '';
+    let duration = '';
+    let distance = '';
+    if (mode === 'bus') {
+      const journey = result;
+      path = projectRouteGeometry([
+        [journey.originStop.latitude, journey.originStop.longitude],
+        [journey.destinationStop.latitude, journey.destinationStop.longitude]
+      ], 340, 330);
+      const fmtTime = function (seconds) {
+        const mins = Math.floor(Number(seconds) / 60);
+        const hh = Math.floor(mins / 60) % 24, mm = String(mins % 60).padStart(2, '0');
+        return String(hh).padStart(2, '0') + ':' + mm;
+      };
+      duration = Math.max(0, Math.round((journey.arrivalSecondsAfterMidnight - journey.departureSecondsAfterMidnight) / 60)) + ' min';
+      distance = (Number(journey.walkToOriginStopKm || 0) + Number(journey.walkFromDestinationStopKm || 0)).toFixed(1) + ' km walking';
+      const nodes = svg.parentElement && svg.parentElement.parentElement;
+      if (nodes) {
+        const walker = document.createTreeWalker(nodes, NodeFilter.SHOW_TEXT);
+        let node;
+        while ((node = walker.nextNode())) {
+          if (node.nodeValue.includes('Kimironko Market stop')) node.nodeValue = node.nodeValue.replace('Kimironko Market stop', journey.originStop.name);
+          if (node.nodeValue.includes('Nyabugogo Stop')) node.nodeValue = node.nodeValue.replace('Nyabugogo Stop', journey.destinationStop.name);
+          if (node.nodeValue.includes('2:06 pm – 2:41 pm')) node.nodeValue = node.nodeValue.replace('2:06 pm – 2:41 pm', fmtTime(journey.departureSecondsAfterMidnight) + ' – ' + fmtTime(journey.arrivalSecondsAfterMidnight));
+          if (node.nodeValue.includes('11 stops · 22 min')) node.nodeValue = node.nodeValue.replace('11 stops · 22 min', duration + ' · ' + distance);
+        }
+      }
+    } else {
+      path = projectRouteGeometry(result.geometry, 340, 330);
+      duration = Math.round(result.durationMinutes) + ' min';
+      distance = Math.round(result.distanceKm * 10) / 10 + ' km · ' + duration;
+    }
+    if (path) {
+      const existing = svg.querySelectorAll('path');
+      if (existing.length > 1) {
+        existing[1].setAttribute('d', path);
+        existing[1].setAttribute('stroke', 'var(--lk)');
+        existing[1].setAttribute('stroke-width', '7');
+      }
+    }
+    if (mode !== 'bus') {
+      const nodes = svg.parentElement && svg.parentElement.parentElement;
+      if (nodes) {
+        const walker = document.createTreeWalker(nodes, NodeFilter.SHOW_TEXT);
+        let node;
+        while ((node = walker.nextNode())) {
+          if (node.nodeValue.includes('2:06 pm – 2:41 pm')) node.nodeValue = node.nodeValue.replace('2:06 pm – 2:41 pm', duration);
+          if (node.nodeValue.includes('11 stops · 22 min')) node.nodeValue = node.nodeValue.replace('11 stops · 22 min', distance);
+        }
+      }
+    }
+  }
+  async function loadSelectedRoute(place, mode) {
+    const key = [place.latitude, place.longitude, mode].join(':');
+    if (selectedRouteKey === key || selectedRoutePending === key) return;
+    selectedRoutePending = key;
+    try {
+      let result;
+      if (mode === 'bus') {
+        const journeys = await window.itundaMaps.getTransitDirections(-1.9441, 30.0619, place.latitude, place.longitude);
+        if (!journeys.length) throw new Error('No transit journey is available for this destination.');
+        result = journeys[0];
+      } else {
+        const travelMode = mode === 'walk' ? 'WALKING' : mode === 'bike' ? 'BIKING' : 'DRIVING';
+        const routes = await window.itundaMaps.getDirections(-1.9441, 30.0619, place.latitude, place.longitude, travelMode);
+        if (!routes.length) throw new Error('No route is available for this destination.');
+        result = routes[0];
+      }
+      if (selectedRoutePending !== key) return;
+      selectedRoutePending = '';
+      selectedRouteKey = key;
+      selectedRouteResult = { mode: mode, value: result };
+      if (typeof window.render === 'function') window.render('fade-none');
+      requestAnimationFrame(function () { patchRouteView(result, mode); });
+    } catch (error) {
+      if (selectedRoutePending === key) selectedRoutePending = '';
+      if (typeof window.toast === 'function') window.toast('Directions unavailable: ' + (error.message || 'try again'));
+    }
+  }
+  function selectRealDestination(place) {
+    window.itundaMapsSelectedPlace = Object.freeze({
+      displayName: place.displayName, latitude: Number(place.latitude), longitude: Number(place.longitude)
+    });
+    const id = 'real-selected-destination';
+    const existing = Array.isArray(window.POI) ? window.POI.find(function (p) { return p.id === id; }) : null;
+    const poi = {
+      id: id, c: 'food', e: '📍', n: place.displayName, x: 250, y: 440,
+      k: 'Verified location', r: '', d: '', o: '',
+      latitude: Number(place.latitude), longitude: Number(place.longitude)
+    };
+    if (Array.isArray(window.POI)) {
+      if (existing) Object.assign(existing, poi);
+      else window.POI.push(poi);
+    }
+    if (typeof window.mpArriveAt === 'function') window.mpArriveAt(id);
+    else if (typeof window.mpAddr === 'function') window.mpAddr(place.displayName, place.displayName);
+    loadSelectedRoute(window.itundaMapsSelectedPlace, 'bus');
+  }
+  window.itundaMapsChoosePlace = function (index) {
+    const place = mapsSearchResults[index];
+    if (!place) return;
+    selectRealDestination(place);
+    if (typeof window.toast === 'function') window.toast(place.displayName + ' · ' + place.latitude.toFixed(5) + ', ' + place.longitude.toFixed(5));
+  };
+  if (typeof window.mpOpenPoi === 'function') {
+    const originalOpenPoi = window.mpOpenPoi;
+    window.mpOpenPoi = function (id) {
+      const place = Array.isArray(window.POI) ? window.POI.find(function (p) { return p.id === id; }) : null;
+      if (place && Number.isFinite(Number(place.latitude)) && Number.isFinite(Number(place.longitude))) {
+        selectRealDestination({
+          displayName: place.n, latitude: Number(place.latitude), longitude: Number(place.longitude)
+        });
+        return;
+      }
+      return originalOpenPoi(id);
+    };
+  }
+  if (typeof window.mpSet === 'function') {
+    const originalMapSet = window.mpSet;
+    window.mpSet = function (key, value) {
+      originalMapSet(key, value);
+      if (key === 'mode' && window.itundaMapsSelectedPlace) loadSelectedRoute(window.itundaMapsSelectedPlace, value);
+    };
+  }
 
   (async function restoreSession() {
     if (demoMode || !localStorage.getItem(ACCESS_KEY)) return;
