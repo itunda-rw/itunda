@@ -422,6 +422,8 @@
   let billProvidersError = null;
   let billProvidersPromise = null;
   let billBusy = false;
+  let billRequestFingerprint = null;
+  let billRequestKey = null;
   let lastBillTransaction = null;
   const billProviderAliases = {
     'REG electricity': ['reg', 'electricity'],
@@ -517,13 +519,18 @@
     if (!provider) return fail(new Error('This bill provider is not supported by the live backend.'));
     billBusy = true;
     try {
-      const idempotencyKey = window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() :
-        'bill-web-' + Date.now() + '-' + Math.random().toString(36).slice(2);
       const airtime = /airtime/i.test(bill.p);
       const rail = /airtel/i.test(bill.p) ? 'Airtel Money' : 'MTN MoMo';
       const payload = airtime
         ? { phoneNumber: normalizePhone(bill.num), amount: Number(bill.amt), provider: rail }
         : { billId: provider.id, amount: Number(bill.amt), accountNumber: bill.num, provider: rail };
+      const fingerprint = JSON.stringify({ path: airtime ? '/api/v1/bills/airtime' : '/api/v1/bills/pay', payload: payload });
+      if (!billRequestKey || billRequestFingerprint !== fingerprint) {
+        billRequestKey = window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() :
+          'bill-web-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+        billRequestFingerprint = fingerprint;
+      }
+      const idempotencyKey = billRequestKey;
       const result = await api(airtime ? '/api/v1/bills/airtime' : '/api/v1/bills/pay', {
         method: 'POST',
         headers: { 'Idempotency-Key': idempotencyKey },
@@ -531,6 +538,7 @@
       });
       lastBillTransaction = result.transaction || null;
       if (!lastBillTransaction) throw new Error('The backend did not return a payment transaction. Check activity before retrying.');
+      billRequestKey = null; billRequestFingerprint = null;
       closeSheet();
       await loadAccount().catch(function (refreshError) {
         console.warn('[itunda bills] Payment confirmed; account refresh failed:', refreshError.message);
