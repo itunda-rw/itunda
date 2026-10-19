@@ -7,6 +7,8 @@
   let mainAccountId = null;
   let liveTransactions = [];
   let liveUser = null;
+  let transactionLoadError = null;
+  let profileLoadError = null;
   let lastTransaction = null;
   let termsCatalog = [];
   let busy = false;
@@ -66,14 +68,22 @@
     return body;
   }
   async function loadAccount() {
+    // Account data is required for sign-in. Secondary reads may fail independently,
+    // but a failed request must never be represented as a successful empty result.
     const results = await Promise.all([
       api('/api/v1/account'),
-      api('/api/v1/account/transactions').catch(function () { return { transactions: [] }; }),
-      api('/api/v1/auth/profile').catch(function () { return null; })
+      api('/api/v1/account/transactions').then(function (body) { return { ok: true, body: body }; })
+        .catch(function (error) { return { ok: false, error: error }; }),
+      api('/api/v1/auth/profile').then(function (body) { return { ok: true, body: body }; })
+        .catch(function (error) { return { ok: false, error: error }; })
     ]);
     const accountList = Array.isArray(results[0].accounts) ? results[0].accounts : [];
-    liveTransactions = Array.isArray(results[1].transactions) ? results[1].transactions : [];
-    if (results[2] && results[2].user) liveUser = results[2].user;
+    transactionLoadError = results[1].ok ? null : results[1].error;
+    profileLoadError = results[2].ok ? null : results[2].error;
+    if (results[1].ok) {
+      liveTransactions = Array.isArray(results[1].body.transactions) ? results[1].body.transactions : [];
+    }
+    if (results[2].ok && results[2].body && results[2].body.user) liveUser = results[2].body.user;
     const main = accountList.find(function (a) { return String(a.type || '').toUpperCase() === 'MAIN'; }) || accountList[0];
     if (!main) throw new Error('No account balance is available for this user yet.');
     mainAccountId = main.id;
@@ -217,8 +227,10 @@
     }).join('');
     if (demoMode) return previousBankScreen() + '<div class="sec"><div class="sech">Demo account activity</div><div class="fine" style="padding:12px 0">Sample data only. This demo is not connected to a real account or ledger.</div></div>';
     return html + '<div class="sec"><div class="sech">Real account activity</div>' +
-      (rows || '<div class="fine" style="padding:12px 0">No account transactions yet.</div>') +
-      '<div class="fine" style="padding-top:8px">Loaded from your itunda account ledger.</div></div>';
+      (transactionLoadError
+        ? '<div class="fine" role="alert" style="padding:12px 0;color:var(--er)">Could not load account activity. ' + String(transactionLoadError.message || 'Please try again.').replace(/[<>&"]/g, '') + '</div>'
+        : (rows || '<div class="fine" style="padding:12px 0">No account transactions yet.</div>')) +
+      '<div class="fine" style="padding-top:8px">' + (transactionLoadError ? 'Activity could not be verified from the ledger.' : 'Loaded from your itunda account ledger.') + '</div></div>';
   };
   const previousSentScreen = screens.sent;
   screens.sent = function () {
@@ -232,7 +244,9 @@
     if (liveUser) {
       const fullName = [liveUser.firstName, liveUser.lastName].filter(Boolean).join(' ').replace(/[<>&"]/g, '');
       html = html.replace('078 ••• 214', String(liveUser.phoneNumber || '').replace(/[<>&"]/g, ''));
-      html = html.replace('Your details are sample data.', 'Your details are loaded from your itunda account.');
+      html = html.replace('Your details are sample data.', profileLoadError
+        ? 'Some profile details could not be refreshed from your account.'
+        : 'Your details are loaded from your itunda account.');
       html = html.replace('March 2025', liveUser.createdAt ? new Date(liveUser.createdAt).toLocaleDateString() : '—');
       if (fullName) html = html.replace('Amina Uwase', fullName);
     }
