@@ -563,7 +563,8 @@
   }
   if (typeof window.mpCat === 'function') {
     window.mpCat = function (chip) {
-      if (window.M) { window.M.cat = chip; window.M.sel = null; }
+      M.cat = chip;
+      M.sel = null;
       loadRealNearby(chip);
     };
   }
@@ -571,7 +572,7 @@
     const openMapsWithLivePlaces = window.openMaps;
     window.openMaps = function () {
       openMapsWithLivePlaces();
-      loadRealNearby(window.M && window.M.cat && window.M.cat !== 'all' ? window.M.cat : 'all');
+      loadRealNearby(M && M.cat && M.cat !== 'all' ? M.cat : 'all');
     };
   }
 
@@ -584,8 +585,8 @@
     window.itundaMapsSelectedPlace = Object.freeze({
       displayName: place.displayName, latitude: place.latitude, longitude: place.longitude
     });
-    if (window.M) window.M.realPlace = window.itundaMapsSelectedPlace;
-    if (window.PLACE) { window.PLACE.n = place.displayName; window.PLACE.addr = place.displayName; }
+    if (M) M.realPlace = window.itundaMapsSelectedPlace;
+    if (PLACE) { PLACE.n = place.displayName; PLACE.addr = place.displayName; }
     if (typeof window.toast === 'function') window.toast(place.displayName + ' · ' + place.latitude.toFixed(5) + ', ' + place.longitude.toFixed(5));
     if (typeof window.mpGo === 'function') window.mpGo('route');
   };
@@ -692,13 +693,13 @@
         if (typeof window.toast === 'function') window.toast('Directions unavailable: ' + (error.message || 'try again'));
       });
   }
-  if (window.screens && typeof window.screens.route === 'function') {
-    const prototypeRouteScreen = window.screens.route;
-    window.screens.route = function () {
+  if (screens && typeof screens.route === 'function') {
+    const prototypeRouteScreen = screens.route;
+    screens.route = function () {
       const html = prototypeRouteScreen();
-      const place = window.itundaMapsSelectedPlace || (window.M && window.M.realPlace);
+      const place = window.itundaMapsSelectedPlace || (M && M.realPlace);
       if (!place) return html;
-      const mode = ({ car: 'DRIVING', walk: 'WALKING', bike: 'BIKING' })[window.M && window.M.mode] || 'DRIVING';
+      const mode = ({ car: 'DRIVING', walk: 'WALKING', bike: 'BIKING' })[M && M.mode] || 'DRIVING';
       requestRealRoute(place, mode);
       if (!routeResultCache || routeRequestKey !== [place.latitude, place.longitude, mode].join(':')) {
         return html.replace('aria-label="Route map"', 'aria-label="Route map; loading real directions"');
@@ -721,7 +722,7 @@
       window.itundaMapsSelectedPlace = Object.freeze({
         displayName: place.n, latitude: Number(place.latitude), longitude: Number(place.longitude)
       });
-      if (window.M) window.M.realPlace = window.itundaMapsSelectedPlace;
+      if (M) M.realPlace = window.itundaMapsSelectedPlace;
       if (typeof window.mpGo === 'function') window.mpGo('route');
     };
   }
