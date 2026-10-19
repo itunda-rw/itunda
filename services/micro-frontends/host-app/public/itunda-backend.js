@@ -1011,6 +1011,7 @@
     }
   };
   const prototypeHdPost = window.hdPost;
+  const prototypeHdPostGo = window.hdPostGo;
   window.hdPost = function () {
     if (S.hd !== 'market') {
       if (typeof prototypeHdPost === 'function') return prototypeHdPost();
