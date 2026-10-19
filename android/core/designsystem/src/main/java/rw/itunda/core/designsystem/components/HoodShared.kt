@@ -1,6 +1,8 @@
 package rw.itunda.core.designsystem.components
 
 import android.Manifest
+import android.animation.ValueAnimator
+import android.os.Build
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -54,6 +56,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -103,16 +106,25 @@ fun SkeletonBlock(height: Dp = 120.dp, modifier: Modifier = Modifier) {
     }
     if (!showSkeleton) return
 
-    val transition = rememberInfiniteTransition(label = "skeleton")
-    val offset by transition.animateFloat(
-        initialValue = -1f,
-        targetValue = 2f,
-        animationSpec = infiniteRepeatable(animation = tween(1000, easing = LinearEasing), repeatMode = RepeatMode.Restart),
-        label = "skeletonOffset",
-    )
+    // Respect the system Remove animations setting. Avoid an infinite animation
+    // when motion is disabled; a stable State<Float> keeps the gradient static.
+    val animationsEnabled = Build.VERSION.SDK_INT < Build.VERSION_CODES.O || ValueAnimator.areAnimatorsEnabled()
+    val offset by if (animationsEnabled) {
+        rememberInfiniteTransition(label = "skeleton").animateFloat(
+            initialValue = -1f,
+            targetValue = 2f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart,
+            ),
+            label = "skeletonOffset",
+        )
+    } else {
+        remember { mutableStateOf(0f) }
+    }
     Card(
         shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-        modifier = modifier.fillMaxWidth().height(height),
+        modifier = modifier.fillMaxWidth().height(height).clearAndSetSemantics { },
         colors = CardDefaults.cardColors(containerColor = Ids.colors.surfaceSoft),
     ) {
         Box(
