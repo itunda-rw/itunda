@@ -862,6 +862,90 @@
   };
 
 
+  // Bind the v318 Marketplace browse/search to real authenticated listings.
+  // Payment, listing creation and seller actions remain disabled until their complete
+  // backend contracts are wired; never let the prototype's local balance mutate.
+  let marketplaceRequest = 0;
+  let marketplaceRealByUiId = Object.create(null);
+  let marketplaceUiId = 0;
+  function marketplaceMessage(message, alert) {
+    const el = document.getElementById('mkl');
+    if (!el) return;
+    el.innerHTML = '<div class="pad ' + (alert ? '' : 'mu') + '" ' +
+      (alert ? 'role="alert" ' : 'role="status" ') +
+      'style="padding-top:24px;text-align:center">' + mapText(message) + '</div>';
+  }
+  function marketplaceCategory(value) {
+    const v = String(value || '').toLowerCase();
+    const known = { electronics: 'Electronics', phones: 'Phones', home: 'Home', fashion: 'Fashion', kids: 'Kids', sports: 'Sports' };
+    return known[v] || String(value || 'Other');
+  }
+  function marketplaceUiListing(listing) {
+    const uiId = ++marketplaceUiId;
+    marketplaceRealByUiId[uiId] = listing;
+    return {
+      id: uiId, ti: String(listing.title || 'Untitled listing'),
+      sub: String(listing.neighborhood || listing.meetingPlace || listing.category || 'Marketplace'),
+      p: Number(listing.price || 0), g: 'bag', c: marketplaceCategory(listing.category),
+      who: String(listing.sellerId || 'Itunda user'), cond: 'good',
+      d: String(listing.description || ''), st: listing.status === 'SOLD' ? 'sold' : undefined,
+      realListing: true
+    };
+  }
+  async function loadRealMarketplace(query, category) {
+    const request = ++marketplaceRequest;
+    marketplaceMessage(query ? 'Searching real listings…' : 'Loading real listings…', false);
+    try {
+      const response = query
+        ? await window.itundaBackend.marketplace.search(query, { page: 0, size: 30 })
+        : await window.itundaBackend.marketplace.browse({ page: 0, size: 30, category: category && !['All', 'Saved', 'Mine'].includes(category) ? category : undefined });
+      if (request !== marketplaceRequest) return;
+      const records = Array.isArray(response && response.listings) ? response.listings : [];
+      marketplaceRealByUiId = Object.create(null);
+      marketplaceUiId = 0;
+      H.items = records.map(marketplaceUiListing);
+      if (!records.length) {
+        marketplaceMessage('No real listings found. Try another search or category.', false);
+        return;
+      }
+      const list = document.getElementById('mkl');
+      if (list) list.innerHTML = rows();
+      const notice = document.querySelector('#mkl')?.parentElement?.querySelector('.fine');
+      if (notice) notice.textContent = 'Showing live listings from Itunda.';
+    } catch (error) {
+      if (request !== marketplaceRequest) return;
+      H.items = [];
+      marketplaceMessage(String(error && error.message || 'Could not load real listings. Check your connection and retry.'), true);
+    }
+  }
+  const prototypeMkSearch = window.mkSearch;
+  window.mkSearch = function (value) {
+    S.mkQ = String(value || '');
+    loadRealMarketplace(S.mkQ.trim(), S.mkCat);
+  };
+  const prototypeMkCat = window.mkCat;
+  window.mkCat = function (category) {
+    S.mkCat = category;
+    const chipsEl = document.getElementById('mkch');
+    if (chipsEl && typeof chips === 'function') chipsEl.innerHTML = chips();
+    loadRealMarketplace(S.mkQ.trim(), category);
+  };
+  const prototypeHoodScreen = screens.hood;
+  screens.hood = function () {
+    const html = prototypeHoodScreen();
+    if (S.hd === 'market') {
+      setTimeout(function () { loadRealMarketplace(S.mkQ.trim(), S.mkCat); }, 0);
+    }
+    return html;
+  };
+  window.mkBuy = function () { fail(new Error('Marketplace checkout is not connected to a verified server-side order/payment flow yet. No payment was made.')); };
+  window.mkPay = function () { fail(new Error('Marketplace checkout is not connected to a verified server-side order/payment flow yet. No payment was made.')); };
+  window.mkPostGo = function () { fail(new Error('Publishing listings is not connected to a verified create-listing API flow yet. Nothing was published.')); };
+  window.mkConfirm = function () { fail(new Error('Pickup confirmation is not connected to a verified server-side order flow. No payment was released.')); };
+  window.mkCancel = function () { fail(new Error('Order cancellation/refund is not connected to a verified server-side order flow. No refund was simulated.')); };
+  window.mkSold = function () { fail(new Error('Mark-as-sold is not connected to a verified server-side listing update flow. No listing was changed.')); };
+  window.mkDel = function () { fail(new Error('Listing deletion is not connected to a verified server-side listing update flow. No listing was deleted.')); };
+
   // Bind the prototype's Maps search field to authenticated Rwanda geocoding.
   // Never fall back to the prototype's bundled POI list when a live request fails.
   let mapSearchRequest = 0;
