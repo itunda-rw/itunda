@@ -5,18 +5,29 @@ const read = (path) => readFileSync(new URL(path, root), 'utf8');
 const index = read('index.html');
 const prototype = read('public/itunda-prototype-v318.html');
 const reference = read('../../../itunda__clickable_prototype_v318.html');
+const backend = read('public/itunda-backend.js');
 const nginx = read('../nginx.conf');
-
 const cacheHeader = 'no-store, no-cache, must-revalidate, max-age=0';
-const protectedPaths = ['/', '/index.html', '/itunda-prototype-v318.html'];
+const bridge = '<script src="/itunda-backend.js"></script>';
+const protectedPaths = ['/', '/index.html', '/itunda-prototype-v318.html', '/itunda-backend.js'];
+const withoutBridge = (html) => html.replace(bridge, '');
 const checks = [
-  ['generated prototype matches canonical v318 byte-for-byte', reference === prototype],
-  ['customer app route uses v318', index.includes('frame.src = "/itunda-prototype-v318.html"')],
-  ['host frame fills the viewport', index.includes('height: 100dvh') && index.includes('width: 100%; height: 100%')],
-  ['launch splash respects reduced-motion preferences', index.includes('@media (prefers-reduced-motion: reduce)')],
-  ['demo mode is visibly labeled as sample data', index.includes('DEMO MODE · Sample data only')],
-  ['Nginx cache rules cover UI entry points', protectedPaths.every((path) => nginx.includes('location = ' + path + ' {'))],
-  ['Nginx disables caching on UI entry points', protectedPaths.every((path) => {
+  ['generated v318 matches canonical markup except bridge', withoutBridge(prototype) === reference],
+  ['app route uses v318', index.includes('frame.src = "/itunda-prototype-v318.html"')],
+  ['frame fills viewport', index.includes('height: 100dvh') && index.includes('width: 100%; height: 100%')],
+  ['reduced motion is supported', index.includes('@media (prefers-reduced-motion: reduce)')],
+  ['demo mode is labeled sample data', index.includes('DEMO MODE · Sample data only')],
+  ['bridge is loaded exactly once', prototype.split(bridge).length === 2],
+  ['real login endpoint is wired', backend.includes("api('/api/v1/auth/login'")],
+  ['account and transaction data use API endpoints', backend.includes("api('/api/v1/account'") && backend.includes("api('/api/v1/account/transactions'")],
+  ['demo mode blocks API requests', backend.includes('if (demoMode) throw new Error(\'Demo mode uses sample data only.')],
+  ['demo mode does not restore saved sessions', backend.includes('if (demoMode || !localStorage.getItem(ACCESS_KEY)) return;')],
+  ['skip entry is blocked outside demo mode', backend.includes('Please sign in or create an account to continue.')],
+  ['send endpoint is connected', backend.includes("api('/api/v1/p2p/send'")],
+  ['requests use an idempotency key', backend.includes("Idempotency-Key: idempotencyKey")],
+  ['recipient verification is required', backend.includes('Verify the recipient name before sending money.')],
+  ['cache rules cover app and bridge routes', protectedPaths.every((path) => nginx.includes('location = ' + path + ' {'))],
+  ['cache is disabled on app and bridge routes', protectedPaths.every((path) => {
     const block = nginx.split('location = ' + path + ' {')[1]?.split(/\n    \}/)[0];
     return Boolean(block && block.includes(cacheHeader) && block.includes('add_header Pragma "no-cache" always;'));
   })]
