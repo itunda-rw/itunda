@@ -489,14 +489,26 @@
       }
       const travelMode = mode || 'DRIVING';
       if (!['DRIVING', 'WALKING', 'BIKING'].includes(travelMode)) throw new Error('Unsupported travel mode.');
-      // Match maps-mfe's established backend contract: directions/alternatives returns
-      // { success, routes: RouteResult[] }, with geometry, distance, duration and steps.
       const path = '/api/v1/maps/directions/alternatives?fromLat=' + encodeURIComponent(String(values[0])) +
         '&fromLng=' + encodeURIComponent(String(values[1])) + '&toLat=' + encodeURIComponent(String(values[2])) +
         '&toLng=' + encodeURIComponent(String(values[3])) + '&mode=' + encodeURIComponent(travelMode);
       const body = await api(path);
       if (!Array.isArray(body.routes)) throw new Error('Directions returned an invalid response.');
       return body.routes;
+    },
+    getTransitDirections: async function (fromLatitude, fromLongitude, toLatitude, toLongitude) {
+      const values = [fromLatitude, fromLongitude, toLatitude, toLongitude].map(Number);
+      if (!values.every(Number.isFinite) ||
+          values[0] < -90 || values[0] > 90 || values[2] < -90 || values[2] > 90 ||
+          values[1] < -180 || values[1] > 180 || values[3] < -180 || values[3] > 180) {
+        throw new Error('Choose a valid origin and destination.');
+      }
+      const path = '/api/v1/maps/directions/transit?fromLat=' + encodeURIComponent(String(values[0])) +
+        '&fromLng=' + encodeURIComponent(String(values[1])) + '&toLat=' + encodeURIComponent(String(values[2])) +
+        '&toLng=' + encodeURIComponent(String(values[3]));
+      const body = await api(path);
+      if (!Array.isArray(body.journeys)) throw new Error('Transit directions returned an invalid response.');
+      return body.journeys;
     }
   });
 
@@ -640,11 +652,11 @@
     };
   }
 
-  // Render actual OSRM route geometry and metrics on the prototype's existing route screen.
-  let routeRequestKey = '';
-  let routeResultCache = null;
-  let routePendingKey = '';
-  function routePathFromGeometry(geometry) {
+  // Load genuine OSRM or GTFS transit directions and patch the existing route screen.
+  let selectedRouteKey = '';
+  let selectedRoutePending = '';
+  let selectedRouteResult = null;
+  function projectRouteGeometry(geometry, width, height) {
     if (!Array.isArray(geometry) || geometry.length < 2) return '';
     const pts = geometry.map(function (pair) { return [Number(pair[0]), Number(pair[1])]; })
       .filter(function (p) { return Number.isFinite(p[0]) && Number.isFinite(p[1]); });
@@ -654,59 +666,136 @@
     const minLng = Math.min.apply(null, pts.map(function (p) { return p[1]; }));
     const maxLng = Math.max.apply(null, pts.map(function (p) { return p[1]; }));
     return pts.map(function (p, i) {
-      const x = 18 + ((p[1] - minLng) / Math.max(0.000001, maxLng - minLng)) * 304;
-      const y = 18 + ((maxLat - p[0]) / Math.max(0.000001, maxLat - minLat)) * 294;
+      const x = 18 + ((p[1] - minLng) / Math.max(0.000001, maxLng - minLng)) * (width - 36);
+      const y = 18 + ((maxLat - p[0]) / Math.max(0.000001, maxLat - minLat)) * (height - 36);
       return (i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1);
     }).join(' ');
   }
-  function requestRealRoute(place, mode) {
-    const key = [place.latitude, place.longitude, mode].join(':');
-    if (routeRequestKey === key || routePendingKey === key) return;
-    routePendingKey = key;
-    window.itundaMaps.getDirections(-1.9441, 30.0619, place.latitude, place.longitude, mode)
-      .then(function (routes) {
-        if (routePendingKey !== key) return;
-        routePendingKey = '';
-        if (!routes.length) throw new Error('No route was returned for this destination.');
-        routeRequestKey = key;
-        routeResultCache = routes[0];
-        if (typeof window.render === 'function') window.render('fade-none');
-      }).catch(function (error) {
-        if (routePendingKey === key) routePendingKey = '';
-        if (typeof window.toast === 'function') window.toast('Directions unavailable: ' + (error.message || 'try again'));
-      });
-  }
-  if (screens && typeof screens.route === 'function') {
-    const prototypeRouteScreen = screens.route;
-    screens.route = function () {
-      const html = prototypeRouteScreen();
-      const place = window.itundaMapsSelectedPlace || (M && M.realPlace);
-      if (!place) return html;
-      const mode = ({ car: 'DRIVING', walk: 'WALKING', bike: 'BIKING' })[M && M.mode] || 'DRIVING';
-      requestRealRoute(place, mode);
-      if (!routeResultCache || routeRequestKey !== [place.latitude, place.longitude, mode].join(':')) {
-        return html.replace('aria-label="Route map"', 'aria-label="Route map; loading real directions"');
+  function patchRouteView(result, mode) {
+    const svg = document.querySelector('svg[aria-label="Route map"]');
+    if (!svg) return;
+    let path = '';
+    let duration = '';
+    let distance = '';
+    if (mode === 'bus') {
+      const journey = result;
+      path = projectRouteGeometry([
+        [journey.originStop.latitude, journey.originStop.longitude],
+        [journey.destinationStop.latitude, journey.destinationStop.longitude]
+      ], 340, 330);
+      const fmtTime = function (seconds) {
+        const mins = Math.floor(Number(seconds) / 60);
+        const hh = Math.floor(mins / 60) % 24, mm = String(mins % 60).padStart(2, '0');
+        return String(hh).padStart(2, '0') + ':' + mm;
+      };
+      duration = Math.max(0, Math.round((journey.arrivalSecondsAfterMidnight - journey.departureSecondsAfterMidnight) / 60)) + ' min';
+      distance = (Number(journey.walkToOriginStopKm || 0) + Number(journey.walkFromDestinationStopKm || 0)).toFixed(1) + ' km walking';
+      const nodes = svg.parentElement && svg.parentElement.parentElement;
+      if (nodes) {
+        const walker = document.createTreeWalker(nodes, NodeFilter.SHOW_TEXT);
+        let node;
+        while ((node = walker.nextNode())) {
+          if (node.nodeValue.includes('Kimironko Market stop')) node.nodeValue = node.nodeValue.replace('Kimironko Market stop', journey.originStop.name);
+          if (node.nodeValue.includes('Nyabugogo Stop')) node.nodeValue = node.nodeValue.replace('Nyabugogo Stop', journey.destinationStop.name);
+          if (node.nodeValue.includes('2:06 pm – 2:41 pm')) node.nodeValue = node.nodeValue.replace('2:06 pm – 2:41 pm', fmtTime(journey.departureSecondsAfterMidnight) + ' – ' + fmtTime(journey.arrivalSecondsAfterMidnight));
+          if (node.nodeValue.includes('11 stops · 22 min')) node.nodeValue = node.nodeValue.replace('11 stops · 22 min', duration + ' · ' + distance);
+        }
       }
-      const path = routePathFromGeometry(routeResultCache.geometry);
-      let output = html;
-      if (path) output = output.replace(/<path d="[^"]+" fill="none" stroke="[^"]+" stroke-width="7"/, '<path d="' + path + '" fill="none" stroke="var(--lk)" stroke-width="7"');
-      output = output.replace('2:06 pm – 2:41 pm', Math.round(routeResultCache.durationMinutes) + ' min')
-        .replace('11 stops · 22 min', Math.round(routeResultCache.distanceKm * 10) / 10 + ' km · ' + Math.round(routeResultCache.durationMinutes) + ' min');
-      return output;
-    };
+    } else {
+      path = projectRouteGeometry(result.geometry, 340, 330);
+      duration = Math.round(result.durationMinutes) + ' min';
+      distance = Math.round(result.distanceKm * 10) / 10 + ' km · ' + duration;
+    }
+    if (path) {
+      const existing = svg.querySelectorAll('path');
+      if (existing.length > 1) {
+        existing[1].setAttribute('d', path);
+        existing[1].setAttribute('stroke', 'var(--lk)');
+        existing[1].setAttribute('stroke-width', '7');
+      }
+    }
+    if (mode !== 'bus') {
+      const nodes = svg.parentElement && svg.parentElement.parentElement;
+      if (nodes) {
+        const walker = document.createTreeWalker(nodes, NodeFilter.SHOW_TEXT);
+        let node;
+        while ((node = walker.nextNode())) {
+          if (node.nodeValue.includes('2:06 pm – 2:41 pm')) node.nodeValue = node.nodeValue.replace('2:06 pm – 2:41 pm', duration);
+          if (node.nodeValue.includes('11 stops · 22 min')) node.nodeValue = node.nodeValue.replace('11 stops · 22 min', distance);
+        }
+      }
+    }
   }
+  async function loadSelectedRoute(place, mode) {
+    const key = [place.latitude, place.longitude, mode].join(':');
+    if (selectedRouteKey === key || selectedRoutePending === key) return;
+    selectedRoutePending = key;
+    try {
+      let result;
+      if (mode === 'bus') {
+        const journeys = await window.itundaMaps.getTransitDirections(-1.9441, 30.0619, place.latitude, place.longitude);
+        if (!journeys.length) throw new Error('No transit journey is available for this destination.');
+        result = journeys[0];
+      } else {
+        const travelMode = mode === 'walk' ? 'WALKING' : mode === 'bike' ? 'BIKING' : 'DRIVING';
+        const routes = await window.itundaMaps.getDirections(-1.9441, 30.0619, place.latitude, place.longitude, travelMode);
+        if (!routes.length) throw new Error('No route is available for this destination.');
+        result = routes[0];
+      }
+      if (selectedRoutePending !== key) return;
+      selectedRoutePending = '';
+      selectedRouteKey = key;
+      selectedRouteResult = { mode: mode, value: result };
+      if (typeof window.render === 'function') window.render('fade-none');
+      requestAnimationFrame(function () { patchRouteView(result, mode); });
+    } catch (error) {
+      if (selectedRoutePending === key) selectedRoutePending = '';
+      if (typeof window.toast === 'function') window.toast('Directions unavailable: ' + (error.message || 'try again'));
+    }
+  }
+  function selectRealDestination(place) {
+    window.itundaMapsSelectedPlace = Object.freeze({
+      displayName: place.displayName, latitude: Number(place.latitude), longitude: Number(place.longitude)
+    });
+    const id = 'real-selected-destination';
+    const existing = Array.isArray(window.POI) ? window.POI.find(function (p) { return p.id === id; }) : null;
+    const poi = {
+      id: id, c: 'food', e: '📍', n: place.displayName, x: 250, y: 440,
+      k: 'Verified location', r: '', d: '', o: '',
+      latitude: Number(place.latitude), longitude: Number(place.longitude)
+    };
+    if (Array.isArray(window.POI)) {
+      if (existing) Object.assign(existing, poi);
+      else window.POI.push(poi);
+    }
+    if (typeof window.mpArriveAt === 'function') window.mpArriveAt(id);
+    else if (typeof window.mpAddr === 'function') window.mpAddr(place.displayName, place.displayName);
+    loadSelectedRoute(window.itundaMapsSelectedPlace, 'bus');
+  }
+  window.itundaMapsChoosePlace = function (index) {
+    const place = mapsSearchResults[index];
+    if (!place) return;
+    selectRealDestination(place);
+    if (typeof window.toast === 'function') window.toast(place.displayName + ' · ' + place.latitude.toFixed(5) + ', ' + place.longitude.toFixed(5));
+  };
   if (typeof window.mpOpenPoi === 'function') {
+    const originalOpenPoi = window.mpOpenPoi;
     window.mpOpenPoi = function (id) {
       const place = Array.isArray(window.POI) ? window.POI.find(function (p) { return p.id === id; }) : null;
-      if (!place || !Number.isFinite(Number(place.latitude)) || !Number.isFinite(Number(place.longitude))) {
-        if (typeof window.toast === 'function') window.toast('This place has no verified coordinates yet.');
-        return;
+      if (place && Number.isFinite(Number(place.latitude)) && Number.isFinite(Number(place.longitude))) {
+        window.itundaMapsSelectedPlace = Object.freeze({
+          displayName: place.n, latitude: Number(place.latitude), longitude: Number(place.longitude)
+        });
+        loadSelectedRoute(window.itundaMapsSelectedPlace, 'bus');
       }
-      window.itundaMapsSelectedPlace = Object.freeze({
-        displayName: place.n, latitude: Number(place.latitude), longitude: Number(place.longitude)
-      });
-      if (M) M.realPlace = window.itundaMapsSelectedPlace;
-      if (typeof window.mpGo === 'function') window.mpGo('route');
+      return originalOpenPoi(id);
+    };
+  }
+  if (typeof window.mpSet === 'function') {
+    const originalMapSet = window.mpSet;
+    window.mpSet = function (key, value) {
+      originalMapSet(key, value);
+      if (key === 'mode' && window.itundaMapsSelectedPlace) loadSelectedRoute(window.itundaMapsSelectedPlace, value);
     };
   }
 
