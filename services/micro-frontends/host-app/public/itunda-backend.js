@@ -238,17 +238,34 @@
     const reference = lastTransaction && lastTransaction.referenceNumber ? String(lastTransaction.referenceNumber) : '—';
     return html.replace('IT-20481-7', reference.replace(/[<>&"]/g, ''));
   };
+  window.retryProfileBackend = async function () {
+    if (busy) return;
+    busy = true;
+    try {
+      await loadAccount();
+      if (!liveUser) throw new Error('Your profile is not available from the account service yet.');
+      render('fade-none');
+    } catch (error) {
+      fail(error);
+    } finally { busy = false; }
+  };
   const previousProfileScreen = screens.profile;
   screens.profile = function () {
+    if (!liveUser) {
+      return bar('Profile') + '<div class="pad" role="alert" style="padding-top:32px"><div class="h1" style="font-size:22px">Profile unavailable</div>' +
+        '<div class="mu" style="margin-top:8px">We could not load your profile from the account service. Sample profile details are hidden.</div>' +
+        '<button class="btn" style="margin-top:20px" onclick="retryProfileBackend()">Retry profile</button></div>';
+    }
     let html = previousProfileScreen();
-    if (liveUser) {
-      const fullName = [liveUser.firstName, liveUser.lastName].filter(Boolean).join(' ').replace(/[<>&"]/g, '');
-      html = html.replace('078 ••• 214', String(liveUser.phoneNumber || '').replace(/[<>&"]/g, ''));
-      html = html.replace('Your details are sample data.', profileLoadError
-        ? 'Some profile details could not be refreshed from your account.'
-        : 'Your details are loaded from your itunda account.');
-      html = html.replace('March 2025', liveUser.createdAt ? new Date(liveUser.createdAt).toLocaleDateString() : '—');
-      if (fullName) html = html.replace('Amina Uwase', fullName);
+    const fullName = [liveUser.firstName, liveUser.lastName].filter(Boolean).join(' ').replace(/[<>&"]/g, '');
+    html = html.replace('078 ••• 214', String(liveUser.phoneNumber || '').replace(/[<>&"]/g, ''));
+    html = html.replace('Your details are sample data.', profileLoadError
+      ? 'Profile refresh failed. Some displayed details may be from your last authenticated session.'
+      : 'Your details are loaded from your itunda account.');
+    html = html.replace('March 2025', liveUser.createdAt ? new Date(liveUser.createdAt).toLocaleDateString() : '—');
+    if (fullName) html = html.replace('Amina Uwase', fullName);
+    if (profileLoadError) {
+      html = html.replace('<div class="cta">', '<div class="pad"><div role="alert" class="fine" style="color:var(--er)">Could not refresh profile data. <button class="chip" onclick="retryProfileBackend()">Try again</button></div></div><div class="cta">');
     }
     return html;
   };
