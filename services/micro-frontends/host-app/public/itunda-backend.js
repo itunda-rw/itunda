@@ -500,6 +500,85 @@
     }
   });
 
+  // Replace prototype-only POI matching with real backend Maps search results.
+  let mapsSearchSequence = 0;
+  let mapsSearchResults = [];
+  window.itundaMapsChoosePlace = function (index) {
+    const place = mapsSearchResults[index];
+    if (!place) return;
+    window.itundaMapsSelectedPlace = Object.freeze({
+      displayName: place.displayName, latitude: place.latitude, longitude: place.longitude
+    });
+    if (window.M) window.M.realPlace = window.itundaMapsSelectedPlace;
+    if (typeof window.toast === 'function') window.toast(place.displayName + ' · ' + place.latitude.toFixed(5) + ', ' + place.longitude.toFixed(5));
+  };
+  if (typeof window.mpQ === 'function') {
+    window.mpQ = async function (value) {
+      const query = String(value || '').trim();
+      const sequence = ++mapsSearchSequence;
+      const root = document.getElementById('mpres');
+      const recent = document.getElementById('mprec');
+      if (!root) return;
+      if (recent) recent.style.display = query ? 'none' : '';
+      root.replaceChildren();
+      mapsSearchResults = [];
+      if (query.length < 2) return;
+      const status = document.createElement('div');
+      status.className = 'pad mu';
+      status.setAttribute('role', 'status');
+      status.textContent = 'Searching real places…';
+      root.appendChild(status);
+      try {
+        const results = await window.itundaMaps.searchPlaces(query);
+        if (sequence !== mapsSearchSequence || !document.getElementById('mpres')) return;
+        mapsSearchResults = results;
+        root.replaceChildren();
+        if (!results.length) {
+          status.textContent = 'No real places matched this search.';
+          root.appendChild(status);
+          return;
+        }
+        results.forEach(function (place, index) {
+          const row = document.createElement('button');
+          row.type = 'button';
+          row.className = 'pl tap';
+          row.style.cssText = 'width:100%;text-align:left;border:0;background:transparent;color:var(--tx);cursor:pointer';
+          const pin = document.createElement('i');
+          pin.style.fontStyle = 'normal';
+          pin.textContent = '📍';
+          const details = document.createElement('div');
+          details.style.cssText = 'flex:1;min-width:0';
+          const name = document.createElement('b');
+          name.style.cssText = 'display:block;font-size:16px;font-weight:600';
+          name.textContent = place.displayName;
+          const coordinates = document.createElement('span');
+          coordinates.textContent = place.latitude.toFixed(5) + ', ' + place.longitude.toFixed(5);
+          details.append(name, coordinates);
+          row.append(pin, details);
+          row.addEventListener('click', function () { window.itundaMapsChoosePlace(index); });
+          root.appendChild(row);
+        });
+      } catch (error) {
+        if (sequence !== mapsSearchSequence || !document.getElementById('mpres')) return;
+        root.replaceChildren();
+        const message = document.createElement('div');
+        message.className = 'pad mu';
+        message.setAttribute('role', 'alert');
+        message.textContent = error.message || 'Maps search is temporarily unavailable.';
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.className = 'chip';
+        retry.textContent = 'Retry search';
+        retry.addEventListener('click', function () {
+          const input = document.getElementById('mpq');
+          window.mpQ(input ? input.value : query);
+        });
+        message.appendChild(retry);
+        root.appendChild(message);
+      }
+    };
+  }
+
   (async function restoreSession() {
     if (demoMode || !localStorage.getItem(ACCESS_KEY)) return;
     try {
