@@ -482,15 +482,21 @@
     },
     getDirections: async function (fromLatitude, fromLongitude, toLatitude, toLongitude, mode) {
       const values = [fromLatitude, fromLongitude, toLatitude, toLongitude].map(Number);
-      if (!values.every(Number.isFinite)) throw new Error('Choose a valid origin and destination.');
+      if (!values.every(Number.isFinite) ||
+          values[0] < -90 || values[0] > 90 || values[2] < -90 || values[2] > 90 ||
+          values[1] < -180 || values[1] > 180 || values[3] < -180 || values[3] > 180) {
+        throw new Error('Choose a valid origin and destination.');
+      }
       const travelMode = mode || 'DRIVING';
       if (!['DRIVING', 'WALKING', 'BIKING'].includes(travelMode)) throw new Error('Unsupported travel mode.');
-      const path = '/api/v1/maps/directions?fromLat=' + encodeURIComponent(String(values[0])) +
+      // Match maps-mfe's established backend contract: directions/alternatives returns
+      // { success, routes: RouteResult[] }, with geometry, distance, duration and steps.
+      const path = '/api/v1/maps/directions/alternatives?fromLat=' + encodeURIComponent(String(values[0])) +
         '&fromLng=' + encodeURIComponent(String(values[1])) + '&toLat=' + encodeURIComponent(String(values[2])) +
         '&toLng=' + encodeURIComponent(String(values[3])) + '&mode=' + encodeURIComponent(travelMode);
       const body = await api(path);
-      if (!body.route) throw new Error('Directions returned an invalid response.');
-      return body.route;
+      if (!Array.isArray(body.routes)) throw new Error('Directions returned an invalid response.');
+      return body.routes;
     }
   });
 
