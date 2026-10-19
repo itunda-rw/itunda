@@ -35,6 +35,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -537,6 +539,10 @@ fun TransferAmountScreen(
                     color = Ids.colors.danger,
                     fontSize = 13.sp,
                     textAlign = TextAlign.Center,
+                    // Announce the inline balance error when it appears or changes;
+                    // sighted users already see it, but TalkBack should not require
+                    // navigating away and back to discover why sending is disabled.
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                 )
             }
         }
