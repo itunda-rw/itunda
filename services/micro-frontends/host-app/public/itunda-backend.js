@@ -855,6 +855,9 @@
     myNeighborhood: function (options) { return api('/api/v1/marketplace/listings/my-neighborhood' + queryString(options)); },
     myListings: function (options) { return api('/api/v1/marketplace/my-listings' + queryString(options)); },
     myPurchases: function (options) { return api('/api/v1/marketplace/my-purchases' + queryString(options)); },
+    favorites: function (options) { return api('/api/v1/marketplace/listings/favorites' + queryString(options)); },
+    addFavorite: function (id) { return api('/api/v1/marketplace/listings/' + requireRecordId(id, 'listing id') + '/favorite', { method: 'POST', body: '{}' }); },
+    removeFavorite: function (id) { return api('/api/v1/marketplace/listings/' + requireRecordId(id, 'listing id') + '/favorite', { method: 'DELETE' }); },
     listing: function (id) { return api('/api/v1/marketplace/listings/' + requireRecordId(id, 'listing id')); },
     like: function (id) { return api('/api/v1/marketplace/listings/' + requireRecordId(id, 'listing id') + '/like', { method: 'POST', body: '{}' }); },
     hide: function (id) { return api('/api/v1/marketplace/listings/' + requireRecordId(id, 'listing id') + '/hide', { method: 'POST', body: '{}' }); },
@@ -877,7 +880,7 @@
   }
   function marketplaceCategory(value) {
     const v = String(value || '').toLowerCase();
-    const known = { electronics: 'Electronics', phones: 'Electronics', home: 'Home & Kitchen', fashion: 'Fashion', kids: 'Kids & Baby', sports: 'Sports & Outdoors', furniture: 'Furniture', beauty: 'Beauty & Health', books: 'Books & Media', toys: 'Toys & Games', pets: 'Pet Supplies', vehicles: 'Vehicles', other: 'Other' };
+    const known = { electronics: 'Electronics', phones: 'Electronics', home: 'Home', 'home & kitchen': 'Home', fashion: 'Fashion', kids: 'Other', 'kids & baby': 'Other', sports: 'Other', 'sports & outdoors': 'Other', furniture: 'Home', beauty: 'Other', 'beauty & health': 'Other', books: 'Other', 'books & media': 'Other', toys: 'Other', 'toys & games': 'Other', pets: 'Other', 'pet supplies': 'Other', vehicles: 'Other', other: 'Other' };
     return known[v] || String(value || 'Other');
   }
   function marketplaceUiListing(listing) {
@@ -896,17 +899,15 @@
     const request = ++marketplaceRequest;
     marketplaceMessage(query ? 'Searching real listings…' : 'Loading real listings…', false);
     try {
-      if (category === 'Saved') {
-        if (request === marketplaceRequest) marketplaceMessage('Saved-listing retrieval is not exposed by the current backend API yet.', true);
-        return;
-      }
-      const response = query
-        ? await window.itundaBackend.marketplace.search(query, { page: 0, size: 30 })
-        : category === 'Mine'
-          ? await window.itundaBackend.marketplace.myListings({ page: 0, size: 30 })
-          : await window.itundaBackend.marketplace.browse({ page: 0, size: 30, category: category && category !== 'All' ? ({ Phones: 'Electronics', Home: 'Home & Kitchen', Kids: 'Kids & Baby', Sports: 'Sports & Outdoors' }[category] || category) : undefined });
+      const response = category === 'Saved' && !query
+        ? await window.itundaBackend.marketplace.favorites({ page: 0, size: 30 })
+        : query
+          ? await window.itundaBackend.marketplace.search(query, { page: 0, size: 30 })
+          : category === 'Mine'
+            ? await window.itundaBackend.marketplace.myListings({ page: 0, size: 30 })
+            : await window.itundaBackend.marketplace.browse({ page: 0, size: 30, category: category && category !== 'All' ? ({ Phones: 'Electronics', Home: 'Home & Kitchen', Kids: 'Kids & Baby', Sports: 'Sports & Outdoors' }[category] || category) : undefined });
       if (request !== marketplaceRequest) return;
-      const records = Array.isArray(response && response.listings) ? response.listings : [];
+      const records = Array.isArray(response && response.listings) ? response.listings : Array.isArray(response && response.favorites) ? response.favorites : [];
       marketplaceRealByUiId = Object.create(null);
       marketplaceUiId = 0;
       H.items = records.map(function (record) { const item = marketplaceUiListing(record); if (category === 'Mine') item.who = 'You'; return item; });
@@ -945,12 +946,33 @@
     return html;
   };
   const prototypeHdToggle = window.hdTg;
-  window.hdTg = function (type, id) {
-    if (type === 'market') {
-      fail(new Error('Saved-listing actions are not connected to a verified favorites endpoint yet. Nothing was saved or changed.'));
+  const favoriteBusy = Object.create(null);
+  window.hdTg = async function (type, id) {
+    if (type !== 'market') {
+      if (typeof prototypeHdToggle === 'function') return prototypeHdToggle(type, id);
       return;
     }
-    if (typeof prototypeHdToggle === 'function') return prototypeHdToggle(type, id);
+    const real = marketplaceRealByUiId[id];
+    if (!real || !real.id) {
+      fail(new Error('This listing is not linked to a verified server record. Nothing was saved.'));
+      return;
+    }
+    if (favoriteBusy[id]) return;
+    favoriteBusy[id] = true;
+    const key = 'market:' + id;
+    try {
+      const currentlySaved = Boolean(S.hdFav[key]);
+      if (currentlySaved) await window.itundaBackend.marketplace.removeFavorite(real.id);
+      else await window.itundaBackend.marketplace.addFavorite(real.id);
+      S.hdFav[key] = !currentlySaved;
+      document.querySelectorAll('#hf_market_' + id).forEach(function (el) { el.innerHTML = heart(S.hdFav[key]); });
+      toast(S.hdFav[key] ? 'Saved to your wishlist' : 'Removed from your wishlist');
+      if (S.mkCat === 'Saved') loadRealMarketplace(S.mkQ.trim(), 'Saved');
+    } catch (error) {
+      fail(error);
+    } finally {
+      favoriteBusy[id] = false;
+    }
   };
   const prototypeHdPostGo = window.hdPostGo;
   window.hdPostGo = function () {
