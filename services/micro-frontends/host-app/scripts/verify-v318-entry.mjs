@@ -4,7 +4,7 @@ const root = new URL('../', import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), 'utf8');
 const index = read('index.html');
 const prototype = read('public/itunda-prototype-v318.html');
-const reference = read('../../../../itunda__clickable_prototype_v318.html');
+const reference = read('../../../itunda__clickable_prototype_v318.html');
 const backend = read('public/itunda-backend.js');
 const nginx = read('../nginx.conf');
 
