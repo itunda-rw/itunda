@@ -585,7 +585,9 @@
       displayName: place.displayName, latitude: place.latitude, longitude: place.longitude
     });
     if (window.M) window.M.realPlace = window.itundaMapsSelectedPlace;
+    if (window.PLACE) { window.PLACE.n = place.displayName; window.PLACE.addr = place.displayName; }
     if (typeof window.toast === 'function') window.toast(place.displayName + ' · ' + place.latitude.toFixed(5) + ', ' + place.longitude.toFixed(5));
+    if (typeof window.mpGo === 'function') window.mpGo('route');
   };
   if (typeof window.mpQ === 'function') {
     window.mpQ = async function (value) {
@@ -651,6 +653,76 @@
         message.appendChild(retry);
         root.appendChild(message);
       }
+    };
+  }
+
+  // Render actual OSRM route geometry and metrics on the prototype's existing route screen.
+  let routeRequestKey = '';
+  let routeResultCache = null;
+  let routePendingKey = '';
+  function routePathFromGeometry(geometry) {
+    if (!Array.isArray(geometry) || geometry.length < 2) return '';
+    const pts = geometry.map(function (pair) { return [Number(pair[0]), Number(pair[1])]; })
+      .filter(function (p) { return Number.isFinite(p[0]) && Number.isFinite(p[1]); });
+    if (pts.length < 2) return '';
+    const minLat = Math.min.apply(null, pts.map(function (p) { return p[0]; }));
+    const maxLat = Math.max.apply(null, pts.map(function (p) { return p[0]; }));
+    const minLng = Math.min.apply(null, pts.map(function (p) { return p[1]; }));
+    const maxLng = Math.max.apply(null, pts.map(function (p) { return p[1]; }));
+    return pts.map(function (p, i) {
+      const x = 18 + ((p[1] - minLng) / Math.max(0.000001, maxLng - minLng)) * 304;
+      const y = 18 + ((maxLat - p[0]) / Math.max(0.000001, maxLat - minLat)) * 294;
+      return (i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1);
+    }).join(' ');
+  }
+  function requestRealRoute(place, mode) {
+    const key = [place.latitude, place.longitude, mode].join(':');
+    if (routeRequestKey === key || routePendingKey === key) return;
+    routePendingKey = key;
+    window.itundaMaps.getDirections(-1.9441, 30.0619, place.latitude, place.longitude, mode)
+      .then(function (routes) {
+        if (routePendingKey !== key) return;
+        routePendingKey = '';
+        if (!routes.length) throw new Error('No route was returned for this destination.');
+        routeRequestKey = key;
+        routeResultCache = routes[0];
+        if (typeof window.render === 'function') window.render('fade-none');
+      }).catch(function (error) {
+        if (routePendingKey === key) routePendingKey = '';
+        if (typeof window.toast === 'function') window.toast('Directions unavailable: ' + (error.message || 'try again'));
+      });
+  }
+  if (window.screens && typeof window.screens.route === 'function') {
+    const prototypeRouteScreen = window.screens.route;
+    window.screens.route = function () {
+      const html = prototypeRouteScreen();
+      const place = window.itundaMapsSelectedPlace || (window.M && window.M.realPlace);
+      if (!place) return html;
+      const mode = ({ car: 'DRIVING', walk: 'WALKING', bike: 'BIKING' })[window.M && window.M.mode] || 'DRIVING';
+      requestRealRoute(place, mode);
+      if (!routeResultCache || routeRequestKey !== [place.latitude, place.longitude, mode].join(':')) {
+        return html.replace('aria-label="Route map"', 'aria-label="Route map; loading real directions"');
+      }
+      const path = routePathFromGeometry(routeResultCache.geometry);
+      let output = html;
+      if (path) output = output.replace(/<path d="[^"]+" fill="none" stroke="[^"]+" stroke-width="7"/, '<path d="' + path + '" fill="none" stroke="var(--lk)" stroke-width="7"');
+      output = output.replace('2:06 pm – 2:41 pm', Math.round(routeResultCache.durationMinutes) + ' min')
+        .replace('11 stops · 22 min', Math.round(routeResultCache.distanceKm * 10) / 10 + ' km · ' + Math.round(routeResultCache.durationMinutes) + ' min');
+      return output;
+    };
+  }
+  if (typeof window.mpOpenPoi === 'function') {
+    window.mpOpenPoi = function (id) {
+      const place = Array.isArray(window.POI) ? window.POI.find(function (p) { return p.id === id; }) : null;
+      if (!place || !Number.isFinite(Number(place.latitude)) || !Number.isFinite(Number(place.longitude))) {
+        if (typeof window.toast === 'function') window.toast('This place has no verified coordinates yet.');
+        return;
+      }
+      window.itundaMapsSelectedPlace = Object.freeze({
+        displayName: place.n, latitude: Number(place.latitude), longitude: Number(place.longitude)
+      });
+      if (window.M) window.M.realPlace = window.itundaMapsSelectedPlace;
+      if (typeof window.mpGo === 'function') window.mpGo('route');
     };
   }
 
