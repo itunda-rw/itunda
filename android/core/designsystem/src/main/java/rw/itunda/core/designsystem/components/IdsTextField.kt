@@ -112,8 +112,12 @@ fun IdsTextField(
                 .fillMaxWidth()
                 .focusRequester(focusRequester)
                 .semantics {
-                    if (loading) {
-                        stateDescription = "Loading"
+                    // Expose validation feedback on the field itself, not only in a separate caption.
+                    stateDescription = when {
+                        loading -> "Loading"
+                        resolvedError -> errorText ?: "Error"
+                        resolvedSuccess -> successText ?: "Success"
+                        else -> ""
                     }
                 },
             colors = TextFieldDefaults.colors(
