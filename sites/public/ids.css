@@ -124,3 +124,76 @@ button,.btn,.cta,.theme-toggle,.nav a{touch-action:manipulation}
 
 /* Canonical brand asset used by all public-site headers. */
 .brand-logo{display:block;width:32px;height:32px;object-fit:contain;flex:none}.brand{display:inline-flex;align-items:center}
+
+
+/* Mobile navigation: keep every destination reachable without overflowing the header. */
+@media (max-width: 800px) {
+  .top {
+    height: auto;
+    min-height: 64px;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 16px;
+    padding-top: 12px;
+    padding-bottom: 10px;
+  }
+
+  .top > .brand {
+    min-height: 40px;
+    flex: 0 0 auto;
+  }
+
+  .top > .nav {
+    width: 100%;
+    min-width: 0;
+    gap: 18px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    white-space: nowrap;
+    padding: 2px 0 5px;
+    scroll-padding-inline: 8px;
+  }
+
+  .top > .nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .top > .nav > a,
+  .top > .nav > .theme-toggle {
+    flex: 0 0 auto;
+  }
+
+  .top > .nav > a {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .top > .nav > .cta {
+    padding-inline: 14px;
+  }
+}
+
+@media (max-width: 360px) {
+  .top > .nav {
+    gap: 14px;
+    font-size: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .item,
+  .btn,
+  .cta,
+  .theme-toggle {
+    transition: none !important;
+    animation: none !important;
+  }
+}
