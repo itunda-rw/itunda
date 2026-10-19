@@ -19,10 +19,16 @@ env:
   GAR_REPOSITORY: ${{ vars.GAR_REPOSITORY || 'itunda' }}
   SERVICE_NAME: ${{ vars.CLOUD_RUN_SERVICE || 'itunda-api' }}
   RUNTIME_SERVICE_ACCOUNT: ${{ vars.GCP_RUNTIME_SERVICE_ACCOUNT || 'itunda-api@itunda-org.iam.gserviceaccount.com' }}
+  SPRING_PROFILES_ACTIVE: "production"
   MYSQL_HOST: "10.79.0.3"
   REDIS_HOST: "10.103.51.123"
   KAFKA_BOOTSTRAP: "bootstrap-h5k05cv2cxjf.07b7efb6.asia-northeast3.managedkafka.s.cloud.goog:9092"
   CORS_ALLOWED_ORIGINS: "https://itunda.im,https://www.itunda.im,https://app.itunda.im,https://business.itunda.im,https://business-app.itunda.im,https://developers.itunda.im,https://tech-blog.itunda.im,https://itunda-web-hptgu43hsa-du.a.run.app"
+  # The Nominatim VM and reserved internal IP were verified in project itunda-org.
+  # Override only when the actual service endpoint changes. OSRM is optional until deployed.
+  NOMINATIM_BASE_URL: ${{ vars.NOMINATIM_BASE_URL || 'http://10.178.0.6:8080' }}
+  OSRM_BASE_URL: ${{ vars.OSRM_BASE_URL }}
+  OSRM_FOOT_BASE_URL: ${{ vars.OSRM_FOOT_BASE_URL }}
 
 jobs:
   deploy:
@@ -30,6 +36,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Validate production Maps endpoints
+        shell: bash
+        run: |
+          if [[ -z "${NOMINATIM_BASE_URL}" ]]; then
+            echo "::error title=Missing production Maps configuration::NOMINATIM_BASE_URL is required for real place search"
+            exit 1
+          fi
+          for name in NOMINATIM_BASE_URL OSRM_BASE_URL OSRM_FOOT_BASE_URL; do
+            if [[ -n "${!name}" && "${!name}" != https://* && "${!name}" != http://* ]]; then
+              echo "::error title=Invalid Maps endpoint::$name must be an absolute HTTP(S) URL when configured"
+              exit 1
+            fi
+          done
+          if (( ${#missing[@]} > 0 )); then
+            printf '::error title=Missing production Maps configuration::Set these GitHub Actions variables to the actual Itunda-owned, GCP-reachable endpoints: %s\n' "${missing[*]}"
+            exit 1
+          fi
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -48,6 +71,20 @@ jobs:
         run: docker push "${IMAGE}"
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy "${SERVICE_NAME}"             --image="${IMAGE}"             --region="${REGION}"             --project="${PROJECT_ID}"             --platform=managed             --port=4001             --memory=1Gi             --service-account="${RUNTIME_SERVICE_ACCOUNT}"             --allow-unauthenticated             --network=default             --subnet=default             --vpc-egress=private-ranges-only             --set-env-vars="^@^DB_HOST=${MYSQL_HOST}@DB_PORT=3306@DB_NAME=itunda@DB_USER=itunda@REDIS_HOST=${REDIS_HOST}@REDIS_PORT=6379@KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP}@ITUNDA_CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}"             --set-secrets="^@^DB_PASSWORD=itunda-db-password:3@JWT_SECRET=itunda-jwt-secret:1"             --quiet
+          gcloud run deploy "${SERVICE_NAME}" \
+            --image="${IMAGE}" \
+            --region="${REGION}" \
+            --project="${PROJECT_ID}" \
+            --platform=managed \
+            --port=4001 \
+            --memory=1Gi \
+            --service-account="${RUNTIME_SERVICE_ACCOUNT}" \
+            --allow-unauthenticated \
+            --network=default \
+            --subnet=default \
+            --vpc-egress=private-ranges-only \
+            --update-env-vars="^@^SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE}@DB_HOST=${MYSQL_HOST}@DB_PORT=3306@DB_NAME=itunda@DB_USER=itunda@REDIS_HOST=${REDIS_HOST}@REDIS_PORT=6379@KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP}@ITUNDA_CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}@NOMINATIM_BASE_URL=${NOMINATIM_BASE_URL}@OSRM_BASE_URL=${OSRM_BASE_URL}@OSRM_FOOT_BASE_URL=${OSRM_FOOT_BASE_URL}" \
+            --set-secrets="^@^DB_PASSWORD=itunda-db-password:3@JWT_SECRET=itunda-jwt-secret:1" \
+            --quiet
       - name: Show service URL
         run: gcloud run services describe "${SERVICE_NAME}" --region="${REGION}" --project="${PROJECT_ID}" --format="value(status.url)"
