@@ -15,12 +15,12 @@ const bridge = '<script src="/itunda-backend.js"></script>';
 const protectedPaths = ['/', '/index.html', '/itunda-prototype-v318.html', '/itunda-backend.js'];
 const skipLabel = 'onclick="obSkip();return false">Skip (prototype)';
 const signInLabel = 'onclick="obPhoneNext();return false">Continue';
-const demoShortcut = /<a href="#" class="sm" style="color:var\\(--lk\\);font-weight:700;display:inline-block;margin-top:6px" onclick="phDemo\\(\\);return false">Prototype: fill a returning number<\\/a>/;
+const demoShortcut = /<a href="#" class="sm" style="color:var\(--lk\);font-weight:700;display:inline-block;margin-top:6px" onclick="phDemo\(\);return false">Prototype: fill a returning number<\/a>/;
 const demoHandler = "window.phDemo=()=>{S.ob.ph='788123456';render('fade-none')};";
 const productionEquivalent = (html) => html
-  .replace(/\\r?\\n/g, '')
+  .replace(/\r?\n/g, '')
   .split(skipLabel).join(signInLabel)
-  .replace(/<a\\b[^>]*onclick=["']obSkip\\(\\);return false["'][^>]*>[^<]*prototype[^<]*<\\/a>/gi, '')
+  .replace(/<a\b[^>]*onclick=["']obSkip\(\);return false["'][^>]*>[^<]*prototype[^<]*<\/a>/gi, '')
   .replace(demoShortcut, '')
   .replace(demoHandler, '')
   .replace(bridge, '');
@@ -32,8 +32,8 @@ const checks = [
   ['reduced motion is supported', index.includes('@media (prefers-reduced-motion: reduce)')],
   ['demo mode is labeled sample data', index.includes('DEMO MODE · Sample data only')],
   ['bridge is loaded exactly once', prototype.split(bridge).length === 2],
-  ['production entry has no prototype skip affordance', !prototype.includes(skipLabel) && !/onclick="obSkip\\(\\);return false"/i.test(prototype)],
-  ['production entry has no sample-phone shortcut or handler', !demoShortcut.test(prototype) && !prototype.includes(demoHandler) && !/onclick="phDemo\\(\\);return false"/i.test(prototype)],
+  ['production entry has no prototype skip affordance', !prototype.includes(skipLabel) && !/onclick="obSkip\(\);return false"/i.test(prototype)],
+  ['production entry has no sample-phone shortcut or handler', !demoShortcut.test(prototype) && !prototype.includes(demoHandler) && !/onclick="phDemo\(\);return false"/i.test(prototype)],
   ['sign-in affordance routes to backend phone validation', prototype.includes(signInLabel)],
   ['real login endpoint is wired', backend.includes("api('/api/v1/auth/login'")],
   ['account and transaction data use API endpoints', backend.includes("api('/api/v1/account'") && backend.includes("api('/api/v1/account/transactions'")],
@@ -59,10 +59,10 @@ const checks = [
   ['Maps and Marketplace adapters do not fabricate fallback records', !backend.includes("maps.search = function (query) { return Promise.resolve([])") && !backend.includes("marketplace.browse = function (options) { return Promise.resolve([])")],
   ['cache rules cover app and bridge routes', protectedPaths.every((path) => nginx.includes('location = ' + path + ' {'))],
   ['cache is disabled on app and bridge routes', protectedPaths.every((path) => {
-    const block = nginx.split('location = ' + path + ' {')[1]?.split(/\\n    \\}/)[0];
+    const block = nginx.split('location = ' + path + ' {')[1]?.split(/\n    \}/)[0];
     return Boolean(block && block.includes(cacheHeader) && block.includes('add_header Pragma "no-cache" always;'));
   })]
 ];
 const failed = checks.filter(([, passed]) => !passed);
-for (const [label, passed] of checks) process.stdout.write((passed ? 'PASS ' : 'FAIL ') + label + '\\n');
+for (const [label, passed] of checks) process.stdout.write((passed ? 'PASS ' : 'FAIL ') + label + '\n');
 if (failed.length) process.exitCode = 1;
