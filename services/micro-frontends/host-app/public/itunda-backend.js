@@ -808,6 +808,31 @@
       return api('/api/v1/maps/directions' + queryString({ fromLat: coords[0], fromLng: coords[1], toLat: coords[2], toLng: coords[3], mode: travelMode }));
     },
     bookmarks: function () { return api('/api/v1/maps/bookmarks'); },
+    addBookmark: function (place) {
+      if (!place || !String(place.displayName || '').trim() || !Number.isFinite(Number(place.latitude)) || !Number.isFinite(Number(place.longitude))) {
+        return Promise.reject(new Error('A place name and valid coordinates are required to save a place.'));
+      }
+      return api('/api/v1/maps/bookmarks', { method: 'POST', body: JSON.stringify(place) });
+    },
+    removeBookmark: function (latitude, longitude) {
+      const lat = Number(latitude), lng = Number(longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return Promise.reject(new Error('Valid coordinates are required to remove a saved place.'));
+      return api('/api/v1/maps/bookmarks' + queryString({ lat: lat, lng: lng }), { method: 'DELETE' });
+    },
+    nearby: function (category, latitude, longitude, radiusKm) {
+      const lat = Number(latitude), lng = Number(longitude);
+      if (!String(category || '').trim() || !Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lng) || lng < -180 || lng > 180) {
+        return Promise.reject(new Error('Choose a place category and provide valid coordinates.'));
+      }
+      return api('/api/v1/maps/nearby' + queryString({ category: category, lat: lat, lng: lng, radiusKm: radiusKm === undefined ? 2 : radiusKm }));
+    },
+    aroundMe: function (latitude, longitude, radiusKm) {
+      const lat = Number(latitude), lng = Number(longitude);
+      if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lng) || lng < -180 || lng > 180) {
+        return Promise.reject(new Error('Valid coordinates are required to find places around you.'));
+      }
+      return api('/api/v1/maps/around-me' + queryString({ lat: lat, lng: lng, radiusKm: radiusKm === undefined ? 2 : radiusKm }));
+    },
     place: function (id) { return api('/api/v1/maps/places/' + requireRecordId(id, 'place id')); }
   };
   window.itundaBackend.marketplace = {
