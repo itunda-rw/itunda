@@ -771,6 +771,71 @@
     if (oldLogOut) oldLogOut();
   };
 
+  // Shared real-service adapters for the v318 Maps and Marketplace flows.
+  // These deliberately return backend responses/errors unchanged: screens must render
+  // only returned records, and must show a retry/error state rather than demo fallbacks.
+  function queryString(values) {
+    const params = new URLSearchParams();
+    Object.keys(values || {}).forEach(function (key) {
+      const value = values[key];
+      if (value !== undefined && value !== null && value !== '') params.set(key, String(value));
+    });
+    const encoded = params.toString();
+    return encoded ? '?' + encoded : '';
+  }
+  function requireRecordId(value, label) {
+    const id = String(value || '').trim();
+    if (!id || /[/?#]/.test(id)) throw new Error('A valid ' + label + ' is required.');
+    return encodeURIComponent(id);
+  }
+  window.itundaBackend = window.itundaBackend || {};
+  window.itundaBackend.maps = {
+    categories: function () { return api('/api/v1/maps/categories'); },
+    search: function (query) {
+      const q = String(query || '').trim();
+      if (q.length < 2) return Promise.reject(new Error('Enter at least 2 characters to search places.'));
+      return api('/api/v1/maps/search' + queryString({ q: q }));
+    },
+    reverse: function (latitude, longitude) {
+      if (!Number.isFinite(Number(latitude)) || !Number.isFinite(Number(longitude))) return Promise.reject(new Error('Valid map coordinates are required.'));
+      return api('/api/v1/maps/reverse' + queryString({ lat: Number(latitude), lng: Number(longitude) }));
+    },
+    directions: function (fromLat, fromLng, toLat, toLng, mode) {
+      const coords = [fromLat, fromLng, toLat, toLng].map(Number);
+      if (!coords.every(Number.isFinite)) return Promise.reject(new Error('Valid origin and destination coordinates are required.'));
+      const travelMode = String(mode || 'DRIVING').toUpperCase();
+      if (['DRIVING', 'WALKING'].indexOf(travelMode) === -1) return Promise.reject(new Error('Choose driving or walking directions.'));
+      return api('/api/v1/maps/directions' + queryString({ fromLat: coords[0], fromLng: coords[1], toLat: coords[2], toLng: coords[3], mode: travelMode }));
+    },
+    bookmarks: function () { return api('/api/v1/maps/bookmarks'); },
+    place: function (id) { return api('/api/v1/maps/places/' + requireRecordId(id, 'place id')); }
+  };
+  window.itundaBackend.marketplace = {
+    categories: function () { return api('/api/v1/marketplace/categories'); },
+    browse: function (options) { return api('/api/v1/marketplace/listings' + queryString(options)); },
+    search: function (query, options) {
+      const q = String(query || '').trim();
+      if (!q) return Promise.reject(new Error('Enter a search term for marketplace listings.'));
+      return api('/api/v1/marketplace/listings/search' + queryString(Object.assign({}, options || {}, { q: q })));
+    },
+    nearby: function (latitude, longitude, radiusKm, options) {
+      const lat = Number(latitude), lng = Number(longitude);
+      if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lng) || lng < -180 || lng > 180) {
+        return Promise.reject(new Error('Valid location coordinates are required to find nearby listings.'));
+      }
+      return api('/api/v1/marketplace/listings/nearby' + queryString(Object.assign({}, options || {}, {
+        latitude: lat, longitude: lng, radiusKm: radiusKm === undefined ? 5 : radiusKm
+      })));
+    },
+    myNeighborhood: function (options) { return api('/api/v1/marketplace/listings/my-neighborhood' + queryString(options)); },
+    myListings: function (options) { return api('/api/v1/marketplace/my-listings' + queryString(options)); },
+    myPurchases: function (options) { return api('/api/v1/marketplace/my-purchases' + queryString(options)); },
+    listing: function (id) { return api('/api/v1/marketplace/listings/' + requireRecordId(id, 'listing id')); },
+    like: function (id) { return api('/api/v1/marketplace/listings/' + requireRecordId(id, 'listing id') + '/like', { method: 'POST', body: '{}' }); },
+    hide: function (id) { return api('/api/v1/marketplace/listings/' + requireRecordId(id, 'listing id') + '/hide', { method: 'POST', body: '{}' }); },
+    unhide: function (id) { return api('/api/v1/marketplace/listings/' + requireRecordId(id, 'listing id') + '/hide', { method: 'DELETE' }); }
+  };
+
   (async function restoreSession() {
     if (demoMode || !localStorage.getItem(ACCESS_KEY)) return;
     try {
