@@ -571,6 +571,159 @@
       '<div class="cta" style="border:0"><button class="btn" onclick="done()">Done</button></div>';
   };
 
+
+  // Savings goals use the persisted savings service, never the prototype's local-only balance.
+  let liveSavingsGoals = [];
+  let savingsGoalsLoaded = false;
+  let savingsGoalsBusy = false;
+  let savingsGoalsError = null;
+  let savingsCreateKey = null;
+  let savingsCreateFingerprint = null;
+  let savingsDepositKey = null;
+  let savingsDepositFingerprint = null;
+  function mapSavingsGoal(goal) {
+    const target = Number(goal.targetAmount || 0);
+    const current = Number(goal.currentAmount || 0);
+    const months = goal.targetDate ? Math.max(1, Math.round((new Date(goal.targetDate) - new Date()) / (30.4375 * 86400000))) : 6;
+    return { id: goal.id, n: String(goal.name || 'Savings goal'), t: target, m: months, s: current,
+      targetDate: goal.targetDate || null, category: goal.category || 'general', status: goal.status || 'active' };
+  }
+  async function reloadSavingsGoals() {
+    const body = await api('/api/v1/savings/goals');
+    liveSavingsGoals = Array.isArray(body.goals) ? body.goals : [];
+    savingsGoalsLoaded = true;
+    savingsGoalsError = null;
+    S.liveGoals = liveSavingsGoals;
+    S.goal = liveSavingsGoals.length ? mapSavingsGoal(liveSavingsGoals[0]) : null;
+    return liveSavingsGoals;
+  }
+  window.openGoal = function () {
+    S.stack.push('goal');
+    S.goalLoading = true;
+    S.goalLoadError = null;
+    render('push');
+    reloadSavingsGoals().then(function () {
+      S.goalLoading = false;
+      render('fade-none');
+    }).catch(function (error) {
+      S.goalLoading = false;
+      S.goalLoadError = error;
+      fail(error);
+      render('fade-none');
+    });
+  };
+  window.selectSavingsGoal = function (id) {
+    const goal = liveSavingsGoals.find(function (item) { return item.id === id; });
+    if (!goal) return fail(new Error('That savings goal could not be found. Refresh and try again.'));
+    S.goal = mapSavingsGoal(goal);
+    render('fade-none');
+  };
+  window.startNewSavingsGoal = function () {
+    S.goal = null;
+    S.gd = { n: 'Phone', t: 100000, m: 6 };
+    render('fade-none');
+  };
+  const prototypeGoalScreen = screens.goal;
+  screens.goal = function () {
+    if (S.goalLoading) return bar('Savings goals') + '<div class="pad" role="status" style="padding-top:32px">Loading your saved goals…</div>';
+    if (S.goalLoadError) return bar('Savings goals') + '<div class="pad" role="alert" style="padding-top:32px">Your savings goals could not be loaded. No local sample goal is being shown.</div><div class="pad"><button class="btn" onclick="openGoal()">Try again</button></div>';
+    let html = prototypeGoalScreen();
+    html = html.replace('Sample goal for this prototype.', 'Live savings goal loaded from your itunda account.');
+    html = html.replace(/<button class="chip"[^>]*onclick="goalDel\(\)"[^>]*>Delete goal<\/button>/, '');
+    if (S.goal && liveSavingsGoals.length > 1) {
+      const items = liveSavingsGoals.map(function (goal) {
+        const active = S.goal && S.goal.id === goal.id;
+        return '<button class="row tap" style="width:100%;text-align:left;background:' + (active ? 'var(--tint)' : 'transparent') +
+          ';border:0" onclick="selectSavingsGoal(\'' + escapeBillText(goal.id) + '\')"><div style="flex:1"><div class="t">' +
+          escapeBillText(goal.name) + '</div><div class="s">' + fmt(Number(goal.currentAmount || 0)) + ' of ' +
+          fmt(Number(goal.targetAmount || 0)) + ' RWF</div></div><b>' + (active ? 'Selected' : 'View') + '</b></button>';
+      }).join('');
+      html = html.replace('<div class="cta">', '<div class="sec"><div class="sech">Your other goals</div>' + items +
+        '<button class="chip" style="margin-top:12px" onclick="startNewSavingsGoal()">New goal</button></div><div class="cta">');
+    } else if (S.goal) {
+      html = html.replace('<div class="cta">', '<div class="pad"><button class="chip" onclick="startNewSavingsGoal()">Create another goal</button></div><div class="cta">');
+    } else if (liveSavingsGoals.length) {
+      html = html.replace('<div class="cta">', '<div class="sec"><div class="sech">Existing goals</div>' +
+        liveSavingsGoals.map(function (goal) {
+          return '<button class="row tap" style="width:100%;text-align:left;background:transparent;border:0" onclick="selectSavingsGoal(\'' +
+            escapeBillText(goal.id) + '\')"><div style="flex:1"><div class="t">' + escapeBillText(goal.name) +
+            '</div><div class="s">' + fmt(Number(goal.currentAmount || 0)) + ' of ' + fmt(Number(goal.targetAmount || 0)) + ' RWF</div></div><b>View</b></button>';
+        }).join('') + '</div><div class="cta">');
+    }
+    return html;
+  };
+  window.goalMake = async function () {
+    if (savingsGoalsBusy) return;
+    if (!localStorage.getItem(ACCESS_KEY) || !mainAccountId) return fail(new Error('Sign in before creating a savings goal.'));
+    const d = S.gd || {};
+    const targetAmount = Number(d.t);
+    const months = Number(d.m);
+    if (!String(d.n || '').trim() || !Number.isFinite(targetAmount) || targetAmount <= 0 || !Number.isFinite(months) || months < 1) {
+      return fail(new Error('Choose a valid savings goal, target and duration.'));
+    }
+    const targetDate = new Date();
+    targetDate.setMonth(targetDate.getMonth() + months);
+    const payload = { name: String(d.n).trim(), targetAmount: targetAmount,
+      monthlyContribution: Math.ceil(targetAmount / months), targetDate: targetDate.toISOString().slice(0, 10), category: String(d.n).toLowerCase().replace(/[^a-z0-9]+/g, '_') };
+    const fingerprint = JSON.stringify(payload);
+    if (!savingsCreateKey || savingsCreateFingerprint !== fingerprint) {
+      savingsCreateKey = window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() :
+        'savings-create-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+      savingsCreateFingerprint = fingerprint;
+    }
+    savingsGoalsBusy = true;
+    try {
+      const result = await api('/api/v1/savings/goals', { method: 'POST',
+        headers: { 'Idempotency-Key': savingsCreateKey }, body: JSON.stringify(payload) });
+      savingsCreateKey = null; savingsCreateFingerprint = null;
+      await reloadSavingsGoals();
+      const created = result.goal && liveSavingsGoals.find(function (goal) { return goal.id === result.goal.id; });
+      S.goal = mapSavingsGoal(created || result.goal);
+      render('fade-none');
+      window.toast(result.message || 'Savings goal saved to your account');
+    } catch (error) { fail(error); }
+    finally { savingsGoalsBusy = false; }
+  };
+  window.goalAdd = function () {
+    const goal = S.goal;
+    if (!goal || !goal.id) return fail(new Error('Select a saved savings goal first.'));
+    if (!Number.isFinite(Number(S.bank)) || Number(S.bank) < 1000) return fail(new Error('Your account does not have enough available funds.'));
+    $('#layer').innerHTML = '<div class="sheetbg" onclick="closeSheet()"></div><div class="sheet">' +
+      '<div class="h1" style="font-size:22px;line-height:30px">Confirm savings deposit</div>' +
+      '<div class="mu" style="font-size:15px;margin:8px 0 24px">Move 1,000 RWF from your itunda account into ' +
+      escapeBillText(goal.n) + '?</div><div class="row2"><button class="btn sec2" onclick="closeSheet()">Cancel</button>' +
+      '<button class="btn" onclick="confirmSavingsDeposit()">Confirm deposit</button></div></div>';
+  };
+  window.confirmSavingsDeposit = async function () {
+    if (savingsGoalsBusy) return;
+    const goal = S.goal;
+    if (!goal || !goal.id || !mainAccountId) return fail(new Error('Choose a saved goal and sign in before depositing.'));
+    const payload = { goalId: goal.id, amount: 1000, fromAccountId: mainAccountId };
+    const fingerprint = JSON.stringify(payload);
+    if (!savingsDepositKey || savingsDepositFingerprint !== fingerprint) {
+      savingsDepositKey = window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() :
+        'savings-deposit-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+      savingsDepositFingerprint = fingerprint;
+    }
+    savingsGoalsBusy = true;
+    try {
+      const result = await api('/api/v1/savings/deposit', { method: 'POST',
+        headers: { 'Idempotency-Key': savingsDepositKey }, body: JSON.stringify(payload) });
+      savingsDepositKey = null; savingsDepositFingerprint = null;
+      closeSheet();
+      await loadAccount();
+      await reloadSavingsGoals();
+      const updated = result.goal && liveSavingsGoals.find(function (item) { return item.id === result.goal.id; });
+      S.goal = mapSavingsGoal(updated || result.goal);
+      render('fade-none');
+      window.toast(result.message || 'Deposit confirmed by itunda');
+    } catch (error) { closeSheet(); fail(error); }
+    finally { savingsGoalsBusy = false; }
+  };
+  window.goalDel = function () {
+    fail(new Error('Deleting savings goals is not supported by the backend yet. Your saved goal has not been changed.'));
+  };
+
   const oldLogOut = window.logOut;
   window.logOut = function () {
     const refreshToken = localStorage.getItem(REFRESH_KEY);
