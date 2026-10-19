@@ -40,6 +40,7 @@ const checks = [
   ['send endpoint is connected', backend.includes("api('/api/v1/p2p/send'")],
   ['bill provider catalog is loaded from backend', backend.includes("api('/api/v1/bills/providers')")],
   ['bill payments use authenticated backend and idempotency', backend.includes("api(airtime ? '/api/v1/bills/airtime' : '/api/v1/bills/pay'") && backend.includes("headers: { 'Idempotency-Key': idempotencyKey }")],
+  ['bill retries reuse an idempotency key for the same payment', backend.includes('billRequestFingerprint !== fingerprint') && backend.includes('billRequestKey = null; billRequestFingerprint = null;')],
   ['bill receipt only renders after a backend transaction is returned', backend.includes('if (!lastBillTransaction) throw new Error(') && backend.includes("Receipt supplied by the itunda backend.")],
   ['unsupported bill providers cannot be charged', backend.includes('This bill provider is not supported by the live backend.')],
   ['requests use an idempotency key', backend.includes("'Idempotency-Key': idempotencyKey")],
