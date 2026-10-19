@@ -873,7 +873,16 @@
     listing: function (id) { return api('/api/v1/marketplace/listings/' + requireRecordId(id, 'listing id')); },
     like: function (id) { return api('/api/v1/marketplace/listings/' + requireRecordId(id, 'listing id') + '/like', { method: 'POST', body: '{}' }); },
     hide: function (id) { return api('/api/v1/marketplace/listings/' + requireRecordId(id, 'listing id') + '/hide', { method: 'POST', body: '{}' }); },
-    unhide: function (id) { return api('/api/v1/marketplace/listings/' + requireRecordId(id, 'listing id') + '/hide', { method: 'DELETE' }); }
+    unhide: function (id) { return api('/api/v1/marketplace/listings/' + requireRecordId(id, 'listing id') + '/hide', { method: 'DELETE' }); },
+    contactSeller: function (id) { return api('/api/v1/marketplace/listings/' + requireRecordId(id, 'listing id') + '/contact-seller', { method: 'POST', body: '{}' }); }
+  };
+  window.itundaBackend.messaging = {
+    messages: function (conversationId, options) { return api('/api/v1/messages/conversations/' + requireRecordId(conversationId, 'conversation id') + '/messages' + queryString(options)); },
+    send: function (conversationId, body) {
+      const message = String(body || '').trim();
+      if (!message || message.length > 5000) return Promise.reject(new Error('Enter a message up to 5,000 characters.'));
+      return api('/api/v1/messages/conversations/' + requireRecordId(conversationId, 'conversation id') + '/messages', { method: 'POST', body: JSON.stringify({ body: message }) });
+    }
   };
 
 
@@ -1055,12 +1064,72 @@
     }
   };
   const prototypeHdChat = window.hdChat;
-  window.hdChat = function (type, id) {
-    if (type === 'market') {
-      fail(new Error('Marketplace messaging is not connected to a verified conversation flow yet. No message was sent.'));
+  function marketplaceEscape(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function (ch) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+    });
+  }
+  let activeMarketplaceConversation = null;
+  async function loadMarketplaceConversationMessages(conversationId) {
+    const target = document.getElementById('market-message-list');
+    if (!target) return;
+    try {
+      const response = await window.itundaBackend.messaging.messages(conversationId, { page: 0, size: 50 });
+      const messages = Array.isArray(response.messages) ? response.messages.slice().reverse() : [];
+      target.innerHTML = messages.length ? messages.map(function (message) {
+        return '<div style="padding:10px 12px;margin:6px 0;border-radius:14px;background:var(--chip);overflow-wrap:anywhere"><div>' +
+          marketplaceEscape(message.body || '') + '</div><div class="sm mu" style="margin-top:5px">' +
+          marketplaceEscape(message.sentAt ? new Date(message.sentAt).toLocaleString() : '') + '</div></div>';
+      }).join('') : '<div class="mu" style="padding:18px 4px">No messages yet. Send the first message to the seller.</div>';
+      target.scrollTop = target.scrollHeight;
+    } catch (error) {
+      target.textContent = error.message || 'Could not load messages.';
+    }
+  }
+  async function renderMarketplaceConversation(conversationId, listingTitle) {
+    activeMarketplaceConversation = conversationId;
+    const layer = document.getElementById('layer');
+    if (!layer) return fail(new Error('Messaging panel is unavailable.'));
+    layer.innerHTML = '<div class="sheetbg" onclick="closeSheet()"></div><div class="sheet" style="max-height:85dvh;display:flex;flex-direction:column">' +
+      '<div class="row" style="align-items:center;justify-content:space-between"><div><div class="h1" style="font-size:21px">Message seller</div><div class="sm mu">' + marketplaceEscape(listingTitle || 'Marketplace listing') + '</div></div><button class="chip" onclick="closeSheet()">Close</button></div>' +
+      '<div id="market-message-list" role="log" aria-live="polite" style="overflow:auto;min-height:140px;max-height:45dvh;padding:12px 0">Loading conversation…</div>' +
+      '<label class="lab" for="market-message-input">Your message</label><textarea id="market-message-input" class="in" maxlength="5000" placeholder="Ask about this item…" style="min-height:76px;padding-top:10px"></textarea>' +
+      '<button class="btn" id="market-message-send" style="margin-top:10px" onclick="sendMarketplaceMessage()">Send message</button></div>';
+    await loadMarketplaceConversationMessages(conversationId);
+  }
+  window.sendMarketplaceMessage = async function () {
+    const conversationId = activeMarketplaceConversation;
+    const input = document.getElementById('market-message-input');
+    const button = document.getElementById('market-message-send');
+    const body = String(input && input.value || '').trim();
+    if (!conversationId || !body) return fail(new Error('Write a message before sending.'));
+    if (button) { button.disabled = true; button.textContent = 'Sending…'; }
+    try {
+      await window.itundaBackend.messaging.send(conversationId, body);
+      if (input) input.value = '';
+      await loadMarketplaceConversationMessages(conversationId);
+      toast('Message sent');
+    } catch (error) {
+      fail(error);
+    } finally {
+      if (button) { button.disabled = false; button.textContent = 'Send message'; }
+    }
+  };
+  window.hdChat = async function (type, id) {
+    if (type !== 'market') {
+      if (typeof prototypeHdChat === 'function') return prototypeHdChat(type, id);
       return;
     }
-    if (typeof prototypeHdChat === 'function') return prototypeHdChat(type, id);
+    const real = marketplaceRealByUiId[String(id)];
+    if (!real || !real.id) return fail(new Error('This listing is not linked to a real server record.'));
+    try {
+      const result = await window.itundaBackend.marketplace.contactSeller(real.id);
+      const conversation = result && result.conversation;
+      if (!conversation || !conversation.id) throw new Error('The server did not return a conversation. No message was sent.');
+      await renderMarketplaceConversation(conversation.id, real.title || real.name || 'Marketplace listing');
+    } catch (error) {
+      fail(error);
+    }
   };
   window.mkBuy = function () { fail(new Error('Marketplace checkout is not connected to a verified server-side order/payment flow yet. No payment was made.')); };
   window.mkPay = function () { fail(new Error('Marketplace checkout is not connected to a verified server-side order/payment flow yet. No payment was made.')); };
