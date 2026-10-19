@@ -531,7 +531,7 @@
     usable.forEach(function (place, index) {
       const lat = Number(place.latitude), lng = Number(place.longitude);
       window.POI.push({
-        id: 'real-map-place-' + index, c: category || 'food', e: '📍', n: String(place.displayName),
+        id: 'real-map-place-' + index, c: mapChipByCategory[place.__itundaCategory] || category || 'food', e: '📍', n: String(place.displayName),
         x: Math.max(-200, Math.min(640, 250 + (lng - 30.0619) * 3500)),
         y: Math.max(-120, Math.min(900, 440 - (lat + 1.9441) * 3500)),
         k: String(place.distanceKm == null ? 'Verified nearby place' : Number(place.distanceKm).toFixed(1) + ' km away'),
@@ -544,7 +544,23 @@
     const sequence = ++nearbySequence;
     const category = mapCategoryByChip[categoryChip] || 'RESTAURANT';
     try {
-      const places = await window.itundaMaps.searchNearby(category, -1.9441, 30.0619, 5);
+      let places;
+      if (categoryChip === 'all') {
+        const categories = ['RESTAURANT', 'CAFE', 'BUS_STOP', 'PHARMACY', 'ATM'];
+        const grouped = await Promise.all(categories.map(async function (kind) {
+          const results = await window.itundaMaps.searchNearby(kind, -1.9441, 30.0619, 5);
+          return results.map(function (place) { return Object.assign({}, place, { __itundaCategory: kind }); });
+        }));
+        const seen = new Set();
+        places = grouped.flat().filter(function (place) {
+          const key = String(place.displayName || '').toLowerCase() + ':' + Number(place.latitude).toFixed(5) + ':' + Number(place.longitude).toFixed(5);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      } else {
+        places = await window.itundaMaps.searchNearby(category, -1.9441, 30.0619, 5);
+      }
       if (sequence !== nearbySequence) return;
       replacePrototypePois(places, mapChipByCategory[category] || categoryChip);
       if (typeof window.render === 'function') window.render('fade-none');
