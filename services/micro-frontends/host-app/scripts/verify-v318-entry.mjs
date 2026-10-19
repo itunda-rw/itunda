@@ -33,7 +33,7 @@ const checks = [
   ['sign-in affordance routes to backend phone validation', prototype.includes(signInLabel)],
   ['real login endpoint is wired', backend.includes("api('/api/v1/auth/login'")],
   ['account and transaction data use API endpoints', backend.includes("api('/api/v1/account'") && backend.includes("api('/api/v1/account/transactions'")],
-  ['demo mode blocks API requests', backend.includes('if (demoMode) throw new Error(\\'Demo mode uses sample data only.')],
+  ['demo mode blocks API requests', backend.includes("if (demoMode) throw new Error('Demo mode uses sample data only.")],
   ['demo mode does not restore saved sessions', backend.includes('if (demoMode || !localStorage.getItem(ACCESS_KEY)) return;')],
   ['skip entry is blocked outside demo mode', backend.includes('Please sign in or create an account to continue.')],
   ['send endpoint is connected', backend.includes("api('/api/v1/p2p/send'")],
