@@ -20,6 +20,33 @@ if (!html.includes('screens.bank')) {
   throw new Error('Cannot confirm v318 exposes the bank screen hook required by the backend bridge.');
 }
 
+// Convert the prototype-only "Skip" affordance into the real phone sign-in action.
+const skipLabel = 'onclick="obSkip();return false">Skip (prototype)';
+const signInLabel = 'onclick="obPhoneNext();return false">Continue';
+const skipCount = html.split(skipLabel).length - 1;
+if (skipCount < 1) {
+  throw new Error('Expected v318 prototype skip label not found; refusing to ship a sign-in bypass affordance.');
+}
+html = html.split(skipLabel).join(signInLabel);
+
+// Remove the prefilled sample phone shortcut and its handler from the production entry.
+const demoShortcut = /<a href="#" class="sm" style="color:var\(--lk\);font-weight:700;display:inline-block;margin-top:6px" onclick="phDemo\(\);return false">Prototype: fill a returning number<\/a>/;
+if (!demoShortcut.test(html)) {
+  throw new Error('Prototype phone-fill shortcut not found; refusing to ship sample credentials UI.');
+}
+html = html.replace(demoShortcut, '');
+const demoHandler = "window.phDemo=()=>{S.ob.ph='788123456';render('fade-none')};";
+if (!html.includes(demoHandler)) {
+  throw new Error('Prototype phone-fill handler not found; refusing to ship sample credentials behavior.');
+}
+html = html.replace(demoHandler, '');
+
+if (html.includes('Skip (prototype)') ||
+    html.includes('Prototype: fill a returning number') ||
+    html.includes(demoHandler) ||
+    /onclick="obSkip\(\);return false">[^<]*prototype/i.test(html)) {
+  throw new Error('Prototype-only authentication shortcuts remain in production HTML.');
+}
 html = html.replace('</body>', bridge + '</body>');
 writeFileSync(outputPath, html);
-process.stdout.write('Synced canonical v318 with the real-auth/backend bridge attached.\n');
+process.stdout.write('Synced canonical v318 with real auth bridge; removed prototype-only auth shortcuts.\\n');
