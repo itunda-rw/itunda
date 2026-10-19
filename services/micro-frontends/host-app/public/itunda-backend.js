@@ -441,6 +441,59 @@
     if (oldLogOut) oldLogOut();
   };
 
+  // Real Maps API adapter for the v266 shell. Uses the existing authenticated API
+  // helper and the backend's established response contracts; never substitutes demo
+  // places when the service fails. Prototype screens can call these methods directly.
+  window.itundaMaps = Object.freeze({
+    searchPlaces: async function (query) {
+      const q = String(query || '').trim();
+      if (q.length < 2) return [];
+      const body = await api('/api/v1/maps/search?q=' + encodeURIComponent(q));
+      if (!Array.isArray(body.results)) throw new Error('Maps search returned an invalid response.');
+      return body.results.map(function (place) {
+        const latitude = Number(place.latitude);
+        const longitude = Number(place.longitude);
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+        return {
+          displayName: String(place.displayName || place.display_name || ''),
+          latitude: latitude,
+          longitude: longitude
+        };
+      }).filter(function (place) { return place && place.displayName; });
+    },
+    fetchCategories: async function () {
+      const body = await api('/api/v1/maps/categories');
+      if (!Array.isArray(body.categories)) throw new Error('Maps categories returned an invalid response.');
+      return body.categories;
+    },
+    searchNearby: async function (category, latitude, longitude, radiusKm) {
+      const lat = Number(latitude), lng = Number(longitude);
+      const radius = radiusKm === undefined ? 2 : Number(radiusKm);
+      if (!String(category || '').trim() || !Number.isFinite(lat) || !Number.isFinite(lng) ||
+          !Number.isFinite(radius) || radius <= 0 || radius > 50) {
+        throw new Error('Choose a place category and a valid map location.');
+      }
+      const query = '/api/v1/maps/nearby?category=' + encodeURIComponent(String(category)) +
+        '&lat=' + encodeURIComponent(String(lat)) + '&lng=' + encodeURIComponent(String(lng)) +
+        '&radiusKm=' + encodeURIComponent(String(radius));
+      const body = await api(query);
+      if (!Array.isArray(body.places)) throw new Error('Nearby places returned an invalid response.');
+      return body.places;
+    },
+    getDirections: async function (fromLatitude, fromLongitude, toLatitude, toLongitude, mode) {
+      const values = [fromLatitude, fromLongitude, toLatitude, toLongitude].map(Number);
+      if (!values.every(Number.isFinite)) throw new Error('Choose a valid origin and destination.');
+      const travelMode = mode || 'DRIVING';
+      if (!['DRIVING', 'WALKING', 'BIKING'].includes(travelMode)) throw new Error('Unsupported travel mode.');
+      const path = '/api/v1/maps/directions?fromLat=' + encodeURIComponent(String(values[0])) +
+        '&fromLng=' + encodeURIComponent(String(values[1])) + '&toLat=' + encodeURIComponent(String(values[2])) +
+        '&toLng=' + encodeURIComponent(String(values[3])) + '&mode=' + encodeURIComponent(travelMode);
+      const body = await api(path);
+      if (!body.route) throw new Error('Directions returned an invalid response.');
+      return body.route;
+    }
+  });
+
   (async function restoreSession() {
     if (demoMode || !localStorage.getItem(ACCESS_KEY)) return;
     try {
