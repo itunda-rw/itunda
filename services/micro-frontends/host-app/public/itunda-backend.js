@@ -415,6 +415,156 @@
     finally { transferBusy = false; }
   };
 
+
+  // Real bills/airtime backend integration. Provider names and IDs come from the
+  // authenticated backend catalog; unsupported prototype-only billers are disabled.
+  let billProviders = null;
+  let billProvidersError = null;
+  let billProvidersPromise = null;
+  let billBusy = false;
+  let lastBillTransaction = null;
+  const billProviderAliases = {
+    'REG electricity': ['reg', 'electricity'],
+    'WASAC water': ['wasac', 'water'],
+    'MTN airtime': ['mtn', 'airtime'],
+    'Airtel airtime': ['airtel', 'airtime'],
+    'Irembo': ['irembo'],
+    'RRA taxes': ['rra', 'income tax']
+  };
+  function loadBillProviders() {
+    if (billProviders) return Promise.resolve(billProviders);
+    if (billProvidersPromise) return billProvidersPromise;
+    billProvidersPromise = api('/api/v1/bills/providers').then(function (body) {
+      billProviders = Array.isArray(body.providers) ? body.providers.filter(function (p) { return p && p.isActive !== false; }) : [];
+      if (!billProviders.length) throw new Error('No active bill providers are available right now.');
+      billProvidersError = null;
+      return billProviders;
+    }).catch(function (error) {
+      billProvidersError = error;
+      throw error;
+    }).finally(function () { billProvidersPromise = null; });
+    return billProvidersPromise;
+  }
+  function providerForBill(label) {
+    if (!Array.isArray(billProviders)) return null;
+    const aliases = billProviderAliases[label] || [];
+    return billProviders.find(function (p) {
+      const name = String(p.name || '').toLowerCase();
+      return aliases.length && aliases.every(function (word) { return name.includes(word); });
+    }) || null;
+  }
+  function escapeBillText(value) {
+    return String(value == null ? '' : value).replace(/[<>&"]/g, function (ch) {
+      return ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[ch];
+    });
+  }
+  const prototypeBillScreen = screens.bill;
+  if (prototypeBillScreen) {
+    screens.bill = function () {
+      const html = prototypeBillScreen();
+      if (!billProviders && !billProvidersPromise && !billProvidersError) {
+        loadBillProviders().then(function () {
+          if (S.auth && S.stack[S.stack.length - 1] === 'bill') render('fade-none');
+        }).catch(function (error) {
+          if (S.auth && S.stack[S.stack.length - 1] === 'bill') render('fade-none');
+          console.warn('[itunda bills] Provider catalog unavailable:', error.message);
+        });
+      }
+      const labels = Object.keys(billProviderAliases).filter(function (label) { return providerForBill(label); });
+      const chips = labels.length
+        ? labels.map(function (label) {
+            return '<button class="cch ' + (S.bl.p === label ? 'on' : '') + '" onclick="billSet(\'' + label + '\')">' +
+              escapeBillText(providerForBill(label).name) + '</button>';
+          }).join('')
+        : '<div class="fine" role="status" style="padding:12px 0">' +
+          (billProvidersError ? 'Bill providers could not be loaded. Try again later.' : 'Loading available bill providers…') + '</div>';
+      let out = html.replace(/<div class="chips" style="padding-top:16px">[\s\S]*?<\/div>/, '<div class="chips" style="padding-top:16px">' + chips + '</div>');
+      out = out.replace('Providers and numbers are sample data. No real payment is made.',
+        'Provider availability is loaded from itunda. Payment is submitted to the backend and can fail if the provider declines.');
+      if (billProvidersError) {
+        out = out.replace(/<button id="bgo" class="btn"[^>]*>[\s\S]*?<\/button>/,
+          '<button id="bgo" class="btn" disabled>Provider unavailable</button>');
+      } else if (!providerForBill(S.bl.p)) {
+        out = out.replace(/<button id="bgo" class="btn"[^>]*>[\s\S]*?<\/button>/,
+          '<button id="bgo" class="btn" disabled>Service unavailable</button>');
+      }
+      return out;
+    };
+  }
+  window.billPay = function () {
+    if (billBusy) return;
+    if (!localStorage.getItem(ACCESS_KEY) || !mainAccountId) return fail(new Error('Sign in before paying a bill.'));
+    if (!billProviders || billProvidersError) return fail(new Error('The bill provider catalog is not available. Please try again.'));
+    const bill = S.bl || {};
+    const provider = providerForBill(bill.p);
+    const phone = /airtime/i.test(bill.p);
+    if (!provider) return fail(new Error('This bill provider is not supported by the live backend.'));
+    if (!bill.num || !Number.isFinite(Number(bill.amt)) || Number(bill.amt) <= 0) {
+      return fail(new Error('Enter a valid account or phone number and payment amount.'));
+    }
+    if (Number(bill.amt) > Number(S.bank)) return fail(new Error('Insufficient funds in your itunda account.'));
+    $('#layer').innerHTML = '<div class="sheetbg" onclick="closeSheet()"></div><div class="sheet">' +
+      '<div style="margin-bottom:12px">⚠️</div><div class="h1" style="font-size:22px;line-height:30px">Confirm payment</div>' +
+      '<div class="mu" style="font-size:15px;margin:8px 0 24px">Pay ' + fmt(Number(bill.amt)) + ' RWF to ' +
+      escapeBillText(provider.name) + ' · ' + escapeBillText(bill.num) +
+      '. The backend will confirm whether it succeeds.</div><div class="row2"><button class="btn sec2" onclick="closeSheet()">Cancel</button>' +
+      '<button class="btn" onclick="billDone()">Confirm payment</button></div></div>';
+  };
+  window.billDone = async function () {
+    if (billBusy) return;
+    if (!localStorage.getItem(ACCESS_KEY) || !mainAccountId) return fail(new Error('Sign in before paying a bill.'));
+    const bill = S.bl || {};
+    const provider = providerForBill(bill.p);
+    if (!provider) return fail(new Error('This bill provider is not supported by the live backend.'));
+    billBusy = true;
+    try {
+      const idempotencyKey = window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() :
+        'bill-web-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+      const airtime = /airtime/i.test(bill.p);
+      const rail = /airtel/i.test(bill.p) ? 'Airtel Money' : 'MTN MoMo';
+      const payload = airtime
+        ? { phoneNumber: normalizePhone(bill.num), amount: Number(bill.amt), provider: rail }
+        : { billId: provider.id, amount: Number(bill.amt), accountNumber: bill.num, provider: rail };
+      const result = await api(airtime ? '/api/v1/bills/airtime' : '/api/v1/bills/pay', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': idempotencyKey },
+        body: JSON.stringify(payload)
+      });
+      lastBillTransaction = result.transaction || null;
+      if (!lastBillTransaction) throw new Error('The backend did not return a payment transaction. Check activity before retrying.');
+      closeSheet();
+      await loadAccount().catch(function (refreshError) {
+        console.warn('[itunda bills] Payment confirmed; account refresh failed:', refreshError.message);
+      });
+      S.bk = Number(lastBillTransaction.amount || bill.amt);
+      S.stack = ['billdone'];
+      render('push');
+      window.toast(result.message || 'Payment confirmed by itunda');
+    } catch (error) {
+      closeSheet();
+      fail(error);
+    } finally { billBusy = false; }
+  };
+  const prototypeBillDoneScreen = screens.billdone;
+  screens.billdone = function () {
+    if (!lastBillTransaction) {
+      return bar('Payment status') + '<div class="pad" role="alert" style="padding-top:32px">No confirmed payment receipt is available. Check account activity before trying again.</div>';
+    }
+    const tx = lastBillTransaction;
+    const amount = Number(tx.amount || S.bk || 0);
+    const ref = escapeBillText(tx.referenceNumber || tx.id || '—');
+    const label = escapeBillText(tx.description || tx.type || 'Bill payment');
+    return '<div style="display:flex;flex-direction:column;align-items:center;padding-top:clamp(28px,12vh,190px)">' +
+      '<div class="g3">' + gl('success3d', 132) + '</div><div class="h1" style="margin-top:28px;font-size:34px;line-height:42px">' +
+      fmt(amount) + ' RWF</div><div class="mu" style="font-size:16px;margin-top:8px">' + label + '</div></div>' +
+      '<div style="margin:44px 24px 0;padding:4px 20px;border-radius:20px;background:var(--chip)">' +
+      '<div class="row" style="cursor:default"><span class="mu">Status</span><b>' + escapeBillText(tx.status || 'COMPLETED') + '</b></div>' +
+      '<div class="row" style="cursor:default"><span class="mu">Reference</span><b>' + ref + '</b></div>' +
+      '<div class="row" style="cursor:default"><span class="mu">Amount</span><b>' + fmt(amount) + ' RWF</b></div>' +
+      '<div class="fine" style="padding:12px 0">Receipt supplied by the itunda backend. Provider settlement availability may vary.</div></div>' +
+      '<div class="cta" style="border:0"><button class="btn" onclick="done()">Done</button></div>';
+  };
+
   const oldLogOut = window.logOut;
   window.logOut = function () {
     const refreshToken = localStorage.getItem(REFRESH_KEY);
