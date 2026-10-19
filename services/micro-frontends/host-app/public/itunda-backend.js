@@ -896,7 +896,7 @@
     const request = ++marketplaceRequest;
     marketplaceMessage(query ? 'Searching real listings…' : 'Loading real listings…', false);
     try {
-      if (!query && category === 'Saved') {
+      if (category === 'Saved') {
         if (request === marketplaceRequest) marketplaceMessage('Saved-listing retrieval is not exposed by the current backend API yet.', true);
         return;
       }
@@ -943,6 +943,30 @@
       setTimeout(function () { loadRealMarketplace(S.mkQ.trim(), S.mkCat); }, 0);
     }
     return html;
+  };
+  const prototypeHdToggle = window.hdTg;
+  window.hdTg = function (type, id) {
+    if (type === 'market') {
+      fail(new Error('Saved-listing actions are not connected to a verified favorites endpoint yet. Nothing was saved or changed.'));
+      return;
+    }
+    if (typeof prototypeHdToggle === 'function') return prototypeHdToggle(type, id);
+  };
+  const prototypeHdPostGo = window.hdPostGo;
+  window.hdPostGo = function () {
+    if (S.hd === 'market') {
+      fail(new Error('Publishing listings is not connected to a verified create-listing API flow yet. Nothing was published.'));
+      return;
+    }
+    if (typeof prototypeHdPostGo === 'function') return prototypeHdPostGo();
+  };
+  const prototypeHdChat = window.hdChat;
+  window.hdChat = function (type, id) {
+    if (type === 'market') {
+      fail(new Error('Marketplace messaging is not connected to a verified conversation flow yet. No message was sent.'));
+      return;
+    }
+    if (typeof prototypeHdChat === 'function') return prototypeHdChat(type, id);
   };
   window.mkBuy = function () { fail(new Error('Marketplace checkout is not connected to a verified server-side order/payment flow yet. No payment was made.')); };
   window.mkPay = function () { fail(new Error('Marketplace checkout is not connected to a verified server-side order/payment flow yet. No payment was made.')); };
