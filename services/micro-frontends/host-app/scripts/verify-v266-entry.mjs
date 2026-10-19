@@ -41,7 +41,9 @@ const checks = [
   ['logout clears local session and calls the real logout endpoint', backend.includes('/api/v1/auth/logout') && backend.includes("localStorage.removeItem(ACCESS_KEY)")],
   ['saved session restoration loads real account data and is disabled in demo mode', backend.includes('async function restoreSession()') && backend.includes('if (demoMode || !localStorage.getItem(ACCESS_KEY)) return;')],
   ['Nginx disables caching for every production entry point', protectedPaths.every((path) => nginx.includes('location = ' + path + ' {') && (() => { const block = nginx.split('location = ' + path + ' {')[1]?.split(/\n    \}/)[0]; return Boolean(block && block.includes(cacheHeader) && block.includes('add_header Pragma "no-cache" always;')); })())]
-  ,['Directions use the established alternatives endpoint and validate coordinates, modes, and route arrays', backend.includes("'/api/v1/maps/directions/alternatives?fromLat='") && backend.includes("['DRIVING', 'WALKING', 'BIKING']") && backend.includes('Array.isArray(body.routes)') && backend.includes('values[0] < -90') && backend.includes('Directions returned an invalid response.') ]
+  ,['Maps search adapter calls the real backend and validates returned coordinates', backend.includes('window.itundaMaps = Object.freeze') && backend.includes("'/api/v1/maps/search?q='") && backend.includes('Maps search returned an invalid response.') && backend.includes('Number.isFinite(latitude)') ],
+  ['Nearby places and categories use real Maps endpoints without sample-data fallback', backend.includes("'/api/v1/maps/categories'") && backend.includes("'/api/v1/maps/nearby?category='") && backend.includes('Nearby places returned an invalid response.') ],
+  ['Directions use the established alternatives endpoint and validate coordinates, modes, and route arrays', backend.includes("'/api/v1/maps/directions/alternatives?fromLat='") && backend.includes("['DRIVING', 'WALKING', 'BIKING']") && backend.includes('Array.isArray(body.routes)') && backend.includes('values[0] < -90') && backend.includes('Directions returned an invalid response.') ]
 
 ];
 const failed = checks.filter(([, passed]) => !passed);
