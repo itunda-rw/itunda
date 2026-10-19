@@ -156,6 +156,7 @@ class EatsOrderOwnRestaurantException(message: String) : RuntimeException(messag
 class EatsController(
     private val riderService: RiderService,
     private val eatsOrderService: EatsOrderService,
+    private val eatsStampService: rw.itunda.eats.EatsStampService,
     private val eatsReviewService: EatsReviewService,
     private val eatsFavoriteService: EatsFavoriteService,
     private val eatsMembershipService: EatsMembershipService,
@@ -461,7 +462,7 @@ class EatsController(
         @PathVariable orderId: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val order = eatsOrderService.completePickup(currentUser.userId, orderId)
+        val order = eatsOrderService.completePickup(currentUser.userId, orderId); eatsStampService.awardForCompletedOrder(order.id)
         return ResponseEntity.ok(mapOf("success" to true, "order" to order))
     }
 
@@ -506,7 +507,6 @@ class EatsController(
         val order = eatsOrderService.declineDelivery(currentUser.userId, orderId)
         return ResponseEntity.ok(mapOf("success" to true, "order" to order))
     }
-
     @PostMapping("/orders/{orderId}/rider-status")
     fun updateRiderStatus(
         @PathVariable orderId: String,
@@ -514,9 +514,9 @@ class EatsController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val order = eatsOrderService.updateRiderStatus(currentUser.userId, orderId, request.status, request.deliveryPhotoUrl)
+        if (order.status == rw.itunda.core.domain.EatsOrderStatus.DELIVERED) eatsStampService.awardForCompletedOrder(order.id)
         return ResponseEntity.ok(mapOf("success" to true, "order" to order))
     }
-
     // Real manual trigger for EatsOrderAbandonedDeliveryScheduler's own real 60-second
     // cron -- same "let a coordinator/admin fire the real due sweep on demand rather
     // than waiting on wall-clock time" precedent BikeRentalController.processAbandonedRentals/
@@ -879,7 +879,6 @@ class EatsController(
     @ExceptionHandler(NoActiveOfferException::class)
     fun handleNoActiveOffer(ex: NoActiveOfferException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("NO_ACTIVE_OFFER", ex.message ?: "Conflict"))
-
 
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleConflict(ex: IdempotencyConflictException) =

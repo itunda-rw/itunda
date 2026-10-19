@@ -2,7 +2,9 @@ package rw.itunda.core.repository
 
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
+import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import rw.itunda.core.domain.Merchant
@@ -13,6 +15,14 @@ import rw.itunda.core.domain.PaymentIntent
 import java.math.BigDecimal
 
 interface MerchantRepository : JpaRepository<Merchant, String> {
+    /**
+     * Serializes Eats stamp awards for a restaurant across campaigns. The database's
+     * one-buyer/restaurant/day uniqueness constraint remains the final invariant.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select m from Merchant m where m.id = :id")
+    fun findByIdForUpdate(@Param("id") id: String): java.util.Optional<Merchant>
+
     fun findByOwnerUserId(ownerUserId: String): Merchant?
 
     // Real external-checkout API-key resolution (2026-07-21) -- see
