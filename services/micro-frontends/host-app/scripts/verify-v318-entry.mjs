@@ -28,7 +28,7 @@ const checks = [
   ['production document has v318 title', prototype.includes('<title>itunda, clickable prototype v318</title>') && prototype.includes(titleScript)],
   ['real-auth bridge is loaded', prototype.includes(bridge)],
   ['prototype sign-in bypass links are removed', !/onclick="obSkip\(\);return false">[^<]*prototype/i.test(prototype)],
-  ['prototype phone-fill shortcut and handler are removed', !/<a href="#" class="sm" style="color:var\\(--lk\\);font-weight:700;display:inline-block;margin-top:6px" onclick="phDemo\\(\\);return false">Prototype: fill a returning number<\\/a>/.test(prototype) && !prototype.includes("window.phDemo=()=>{S.ob.ph='788123456';render('fade-none')};")],
+  ['prototype phone-fill shortcut and handler are removed', !/<a href="#" class="sm" style="color:var\(--lk\);font-weight:700;display:inline-block;margin-top:6px" onclick="phDemo\(\);return false">Prototype: fill a returning number<\/a>/.test(prototype) && !prototype.includes("window.phDemo=()=>{S.ob.ph='788123456';render('fade-none')};")],
   ['real sign-in endpoint is wired', backend.includes('/api/v1/auth/login')],
   ['demo mode cannot call authenticated APIs', backend.includes("if (demoMode) throw new Error('Demo mode uses sample data only.")],
   ['real P2P send endpoint and idempotency key are used', backend.includes("api('/api/v1/p2p/send'") && backend.includes("'Idempotency-Key': idempotencyKey")],
