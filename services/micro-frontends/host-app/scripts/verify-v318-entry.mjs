@@ -24,7 +24,7 @@ const checks = [
   ['demo mode does not restore saved sessions', backend.includes('if (demoMode || !localStorage.getItem(ACCESS_KEY)) return;')],
   ['skip entry is blocked outside demo mode', backend.includes('Please sign in or create an account to continue.')],
   ['send endpoint is connected', backend.includes("api('/api/v1/p2p/send'")],
-  ['requests use an idempotency key', backend.includes("Idempotency-Key: idempotencyKey")],
+  ['requests use an idempotency key', backend.includes("'Idempotency-Key': idempotencyKey")],
   ['recipient verification is required', backend.includes('Verify the recipient name before sending money.')],
   ['cache rules cover app and bridge routes', protectedPaths.every((path) => nginx.includes('location = ' + path + ' {'))],
   ['cache is disabled on app and bridge routes', protectedPaths.every((path) => {
