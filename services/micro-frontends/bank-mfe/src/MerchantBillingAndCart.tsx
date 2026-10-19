@@ -155,6 +155,7 @@ export function MultiCartView({
   const { t } = useI18n();
   const [address, setAddress] = useState('');
   const [placing, setPlacing] = useState(false);
+  const checkoutInFlightRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   // Real device binding step-up (2026-07-21) -- Commerce checkout was a real gap:
   // already correctly enforced server-side (a real 403 DEVICE_NOT_VERIFIED) but
@@ -199,33 +200,44 @@ export function MultiCartView({
   // checkout behaves (each seller is charged/fulfilled independently in real life).
   const handlePlaceOrders = async (e?: React.FormEvent) => {
     e?.preventDefault();
+    // A swipe/submit can race with a second gesture before React paints the busy
+    // state. A ref closes that same-tick window; state drives the visible busy UI.
+    if (checkoutInFlightRef.current) return;
+    checkoutInFlightRef.current = true;
     setPlacing(true);
     setError(null);
     setNeedsDeviceVerification(false);
-    for (let i = checkoutResumeIndexRef.current; i < groups.length; i++) {
-      const [merchantId, group] = groups[i];
-      const items = Object.entries(group.lines).filter(([, l]) => l.quantity > 0).map(([productId, l]) => ({ productId, quantity: l.quantity }));
-      try {
-        const result = await placeOrder(merchantId, items, address.trim(), getStoredReferralCode());
-        checkoutResultsRef.current.push({ merchantId, businessName: group.businessName, success: true, order: result.order });
-      } catch (err) {
-        if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
-          checkoutResumeIndexRef.current = i;
-          setNeedsDeviceVerification(true);
-          setPlacing(false);
-          return;
+    try {
+      for (let i = checkoutResumeIndexRef.current; i < groups.length; i++) {
+        const [merchantId, group] = groups[i];
+        const items = Object.entries(group.lines).filter(([, l]) => l.quantity > 0).map(([productId, l]) => ({ productId, quantity: l.quantity }));
+        try {
+          const result = await placeOrder(merchantId, items, address.trim(), getStoredReferralCode());
+          checkoutResultsRef.current.push({ merchantId, businessName: group.businessName, success: true, order: result.order });
+        } catch (err) {
+          if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+            checkoutResumeIndexRef.current = i;
+            setNeedsDeviceVerification(true);
+            return;
+          }
+          checkoutResultsRef.current.push({ merchantId, businessName: group.businessName, success: false, error: err instanceof ApiError ? err.message : t('common.actionError') });
         }
-        checkoutResultsRef.current.push({ merchantId, businessName: group.businessName, success: false, error: err instanceof ApiError ? err.message : t('common.actionError') });
       }
+      onCheckedOut(checkoutResultsRef.current);
+    } catch (err) {
+      // Unexpected failures must release the checkout lock as well; otherwise the
+      // cart can remain permanently busy and every subsequent retry is ignored.
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
+    } finally {
+      checkoutInFlightRef.current = false;
+      setPlacing(false);
     }
-    setPlacing(false);
-    onCheckedOut(checkoutResultsRef.current);
   };
 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-        <button onClick={onBack} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to shop">
+        <button onClick={onBack} disabled={placing} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to shop">
           <IconBack size={20} />
         </button>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>Your cart</h3>
@@ -250,13 +262,27 @@ export function MultiCartView({
           ))}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>
-              <span>Total ({groups.length} order{groups.length === 1 ? '' : 's'})</span>
+              <span>Estimated total ({groups.length} order{groups.length === 1 ? '' : 's'})</span>
               <span>{grandTotal.toLocaleString('en-US')} RWF</span>
             </div>
-            <input
-              type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Delivery address" required
-              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
-            />
+            <p role="note" style={{ fontSize: 'var(--itunda-type-scale-12-size)', lineHeight: 1.45, color: 'var(--itunda-grey-600)', margin: 0 }}>
+              Final prices are confirmed by each seller at checkout. Quantity discounts, active deals, or availability may change the amount charged.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <input
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value.slice(0, 500))}
+                placeholder="Delivery address"
+                maxLength={500}
+                required
+                aria-describedby="commerce-delivery-address-count"
+                style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
+              />
+              <p id="commerce-delivery-address-count" style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', textAlign: 'right', margin: 0 }}>
+                {address.length}/500
+              </p>
+            </div>
             {bookmarks.length > 0 && (
               <div style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
                 {bookmarks.map((b) => (
@@ -303,13 +329,27 @@ export function MultiCartView({
 
 export function MultiCartResultsView({ results, onDone }: { results: CommerceCheckoutResult[]; onDone: () => void }) {
   const successCount = results.filter((r) => r.success).length;
+  const failedCount = results.length - successCount;
   return (
     <div style={{ padding: '10px 0' }}>
       <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-        <IconShieldCheck size={36} color="var(--itunda-green)" style={{ marginBottom: '10px' }} />
+        {failedCount === 0 ? (
+          <IconShieldCheck size={36} color="var(--itunda-green)" style={{ marginBottom: '10px' }} />
+        ) : (
+          <p role="alert" style={{ color: 'var(--itunda-orange)', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, marginBottom: '10px' }}>
+            Some orders need attention
+          </p>
+        )}
         <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 700 }}>
-          {successCount} of {results.length} order{results.length === 1 ? '' : 's'} placed
+          {failedCount === 0
+            ? `${successCount} order${successCount === 1 ? '' : 's'} placed successfully`
+            : `${failedCount} order${failedCount === 1 ? '' : 's'} need${failedCount === 1 ? 's' : ''} attention`}
         </h3>
+        {failedCount > 0 && (
+          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-600)', marginTop: '6px' }}>
+            {successCount} successful order{successCount === 1 ? '' : 's'} will not be placed again.
+          </p>
+        )}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
         {results.map((r) => (
