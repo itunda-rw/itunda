@@ -1,9 +1,6 @@
-# itunda Kotlin/Spring Boot backend
+# Itunda Kotlin/Spring Boot backend
 
-This is the real Toss-stack backend: Kotlin + Spring Boot + Spring Data JPA/Hibernate +
-MySQL + Spring Security (JWT), matching what Toss's own engineering blog (toss.tech)
-describes for their actual production stack — see the "Tech stack" comparison this was
-built to close. Until this existed, this directory was 13 empty Gradle module
+This is Itunda's Kotlin + Spring Boot + Spring Data JPA/Hibernate + MySQL + Spring Security (JWT) backend. Its design is informed by publicly documented Toss engineering practices, but it is **not** a verified copy of Toss's private production stack. Public articles and repositories support specific patterns, not a claim of complete technology or architecture parity. Until this existed, this directory was 13 empty Gradle module
 directories with no `.kt` files at all; the real, running backend was a separate,
 now-removed Express + TypeScript backend at the repo root (a JSON file, no database).
 That gap is now fully closed across all modules!
