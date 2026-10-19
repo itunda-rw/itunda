@@ -154,3 +154,16 @@ The platform will grow toward:
 ## Reference
 
 The public Apps in Toss repositories show a comparable end-to-end model: scaffolding, examples, mock development, devtools/debugging, bundling, registration and operations. Itunda is implementing the same class of developer lifecycle independently. 
+
+## 8.1 Submit from the CLI
+
+After validating a partner mini-app, submit it through the real partner API without placing credentials in the manifest:
+
+```bash
+export ITUNDA_API_KEY=sk_test_...
+itunda-miniapp submit ./my-mini-app
+```
+
+The CLI sends the manifest's name, description, icon URL, bundle URL and supported partner permission scopes to `POST /api/v1/partners/mini-apps`. The API creates the submission in `PENDING` review status; publication remains a separate operator-controlled step.
+
+The API base can be overridden for local integration testing with `ITUNDA_API_BASE_URL`. Never commit either environment variable or an API key.

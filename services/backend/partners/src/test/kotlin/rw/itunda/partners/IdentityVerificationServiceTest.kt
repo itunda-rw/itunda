@@ -32,7 +32,7 @@ class IdentityVerificationServiceTest : BehaviorSpec({
     ): IdentityVerificationService {
         val rateLimiter = mockk<RateLimiter>()
         every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
-        val partnerService = PartnerService(partnerRepository, mockk<PartnerMiniAppRepository>(), rateLimiter)
+        val partnerService = PartnerService(partnerRepository, mockk<PartnerMiniAppRepository>(), rateLimiter, mockk<rw.itunda.core.repository.PartnerMiniAppReleaseRepository>())
         return IdentityVerificationService(requestRepository, partnerRepository, userRepository, partnerService, signingKeyProvider, rateLimiter)
     }
 

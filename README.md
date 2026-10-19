@@ -6,6 +6,7 @@ The goal is not to copy Toss visually only. The product target is Toss-like simp
 
 The canonical product, architecture, and UI/UX map is [docs/TOSS_RWANDA_ALIGNMENT.md](docs/TOSS_RWANDA_ALIGNMENT.md). The implementation checklist is [docs/TOSS_PARITY_MATRIX.md](docs/TOSS_PARITY_MATRIX.md). The source-backed product map is [docs/FACT_CHECKED_TOSS_RWANDA_MAP.md](docs/FACT_CHECKED_TOSS_RWANDA_MAP.md).
 The current private-cloud gap analysis and Toss comparison is [docs/PRIVATE_CLOUD_BLUEPRINT.md](docs/PRIVATE_CLOUD_BLUEPRINT.md).
+The 2026 platform-wide parity blueprint is [docs/TOSS_PARITY_2026.md](docs/TOSS_PARITY_2026.md), with the public surface/hostname map in [docs/PLATFORM_SURFACE_MAP.md](docs/PLATFORM_SURFACE_MAP.md).
 The operational private-cloud workflow is [docs/PRIVATE_CLOUD_OPERATIONS.md](docs/PRIVATE_CLOUD_OPERATIONS.md).
 
 ## Current Surfaces

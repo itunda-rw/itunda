@@ -6,7 +6,7 @@ shared source of truth for the map's category-chip list -- but a fresh
 uncalled-endpoint sweep (2026-08-24, scripts/uncalled-endpoint-sweep.py) found it has
 ZERO real callers on any of the 3 platforms. Each client instead hand-maintains its own
 hardcoded copy of the same list (bank-mfe's maps-mfe/src/lib/maps.ts NEARBY_CATEGORIES,
-Android's ApiService.kt MAP_NEARBY_CATEGORIES, iOS's NetworkClient.swift
+Android's split network DTOs MAP_NEARBY_CATEGORIES, iOS's NetworkClient.swift
 mapNearbyCategories) -- currently all 4 lists (backend + 3 clients) happen to agree, but
 nothing enforces that going forward. This is the exact same "manually-synced list must
 match a source enum" bug shape scripts/verify-ledger-account-seeds.py already guards
@@ -31,7 +31,9 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent
 BACKEND_ENUM_FILE = ROOT_DIR / "services/backend/maps/src/main/kotlin/rw/itunda/maps/MapPlaceCategory.kt"
 WEB_FILE = ROOT_DIR / "services/micro-frontends/maps-mfe/src/lib/maps.ts"
-ANDROID_FILE = ROOT_DIR / "android/core/network/src/main/java/rw/itunda/core/network/ApiService.kt"
+ANDROID_FILES = [
+    ROOT_DIR / "android/core/network/src/main/java/rw/itunda/core/network/NetworkDtosPart03.kt",
+]
 IOS_FILE = ROOT_DIR / "ios/Core/Network/Sources/NetworkClient.swift"
 
 CLIENT_ONLY_EXCEPTIONS = {"ITUNDA_AGENT"}
@@ -61,14 +63,16 @@ def extract_list(file: Path, block_start: str, terminator: str, id_pattern: str)
 
 
 def main() -> int:
-    for f in (BACKEND_ENUM_FILE, WEB_FILE, ANDROID_FILE, IOS_FILE):
+    for f in (BACKEND_ENUM_FILE, WEB_FILE, IOS_FILE, *ANDROID_FILES):
         if not f.exists():
             print(f"Expected file not found: {f}", file=sys.stderr)
             return 1
 
     backend = extract_backend_categories()
     web = extract_list(WEB_FILE, "export const NEARBY_CATEGORIES", r"\]", r"id:\s*'([A-Z0-9_]+)'")
-    android = extract_list(ANDROID_FILE, "val MAP_NEARBY_CATEGORIES", r"\)", r'MapPlaceCategory\("([A-Z0-9_]+)"')
+    android = set()
+    for android_file in ANDROID_FILES:
+        android.update(extract_list(android_file, "val MAP_NEARBY_CATEGORIES", r"\)", r'MapPlaceCategory\("([A-Z0-9_]+)"'))
     ios = extract_list(IOS_FILE, "public let mapNearbyCategories", r"\]", r'id:\s*"([A-Z0-9_]+)"')
 
     backend_checkable = backend

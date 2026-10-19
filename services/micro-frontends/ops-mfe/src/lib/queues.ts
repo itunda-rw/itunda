@@ -100,6 +100,10 @@ export interface PropertyOwnershipSubmission {
   reviewedBy: string | null;
   reviewedAt: string | null;
   decisionReason: string | null;
+  releaseId: string | null;
+  manifestSha256: string | null;
+  bundleSha256: string | null;
+  bundleSizeBytes: number | null;
 }
 
 export const fetchPropertyOwnershipQueue = (page = 0) =>
@@ -378,6 +382,35 @@ export const fetchPartnersQueue = (page = 0) =>
   apiFetch<{ success: boolean; queue: PartnerMiniAppSubmission[]; page: number; totalElements: number; totalPages: number }>(
     `/api/v1/system/partners/queue?page=${page}`,
   ).then(toPagedQueue);
+
+export interface PartnerMiniAppRelease {
+  releaseId: string;
+  miniAppId: string;
+  bundleUrl: string;
+  manifestSha256: string;
+  bundleSha256: string;
+  bundleSizeBytes: number;
+  status: 'APPROVED' | 'STAGED' | 'ACTIVE' | 'ROLLED_BACK' | 'REJECTED';
+  createdAt: string;
+  activatedAt: string | null;
+  rolledBackAt: string | null;
+  rollbackReason: string | null;
+}
+
+export const fetchPartnerMiniAppReleases = (miniAppId: string) =>
+  apiFetch<{ success: boolean; releases: PartnerMiniAppRelease[] }>(`/api/v1/system/partners/${miniAppId}/releases`).then((r) => r.releases);
+
+export const stagePartnerMiniAppRelease = (releaseId: string) =>
+  apiFetch(`/api/v1/system/partners/releases/${releaseId}/stage`, { method: 'POST' });
+
+export const activatePartnerMiniAppRelease = (releaseId: string) =>
+  apiFetch(`/api/v1/system/partners/releases/${releaseId}/activate`, { method: 'POST' });
+
+export const rollbackPartnerMiniAppRelease = (releaseId: string, reason?: string) =>
+  apiFetch(`/api/v1/system/partners/releases/${releaseId}/rollback`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
 
 export const decidePartnerMiniApp = (miniAppId: string, approve: boolean, reason?: string) =>
   apiFetch(`/api/v1/system/partners/${miniAppId}/decide`, {

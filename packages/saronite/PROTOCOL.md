@@ -48,10 +48,24 @@ It is exported through `@itunda/saronite-brownfield-module` so the React Native 
 
 This is an Itunda-native implementation inspired by the public architectural pattern of Toss Apps in Toss. It does not copy Toss's private protocol, generated code, or proprietary bridge.
 
+## Current platform registry
+
+The public capability inventory is now declared in `packages/saronite/sdk-manifest.json`.
+
+The registry is checked against the React Native SDK exports by:
+
+```text
+yarn run validate:manifest
+```
+
+This prevents the developer console/documentation contract from drifting away from the actual SDK surface.
+
+Current domains include navigation, account, bills, rewards, insurance, savings, claims, agriculture, referrals, activity and profile. Domains marked `experimental` are not treated as stable public API.
+
 ## Next layers
 
-1. Map every public Saronite capability to a protocol method + permission.
-2. Make the DevTools mock emit/consume the same envelopes.
-3. Add a host transport adapter for Android and iOS.
-4. Add debugger inspection of correlated request/response/event traffic.
-5. Keep protocol version negotiation separate from app/SDK semantic versions.
+1. Make the DevTools mock emit/consume the same envelopes.
+2. Add a host transport adapter for Android and iOS.
+3. Add debugger inspection of correlated request/response/event traffic.
+4. Add protocol negotiation separate from app/SDK semantic versions.
+5. Generate developer documentation and typed capability references from the registry.

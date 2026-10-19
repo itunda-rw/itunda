@@ -67,11 +67,8 @@ jobs:
           rm -rf ../../../ios/.brick
           node ../node_modules/.bin/brick-codegen             --platform ios             --output-ios ../../../ios/.brick             --projectRoot .
 
-      - name: Install Tuist 3.42.3
-        run: |
-          mise install tuist@3.42.3
-          mise exec tuist@3.42.3 -- tuist version
-
+      - name: Install Tuist
+        run: brew install --cask tuist
       # Brand assets are consumed from the canonical package.
       # Do not rasterize, regenerate, recolor, or rewrite the supplied SVGs in CI.
       - name: Verify canonical iOS brand source
@@ -85,7 +82,7 @@ jobs:
       - name: Generate Xcode project
         working-directory: ios
         run: |
-          mise exec tuist@3.42.3 -- tuist generate --no-open
+          tuist generate --no-open
 
       - name: Install CocoaPods
         working-directory: ios
