@@ -152,6 +152,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
         var errorMessage by remember { mutableStateOf<String?>(null) }
         val scope = rememberCoroutineScope()
         val checkingPhoneError = stringResource(R.string.login_checking_phone_error)
+        val pinMismatchError = stringResource(R.string.login_pin_mismatch)
 
         // Real Toss/Korean-fintech-style 약관 동의 (terms consent) -- see
         // RegisterRequest.acceptedTermsIds' own doc comment. Fetched once on first
@@ -431,7 +432,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                                             submit()
                                         } else {
                                             pinFirstEntry = null
-                                            errorMessage = "That didn't match. Try again."
+                                            errorMessage = pinMismatchError
                                         }
                                     },
                                     onPinEntered = { entered ->
