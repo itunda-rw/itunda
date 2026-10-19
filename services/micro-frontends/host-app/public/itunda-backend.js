@@ -480,7 +480,7 @@
           (billProvidersError ? 'Bill providers could not be loaded. Try again later.' : 'Loading available bill providers…') + '</div>';
       let out = html.replace(/<div class="chips" style="padding-top:16px">[\s\S]*?<\/div>/, '<div class="chips" style="padding-top:16px">' + chips + '</div>');
       out = out.replace('Providers and numbers are sample data. No real payment is made.',
-        'Provider availability is loaded from itunda. Payment is submitted to the backend and can fail if the provider declines.');
+        'Provider catalog is live. Itunda records the payment through its configured connector; external provider settlement is not independently verified.');
       if (billProvidersError) {
         out = out.replace(/<button id="bgo" class="btn"[^>]*>[\s\S]*?<\/button>/,
           '<button id="bgo" class="btn" disabled>Provider unavailable</button>');
@@ -497,7 +497,6 @@
     if (!billProviders || billProvidersError) return fail(new Error('The bill provider catalog is not available. Please try again.'));
     const bill = S.bl || {};
     const provider = providerForBill(bill.p);
-    const phone = /airtime/i.test(bill.p);
     if (!provider) return fail(new Error('This bill provider is not supported by the live backend.'));
     if (!bill.num || !Number.isFinite(Number(bill.amt)) || Number(bill.amt) <= 0) {
       return fail(new Error('Enter a valid account or phone number and payment amount.'));
@@ -545,7 +544,6 @@
       fail(error);
     } finally { billBusy = false; }
   };
-  const prototypeBillDoneScreen = screens.billdone;
   screens.billdone = function () {
     if (!lastBillTransaction) {
       return bar('Payment status') + '<div class="pad" role="alert" style="padding-top:32px">No confirmed payment receipt is available. Check account activity before trying again.</div>';
