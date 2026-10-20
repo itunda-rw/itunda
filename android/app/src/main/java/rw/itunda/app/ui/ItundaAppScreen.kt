@@ -783,6 +783,7 @@ fun ItundaAppScreen(
                 is TransferStep.Amount -> {
                     rw.itunda.feature.payments.impl.TransferAmountScreen(
                         recipientAccountNumber = step.accountNumber,
+                        recipientDisplayName = recipientDisplayName,
                         availableBalance = transferFromAccount?.balance ?: primaryAccountForTransfer?.availableBalance ?: 0.0,
                         fromAccountName = transferFromAccount?.accountName,
                         isSubmitting = isSendingTransfer,
@@ -1194,6 +1195,9 @@ fun ItundaAppScreen(
                         currency = tx.currency,
                         status = tx.status,
                         isOutgoing = tx.senderId == currentUserIdForHistory?.userId,
+                        type = tx.type,
+                        fee = tx.fee,
+                        createdAt = tx.createdAt,
                     )
                 },
                 onBack = { showTransactionHistory = false },
@@ -1236,11 +1240,9 @@ fun ItundaAppScreen(
                         deviceStepUpHost = { visible, onDismiss, onVerified ->
                             DeviceStepUpHost(visible = visible, onDismiss = onDismiss, onVerified = onVerified)
                         },
-                        onMessageSeller = { conversationId ->
-                            pendingConversationId = conversationId
-                            showShop = false
-                            selectedTab = ItundaTab.Messages
-                        },
+                        onMessageSeller = { conversationId -> pendingConversationId = conversationId; showShop = false; selectedTab = ItundaTab.Messages },
+                        onBack = { showShop = false },
+                        onOpenEats = { showShop = false; showEats = true },
                     )
                 }
             }
@@ -1832,17 +1834,26 @@ fun ItundaAppScreen(
                         val homeUnreadNotificationCount by viewModel.unreadNotificationCount.collectAsState()
                         val homeIsOffline by viewModel.isOffline.collectAsState()
                         val homePrimaryAccount by viewModel.primaryAccount.collectAsState()
+                        val homePayAccount by viewModel.payAccount.collectAsState()
+                        val homeSavingsGoals by viewModel.savingsGoals.collectAsState()
+                        val homeTransactions by viewModel.transactions.collectAsState()
                         val homeProfile by viewModel.profile.collectAsState()
                         val homeIsRefreshing by viewModel.isRefreshing.collectAsState()
+                        val homeContext = androidx.compose.ui.platform.LocalContext.current
                         HomeEntryPoint(
                         discoverItems = homeDiscoverItems,
                         unreadNotificationCount = homeUnreadNotificationCount,
                         isOffline = homeIsOffline,
                         primaryAccount = homePrimaryAccount,
+                        payAccount = homePayAccount,
+                        savingsGoals = homeSavingsGoals,
+                        recentTransactions = homeTransactions,
                         neighborhoodSet = homeProfile?.neighborhood != null,
                         isRefreshing = homeIsRefreshing,
                         onRetry = { viewModel.retry() },
                         onOpenPay = { selectedTab = ItundaTab.Pay },
+                        onOpenBills = { homeContext.startActivity(android.content.Intent(homeContext, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java)) },
+                        onOpenSend = { showTransferHub = false; transferStep = TransferStep.Recipient; transferFromAccount = null },
                         onOpenNotifications = { showNotificationsFeed = true },
                         onOpenOverview = { showOverview = true },
                         onOpenBank = { showBank = true },
@@ -1862,6 +1873,7 @@ fun ItundaAppScreen(
                         // Bank's own new account-account card below is what actually opens
                         // AccountDetailScreen.
                         onOpenAccountDetail = { showBank = true },
+                        onOpenActivity = { showTransactionHistory = true },
                         // Real Naver-style Home redesign (2026-08-14, direct user
                         // reference: 5 real Naver Home screenshots -- search bar, weather/
                         // stock widgets, a Clip video grid, an infinite content feed).
@@ -2093,6 +2105,14 @@ private fun AccountDetailScreen(
     var selectedTransaction by remember { mutableStateOf<Pair<rw.itunda.core.network.TransactionDto, Double>?>(null) }
     val ledgerListState = androidx.compose.foundation.lazy.rememberLazyListState()
     val touchedTransactionKey = remember { mutableStateOf<Any?>(null) }
+    var ledgerQuery by remember { mutableStateOf("") }
+    var ledgerFilter by remember { mutableStateOf("ALL") }
+    val visibleTransactions = remember(withBalance, ledgerQuery, ledgerFilter, currentUserId) {
+        filterAccountLedgerTransactions(withBalance, ledgerQuery, ledgerFilter, currentUserId)
+    }
+    val visibleGrouped = remember(visibleTransactions) {
+        visibleTransactions.groupBy { (tx, _) -> ledgerDateHeader(tx.createdAt) }
+    }
 
     if (selectedTransaction != null) {
         val (tx, afterBalance) = selectedTransaction!!
@@ -2136,17 +2156,7 @@ private fun AccountDetailScreen(
             }
         }
         LazyColumn(
-            // Real fix (2026-08-24, direct user follow-up: "toss uses spring effect
-            // which users feel not only when they pressing a button but also when
-            // they are scrolling through the lists like those transactions" --
-            // watching this exact ledger scroll live on-device). See
-            // SpringOverscroll.kt's own doc comment for the full sourced account.
-            //
-            // Follow-up fix (same day, "not as smooth as toss spring effect ...
-            // user finger touch presable components while scroll user can feel
-            // that spring effect"): trackScrollPressedKey adds the live
-            // touch-follows-finger-during-scroll half of this -- see
-            // ScrollPressTracker.kt's own doc comment.
+            // Keep native spring overscroll and touch-following feedback on ledger rows.
             state = ledgerListState,
             modifier = Modifier.fillMaxSize().weight(1f)
                 .then(rememberSpringOverscrollModifier())
@@ -2218,10 +2228,18 @@ private fun AccountDetailScreen(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
             }
-            if (withBalance.isEmpty()) {
-                item { EmptyState(stringResource(R.string.account_detail_empty)) }
+            item {
+                AccountLedgerSearchFilters(
+                    query = ledgerQuery,
+                    onQueryChange = { ledgerQuery = it },
+                    filter = ledgerFilter,
+                    onFilterChange = { ledgerFilter = it },
+                )
+            }
+            if (visibleTransactions.isEmpty()) {
+                item { EmptyState(if (withBalance.isEmpty()) stringResource(R.string.account_detail_empty) else stringResource(R.string.account_detail_no_matching_transactions)) }
             } else {
-                grouped.forEach { (dateHeader, rows) ->
+                visibleGrouped.forEach { (dateHeader, rows) ->
                     item {
                         Text(
                             dateHeader, color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
@@ -2238,18 +2256,7 @@ private fun AccountDetailScreen(
                 }
             }
         }
-        // Real Toss Bank reference (20 screenshots, 2026-08-21, direct user
-        // follow-up: "those buttons at bottom" -- the real Top up/Send row is
-        // pinned to the bottom of the screen, not scrolling away with the ledger
-        // content above it. Moved out of the LazyColumn into a fixed footer here,
-        // matching FullScreenFlow's own bottomCTA convention on bank-mfe.
-        //
-        // Real fix (2026-08-24, direct user side-by-side against a real Toss Bank
-        // screenshot: "there is no layer sitting btn button and those contents") --
-        // dropped the .border() that used to draw a visible divider line above this
-        // footer. The real reference has no seam at all between the scrolled ledger
-        // and the fixed button row; same background color on both sides already
-        // gives enough real separation on its own.
+        // Fixed bottom actions stay visible while the ledger scrolls; no divider seam.
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier

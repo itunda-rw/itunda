@@ -6,7 +6,21 @@
      :features:banking:impl) since 3 different modules' code all render this
      exact label. -->
 <resources>
-    <string name="home_pay_shortcut">Pay</string>
+    <string name="home_pay_shortcut">itunda Pay</string>
+    <string name="home_send_money">Send</string>
+    <string name="home_add_money">Add money</string>
+    <string name="home_quick_actions">Quick actions</string>
+    <string name="home_scan_to_pay">Scan to pay</string>
+    <string name="home_shop">Shop</string>
+    <string name="home_community">Community</string>
+    <string name="home_pay_bills">Pay bills</string>
+    <string name="home_airtime">Airtime</string>
+    <string name="home_rwanda_services">Rwanda services</string>
+    <string name="home_irembo">Irembo</string>
+    <string name="home_rra_taxes">RRA taxes</string>
+    <string name="home_reg_electricity">REG electricity</string>
+    <string name="home_wasac_water">WASAC water</string>
+    <string name="home_school_fees">School fees</string>
     <string name="home_notifications">Notifications</string>
     <string name="home_account_switcher">Switch account</string>
     <string name="home_your_accounts">YOUR ACCOUNTS</string>
@@ -25,6 +39,23 @@
     <string name="home_search_section_property">Property</string>
     <string name="home_trending_title">Trending nearby</string>
     <string name="home_feed_title">For you</string>
+    <string name="home_recent_activity">Recent activity</string>
+    <string name="home_next_for_you">Next for you</string>
+    <string name="home_savings_goal_title">Start your first savings goal</string>
+    <string name="home_savings_goal_description">Choose a target and a date to start building a saving habit.</string>
+    <string name="home_savings_goal_progress">Saved %1$s RWF of %2$s RWF</string>
+    <string name="home_savings_goal_cta">Start a savings goal</string>
+    <string name="home_savings_goal_view">View your savings goal</string>
+    <string name="home_connection_online">Connected to Itunda services</string>
+    <string name="home_connection_offline">Offline — information may be out of date</string>
+    <string name="home_spending">Spending</string>
+    <string name="home_spending_empty">No account activity to show yet</string>
+    <string name="home_spending_activity">View account activity</string>
+    <string name="home_spending_subtitle">Your latest account activity</string>
+    <string name="home_for_you">For you</string>
+    <string name="home_for_you_empty">No recommendations available yet</string>
+    <string name="home_see_all">See all</string>
+    <string name="home_no_recent_activity">No recent activity yet.</string>
     <string name="home_discover">Discover</string>
     <string name="home_new_badge">NEW</string>
     <string name="home_recommendation_cta_named">%1$s, %2$s</string>

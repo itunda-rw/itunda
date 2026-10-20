@@ -167,6 +167,11 @@
     <string name="home_savings">Ubwizigame</string>
     <string name="home_earned_this_month">Wabonye muri uku kwezi</string>
     <string name="account_detail_card">Ikarita</string>
+    <string name="account_ledger_search_placeholder">Shakisha ibikorwa by’amafaranga</string>
+    <string name="account_ledger_filter_all">Byose</string>
+    <string name="account_ledger_filter_in">Amafaranga yinjiye</string>
+    <string name="account_ledger_filter_out">Amafaranga yasohotse</string>
+    <string name="account_detail_no_matching_transactions">Nta bikorwa bihuye n’ishakisha</string>
     <string name="account_detail_empty">Nta bikorwa by\'amafaranga urabona</string>
     <string name="account_detail_get_interest">Bona inyungu</string>
     <string name="account_detail_interest_prefix">Inyungu</string>
@@ -356,4 +361,6 @@
     <string name="family_sent">Byoherejwe.</string>
     <string name="family_your_guardians">Abarinzi bawe</string>
     <string name="family_empty_state">Nta munyamuryango uhuje na wowe -- tumira umwe hejuru.</string>
+    <string name="spending_load_error">Ntibyashobotse gufungura amakuru y’imikoreshereze y’amafaranga. Reba internet wongere ugerageze.</string>
+    <string name="spending_retry">Ongera ugerageze</string>
 </resources>

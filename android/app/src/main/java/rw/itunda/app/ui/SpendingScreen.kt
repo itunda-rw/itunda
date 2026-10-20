@@ -1,5 +1,7 @@
 package rw.itunda.app.ui
 
+import rw.itunda.app.R
+
 import rw.itunda.core.designsystem.components.formatMoney
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.IdsTextField
@@ -36,6 +38,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import rw.itunda.core.network.BudgetViewDto
 import rw.itunda.core.network.NetworkClient
@@ -44,6 +47,7 @@ import rw.itunda.core.network.SpendingCategoryDto
 import rw.itunda.core.network.SpendingInsightResponse
 import java.math.BigDecimal
 import rw.itunda.core.designsystem.components.EmptyState
+import rw.itunda.core.designsystem.theme.Ids
 
 // Real Kakao Pay 소비 리포트-style spending categorization (rw.itunda.account.
 // AccountService.getSpendingInsight, real since 2026-07-13) -- first Android client for
@@ -55,13 +59,15 @@ import rw.itunda.core.designsystem.components.EmptyState
 fun SpendingScreen(onBack: () -> Unit) {
     BackHandler(onBack = onBack)
     var insight by remember { mutableStateOf<SpendingInsightResponse?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf(false) }
+    var loadAttempt by remember { mutableStateOf(0) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(loadAttempt) {
+        error = false
         try {
             insight = NetworkClient.apiService.getSpendingInsight()
         } catch (_: Exception) {
-            error = "Could not load your spending."
+            error = true
         }
     }
 
@@ -70,47 +76,99 @@ fun SpendingScreen(onBack: () -> Unit) {
             BackTopBar(title = "Spending", onBack = onBack)
         }
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
-            val current = insight
-            if (current == null) {
-                if (error == null) item { SkeletonBlock() }
-            } else {
+            if (error) {
                 item {
-                    Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(16.dp)) {
-                            Text("Total spent, all time", style = MaterialTheme.typography.labelMedium)
-                            Text("${formatMoney(current.totalSpent)} RWF", style = MaterialTheme.typography.headlineMedium)
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
                             Text(
-                                "Real, ledger-based -- what every account debit actually paid for.",
-                                style = MaterialTheme.typography.bodySmall,
+                                stringResource(R.string.spending_load_error),
+                                color = Ids.colors.textPrimary,
+                            )
+                            IdsButton(
+                                text = stringResource(R.string.spending_retry),
+                                onClick = { loadAttempt += 1 },
                             )
                         }
+                    }
+                }
+            }
+            val current = insight
+            if (current == null) {
+                if (!error) item { SkeletonBlock() }
+            } else {
+                item {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            "Total spent, all time",
+                            color = Ids.colors.textSecondary,
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                        Text(
+                            "${formatMoney(current.totalSpent)} RWF",
+                            color = Ids.colors.textPrimary,
+                            style = MaterialTheme.typography.headlineMedium,
+                        )
                     }
                 }
                 if (current.categories.isEmpty()) {
                     item { EmptyState("No spending recorded yet — your breakdown will show up here once you use your account.") }
                 } else {
-                    item { Text("By category", style = MaterialTheme.typography.titleMedium) }
-                    val maxAmount = current.categories.maxOf { it.amount }.let { if (it > BigDecimal.ZERO) it else BigDecimal.ONE }
+                    item {
+                        Text(
+                            "By category",
+                            color = Ids.colors.textPrimary,
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                    }
+                    val maxAmount = current.categories.maxOf { it.amount }
+                        .let { if (it > BigDecimal.ZERO) it else BigDecimal.ONE }
+                    val categorizedTotal = current.categories.fold(BigDecimal.ZERO) { sum, category -> sum + category.amount }
+                        .let { if (it > BigDecimal.ZERO) it else BigDecimal.ONE }
                     items(current.categories, key = { it.name }) { category ->
-                        Card(Modifier.fillMaxWidth()) {
-                            Column(Modifier.padding(16.dp)) {
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text(category.name, style = MaterialTheme.typography.bodyLarge)
-                                    Text("${formatMoney(category.amount)} RWF", style = MaterialTheme.typography.bodyLarge)
-                                }
-                                androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(6.dp))
-                                val fraction = (category.amount.toDouble() / maxAmount.toDouble()).coerceIn(0.0, 1.0)
-                                androidx.compose.foundation.layout.Box(
-                                    modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                                ) {
-                                    androidx.compose.foundation.layout.Box(
-                                        modifier = Modifier.fillMaxWidth(fraction.toFloat()).fillMaxHeight()
-                                            .clip(RoundedCornerShape(3.dp)).background(MaterialTheme.colorScheme.primary),
-                                    )
-                                }
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+                            verticalArrangement = Arrangement.spacedBy(7.dp),
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text(
+                                    category.name,
+                                    color = Ids.colors.textPrimary,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
+                                Text(
+                                    "${formatMoney(category.amount)} RWF",
+                                    color = Ids.colors.textPrimary,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
                             }
+                            val fraction = (category.amount.toDouble() / maxAmount.toDouble()).coerceIn(0.0, 1.0)
+                            androidx.compose.foundation.layout.Box(
+                                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp))
+                                    .background(Ids.colors.chip),
+                            ) {
+                                androidx.compose.foundation.layout.Box(
+                                    modifier = Modifier.fillMaxWidth(fraction.toFloat()).fillMaxHeight()
+                                        .clip(RoundedCornerShape(4.dp)).background(Ids.colors.brand),
+                                )
+                            }
+                            val share = (category.amount.toDouble() / categorizedTotal.toDouble() * 100).toInt()
+                            Text(
+                                "$share% of categorized spending",
+                                color = Ids.colors.textTertiary,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
                         }
                     }
                 }

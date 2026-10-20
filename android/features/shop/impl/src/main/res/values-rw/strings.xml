@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="shop_review_swipe_to_place">Sunikira kugira utumiza %1$d</string>
+    <string name="shop_review_placing_orders">Turimo gutanga amatumiza…</string>
+    <string name="shop_review_confirm_identity">Emeza ko ari wowe</string>
+    <string name="shop_review_payment_summary">Ongera urebe ubwishyu bw’atumiza %1$d kuri Itunda Shop</string>
+    <string name="shop_review_total">Igiteranyo</string>
+    <string name="shop_review_delivery_to">Bigezwe kuri %1$s</string>
+    <string name="shop_review_confirm_order">Emeza kandi utange amatumiza</string>
+    <string name="shop_review_cancel">Hagarika</string>
+</resources>
