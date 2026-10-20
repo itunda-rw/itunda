@@ -202,6 +202,27 @@ fun HomeTab(
                     unreadCount = unreadNotificationCount,
                 )
             }
+            item {
+                HomeSearchBar(
+                    query = searchQuery,
+                    onQueryChange = { searchQuery = it; if (it.isBlank()) searchResults = null else runSearch(it) },
+                    onClear = { searchQuery = ""; searchResults = null },
+                )
+            }
+            if (searchQuery.isNotBlank()) {
+                homeSearchResults(
+                    products = searchResults,
+                    marketplace = marketplaceResults,
+                    community = communityResults,
+                    jobs = jobResults,
+                    property = propertyResults,
+                    onOpenShop = onOpenShop,
+                    onOpenMarketplace = onOpenMarketplace,
+                    onOpenCommunity = onOpenCommunity,
+                    onOpenJobs = onOpenJobs,
+                    onOpenProperty = onOpenProperty,
+                )
+            } else {
 
             // v395 first-pass Android parity: the prototype leads with the Bank
             // balance, then the compact Pay row and two clear primary actions.
@@ -363,6 +384,18 @@ fun HomeTab(
                     HomeMarketWidgetRow(primaryAccount, stocks, onOpenBank = onOpenBank, onOpenInvest = onOpenInvest)
                 }
             }
+            if (trendingListings.isEmpty() && feedEntries.isEmpty() && !neighborhoodSet) {
+                item {
+                    androidx.compose.material3.Text(
+                        "Set your neighborhood to see local listings, community posts, jobs, and property here.",
+                        color = Ids.colors.textSecondary,
+                        modifier = Modifier.padding(top = 20.dp, bottom = 12.dp),
+                    )
+                }
+            }
+            if (discoverItems.isNotEmpty()) {
+                item { DiscoverSection(discoverItems) }
+            }
             if (trendingListings.isNotEmpty()) {
                 item {
                     HomePrototypeSectionTitle("Trending nearby", modifier = Modifier.padding(top = 24.dp, bottom = 10.dp))
@@ -397,6 +430,8 @@ fun HomeTab(
                     }
                 }
             }
+            }
+
         }
         PullToRefreshContainer(state = pullToRefreshState, modifier = Modifier.align(Alignment.TopCenter))
     }
