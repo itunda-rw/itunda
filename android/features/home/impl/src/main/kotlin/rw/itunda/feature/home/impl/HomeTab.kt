@@ -295,7 +295,7 @@ fun HomeTab(
                     HomePrototypeSecondaryAction(
                         label = "Add money",
                         modifier = Modifier.weight(1f),
-                        onClick = onOpenPay,
+                        onClick = onOpenBank,
                     )
                 }
             }
