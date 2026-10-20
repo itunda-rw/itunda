@@ -232,21 +232,8 @@ fun BankHubEntryPoint(
                             Spacer(modifier = Modifier.height(4.dp))
                             val animatedBalance = rememberCountUp(primaryAccount!!.balance)
                             Row(verticalAlignment = Alignment.Bottom) {
-                                Text(
-                                    String.format(Locale.US, "%,.0f", animatedBalance),
-                                    fontSize = 40.sp,
-                                    lineHeight = 46.sp,
-                                    letterSpacing = (-1.2).sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = Ids.colors.textPrimary,
-                                )
-                                Text(
-                                    primaryAccount!!.currency,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Ids.colors.textSecondary,
-                                    modifier = Modifier.padding(start = 6.dp, bottom = 6.dp),
-                                )
+                                Text(String.format(Locale.US, "%,.0f", animatedBalance), fontSize = 40.sp, lineHeight = 46.sp, letterSpacing = (-1.2).sp, fontWeight = FontWeight.ExtraBold, color = Ids.colors.textPrimary)
+                                Text(primaryAccount!!.currency, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textSecondary, modifier = Modifier.padding(start = 6.dp, bottom = 6.dp))
                             }
                         }
                         Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
