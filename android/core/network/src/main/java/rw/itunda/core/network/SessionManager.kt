@@ -214,6 +214,7 @@ object SessionManager {
             android.util.Log.e("ITUNDA_AUTH", "Authentication failed: ${e.javaClass.simpleName}")
             AuthResult.Failure("We couldn't complete sign-in. Please try again.")
         }
+    }
 
     // Real push device-token registration (item 120) -- see ApiService.kt's own doc
     // comment. Best-effort and fire-and-forget: a registration failure must never
