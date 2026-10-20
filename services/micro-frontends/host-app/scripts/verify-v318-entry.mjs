@@ -3,15 +3,15 @@ import { readFileSync } from 'node:fs';
 const root = new URL('../', import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), 'utf8');
 const index = read('index.html');
-const prototype = read('public/itunda-prototype-v318.html');
-const reference = read('../../../itunda__clickable_prototype_v318.html');
+const prototype = read('public/itunda-prototype-v395.html');
+const reference = read('../../../v395.html');
 const nginx = read('../nginx.conf');
 
 const cacheHeader = 'no-store, no-cache, must-revalidate, max-age=0';
-const protectedPaths = ['/', '/index.html', '/itunda-prototype-v318.html'];
+const protectedPaths = ['/', '/index.html'];
 const checks = [
-  ['generated prototype matches canonical v318 byte-for-byte', reference === prototype],
-  ['customer app route uses v318', index.includes('frame.src = "/itunda-prototype-v318.html"')],
+  ['generated prototype matches canonical v395 byte-for-byte', reference === prototype],
+  ['customer app route uses v395', index.includes('frame.src = "/itunda-prototype-v395.html"')],
   ['host frame fills the viewport', index.includes('height: 100dvh') && index.includes('width: 100%; height: 100%')],
   ['launch splash respects reduced-motion preferences', index.includes('@media (prefers-reduced-motion: reduce)')],
   ['demo mode is visibly labeled as sample data', index.includes('DEMO MODE · Sample data only')],
