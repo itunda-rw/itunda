@@ -1,6 +1,7 @@
 package rw.itunda.feature.home.impl
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -32,6 +33,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
@@ -195,153 +197,216 @@ fun HomeTab(
     Box(Modifier.fillMaxSize().nestedScroll(pullToRefreshState.nestedScrollConnection)) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = Ids.layout.screenHorizontal, top = 14.dp, end = Ids.layout.screenHorizontal, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
+            contentPadding = PaddingValues(
+                start = Ids.layout.screenHorizontal,
+                top = 12.dp,
+                end = Ids.layout.screenHorizontal,
+                bottom = 28.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
-            item { HomeTopBar(onOpenPay = onOpenPay, onOpenNotifications = onOpenNotifications, onOpenOverview = onOpenOverview, onOpenAccountDetail = onOpenAccountDetail, unreadCount = unreadNotificationCount) }
-        item {
-            HomeSearchBar(
-                query = searchQuery,
-                onQueryChange = { searchQuery = it; if (it.isBlank()) searchResults = null else runSearch(it) },
-                onClear = { searchQuery = ""; searchResults = null },
-            )
-        }
-        if (searchQuery.isNotBlank()) {
-            val stillLoading = searchResults == null || marketplaceResults == null ||
-                communityResults == null || jobResults == null || propertyResults == null
-            val totalResults = (searchResults?.size ?: 0) + (marketplaceResults?.size ?: 0) +
-                (communityResults?.size ?: 0) + (jobResults?.size ?: 0) + (propertyResults?.size ?: 0)
-            if (stillLoading && totalResults == 0) {
-                item {
-                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = Ids.colors.brand)
+            item {
+                HomeTopBar(
+                    onOpenPay = onOpenPay,
+                    onOpenNotifications = onOpenNotifications,
+                    onOpenOverview = onOpenOverview,
+                    onOpenAccountDetail = onOpenAccountDetail,
+                    unreadCount = unreadNotificationCount,
+                )
+            }
+
+            // v395 first-pass Android parity: the prototype leads with the Bank
+            // balance, then the compact Pay row and two clear primary actions.
+            // The balance is always sourced from the real account object; no
+            // prototype/demo balance is introduced here.
+            item {
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 24.dp)) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = onOpenBank)
+                            .padding(vertical = 2.dp),
+                    ) {
+                        Text("itunda Bank", color = Ids.colors.textSecondary, fontSize = 14.sp)
+                        if (primaryAccount != null) {
+                            Text(
+                                text = String.format(Locale.US, "%,.0f", primaryAccount.balance),
+                                color = Ids.colors.textPrimary,
+                                fontSize = 40.sp,
+                                lineHeight = 46.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = (-1.2).sp,
+                                modifier = Modifier.padding(top = 3.dp),
+                            )
+                            Text(
+                                primaryAccount.currency,
+                                color = Ids.colors.textSecondary,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        } else {
+                            Text(
+                                "Balance unavailable",
+                                color = Ids.colors.textSecondary,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
+                            )
+                        }
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = onOpenPay)
+                            .padding(top = 18.dp, bottom = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("itunda Pay", color = Ids.colors.textSecondary, fontSize = 15.sp)
+                        Text("Open Pay  ›", color = Ids.colors.brand, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
-            } else if (!stillLoading && totalResults == 0) {
-                item { EmptyState(stringResource(R.string.home_search_empty)) }
-            } else {
-                searchResults?.takeIf { it.isNotEmpty() }?.let { results ->
-                    item { HomeSearchSectionHeader(stringResource(R.string.home_search_section_products)) }
-                    items(results, key = { "product_${it.id}" }) { result -> HomeSearchResultRow(result, onClick = onOpenShop) }
-                }
-                marketplaceResults?.takeIf { it.isNotEmpty() }?.let { results ->
-                    item { HomeSearchSectionHeader(stringResource(R.string.home_search_section_marketplace)) }
-                    items(results, key = { "marketplace_${it.id}" }) { entry -> HomeFeedRow(entry, onClick = onOpenMarketplace) }
-                }
-                communityResults?.takeIf { it.isNotEmpty() }?.let { results ->
-                    item { HomeSearchSectionHeader(stringResource(R.string.home_search_section_community)) }
-                    items(results, key = { "community_${it.id}" }) { entry -> HomeFeedRow(entry, onClick = onOpenCommunity) }
-                }
-                jobResults?.takeIf { it.isNotEmpty() }?.let { results ->
-                    item { HomeSearchSectionHeader(stringResource(R.string.home_search_section_jobs)) }
-                    items(results, key = { "jobs_${it.id}" }) { entry -> HomeFeedRow(entry, onClick = onOpenJobs) }
-                }
-                propertyResults?.takeIf { it.isNotEmpty() }?.let { results ->
-                    item { HomeSearchSectionHeader(stringResource(R.string.home_search_section_property)) }
-                    items(results, key = { "property_${it.id}" }) { entry -> HomeFeedRow(entry, onClick = onOpenProperty) }
-                }
             }
-        } else {
-        // Real fix (2026-08-13, direct live-device catch): a genuinely offline user
-        // saw normal-looking placeholder data (a "RWF 0" account, a fixed 3-item
-        // Discover feed) with zero indication any of it wasn't real.
-        if (isOffline) {
+
             item {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Ids.colors.dangerTint)
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Icon(Icons.Outlined.CloudOff, contentDescription = null, modifier = Modifier.size(18.dp), tint = Ids.colors.danger)
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(stringResource(R.string.home_offline_banner), color = Ids.colors.danger, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    HomePrototypePrimaryAction(
+                        label = "Send",
+                        modifier = Modifier.weight(1f),
+                        onClick = onOpenPay,
+                    )
+                    HomePrototypeSecondaryAction(
+                        label = "Add money",
+                        modifier = Modifier.weight(1f),
+                        onClick = onOpenPay,
+                    )
                 }
             }
-        }
-        // Real personalized recommendation card (2026-08-11) -- direct comparison
-        // against real Toss Bank reference screenshots (user-provided): Toss leads
-        // Home with a large, illustrated, name-addressed card, not a small generic
-        // list entry. Promotes the single highest-priority real item to hero
-        // treatment; DiscoverSection below excludes it from its own list so nothing
-        // renders twice. Sorted by `priority`, not `isNew` -- see backend
-        // DiscoverService's own doc comment (Toss Intelligence-banner research): the
-        // backend does real per-user eligibility + ranking server-side.
-        val heroDiscoverItem = discoverItems.sortedByDescending { it.priority }.firstOrNull()
-        if (heroDiscoverItem != null) {
+
             item {
-                // Real per-category destination (2026-08-13) -- DiscoverService's
-                // real backend only ever emits 3 real category values
-                // (account/savings/credit, confirmed by grep) -- each maps to a real,
-                // already-built itunda screen, not a guess.
-                val onOpenAction: () -> Unit = when (heroDiscoverItem.category) {
-                    "account" -> onOpenIdentity
-                    "savings" -> onOpenBank
-                    "credit" -> onOpenLoans
-                    else -> {
-                        {}
+                HomePrototypeSectionTitle("Quick actions", modifier = Modifier.padding(top = 26.dp, bottom = 12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    listOf(
+                        Triple("↗", "Send", onOpenPay),
+                        Triple("▦", "Scan to pay", onOpenPay),
+                        Triple("▤", "Pay bills", onOpenPay),
+                        Triple("⌁", "Airtime", onOpenPay),
+                    ).forEach { (symbol, label, action) ->
+                        HomePrototypeActionTile(
+                            symbol = symbol,
+                            label = label,
+                            modifier = Modifier.weight(1f),
+                            onClick = action,
+                        )
                     }
                 }
-                PersonalRecommendationCard(heroDiscoverItem, onOpenAction = onOpenAction)
             }
-        }
-        // Real architectural fix (2026-08-13, direct user directive): "all itunda
-        // product features are independent and isolated -- itunda bank is a complete
-        // product... tabs are not products, are just access points." Home no longer
-        // carries any Bank- or Pay-specific data or destinations at all -- see
-        // BankHubScreen/PayTab's own doc comments for where that content moved.
-        val remainingDiscoverItems = discoverItems.filter { it.id != heroDiscoverItem?.id }
-        if (remainingDiscoverItems.isNotEmpty()) {
-            item { DiscoverSection(remainingDiscoverItems) }
-        }
-        // Real market widget row (2026-08-14) -- account balance (real, already
-        // fetched) plus real RSE stock ticker chips, matching Naver's own weather/
-        // stock-index widget row structurally without inventing weather data itunda
-        // has no source for.
-        if (primaryAccount != null || stocks.isNotEmpty()) {
-            item { HomeMarketWidgetRow(primaryAccount, stocks, onOpenBank = onOpenBank, onOpenInvest = onOpenInvest) }
-        }
-        // Real Toss/Kakao/Naver hub-organization fix (2026-08-29) -- an account with
-        // no neighborhood set silently left the entire bottom two-thirds of Home
-        // blank. Real, established EmptyState pattern closes it here too, with a
-        // real action into Hood/Community where neighborhood is actually set.
-        if (trendingListings.isEmpty() && feedEntries.isEmpty() && !neighborhoodSet) {
+
             item {
-                EmptyState(
-                    "Set your neighborhood to see local marketplace, community, jobs, and property listings here.",
-                    icon = Icons.Outlined.LocationOn,
-                    actionLabel = "Set neighborhood",
-                    onAction = onOpenCommunity,
-                )
+                HomePrototypeSectionTitle("Rwanda services", modifier = Modifier.padding(top = 26.dp, bottom = 12.dp))
             }
-        }
-        if (trendingListings.isNotEmpty()) {
-            item { HomeTrendingGrid(trendingListings, onOpenMarketplace = onOpenMarketplace) }
-        }
-        if (feedEntries.isNotEmpty()) {
+            listOf(
+                Triple("⌂", "Irembo", onOpenPay),
+                Triple("▤", "RRA taxes", onOpenPay),
+                Triple("ϟ", "Electricity", onOpenPay),
+                Triple("◌", "Water", onOpenPay),
+                Triple("▱", "School fees", onOpenPay),
+            ).chunked(3).forEach { serviceRow ->
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        serviceRow.forEach { (symbol, label, action) ->
+                            HomePrototypeActionTile(
+                                symbol = symbol,
+                                label = label,
+                                modifier = Modifier.weight(1f),
+                                onClick = action,
+                            )
+                        }
+                        repeat(3 - serviceRow.size) { Spacer(modifier = Modifier.weight(1f)) }
+                    }
+                }
+            }
+
             item {
-                Text(
-                    stringResource(R.string.home_feed_title),
-                    color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 4.dp),
+                HomePrototypeSectionTitle("Spending", modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
+                HomePrototypeNavigationRow(
+                    symbol = "◔",
+                    title = "Spending overview",
+                    subtitle = "Review your recent activity",
+                    onClick = onOpenOverview,
+                )
+                HomePrototypeNavigationRow(
+                    symbol = "▤",
+                    title = "Transactions",
+                    subtitle = "View your account history",
+                    onClick = onOpenAccountDetail,
                 )
             }
-            items(feedEntries, key = { it.id }) { entry ->
-                HomeFeedRow(
-                    entry,
-                    onClick = when (entry.kind) {
-                        "marketplace" -> onOpenMarketplace
-                        "community" -> onOpenCommunity
-                        "jobs" -> onOpenJobs
-                        "property" -> onOpenProperty
-                        else -> ({})
-                    },
+
+            item {
+                HomePrototypeSectionTitle("For you", modifier = Modifier.padding(top = 22.dp, bottom = 8.dp))
+                HomePrototypeNavigationRow(
+                    symbol = "♧",
+                    title = "Savings and goals",
+                    subtitle = "Explore ways to grow your money",
+                    onClick = onOpenBank,
+                )
+                HomePrototypeNavigationRow(
+                    symbol = "▥",
+                    title = "Credit score",
+                    subtitle = "Check your credit options",
+                    onClick = onOpenLoans,
                 )
             }
-        }
-        }
+
+            // Keep real, already-integrated content below the prototype's core
+            // hierarchy. These cards use live API data and existing destinations.
+            if (primaryAccount != null || stocks.isNotEmpty()) {
+                item {
+                    HomePrototypeSectionTitle("Your account and markets", modifier = Modifier.padding(top = 22.dp, bottom = 10.dp))
+                    HomeMarketWidgetRow(primaryAccount, stocks, onOpenBank = onOpenBank, onOpenInvest = onOpenInvest)
+                }
+            }
+            if (trendingListings.isNotEmpty()) {
+                item {
+                    HomePrototypeSectionTitle("Trending nearby", modifier = Modifier.padding(top = 24.dp, bottom = 10.dp))
+                    HomeTrendingGrid(trendingListings, onOpenMarketplace = onOpenMarketplace)
+                }
+            }
+            if (feedEntries.isNotEmpty()) {
+                item {
+                    HomePrototypeSectionTitle("Around your neighborhood", modifier = Modifier.padding(top = 24.dp, bottom = 8.dp))
+                }
+                items(feedEntries, key = { it.id }) { entry ->
+                    HomeFeedRow(
+                        entry = entry,
+                        onClick = when (entry.kind) {
+                            "marketplace" -> onOpenMarketplace
+                            "community" -> onOpenCommunity
+                            "jobs" -> onOpenJobs
+                            "property" -> onOpenProperty
+                            else -> ({})
+                        },
+                    )
+                }
+            }
+            if (isOffline) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Outlined.CloudOff, contentDescription = null, tint = Ids.colors.textSecondary, modifier = Modifier.size(18.dp))
+                        Text("Offline — some information may be out of date", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp))
+                    }
+                }
+            }
         }
         PullToRefreshContainer(state = pullToRefreshState, modifier = Modifier.align(Alignment.TopCenter))
     }
@@ -399,4 +464,105 @@ fun HomeEntryPoint(
         onOpenInvest = onOpenInvest,
         onOpenShop = onOpenShop,
     )
+}
+
+
+@Composable
+private fun HomePrototypeSectionTitle(title: String, modifier: Modifier = Modifier) {
+    Text(
+        text = title,
+        color = Ids.colors.textPrimary,
+        fontSize = 18.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = (-0.25).sp,
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun HomePrototypePrimaryAction(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(Ids.colors.brand)
+            .clickable(onClick = onClick)
+            .padding(vertical = 14.dp, horizontal = 16.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun HomePrototypeSecondaryAction(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(Ids.colors.chip)
+            .clickable(onClick = onClick)
+            .padding(vertical = 14.dp, horizontal = 16.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun HomePrototypeActionTile(
+    symbol: String,
+    label: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(17.dp))
+                .background(Ids.colors.chip),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(symbol, color = Ids.colors.textPrimary, fontSize = 23.sp, fontWeight = FontWeight.SemiBold)
+        }
+        Text(
+            text = label,
+            color = Ids.colors.textSecondary,
+            fontSize = 11.sp,
+            lineHeight = 14.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(top = 7.dp),
+            maxLines = 2,
+        )
+    }
+}
+
+@Composable
+private fun HomePrototypeNavigationRow(
+    symbol: String,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.chip),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(symbol, color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+        }
+        Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
+            Text(title, color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Text(subtitle, color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
+        }
+        Text("›", color = Ids.colors.textTertiary, fontSize = 24.sp)
+    }
 }
