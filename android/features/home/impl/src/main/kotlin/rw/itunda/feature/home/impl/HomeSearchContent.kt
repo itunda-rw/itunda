@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.theme.Ids
@@ -34,26 +35,26 @@ internal fun LazyListScope.homeSearchResults(
             }
         }
     } else if (!stillLoading && total == 0) {
-        item { EmptyState("No results found. Try another search.") }
+        item { EmptyState(stringResource(R.string.home_search_empty)) }
     } else {
         products?.takeIf { it.isNotEmpty() }?.let { results ->
-            item { HomeSearchSectionHeader("Products") }
+            item { HomeSearchSectionHeader(stringResource(R.string.home_search_section_products)) }
             items(results, key = { "product_${it.id}" }) { HomeSearchResultRow(it, onClick = onOpenShop) }
         }
         marketplace?.takeIf { it.isNotEmpty() }?.let { results ->
-            item { HomeSearchSectionHeader("Marketplace") }
+            item { HomeSearchSectionHeader(stringResource(R.string.home_search_section_marketplace)) }
             items(results, key = { "marketplace_${it.id}" }) { HomeFeedRow(it, onClick = onOpenMarketplace) }
         }
         community?.takeIf { it.isNotEmpty() }?.let { results ->
-            item { HomeSearchSectionHeader("Community") }
+            item { HomeSearchSectionHeader(stringResource(R.string.home_search_section_community)) }
             items(results, key = { "community_${it.id}" }) { HomeFeedRow(it, onClick = onOpenCommunity) }
         }
         jobs?.takeIf { it.isNotEmpty() }?.let { results ->
-            item { HomeSearchSectionHeader("Jobs") }
+            item { HomeSearchSectionHeader(stringResource(R.string.home_search_section_jobs)) }
             items(results, key = { "jobs_${it.id}" }) { HomeFeedRow(it, onClick = onOpenJobs) }
         }
         property?.takeIf { it.isNotEmpty() }?.let { results ->
-            item { HomeSearchSectionHeader("Property") }
+            item { HomeSearchSectionHeader(stringResource(R.string.home_search_section_property)) }
             items(results, key = { "property_${it.id}" }) { HomeFeedRow(it, onClick = onOpenProperty) }
         }
     }
