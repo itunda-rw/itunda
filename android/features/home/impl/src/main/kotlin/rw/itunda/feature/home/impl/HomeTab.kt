@@ -224,21 +224,26 @@ fun HomeTab(
                     ) {
                         Text("itunda Bank", color = Ids.colors.textSecondary, fontSize = 14.sp)
                         if (primaryAccount != null) {
-                            Text(
-                                text = String.format(Locale.US, "%,.0f", primaryAccount.balance),
-                                color = Ids.colors.textPrimary,
-                                fontSize = 40.sp,
-                                lineHeight = 46.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                letterSpacing = (-1.2).sp,
+                            Row(
+                                verticalAlignment = Alignment.Bottom,
                                 modifier = Modifier.padding(top = 3.dp),
-                            )
-                            Text(
-                                primaryAccount.currency,
-                                color = Ids.colors.textSecondary,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                            )
+                            ) {
+                                Text(
+                                    text = String.format(Locale.US, "%,.0f", primaryAccount.balance),
+                                    color = Ids.colors.textPrimary,
+                                    fontSize = 40.sp,
+                                    lineHeight = 46.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    letterSpacing = (-1.2).sp,
+                                )
+                                Text(
+                                    primaryAccount.currency,
+                                    color = Ids.colors.textSecondary,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(start = 6.dp, bottom = 5.dp),
+                                )
+                            }
                         } else {
                             Text(
                                 "Balance unavailable",
@@ -303,27 +308,24 @@ fun HomeTab(
             item {
                 HomePrototypeSectionTitle("Rwanda services", modifier = Modifier.padding(top = 26.dp, bottom = 12.dp))
             }
-            listOf(
-                Triple("⌂", "Irembo", onOpenPay),
-                Triple("▤", "RRA taxes", onOpenPay),
-                Triple("ϟ", "Electricity", onOpenPay),
-                Triple("◌", "Water", onOpenPay),
-                Triple("▱", "School fees", onOpenPay),
-            ).chunked(3).forEach { serviceRow ->
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        serviceRow.forEach { (symbol, label, action) ->
-                            HomePrototypeActionTile(
-                                symbol = symbol,
-                                label = label,
-                                modifier = Modifier.weight(1f),
-                                onClick = action,
-                            )
-                        }
-                        repeat(3 - serviceRow.size) { Spacer(modifier = Modifier.weight(1f)) }
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    listOf(
+                        Triple("⌂", "Irembo", onOpenPay),
+                        Triple("▤", "RRA taxes", onOpenPay),
+                        Triple("ϟ", "Electricity", onOpenPay),
+                        Triple("◌", "Water", onOpenPay),
+                        Triple("▱", "School fees", onOpenPay),
+                    ).forEach { (symbol, label, action) ->
+                        HomePrototypeActionTile(
+                            symbol = symbol,
+                            label = label,
+                            modifier = Modifier.weight(1f),
+                            onClick = action,
+                        )
                     }
                 }
             }
