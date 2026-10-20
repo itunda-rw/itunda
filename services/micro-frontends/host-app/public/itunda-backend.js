@@ -1,4 +1,4 @@
-/* Real Itunda authentication and account data for the v104 consumer web experience. */
+/* Real Itunda authentication and account data for the v318 consumer web experience. */
 (function () {
   'use strict';
   const API_BASE = 'https://itunda-api-hptgu43hsa-du.a.run.app';
@@ -37,7 +37,12 @@
     if (access) headers.Authorization = 'Bearer ' + access;
     let response;
     try { response = await fetch(API_BASE + path, Object.assign({}, options, { headers })); }
-    catch (_) { throw new Error('Could not reach itunda. Check your connection and try again.'); }
+    catch (error) {
+      // Keep the user-facing message simple, but preserve the browser's original
+      // network/CORS/DNS exception in DevTools so production failures are diagnosable.
+      console.warn('[itunda backend] Fetch failed before an HTTP response:', path, error);
+      throw new Error('Could not reach itunda. Check your connection and try again.');
+    }
     if (response.status === 401 && retry !== false && access && path !== '/api/v1/auth/refresh') {
       if (!refreshInFlight) {
         refreshInFlight = (async function () {
