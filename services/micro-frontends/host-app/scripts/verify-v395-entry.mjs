@@ -50,7 +50,7 @@ const checks = [
   ...sanitizerChecks,
   ['production copy contains no skip-sign-in shortcut', !/Skip sign-in \(prototype shortcut\)|>Skip \(prototype\)<\/a>/.test(prototype)],
   ['production copy cannot set authenticated state through obSkip', !/function obSkip\(\)\{S\.auth=true;/.test(prototype)],
-  ['production copy has no hardcoded returning-phone shortcut', !/Prototype: fill a returning number|S\.ob\.ph='788123456'/.test(prototype)],
+  ['production copy has no hardcoded returning-phone shortcut', !prototype.includes('onclick="phDemo();return false"') && !prototype.includes("S.ob.ph='788123456'")],
   ['customer app route uses v395', index.includes('frame.src = "/itunda-prototype-v395.html"')],
   ['host frame fills the viewport', index.includes('height: 100dvh') && index.includes('width: 100%; height: 100%')],
   ['launch splash respects reduced-motion preferences', /prefers-reduced-motion:\s*reduce/.test(index)],
