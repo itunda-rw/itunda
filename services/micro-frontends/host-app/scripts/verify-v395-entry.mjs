@@ -4,6 +4,7 @@ const root = new URL('../', import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), 'utf8');
 const index = read('index.html');
 const prototype = read('public/itunda-prototype-v395.html');
+const builtPrototype = read('dist/itunda-prototype-v395.html');
 const reference = read('../../../v395.html');
 const nginx = read('../nginx.conf');
 
@@ -47,6 +48,7 @@ for (const item of sanitizers) {
 
 const checks = [
   ['generated production copy matches the sanitized canonical v395 source', expected === prototype],
+  ['built v395 asset exactly matches the verified production copy', builtPrototype === prototype],
   ...sanitizerChecks,
   ['production copy contains no skip-sign-in shortcut', !/Skip sign-in \(prototype shortcut\)|>Skip \(prototype\)<\/a>/.test(prototype)],
   ['production copy cannot set authenticated state through obSkip', !/function obSkip\(\)\{S\.auth=true;/.test(prototype)],
