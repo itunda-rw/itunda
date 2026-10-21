@@ -60,7 +60,18 @@ fun PrototypeParityScreen(modifier: Modifier = Modifier) {
                                 S.stack = [];
                                 S.tab = 'home';
                                 render('fade-none');
-                                return 'Itunda v395 home rendered';
+                                const view = document.getElementById('view');
+                                const screen = view && view.querySelector('.screen');
+                                if (!screen || !screen.innerHTML.trim()) {
+                                  throw new Error('render() completed but #view has no screen content');
+                                }
+                                return JSON.stringify({
+                                  status: 'rendered',
+                                  title: document.title,
+                                  screen: screen.id || screen.className,
+                                  contentLength: screen.innerHTML.length,
+                                  viewport: window.innerWidth + 'x' + window.innerHeight
+                                });
                               } catch (e) {
                                 console.error('Itunda v395 startup failed', e && e.stack || e);
                                 document.body.innerHTML =
@@ -73,7 +84,12 @@ fun PrototypeParityScreen(modifier: Modifier = Modifier) {
                               }
                             })();
                             """.trimIndent(),
-                            null,
+                            { result ->
+                                Log.i("ItundaPrototype", "Startup verification: $result")
+                                if (result == null || result == "null" || result.contains("startup failed")) {
+                                    Log.e("ItundaPrototype", "Prototype startup did not return a successful render result")
+                                }
+                            },
                         )
                     }
 
