@@ -30,6 +30,7 @@ import rw.itunda.core.network.ThemePreference
 import java.util.Locale
 import rw.itunda.app.ui.AppLockScreen
 import rw.itunda.app.ui.ItundaAppScreen
+import rw.itunda.app.ui.PrototypeParityScreen
 import rw.itunda.core.designsystem.components.LocalRealActivity
 import rw.itunda.app.ui.LoginScreen
 import rw.itunda.app.ui.PinEntryScreen
@@ -209,15 +210,25 @@ class MainActivity : FragmentActivity() {
                                         )
                                     }
                                 } else {
-                                    ItundaAppScreen(
-                                        openMapFromDeepLink = mapDeepLinkRequested,
-                                        initialMapSearchQuery = mapSearchFromDeepLink,
-                                        initialMapSharedFolder = mapSharedFolderFromDeepLink,
-                                        identityVerifyRequestId = identityVerifyRequestId,
-                                        initialTestRoute = testRoute,
-                                        onIdentityVerifyConsumed = { identityVerifyRequestId = null },
-                                        onMapDeepLinkConsumed = { mapDeepLinkRequested = false },
-                                    )
+                                    // v395 is the canonical UI source of truth. Keep the
+                                    // authenticated session, app-lock, login, and native deep-link
+                                    // destinations intact; render the exact prototype for the normal
+                                    // signed-in experience while backend bindings are staged next.
+                                    if (testRoute != null || mapDeepLinkRequested ||
+                                        mapSharedFolderFromDeepLink != null || identityVerifyRequestId != null
+                                    ) {
+                                        ItundaAppScreen(
+                                            openMapFromDeepLink = mapDeepLinkRequested,
+                                            initialMapSearchQuery = mapSearchFromDeepLink,
+                                            initialMapSharedFolder = mapSharedFolderFromDeepLink,
+                                            identityVerifyRequestId = identityVerifyRequestId,
+                                            initialTestRoute = testRoute,
+                                            onIdentityVerifyConsumed = { identityVerifyRequestId = null },
+                                            onMapDeepLinkConsumed = { mapDeepLinkRequested = false },
+                                        )
+                                    } else {
+                                        PrototypeParityScreen()
+                                    }
                                 }
                             }
                             is SessionState.LoggedOut -> {
