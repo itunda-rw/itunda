@@ -5,6 +5,18 @@ plugins {
     id("com.facebook.react")
 }
 
+
+// v395 visual-parity staging: use the repository's canonical prototype as the
+// Android WebView asset rather than maintaining a second, approximate UI in Compose.
+val v395PrototypeAssetsDir = layout.buildDirectory.dir("generated/v395PrototypeAssets")
+val copyV395PrototypeAssets by tasks.registering(Copy::class) {
+    from(rootProject.projectDir.parentFile.resolve("v395.html"))
+    into(v395PrototypeAssetsDir)
+}
+tasks.named("preBuild").configure {
+    dependsOn(copyV395PrototypeAssets)
+}
+
 // Real FCM push (2026-08-12) -- see ItundaMessagingService.kt's own doc comment for
 // the full account of why FCM is the transport (Android has no OS-sanctioned
 // alternative for waking a backgrounded app -- this is a platform constraint, not a
@@ -202,6 +214,7 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+    sourceSets.getByName("main").assets.srcDir(v395PrototypeAssetsDir)
     buildFeatures {
         compose = true
         buildConfig = true
