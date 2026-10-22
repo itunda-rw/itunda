@@ -77,7 +77,12 @@
     const main = accountList.find(function (a) { return String(a.type || '').toUpperCase() === 'MAIN'; }) || accountList[0];
     if (!main) throw new Error('No account balance is available for this user yet.');
     mainAccountId = main.id;
-    S.bank = Number(main.balance || 0);
+    // A missing balance is an API/data-integrity failure, not a zero-balance account.
+    // Keep the account screen on its existing retry/error path rather than inventing a value.
+    if (main.balance == null || main.balance === '' || !Number.isFinite(Number(main.balance))) {
+      throw new Error('Your account balance could not be verified. Please retry loading your account.');
+    }
+    S.bank = Number(main.balance);
     S.name = [liveUser && liveUser.firstName, liveUser && liveUser.lastName].filter(Boolean).join(' ') || S.name || '';
     if (Array.isArray(S.act)) {
       S.act = liveTransactions.map(function (tx) {

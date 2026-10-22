@@ -33,6 +33,8 @@ const checks = [
   ['production prototype loads backend bridge', prototype.includes('<script src="/itunda-backend.js"></script>')],
   ['prototype-only sign-in bypass links are absent', !/onclick="obSkip\(\);return false">[^<]*prototype/i.test(prototype)],
   ['prototype phone-fill shortcut and handler are absent', !prototype.includes('Prototype: fill a returning number') && !prototype.includes("window.phDemo=()=>{S.ob.ph='788123456';render('fade-none')};")],
+  ['missing account balance is rejected rather than rendered as zero', backend.includes("if (main.balance == null || main.balance === '' || !Number.isFinite(Number(main.balance)))") && backend.includes('Your account balance could not be verified. Please retry loading your account.')],
+  ['a genuine numeric zero balance remains valid', backend.includes("if (main.balance == null || main.balance === '' || !Number.isFinite(Number(main.balance)))") && backend.includes('S.bank = Number(main.balance);')],
   ['real sign-in endpoint is wired', backend.includes('/api/v1/auth/login')],
   ['demo mode disables all backend API calls', backend.includes("if (demoMode) throw new Error('Demo mode uses sample data only. Exit demo mode and sign in to use real account services.')")],
   ['demo mode does not restore a real saved session', backend.includes('if (demoMode || !localStorage.getItem(ACCESS_KEY)) return;')],
