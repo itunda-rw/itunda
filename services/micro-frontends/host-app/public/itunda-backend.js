@@ -6,11 +6,16 @@
   const REFRESH_KEY = 'itunda_web_refresh_token';
   let mainAccountId = null;
   let liveTransactions = [];
+  let transactionHistoryUnavailable = false;
+  let liveAutoTransferCount = null;
   let liveUser = null;
   let lastTransaction = null;
   let termsCatalog = [];
   let busy = false;
   let transferBusy = false;
+  // Preserve one idempotency key across retries of the same transfer intent.
+  let transferIdempotencyKey = null;
+  let transferIntentFingerprint = null;
   let refreshInFlight = null;
 
   function normalizePhone(value) {
@@ -48,6 +53,11 @@
             });
             if (!refreshed.ok) return false;
             const session = await refreshed.json();
+            if (!session || typeof session.accessToken !== 'string' || !session.accessToken.trim() ||
+                typeof session.refreshToken !== 'string' || !session.refreshToken.trim()) {
+              console.warn('[itunda backend] Token refresh returned an incomplete session.');
+              return false;
+            }
             localStorage.setItem(ACCESS_KEY, session.accessToken);
             localStorage.setItem(REFRESH_KEY, session.refreshToken);
             return true;
@@ -66,29 +76,53 @@
     return body;
   }
   async function loadAccount() {
+    // Account availability must not depend on the transaction-history service.
+    // Keep history failures explicit so the UI never turns an API error into an empty ledger.
     const results = await Promise.all([
       api('/api/v1/account'),
-      api('/api/v1/account/transactions').catch(function () { return { transactions: [] }; }),
-      api('/api/v1/auth/profile').catch(function () { return null; })
+      api('/api/v1/account/transactions').catch(function (error) {
+        console.warn('[itunda backend] Transaction history unavailable:', error.message);
+        return null;
+      }),
+      api('/api/v1/auth/profile').catch(function () { return null; }),
+      api('/api/v1/p2p/auto-transfers').catch(function () { return null; })
     ]);
     const accountList = Array.isArray(results[0].accounts) ? results[0].accounts : [];
-    liveTransactions = Array.isArray(results[1].transactions) ? results[1].transactions : [];
+    const transactionResponse = results[1];
+    transactionHistoryUnavailable = !transactionResponse || !Array.isArray(transactionResponse.transactions);
+    liveTransactions = transactionHistoryUnavailable ? [] : transactionResponse.transactions;
     if (results[2] && results[2].user) liveUser = results[2].user;
+    const autoTransfers = results[3] && results[3].autoTransfers;
+    liveAutoTransferCount = Array.isArray(autoTransfers)
+      ? autoTransfers.filter(function (transfer) { return String(transfer.status || '').toUpperCase() === 'ACTIVE'; }).length
+      : null;
     const main = accountList.find(function (a) { return String(a.type || '').toUpperCase() === 'MAIN'; }) || accountList[0];
     if (!main) throw new Error('No account balance is available for this user yet.');
+    const balanceValue = main.balance;
+    if (balanceValue === null || balanceValue === undefined || balanceValue === '' || !Number.isFinite(Number(balanceValue))) {
+      throw new Error('Account balance is unavailable. Please retry.');
+    }
     mainAccountId = main.id;
-    S.bank = Number(main.balance || 0);
-    S.name = [liveUser && liveUser.firstName, liveUser && liveUser.lastName].filter(Boolean).join(' ') || S.name || '';
+    S.bank = Number(balanceValue);
+    S.name = [liveUser && liveUser.firstName, liveUser && liveUser.lastName].filter(Boolean).join(' ') || String(liveUser && liveUser.name || '').trim();
     if (Array.isArray(S.act)) {
-      S.act = liveTransactions.map(function (tx) {
+      // The prototype's compact activity rows require a numeric amount. Incomplete
+      // ledger records stay visible in the dedicated bank activity list, where their
+      // amount/date can be explicitly labeled unavailable instead of fabricated here.
+      S.act = liveTransactions.filter(function (tx) {
+        return tx.amount !== null && tx.amount !== undefined && tx.amount !== '' && Number.isFinite(Number(tx.amount));
+      }).map(function (tx) {
         const outgoing = Boolean((liveUser && tx.senderId === liveUser.id) || tx.fromAccountId === mainAccountId);
-        const amount = Number(tx.amount || 0) * (outgoing ? -1 : 1);
+        const amount = Number(tx.amount) * (outgoing ? -1 : 1);
         const type = String(tx.type || '').toUpperCase();
         const icon = type === 'INTEREST' ? 'coin' : (type === 'BILL' || type === 'AIRTIME' || type === 'PAYMENT' ? 'bill' : (outgoing ? 'send' : 'up'));
-        const date = tx.createdAt ? new Date(tx.createdAt) : new Date();
-        const status = String(tx.status || 'COMPLETED').toLowerCase();
+        const dateValue = tx.createdAt || tx.created_at || tx.timestamp;
+        const date = dateValue ? new Date(dateValue) : null;
+        const dateValid = date && Number.isFinite(date.getTime());
+        const dateLabel = dateValid ? date.toLocaleDateString() : 'Date unavailable';
+        const status = String(tx.status || 'unknown').toLowerCase();
         const label = outgoing ? 'Paid' : 'Received';
-        return [icon, String(tx.description || tx.type || 'Account activity'), label + ' · ' + date.toLocaleDateString(), amount, status, date.getTime()];
+        return [icon, String(tx.description || tx.type || 'Account activity'), label + ' · ' + dateLabel, amount, status, dateValid ? date.getTime() : 0];
       });
     }
   }
@@ -159,7 +193,10 @@
           method: 'POST',
           body: JSON.stringify({ phoneNumber: normalizePhone(S.ob.ph), password: S.ob.pin })
         }, false);
-        if (!session.accessToken || !session.refreshToken || !session.user) throw new Error('The server returned an incomplete session.');
+        if (!session || typeof session.accessToken !== 'string' || !session.accessToken.trim() ||
+            typeof session.refreshToken !== 'string' || !session.refreshToken.trim() || !session.user || typeof session.user !== 'object') {
+          throw new Error('The server returned an incomplete session.');
+        }
       } catch (error) {
         S.ob.pin = ''; render('fade-none');
         const errorNode = document.getElementById('web-login-error');
@@ -202,39 +239,142 @@
     previousObBack();
   };
 
+  // Keep the compact home/activity surfaces honest when the ledger endpoint is down.
+  // A failed history request must not look like a genuinely empty account.
+  const previousHomeScreen = screens.home;
+  screens.home = function () {
+    let html = previousHomeScreen();
+    if (!demoMode && transactionHistoryUnavailable) {
+      const notice = '<div class="sec"><div class="fine" style="padding:12px 0">Recent activity is temporarily unavailable. Your account balance loaded successfully. <button type="button" class="chip" onclick="backendRetryTransactions()">Retry activity</button></div></div>';
+      html = html.replace('<div class="sec">', notice + '<div class="sec">');
+    }
+    return html;
+  };
+  const previousActivityScreen = screens.activity;
+  screens.activity = function () {
+    let html = previousActivityScreen();
+    if (!demoMode) {
+      html = html.replace('<div class="pad fine" style="padding-top:20px">Sample data for this prototype.</div>', '');
+      if (transactionHistoryUnavailable) {
+        html = html.replace('Nothing here yet.', 'Transaction history is temporarily unavailable. <button type="button" class="chip" onclick="backendRetryTransactions()">Retry</button>');
+        html = html.replace('</div><div class="pad fine" style="padding-top:20px">Sample data for this prototype.</div>', '</div><div class="pad" style="padding-top:16px"><button type="button" class="btn sec2" onclick="backendRetryTransactions()">Retry transaction history</button></div>');
+      }
+    }
+    return html;
+  };
+
   const previousBankScreen = screens.bank;
   screens.bank = function () {
-    const html = previousBankScreen();
+    let html = previousBankScreen();
+    if (!demoMode) {
+      const autoTransferLabel = liveAutoTransferCount === null ? 'Unavailable' : liveAutoTransferCount + ' active';
+      html = html.replace('2 active', autoTransferLabel);
+      html = html.replace(/<div class="sec"><div class="sech">Recommended for you<\/div>[\s\S]*?(?=<div class="sec"><div class="sech">Save &amp; grow<\/div>)/, '<div class="sec"><div class="sech">Recommended for you</div><div class="fine" style="padding:12px 0">Personalized recommendations are not connected to your account yet.</div></div>');
+      html = html.replace(/<div class="sec"><div class="sech">Save &amp; grow<\/div>[\s\S]*?(?=<div class="sec"><div class="sech">Borrow<\/div>)/, '<div class="sec"><div class="sech">Save &amp; grow</div><div class="fine" style="padding:12px 0">Savings products, rates and goals are not connected to your account yet.</div></div>');
+      html = html.replace(/<div class="sec"><div class="sech">Insights<\/div>[\s\S]*?(?=<div class="sec"><div style="font-size:14px;font-weight:800">Deposit Protection Fund)/, '<div class="sec"><div class="sech">Insights</div><div class="fine" style="padding:12px 0">Spending insights are not available until real transaction analytics are connected.</div></div>');
+      html = html.replace(/<div class="sec"><div class="sech">Borrow<\/div>[\s\S]*?(?=<div class="sec"><div class="sech">Insights<\/div>)/, '<div class="sec"><div class="sech">Borrow</div><div class="fine" style="padding:12px 0">Loan and credit products are not connected to your account yet.</div></div>');
+    }
     const rows = liveTransactions.slice(0, 8).map(function (tx) {
       const label = String(tx.description || tx.title || tx.type || tx.reference || 'Account activity').replace(/[<>&"]/g, '');
-      const amount = Number(tx.amount || 0);
-      const credit = amount > 0 || String(tx.direction || '').toUpperCase() === 'CREDIT';
+      const rawAmount = tx.amount;
+      const amountValid = rawAmount !== null && rawAmount !== undefined && rawAmount !== '' && Number.isFinite(Number(rawAmount));
+      const amount = amountValid ? Number(rawAmount) : null;
+      const credit = amount !== null ? amount > 0 : String(tx.direction || '').toUpperCase() === 'CREDIT';
       const date = tx.createdAt || tx.created_at || tx.timestamp;
+      const parsedDate = date ? new Date(date) : null;
+      const dateLabel = parsedDate && Number.isFinite(parsedDate.getTime())
+        ? parsedDate.toLocaleDateString().replace(/[<>&"]/g, '')
+        : 'Date unavailable';
+      const amountLabel = amount === null ? 'Amount unavailable' : (credit ? '+' : '') + fmt(Math.abs(amount)) + ' RWF';
       return '<div class="row" style="cursor:default"><div class="ico">' + (credit ? '＋' : '−') + '</div>' +
         '<div style="min-width:0;flex:1"><div class="t">' + label + '</div><div class="s">' +
-        (date ? new Date(date).toLocaleDateString().replace(/[<>&"]/g, '') : '') + '</div></div>' +
-        '<div class="r" style="color:' + (credit ? 'var(--ok)' : 'var(--tx)') + '">' + (credit ? '+' : '') + fmt(Math.abs(amount)) + ' RWF</div></div>';
+        dateLabel + '</div></div>' +
+        '<div class="r" style="color:' + (credit ? 'var(--ok)' : 'var(--tx)') + '">' + amountLabel + '</div></div>';
     }).join('');
     if (demoMode) return previousBankScreen() + '<div class="sec"><div class="sech">Demo account activity</div><div class="fine" style="padding:12px 0">Sample data only. This demo is not connected to a real account or ledger.</div></div>';
     return html + '<div class="sec"><div class="sech">Real account activity</div>' +
-      (rows || '<div class="fine" style="padding:12px 0">No account transactions yet.</div>') +
+      (transactionHistoryUnavailable
+        ? '<div class="fine" style="padding:12px 0">Transaction history is temporarily unavailable. Your account balance loaded, but activity could not be refreshed. <button type="button" class="chip" onclick="backendRetryTransactions()">Retry</button></div>'
+        : (rows || '<div class="fine" style="padding:12px 0">No account transactions yet.</div>')) +
       '<div class="fine" style="padding-top:8px">Loaded from your itunda account ledger.</div></div>';
   };
+  window.backendRetryTransactions = async function () {
+    if (demoMode) return;
+    try {
+      const response = await api('/api/v1/account/transactions');
+      if (!response || !Array.isArray(response.transactions)) {
+        throw new Error('Transaction history returned an invalid response.');
+      }
+      liveTransactions = response.transactions;
+      transactionHistoryUnavailable = false;
+      if (Array.isArray(S.act)) {
+        S.act = liveTransactions.filter(function (tx) {
+          return tx.amount !== null && tx.amount !== undefined && tx.amount !== '' && Number.isFinite(Number(tx.amount));
+        }).map(function (tx) {
+          const outgoing = Boolean((liveUser && tx.senderId === liveUser.id) || tx.fromAccountId === mainAccountId);
+          const amount = Number(tx.amount) * (outgoing ? -1 : 1);
+          const type = String(tx.type || '').toUpperCase();
+          const icon = type === 'INTEREST' ? 'coin' : (type === 'BILL' || type === 'AIRTIME' || type === 'PAYMENT' ? 'bill' : (outgoing ? 'send' : 'up'));
+          const dateValue = tx.createdAt || tx.created_at || tx.timestamp;
+          const date = dateValue ? new Date(dateValue) : null;
+          const dateValid = date && Number.isFinite(date.getTime());
+          const dateLabel = dateValid ? date.toLocaleDateString() : 'Date unavailable';
+          const status = String(tx.status || 'unknown').toLowerCase();
+          return [icon, String(tx.description || tx.type || 'Account activity'), (outgoing ? 'Paid' : 'Received') + ' · ' + dateLabel, amount, status, dateValid ? date.getTime() : 0];
+        });
+      }
+      render('fade-none');
+    } catch (error) {
+      transactionHistoryUnavailable = true;
+      fail(new Error('Transaction history is still unavailable. Your balance is unchanged; please retry.'));
+      render('fade-none');
+    }
+  };
+
   const previousSentScreen = screens.sent;
   screens.sent = function () {
     let html = previousSentScreen();
     const reference = lastTransaction && lastTransaction.referenceNumber ? String(lastTransaction.referenceNumber) : '—';
     return html.replace('IT-20481-7', reference.replace(/[<>&"]/g, ''));
   };
+  // Profile-name editing is prototype-only: the canonical backend currently exposes
+  // profile reads and specific profile subresources, but no supported name-update API.
+  // Never report a local-only edit as persisted for a signed-in account.
+  const prototypeSaveProfileName = window.pSave;
+  window.pSave = function () {
+    if (demoMode && typeof prototypeSaveProfileName === 'function') {
+      return prototypeSaveProfileName.apply(this, arguments);
+    }
+    return fail(new Error('Changing your profile name is not connected to a supported account service yet. No changes were saved.'));
+  };
+
+  function formatProfileDate(value) {
+    if (value === null || value === undefined || value === '') return 'Unavailable';
+    const date = new Date(value);
+    return Number.isFinite(date.getTime()) ? date.toLocaleDateString() : 'Unavailable';
+  }
+
   const previousProfileScreen = screens.profile;
   screens.profile = function () {
     let html = previousProfileScreen();
+    if (demoMode) return html;
     if (liveUser) {
       const fullName = [liveUser.firstName, liveUser.lastName].filter(Boolean).join(' ').replace(/[<>&"]/g, '');
-      html = html.replace('078 ••• 214', String(liveUser.phoneNumber || '').replace(/[<>&"]/g, ''));
+      html = html.replace('078 ••• 214', String(liveUser.phoneNumber || 'Phone unavailable').replace(/[<>&"]/g, ''));
       html = html.replace('Your details are sample data.', 'Your details are loaded from your itunda account.');
-      html = html.replace('March 2025', liveUser.createdAt ? new Date(liveUser.createdAt).toLocaleDateString() : '—');
-      if (fullName) html = html.replace('Amina Uwase', fullName);
+      html = html.replace('March 2025', formatProfileDate(liveUser.createdAt));
+      html = html.replace('2,000,000 RWF', 'Unavailable');
+      const verificationStatus = liveUser.kycVerified === true ? 'Verified' : liveUser.kycVerified === false ? 'Not verified' : 'Unavailable';
+      const verificationLabel = verificationStatus === 'Verified' ? 'Identity verified' : verificationStatus === 'Not verified' ? 'Identity not verified' : 'Identity status unavailable';
+      html = html.replace('Identity verified', verificationLabel);
+      html = html.replace('Amina Uwase', fullName || 'Name unavailable');
+    } else {
+      html = html.replace('Amina Uwase', 'Name unavailable');
+      html = html.replace('078 ••• 214', 'Phone unavailable');
+      html = html.replace('March 2025', 'Unavailable');
+      html = html.replace('2,000,000 RWF', 'Unavailable');
+      html = html.replace('Verified', 'Unavailable');
+      html = html.replace('Your details are sample data.', 'Your account profile could not be loaded. Please retry.');
     }
     return html;
   };
@@ -319,12 +459,26 @@
           password: S.ob.pin, acceptedTermsIds: acceptedTermsIds
         })
       }, false);
-      if (!session.accessToken || !session.refreshToken || !session.user) throw new Error('The server returned an incomplete session.');
+      if (!session || typeof session.accessToken !== 'string' || !session.accessToken.trim() ||
+            typeof session.refreshToken !== 'string' || !session.refreshToken.trim() || !session.user || typeof session.user !== 'object') {
+          throw new Error('The server returned an incomplete session.');
+        }
       localStorage.setItem(ACCESS_KEY, session.accessToken);
       localStorage.setItem(REFRESH_KEY, session.refreshToken);
       localStorage.setItem('itunda_web_user', JSON.stringify(session.user));
       liveUser = session.user;
-      await loadAccount();
+      try {
+        await loadAccount();
+      } catch (error) {
+        // Registration succeeded and the session is real. Do not report account
+        // creation failure or invite a duplicate registration when only data loading failed.
+        S.ob.pin = '';
+        S.obStep = 'backendLogin';
+        render('fade-none');
+        showAccountLoadRetry('Your account was created and you are signed in, but account data could not be loaded. Retry without creating another account or entering your PIN again.');
+        console.warn('[itunda backend] Account created; initial account load failed:', error.message);
+        return;
+      }
       S.auth = true; S.obStep = null; S.stack = []; S.tab = 'home'; S.first = true;
       render('fade'); window.toast('Your itunda account is ready');
     } catch (error) {
@@ -380,16 +534,31 @@
     }
     transferBusy = true;
     try {
-      const idempotencyKey = window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() :
-        'web-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+      const intentFingerprint = JSON.stringify({ recipient: recipient, amount: amount, fromAccountId: mainAccountId });
+      if (!transferIdempotencyKey || transferIntentFingerprint !== intentFingerprint) {
+        transferIdempotencyKey = window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() :
+          'web-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+        transferIntentFingerprint = intentFingerprint;
+      }
       const result = await api('/api/v1/p2p/send', {
         method: 'POST',
-        headers: { 'Idempotency-Key': idempotencyKey },
+        headers: { 'Idempotency-Key': transferIdempotencyKey },
         body: JSON.stringify({ recipient: recipient, amount: amount, description: 'Transfer from itunda web app', fromAccountId: mainAccountId })
       });
+      // The API contract returns success + the ledger transaction. A malformed 2xx
+      // response must not be rendered as a confirmed receipt; retain the idempotency
+      // key so the same intent can be safely retried/replayed.
+      if (!result || result.success !== true || !result.transaction || typeof result.transaction !== 'object' || Array.isArray(result.transaction) || !String(result.transaction.id || result.transaction.referenceNumber || '').trim() || result.transaction.amount === null || result.transaction.amount === undefined || result.transaction.amount === '' || !Number.isFinite(Number(result.transaction.amount)) || Number(result.transaction.amount) !== amount) {
+        throw new Error('Transfer may have been submitted, but confirmation details are unavailable. Check your activity before retrying.');
+      }
+      transferIdempotencyKey = null;
+      transferIntentFingerprint = null;
       S.sentAmt = amount;
-      lastTransaction = result.transaction || null;
-      if (result.newBalance !== undefined) S.bank = Number(result.newBalance);
+      lastTransaction = result.transaction;
+      const returnedBalance = Number(result.newBalance);
+      if (result.newBalance !== null && result.newBalance !== undefined && result.newBalance !== '' && Number.isFinite(returnedBalance)) {
+        S.bank = returnedBalance;
+      }
       // Confirmation is the commit point. A later refresh failure must not make a
       // completed transfer look unsuccessful to the customer.
       await loadAccount().catch(function (refreshError) {
