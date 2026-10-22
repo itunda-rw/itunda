@@ -46,7 +46,7 @@ fun PrototypeParityScreen(modifier: Modifier = Modifier) {
                 webViewClient = object : WebViewClient() {
                     override fun onPageFinished(view: WebView, url: String) {
                         super.onPageFinished(view, url)
-                        // S and render are top-level lexical bindings in v395.html.
+                        // S and render are top-level lexical bindings in v434.html.
                         // Native auth has already succeeded; don't leave the prototype
                         // on its separate, demo-only onboarding screen.
                         view.evaluateJavascript(
@@ -54,7 +54,7 @@ fun PrototypeParityScreen(modifier: Modifier = Modifier) {
                             (function() {
                               try {
                                 if (typeof S === 'undefined' || typeof render !== 'function') {
-                                  throw new Error('v395 app state did not initialize');
+                                  throw new Error('v434 app state did not initialize');
                                 }
                                 S.auth = true;
                                 S.stack = [];
@@ -73,14 +73,14 @@ fun PrototypeParityScreen(modifier: Modifier = Modifier) {
                                   viewport: window.innerWidth + 'x' + window.innerHeight
                                 });
                               } catch (e) {
-                                console.error('Itunda v395 startup failed', e && e.stack || e);
+                                console.error('Itunda v434 startup failed', e && e.stack || e);
                                 document.body.innerHTML =
                                   '<main style="font:16px system-ui;padding:24px;color:#222">' +
                                   '<h2>Itunda could not load this screen</h2>' +
                                   '<p>The prototype did not initialize correctly. Please retry with the latest build.</p>' +
                                   '<pre style="white-space:pre-wrap;color:#b42318"></pre></main>';
                                 document.querySelector('pre').textContent = String(e);
-                                return 'Itunda v395 startup failed: ' + String(e);
+                                return 'Itunda v434 startup failed: ' + String(e);
                               }
                             })();
                             """.trimIndent(),
@@ -117,7 +117,7 @@ fun PrototypeParityScreen(modifier: Modifier = Modifier) {
                         }
                     }
                 }
-                loadUrl("file:///android_asset/v395.html")
+                loadUrl("file:///android_asset/v434.html")
             }
         },
         update = { },
