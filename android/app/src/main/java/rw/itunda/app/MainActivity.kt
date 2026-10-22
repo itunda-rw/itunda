@@ -31,6 +31,7 @@ import java.util.Locale
 import rw.itunda.app.ui.AppLockScreen
 import rw.itunda.app.ui.ItundaAppScreen
 import rw.itunda.core.designsystem.components.LocalRealActivity
+import rw.itunda.app.ui.PrototypeParityScreen
 import rw.itunda.app.ui.LoginScreen
 import rw.itunda.app.ui.PinEntryScreen
 import rw.itunda.core.designsystem.components.IdsToastHost
@@ -209,15 +210,21 @@ class MainActivity : FragmentActivity() {
                                         )
                                     }
                                 } else {
-                                    ItundaAppScreen(
-                                        openMapFromDeepLink = mapDeepLinkRequested,
-                                        initialMapSearchQuery = mapSearchFromDeepLink,
-                                        initialMapSharedFolder = mapSharedFolderFromDeepLink,
-                                        identityVerifyRequestId = identityVerifyRequestId,
-                                        initialTestRoute = testRoute,
-                                        onIdentityVerifyConsumed = { identityVerifyRequestId = null },
-                                        onMapDeepLinkConsumed = { mapDeepLinkRequested = false },
-                                    )
+                                    if (testRoute != null || mapDeepLinkRequested ||
+                                        mapSharedFolderFromDeepLink != null || identityVerifyRequestId != null
+                                    ) {
+                                        ItundaAppScreen(
+                                            openMapFromDeepLink = mapDeepLinkRequested,
+                                            initialMapSearchQuery = mapSearchFromDeepLink,
+                                            initialMapSharedFolder = mapSharedFolderFromDeepLink,
+                                            identityVerifyRequestId = identityVerifyRequestId,
+                                            initialTestRoute = testRoute,
+                                            onIdentityVerifyConsumed = { identityVerifyRequestId = null },
+                                            onMapDeepLinkConsumed = { mapDeepLinkRequested = false },
+                                        )
+                                    } else {
+                                        PrototypeParityScreen()
+                                    }
                                 }
                             }
                             is SessionState.LoggedOut -> {
