@@ -250,21 +250,6 @@ fun PayEntryPoint(
         actionError?.let { message ->
             item { Text(message, color = Ids.colors.danger, fontSize = 13.sp) }
         }
-        item { NearbyMerchantsBanner(merchants = nearbyMerchants) }
-        item {
-            FacePayStatusRow(
-                enrolled = facePayEnrolled,
-                busy = facePayBusy,
-                cashbackRatePercent = nearbyMerchants.takeIf { it.isNotEmpty() }?.let { list -> list.sumOf { it.cashbackRate } / list.size * 100.0 },
-                onToggle = handleFacePayToggle,
-            )
-        }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                IdsButton(stringResource(R.string.home_cash_out), onClick = onCashOutAtAgent, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Medium, icon = IdsIcons.Add)
-                IdsButton(stringResource(R.string.home_send), onClick = onSend, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Filled, size = IdsButtonSize.Medium, icon = IdsIcons.Send)
-            }
-        }
         item {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -309,7 +294,23 @@ fun PayEntryPoint(
             }
             PayTabMode.PAY_MERCHANT -> item { payAMerchantSection() }
         }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                IdsButton(stringResource(R.string.home_cash_out), onClick = onCashOutAtAgent, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Medium, icon = IdsIcons.Add)
+                IdsButton(stringResource(R.string.home_send), onClick = onSend, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Filled, size = IdsButtonSize.Medium, icon = IdsIcons.Send)
+            }
+        }
         item { RewardsSummaryRow(rewardsTotal = rewardsTotal, payBalance = accounts.find { it.type == "PAY" }?.balance) }
+        item { NearbyMerchantsBanner(merchants = nearbyMerchants) }
+        item {
+            FacePayStatusRow(
+                enrolled = facePayEnrolled,
+                busy = facePayBusy,
+                cashbackRatePercent = nearbyMerchants.takeIf { it.isNotEmpty() }?.let { list -> list.sumOf { it.cashbackRate } / list.size * 100.0 },
+                onToggle = handleFacePayToggle,
+            )
+        }
+
         if (hasCard != null) {
             item {
                 if (hasCard == true) {
