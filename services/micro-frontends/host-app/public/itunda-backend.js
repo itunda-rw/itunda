@@ -5,6 +5,7 @@
   const ACCESS_KEY = 'itunda_web_access_token';
   const REFRESH_KEY = 'itunda_web_refresh_token';
   let mainAccountId = null;
+  let livePayBalance = null;
   let liveTransactions = [];
   let liveUser = null;
   let lastTransaction = null;
@@ -75,8 +76,12 @@
     liveTransactions = Array.isArray(results[1].transactions) ? results[1].transactions : [];
     if (results[2] && results[2].user) liveUser = results[2].user;
     const main = accountList.find(function (a) { return String(a.type || '').toUpperCase() === 'MAIN'; }) || accountList[0];
+    const payAccount = accountList.find(function (a) { return String(a.type || '').toUpperCase() === 'PAY'; });
     if (!main) throw new Error('No account balance is available for this user yet.');
     mainAccountId = main.id;
+    const payRawBalance = payAccount && payAccount.balance;
+    const payBalanceValue = payRawBalance === null || payRawBalance === undefined || payRawBalance === '' ? NaN : Number(payRawBalance);
+    livePayBalance = Number.isFinite(payBalanceValue) ? payBalanceValue : null;
     S.bank = Number(main.balance || 0);
     S.name = [liveUser && liveUser.firstName, liveUser && liveUser.lastName].filter(Boolean).join(' ') || S.name || '';
     if (Array.isArray(S.act)) {
@@ -204,7 +209,11 @@
 
   const previousBankScreen = screens.bank;
   screens.bank = function () {
-    const html = previousBankScreen();
+    let html = previousBankScreen();
+    if (!demoMode) {
+      const payLabel = livePayBalance === null ? 'Not available' : fmt(livePayBalance) + ' RWF';
+      html = html.replace(/(<span class="mu">itunda Pay<\/span><b>)[\s\S]*?(<\/b>)/, '$1' + payLabel + '$2');
+    }
     const rows = liveTransactions.slice(0, 8).map(function (tx) {
       const label = String(tx.description || tx.title || tx.type || tx.reference || 'Account activity').replace(/[<>&"]/g, '');
       const amount = Number(tx.amount || 0);
