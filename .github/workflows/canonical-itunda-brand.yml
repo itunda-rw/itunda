@@ -4,14 +4,14 @@ on:
   push:
     branches: [main]
     paths:
-      - 'itunda-brand-v3.zip'
+      - 'itunda-brand-v3.1.zip'
       - 'packages/brand-assets/**'
       - 'scripts/sync-native-brand-assets.sh'
       - 'scripts/verify-native-brand-assets.py'
       - '.github/workflows/canonical-itunda-brand.yml'
   pull_request:
     paths:
-      - 'itunda-brand-v3.zip'
+      - 'itunda-brand-v3.1.zip'
       - 'packages/brand-assets/**'
       - '.github/workflows/canonical-itunda-brand.yml'
       - 'client/public/brand/**'
@@ -46,15 +46,15 @@ jobs:
 
       - name: Verify v3 archive identity
         env:
-          EXPECTED_BLOB_SHA: e892fb5f0c5ea1f0cea994665f31302b25e8a5e7
-          EXPECTED_SIZE: '46747'
+          EXPECTED_BLOB_SHA: 534706728e1d5b709e88c5091ff2d829c347ce33
+          EXPECTED_SIZE: '84331'
         run: |
           set -euo pipefail
-          test -s itunda-brand-v3.zip
-          test "$(stat -c '%s' itunda-brand-v3.zip)" = "$EXPECTED_SIZE"
-          test "$(git rev-parse HEAD:itunda-brand-v3.zip)" = "$EXPECTED_BLOB_SHA"
-          unzip -t itunda-brand-v3.zip
-          sha256sum itunda-brand-v3.zip | tee /tmp/itunda-brand-v3.zip.sha256
+          test -s itunda-brand-v3.1.zip
+          test "$(stat -c '%s' itunda-brand-v3.1.zip)" = "$EXPECTED_SIZE"
+          test "$(git rev-parse HEAD:itunda-brand-v3.1.zip)" = "$EXPECTED_BLOB_SHA"
+          unzip -t itunda-brand-v3.1.zip
+          sha256sum itunda-brand-v3.1.zip | tee /tmp/itunda-brand-v3.1.zip.sha256
 
       - name: Install exact v3 files into canonical package
         if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
@@ -62,12 +62,21 @@ jobs:
           set -euo pipefail
           rm -rf /tmp/itunda-brand-v3
           mkdir -p /tmp/itunda-brand-v3 packages/brand-assets/canonical/itunda-brand
-          unzip -q itunda-brand-v3.zip -d /tmp/itunda-brand-v3
+          unzip -q itunda-brand-v3.1.zip -d /tmp/itunda-brand-v3
+          # The archive filename is versioned; normalize its internal top-level folder
+          # by locating the exact app-icon asset rather than assuming the folder name.
+          icon_source="$(find /tmp/itunda-brand-v3 -mindepth 2 -maxdepth 4 -type f -path '*/app-icons/itunda-app-icon.svg' -print -quit)"
+          test -n "$icon_source"
+          archive_brand_root="$(dirname "$(dirname "$icon_source")")"
+          test -s "$archive_brand_root/symbol/itunda-symbol.svg"
+          if [ "$archive_brand_root" != "/tmp/itunda-brand-v3/itunda-brand-v3" ]; then
+            mv "$archive_brand_root" /tmp/itunda-brand-v3/itunda-brand-v3
+          fi
           test -d /tmp/itunda-brand-v3/itunda-brand-v3
           rsync -a --delete /tmp/itunda-brand-v3/itunda-brand-v3/ packages/brand-assets/canonical/itunda-brand/
-          cp /tmp/itunda-brand-v3.zip.sha256 /tmp/itunda-brand-v3.sha256
+          cp /tmp/itunda-brand-v3.1.zip.sha256 /tmp/itunda-brand-v3.sha256
           cut -d' ' -f1 /tmp/itunda-brand-v3.sha256 > packages/brand-assets/CANONICAL_ZIP_SHA256
-          printf '%s\n' '# Canonical Itunda brand assets' '' 'Canonical source: `itunda-brand-v3.zip`.' '' 'Files under `canonical/itunda-brand/` are byte-for-byte copies of the v3 archive.' '' 'Do not redraw, recolor, optimize, reformat, or independently edit canonical assets.' > packages/brand-assets/README.md
+          printf '%s\n' '# Canonical Itunda brand assets' '' 'Canonical source: `itunda-brand-v3.1.zip`.' '' 'Files under `canonical/itunda-brand/` are byte-for-byte copies of the v3 archive.' '' 'Do not redraw, recolor, optimize, reformat, or independently edit canonical assets.' > packages/brand-assets/README.md
           (cd packages/brand-assets/canonical/itunda-brand && find . -type f -print0 | sort -z | xargs -0 sha256sum | sed 's#  ./#  packages/brand-assets/canonical/itunda-brand/#') > packages/brand-assets/SHA256SUMS
 
       - name: Sync canonical v3 assets to product launch surfaces
@@ -104,7 +113,7 @@ jobs:
       - name: Verify archive and every deployed brand copy
         run: |
           set -euo pipefail
-          test "$(sha256sum itunda-brand-v3.zip | cut -d' ' -f1)" = "$(cat packages/brand-assets/CANONICAL_ZIP_SHA256)"
+          test "$(sha256sum itunda-brand-v3.1.zip | cut -d' ' -f1)" = "$(cat packages/brand-assets/CANONICAL_ZIP_SHA256)"
           sha256sum --check packages/brand-assets/SHA256SUMS
           root=packages/brand-assets/canonical/itunda-brand
           cmp -s "$root/symbol/itunda-symbol.svg" client/brand/itunda-icon.svg
