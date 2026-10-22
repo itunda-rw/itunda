@@ -6,12 +6,12 @@ plugins {
 }
 
 
-// v395 visual-parity staging: use the repository's canonical prototype as the
+// v434 visual-parity staging: use the repository's canonical prototype as the
 // Android WebView asset rather than maintaining a second, approximate UI in Compose.
-val v395PrototypeAssetsDir = layout.buildDirectory.dir("generated/v395PrototypeAssets")
+val v434PrototypeAssetsDir = layout.buildDirectory.dir("generated/v434PrototypeAssets")
 val copyV395PrototypeAssets by tasks.registering(Copy::class) {
-    from(rootProject.projectDir.parentFile.resolve("v395.html"))
-    into(v395PrototypeAssetsDir)
+    from(rootProject.projectDir.parentFile.resolve("v434.html"))
+    into(v434PrototypeAssetsDir)
 }
 tasks.named("preBuild").configure {
     dependsOn(copyV395PrototypeAssets)
@@ -214,7 +214,7 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
-    sourceSets.getByName("main").assets.srcDir(v395PrototypeAssetsDir)
+    sourceSets.getByName("main").assets.srcDir(v434PrototypeAssetsDir)
     buildFeatures {
         compose = true
         buildConfig = true
