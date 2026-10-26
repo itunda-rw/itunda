@@ -54,7 +54,7 @@ itunda:
   providers:
     simulation-enabled: ${ITUNDA_PROVIDER_SIMULATION_ENABLED:true}
   jwt:
-    secret: ${JWT_SECRET:itunda-dev-secret-do-not-use-in-production}
+    secret: ${JWT_SECRET}
   ussd:
     gateway-secret: ${USSD_GATEWAY_SECRET:}
   mtn-momo:

@@ -283,6 +283,8 @@ ensure_runtime_env() {
 render_runtime_config_manifest() {
   local manifest_path="$1"
 
+  : "${JWT_SECRET:?JWT_SECRET must be set before generating production runtime secrets}"
+
   cat >"$manifest_path" <<EOF
 apiVersion: v1
 kind: Secret
@@ -301,7 +303,7 @@ metadata:
   namespace: itunda
 type: Opaque
 stringData:
-  secret: ${JWT_SECRET:-itunda-dev-secret-do-not-use-in-production}
+  secret: ${JWT_SECRET}
 ---
 apiVersion: v1
 kind: ConfigMap

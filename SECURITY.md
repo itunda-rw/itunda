@@ -86,13 +86,12 @@ potential impact, and a suggested fix if you have one.
 
 ## Current Security Posture — What's Not Real Yet
 
-1. **`JWT_SECRET` has a hardcoded development fallback**
-   (`itunda-dev-secret-do-not-use-in-production`, referenced in every service's
-   `application.yml` and `JwtService.kt`'s own `@Value` default). If any of these services is
-   ever deployed without a real `JWT_SECRET` environment variable set, every token is
-   forgeable. This is the same class of gap the old Express-backend review flagged, carried
-   forward because the underlying risk (a fallback secret existing at all) is structurally the
-   same even though the implementation is entirely different.
+1. **JWT secret configuration is being hardened in PR `security/nginx-dotfiles-jwt-hardening`.**
+   The change removes the known development fallback from backend service `application.yml`
+   files and `JwtService`, requires an explicit `JWT_SECRET`, and makes the private-cloud
+   manifest renderer fail if the variable is missing. A regression script checks for fallback
+   reintroduction. This is a source-code safeguard; production secret values and live deployment
+   configuration must still be verified separately, and this PR does not change GCP secrets.
 2. **No automated security scanning or penetration testing.** Every fix referenced above (IDOR
    audit, concurrency audit, StrongBox, webhook signing, fraud-flag surfacing) was found via
    manual, code-reading audits, not a scanner or pentest — there is no SAST/DAST/dependency-
