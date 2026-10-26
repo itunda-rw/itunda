@@ -21,8 +21,12 @@ printf '[core]\nrepositoryformatversion = 0\n' > "$TMP_DIR/.git/config"
 printf 'public-well-known-test\n' > "$TMP_DIR/.well-known/security.txt"
 
 CONTAINER_ID="$(docker run -d --rm -p 127.0.0.1::80 \
-  -v "$CONFIG:/etc/nginx/conf.d/default.conf:ro" \
-  -v "$TMP_DIR:/usr/share/nginx/html:ro" nginx:1.27-alpine)"
+  -v "$CONFIG:/etc/nginx/conf.d/default.conf:ro" nginx:1.27-alpine)"
+docker exec "$CONTAINER_ID" mkdir -p /usr/share/nginx/html/.git /usr/share/nginx/html/.well-known
+docker cp "$TMP_DIR/index.html" "$CONTAINER_ID:/usr/share/nginx/html/index.html"
+docker cp "$TMP_DIR/.env" "$CONTAINER_ID:/usr/share/nginx/html/.env"
+docker cp "$TMP_DIR/.git/config" "$CONTAINER_ID:/usr/share/nginx/html/.git/config"
+docker cp "$TMP_DIR/.well-known/security.txt" "$CONTAINER_ID:/usr/share/nginx/html/.well-known/security.txt"
 PORT="$(docker port "$CONTAINER_ID" 80/tcp | sed 's/.*://')"
 BASE="http://127.0.0.1:$PORT"
 
