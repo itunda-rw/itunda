@@ -70,11 +70,10 @@ hallucination research:
   files across web/Android/iOS are already over 500 lines the same way. Real, automated
   guardrail now exists: `scripts/file-size-lint.py` (see `ARCHITECTURE_GUIDELINES.md` §2)
   — run it before finishing any change that touches an already-large file.
-- **itunda's own JWT secret handling is the CORRECT counter-example, worth copying**:
-  `application.yml`'s `secret: ${JWT_SECRET:itunda-dev-secret-do-not-use-in-production}` —
-  externalized via env var, with a fallback that's both obviously fake AND says so in its
-  own name. This is the pattern any new secret/credential should follow, not a hardcoded
-  literal.
+- **JWT secrets must fail closed when missing.** Backend service configuration and
+  `JwtService` require an explicit `JWT_SECRET`; do not add a development fallback to a
+  deployable service. Local examples should leave the value blank and explain how to generate
+  a unique secret, rather than provide a known value that can accidentally reach production.
 
 ## The self-check checklist
 
