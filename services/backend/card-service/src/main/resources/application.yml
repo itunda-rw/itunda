@@ -56,7 +56,7 @@ itunda:
     # Must match :app's exact same secret -- a JWT :app minted has to validate here
     # too, see :security's SecurityConfig/JwtAuthenticationFilter (shared code, not a
     # duplicated copy).
-    secret: ${JWT_SECRET:itunda-dev-secret-do-not-use-in-production}
+    secret: ${JWT_SECRET}
 
 management:
   endpoints:
