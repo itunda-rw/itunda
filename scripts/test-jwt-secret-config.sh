@@ -20,4 +20,9 @@ if ! grep -Fq 'secret: ${JWT_SECRET}' "$BACKEND_DIR/app/src/main/resources/appli
   exit 1
 fi
 
-echo "JWT secret configuration checks passed: no backend application.yml or JwtService fallback found."
+if ! grep -Fq ': "${JWT_SECRET:?JWT_SECRET must be set before generating production runtime secrets}"' "$ROOT_DIR/scripts/private-cloud-lib.sh"; then
+  echo "FAIL: private-cloud manifest renderer must reject a missing JWT_SECRET" >&2
+  exit 1
+fi
+
+echo "JWT secret configuration checks passed: no backend fallback and private-cloud rendering fails closed."
