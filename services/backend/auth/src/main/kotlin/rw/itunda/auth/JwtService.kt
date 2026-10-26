@@ -29,18 +29,19 @@ data class DecodedToken(
  * Same shape as backend/src/controllers/auth.controller.ts / auth.middleware.ts: HS256,
  * `sub` = userId, a `type: "refresh"` claim distinguishing refresh from access tokens,
  * 24h access / 7d refresh expiry. Kept identical so the two backends are directly
- * comparable during migration, not just "similar." Every token now also carries a `jti`
- * (unique token id) — needed for Redis-backed revocation (see TokenBlocklistService):
+ * comparable during migration, not just "similar." Every token now also carries a
+ * `jti` (unique token id) — needed for Redis-backed revocation (see TokenBlocklistService):
  * you can't blacklist "the token," a JWT is never stored anywhere to compare against,
  * you can only blacklist an id extracted from it.
  */
 @Service
 class JwtService(
-    @Value("${itunda.jwt.secret}") secret: String,
+    @Value("\${itunda.jwt.secret}") secret: String,
 ) {
     // No fallback is allowed: missing secret configuration must fail startup rather than
     // minting tokens with a publicly known development key.
-    // than silently zero-padding a too-short secret into a weaker key.
+    // HS256 also requires a key of at least 256 bits (32 bytes); fail rather than silently
+    // zero-padding a too-short secret into a weaker key.
     private val key: SecretKey = Keys.hmacShaKeyFor(secret.toByteArray(Charsets.UTF_8))
 
     fun issueAccessToken(userId: String, phoneNumber: String, role: String, deviceId: String? = null): String {
