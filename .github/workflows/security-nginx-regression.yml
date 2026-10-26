@@ -6,12 +6,18 @@ on:
       - "services/micro-frontends/nginx.conf"
       - "services/micro-frontends/scripts/test-nginx-hidden-files.sh"
       - ".github/workflows/security-nginx-regression.yml"
+      - "services/backend/**/application.yml"
+      - "services/backend/auth/src/main/kotlin/rw/itunda/auth/JwtService.kt"
+      - "scripts/test-jwt-secret-config.sh"
   push:
     branches: [main]
     paths:
       - "services/micro-frontends/nginx.conf"
       - "services/micro-frontends/scripts/test-nginx-hidden-files.sh"
       - ".github/workflows/security-nginx-regression.yml"
+      - "services/backend/**/application.yml"
+      - "services/backend/auth/src/main/kotlin/rw/itunda/auth/JwtService.kt"
+      - "scripts/test-jwt-secret-config.sh"
 
 permissions:
   contents: read
@@ -25,3 +31,5 @@ jobs:
         uses: actions/checkout@v4
       - name: Test Nginx hidden-file denial and SPA fallback
         run: bash services/micro-frontends/scripts/test-nginx-hidden-files.sh
+      - name: Test JWT secret fail-closed configuration
+        run: bash scripts/test-jwt-secret-config.sh
