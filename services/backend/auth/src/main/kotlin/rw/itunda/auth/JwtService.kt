@@ -36,11 +36,10 @@ data class DecodedToken(
  */
 @Service
 class JwtService(
-    @Value("\${itunda.jwt.secret:itunda-dev-secret-do-not-use-in-production}") secret: String,
+    @Value("${itunda.jwt.secret}") secret: String,
 ) {
-    // Same documented caveat as the Express backend's JWT_SECRET fallback (see
-    // SECURITY.md): fine for local/demo, must be overridden before any real deployment.
-    // HS256 requires a key of at least 256 bits (32 bytes); this throws at startup rather
+    // No fallback is allowed: missing secret configuration must fail startup rather than
+    // minting tokens with a publicly known development key.
     // than silently zero-padding a too-short secret into a weaker key.
     private val key: SecretKey = Keys.hmacShaKeyFor(secret.toByteArray(Charsets.UTF_8))
 
