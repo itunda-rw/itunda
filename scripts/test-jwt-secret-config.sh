@@ -10,7 +10,7 @@ if grep -R -n -F "$FORBIDDEN" "$BACKEND_DIR" --include='application.yml' --inclu
   exit 1
 fi
 
-if ! grep -Fq '@Value("${itunda.jwt.secret}")' "$BACKEND_DIR/auth/src/main/kotlin/rw/itunda/auth/JwtService.kt"; then
+if ! grep -Fq '@Value("\${itunda.jwt.secret}")' "$BACKEND_DIR/auth/src/main/kotlin/rw/itunda/auth/JwtService.kt"; then
   echo "FAIL: JwtService must require an explicitly configured secret" >&2
   exit 1
 fi
