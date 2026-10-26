@@ -979,3 +979,5 @@ pre .c{color:#B3AEFF}pre .s{color:#4CC88D}pre .g{color:#7A818C}pre .n{color:#F0A
 <script>(function(){function fb(t){var p=document.activeElement,a=document.createElement("textarea"),ok=false;a.value=t;a.setAttribute("readonly","");a.style.cssText="position:fixed;top:0;left:0;opacity:0";document.body.appendChild(a);a.select();try{ok=document.execCommand("copy")}catch(e){}a.remove();if(p&&p.focus)p.focus();return ok?Promise.resolve():Promise.reject(new Error("copy"))}var c=navigator.clipboard;if(c&&c.writeText){var w=c.writeText.bind(c);c.writeText=function(t){return w(t).catch(function(){return fb(t)})}}else{try{Object.defineProperty(navigator,"clipboard",{value:{writeText:fb},configurable:true})}catch(e){}}})();</script>
 </body>
 </html>
+
+<!-- Canonical asset is staged by the GCP deploy workflow: brand/itunda-symbol.svg -->
