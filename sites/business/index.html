@@ -407,3 +407,5 @@ i.up{color:var(--ok)!important}i.dn{color:var(--er)!important}
 <style>input[aria-invalid="true"]{box-shadow:0 0 0 2px #C4281B}</style><script>(function(){function g(x){return document.getElementById(x)}var ph=g("ph"),sn=g("sn"),sp=g("sp"),e1=g("e1"),er=g("er");function flag(el,on){if(el)el.setAttribute("aria-invalid",on?"true":"false")}function a(){flag(ph,!!e1.textContent.trim())}function b(){var t=er.textContent.trim();flag(sn,/shop name/i.test(t));flag(sp,/MoMo/i.test(t))}if(e1)new MutationObserver(a).observe(e1,{childList:true,characterData:true,subtree:true});if(er)new MutationObserver(b).observe(er,{childList:true,characterData:true,subtree:true});[ph,sn,sp].forEach(function(i){if(i)i.addEventListener("input",function(){flag(i,false)})})})();</script>
 </body>
 </html>
+
+<!-- Canonical asset is staged by the GCP deploy workflow: brand/itunda-symbol.svg; business app: business-app.itunda.im -->
