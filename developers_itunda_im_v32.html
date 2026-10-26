@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="referrer" content="strict-origin-when-cross-origin"><meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>itunda Developers: docs, API reference and mini apps</title>
+<meta name="description" content="Take payments, ship mini apps and connect your shop. Docs, sandbox keys and engineering stories for building on itunda.">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121216" media="(prefers-color-scheme: dark)">
+<meta property="og:title" content="itunda Developers">
+<meta property="og:description" content="Payments, mini apps and shop APIs for Kigali. Docs and sandbox keys.">
+<meta property="og:type" content="website"><meta name="version" content="32">
+<meta property="og:image" content="https://developers.itunda.im/assets/og-developers.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:image" content="https://developers.itunda.im/assets/og-developers.png"><link rel="apple-touch-icon" href="https://developers.itunda.im/assets/apple-touch-icon.png"><link rel="canonical" href="https://developers.itunda.im/">
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii00NSAtNDAgOTAgOTAiPjxkZWZzPjxtYXNrIGlkPSJtIiBtYXNrVW5pdHM9InVzZXJTcGFjZU9uVXNlIiB4PSItNDUiIHk9Ii01MCIgd2lkdGg9IjkwIiBoZWlnaHQ9IjkwIj48cmVjdCB4PSItNDUiIHk9Ii01MCIgd2lkdGg9IjkwIiBoZWlnaHQ9IjkwIiBmaWxsPSIjZmZmIi8+PGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjE3IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik0yLjUgLTkuOUMzLjAgLTkuOSA0LjMgLTkuNyA1LjIgLTkuNkM2LjEgLTkuNSA3LjAgLTkuMyA3LjkgLTkuMUM4LjggLTguOSA5LjcgLTguNyAxMC41IC04LjRDMTEuMyAtOC4xIDEyLjIgLTcuOCAxMy4wIC03LjVDMTMuOCAtNy4yIDE0LjYgLTYuOCAxNS4zIC02LjRDMTYuMSAtNi4wIDE2LjggLTUuNiAxNy41IC01LjJDMTguMiAtNC44IDE4LjkgLTQuMyAxOS41IC0zLjhDMjAuMiAtMy4zIDIxLjAgLTIuNiAyMS4zIC0yLjMiLz48cGF0aCBkPSJNLTkuOCAyLjhDLTEwLjAgMi40IC0xMC42IDEuMSAtMTAuOSAwLjNDLTExLjMgLTAuNiAtMTEuNiAtMS40IC0xMS44IC0yLjNDLTEyLjEgLTMuMiAtMTIuMyAtNC4wIC0xMi41IC00LjlDLTEyLjcgLTUuOCAtMTIuOSAtNi42IC0xMy4wIC03LjVDLTEzLjEgLTguMyAtMTMuMiAtOS4yIC0xMy4yIC0xMC4wQy0xMy4zIC0xMC45IC0xMy4zIC0xMS43IC0xMy4zIC0xMi42Qy0xMy4yIC0xMy40IC0xMy4yIC0xNC4yIC0xMy4xIC0xNS4wQy0xMy4wIC0xNS44IC0xMi43IC0xNi45IC0xMi43IC0xNy4zIi8+PHBhdGggZD0iTTcuMyA3LjFDNy4xIDcuNSA2LjMgOC42IDUuNyA5LjNDNS4xIDEwLjEgNC41IDEwLjcgMy45IDExLjRDMy4zIDEyLjEgMi43IDEyLjcgMi4wIDEzLjNDMS40IDEzLjkgMC43IDE0LjUgMC4wIDE1LjBDLTAuNyAxNS41IC0xLjQgMTYuMCAtMi4xIDE2LjVDLTIuOCAxNi45IC0zLjUgMTcuNCAtNC4zIDE3LjhDLTUuMCAxOC4xIC01LjcgMTguNSAtNi41IDE4LjhDLTcuMiAxOS4xIC04LjMgMTkuNSAtOC43IDE5LjYiLz48L2c+PC9tYXNrPjwvZGVmcz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgwIDUpIiBmaWxsPSJub25lIiBzdHJva2U9IiM4Rjg5RkYiIHN0cm9rZS13aWR0aD0iMTIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTAuMCAtMTAuMEMyLjIgLTEwLjAgNC40IC05LjggNi41IC05LjRDOC42IC05LjAgMTAuNyAtOC40IDEyLjYgLTcuN0MxNC41IC02LjkgMTYuMyAtNi4wIDE4LjAgLTQuOUMxOS42IC0zLjggMjEuMSAtMi42IDIyLjMgLTEuM0MyMy42IC0wLjEgMjQuNiAxLjQgMjUuNCAyLjhDMjYuMiA0LjIgMjYuOCA1LjcgMjcuMSA3LjFDMjcuNCA4LjUgMjcuNCA5LjkgMjcuMyAxMS4zQzI3LjEgMTIuNiAyNi42IDEzLjkgMjYuMCAxNS4wQzI1LjMgMTYuMSAyNC40IDE3LjIgMjMuNCAxOC4wQzIyLjMgMTguOCAyMS4wIDE5LjUgMTkuNyAxOS45QzE4LjMgMjAuNCAxNi43IDIwLjYgMTUuMSAyMC42QzEzLjUgMjAuNiAxMS43IDIwLjQgMTAuMCAyMC4wQzguMyAxOS42IDYuNSAxOC45IDQuNyAxOC4wQzMuMCAxNy4xIDEuMyAxNi4wIC0wLjMgMTQuN0MtMS45IDEzLjQgLTMuNSAxMS45IC00LjkgMTAuM0MtNi4zIDguNyAtNy42IDYuOSAtOC43IDUuMEMtOS43IDMuMSAtMTAuNyAxLjEgLTExLjQgLTAuOUMtMTIuMSAtMi45IC0xMi42IC01LjAgLTEyLjkgLTcuMUMtMTMuMiAtOS4xIC0xMy4zIC0xMS4yIC0xMy4yIC0xMy4xQy0xMy4xIC0xNS4wIC0xMi44IC0xNi45IC0xMi4zIC0xOC43Qy0xMS44IC0yMC40IC0xMS4xIC0yMi4wIC0xMC4zIC0yMy40Qy05LjUgLTI0LjggLTguNSAtMjYuMCAtNy40IC0yNy4wQy02LjMgLTI4LjAgLTUuMSAtMjguNyAtMy45IC0yOS4yQy0yLjYgLTI5LjcgLTEuMyAtMzAuMCAwIC0zMC4wQzEuMyAtMzAuMCAyLjYgLTI5LjcgMy45IC0yOS4yQzUuMSAtMjguNyA2LjMgLTI4LjAgNy40IC0yNy4wQzguNSAtMjYuMCA5LjUgLTI0LjggMTAuMyAtMjMuNEMxMS4xIC0yMi4wIDExLjggLTIwLjQgMTIuMyAtMTguN0MxMi44IC0xNi45IDEzLjEgLTE1LjAgMTMuMiAtMTMuMUMxMy4zIC0xMS4yIDEzLjIgLTkuMSAxMi45IC03LjFDMTIuNiAtNS4wIDEyLjEgLTIuOSAxMS40IC0wLjlDMTAuNyAxLjEgOS43IDMuMSA4LjcgNS4wQzcuNiA2LjkgNi4zIDguNyA0LjkgMTAuM0MzLjUgMTEuOSAxLjkgMTMuNCAwLjMgMTQuN0MtMS4zIDE2LjAgLTMuMCAxNy4xIC00LjcgMTguMEMtNi41IDE4LjkgLTguMyAxOS42IC0xMC4wIDIwLjBDLTExLjcgMjAuNCAtMTMuNSAyMC42IC0xNS4xIDIwLjZDLTE2LjcgMjAuNiAtMTguMyAyMC40IC0xOS43IDE5LjlDLTIxLjAgMTkuNSAtMjIuMyAxOC44IC0yMy40IDE4LjBDLTI0LjQgMTcuMiAtMjUuMyAxNi4xIC0yNi4wIDE1LjBDLTI2LjYgMTMuOSAtMjcuMSAxMi42IC0yNy4zIDExLjNDLTI3LjQgOS45IC0yNy40IDguNSAtMjcuMSA3LjFDLTI2LjggNS43IC0yNi4yIDQuMiAtMjUuNCAyLjhDLTI0LjYgMS40IC0yMy42IC0wLjEgLTIyLjMgLTEuM0MtMjEuMSAtMi42IC0xOS42IC0zLjggLTE4LjAgLTQuOUMtMTYuMyAtNi4wIC0xNC41IC02LjkgLTEyLjYgLTcuN0MtMTAuNyAtOC40IC04LjYgLTkuMCAtNi41IC05LjRDLTQuNCAtOS44IC0yLjIgLTEwLjAgMCAtMTAuMFoiIG1hc2s9InVybCgjbSkiLz48cGF0aCBkPSJNMi41IC05LjlDMy4wIC05LjkgNC4zIC05LjcgNS4yIC05LjZDNi4xIC05LjUgNy4wIC05LjMgNy45IC05LjFDOC44IC04LjkgOS43IC04LjcgMTAuNSAtOC40QzExLjMgLTguMSAxMi4yIC03LjggMTMuMCAtNy41QzEzLjggLTcuMiAxNC42IC02LjggMTUuMyAtNi40QzE2LjEgLTYuMCAxNi44IC01LjYgMTcuNSAtNS4yQzE4LjIgLTQuOCAxOC45IC00LjMgMTkuNSAtMy44QzIwLjIgLTMuMyAyMS4wIC0yLjYgMjEuMyAtMi4zIi8+PHBhdGggZD0iTS05LjggMi44Qy0xMC4wIDIuNCAtMTAuNiAxLjEgLTEwLjkgMC4zQy0xMS4zIC0wLjYgLTExLjYgLTEuNCAtMTEuOCAtMi4zQy0xMi4xIC0zLjIgLTEyLjMgLTQuMCAtMTIuNSAtNC45Qy0xMi43IC01LjggLTEyLjkgLTYuNiAtMTMuMCAtNy41Qy0xMy4xIC04LjMgLTEzLjIgLTkuMiAtMTMuMiAtMTAuMEMtMTMuMyAtMTAuOSAtMTMuMyAtMTEuNyAtMTMuMyAtMTIuNkMtMTMuMiAtMTMuNCAtMTMuMiAtMTQuMiAtMTMuMSAtMTUuMEMtMTMuMCAtMTUuOCAtMTIuNyAtMTYuOSAtMTIuNyAtMTcuMyIvPjxwYXRoIGQ9Ik03LjMgNy4xQzcuMSA3LjUgNi4zIDguNiA1LjcgOS4zQzUuMSAxMC4xIDQuNSAxMC43IDMuOSAxMS40QzMuMyAxMi4xIDIuNyAxMi43IDIuMCAxMy4zQzEuNCAxMy45IDAuNyAxNC41IDAuMCAxNS4wQy0wLjcgMTUuNSAtMS40IDE2LjAgLTIuMSAxNi41Qy0yLjggMTYuOSAtMy41IDE3LjQgLTQuMyAxNy44Qy01LjAgMTguMSAtNS43IDE4LjUgLTYuNSAxOC44Qy03LjIgMTkuMSAtOC4zIDE5LjUgLTguNyAxOS42Ii8+PC9nPjwvc3ZnPg==">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"></noscript>
+<style>
+:root{--bg:#fff;--fg:#191f28;--mu:#6b7684;--line:#e5e8eb;--soft:#f4f5f8;--br:#8F89FF;--lk:#5b54d6;--on:#14121f;--ok:#0a8f5b;--wn:#b85c00;--er:#c4281b;--tint:#eeedff;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121216;--fg:#f4f5f7;--mu:#9aa1ad;--line:#2e2e37;--soft:#1c1c23;--lk:#b3aeff;--tint:#2a2850;--ok:#4cc88d;--wn:#f0a050;--er:#ff7b6e;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121216;--fg:#f4f5f7;--mu:#9aa1ad;--line:#2e2e37;--soft:#1c1c23;--lk:#b3aeff;--tint:#2a2850;--ok:#4cc88d;--wn:#f0a050;--er:#ff7b6e;color-scheme:dark}
+*{box-sizing:border-box}[hidden]{display:none!important}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 84px);scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.7 "Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:60;background:var(--bg)}
+a{color:inherit;text-decoration:none}
+code,pre,kbd{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+:focus-visible{outline:3px solid var(--br);outline-offset:2px;border-radius:6px}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:50;background:var(--bg);border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;gap:18px;height:60px;max-width:1360px;margin:0 auto;padding:0 20px}
+.logo{display:flex;align-items:center;gap:4px;font-weight:800;font-size:20px;letter-spacing:-.4px}.logo svg{width:30px;height:30px;color:var(--br)}
+.logo i{font-style:normal;font-weight:600;font-size:14px;color:var(--mu);margin-left:8px;padding-left:10px;border-left:1px solid var(--line)}
+.top{display:flex;gap:2px;flex:1}.top a{padding:8px 12px;border-radius:10px;font-weight:700;font-size:15px;color:var(--mu)}
+.top a:hover,.top a[aria-current]{color:var(--fg);background:var(--soft)}
+.sb{display:flex;align-items:center;gap:10px;height:40px;padding:0 12px;border-radius:12px;background:var(--soft);border:0;color:var(--mu);font:inherit;font-size:14px;cursor:pointer;min-width:230px;text-align:left}
+.sb kbd{margin-left:auto;font-size:12px;border:1px solid var(--line);border-radius:6px;padding:0 7px;background:var(--bg)}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 18px;border-radius:12px;background:var(--br);color:var(--on);font-weight:800;font-size:15px;border:0;cursor:pointer;white-space:nowrap}
+.btn.lg{min-height:52px;padding:0 26px;border-radius:16px;font-size:16px}.btn.sec{background:var(--soft);color:var(--fg)}
+.menu{display:none;border:0;background:none;color:var(--fg);font-size:26px;width:44px;height:44px;cursor:pointer}
+.w{max-width:1160px;margin:0 auto;padding:0 20px}
+.notice{background:var(--tint);color:var(--lk);font-size:14px;font-weight:600;text-align:center;padding:8px 16px}
+.hero{display:grid;grid-template-columns:1fr 1.05fr;gap:48px;align-items:center;padding:96px 20px 88px}
+h1{font-size:clamp(40px,6.4vw,76px);line-height:1.08;letter-spacing:-2px;margin:0;font-weight:800}
+.lead{color:var(--mu);font-size:18px;line-height:1.65;margin:16px 0 0;max-width:560px}
+.hero .sb{width:100%;height:56px;margin-top:28px;font-size:16px;border-radius:16px;padding:0 18px}
+.cta{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+h2.s{font-size:26px;letter-spacing:-.5px;margin:0 0 20px;font-weight:800}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.card{display:block;padding:32px;border-radius:24px;background:var(--soft)}.card:hover{background:var(--tint)}
+.card b{display:block;font-size:22px;line-height:1.3}.card span{display:block;margin-top:6px;color:var(--mu);font-size:15px;line-height:1.55}
+.card.big{grid-column:span 2}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:48px;padding:72px 20px}
+.row{display:flex;justify-content:space-between;gap:16px;padding:16px 0;border-bottom:1px solid var(--line)}.row b{display:block;line-height:1.4}.row small{color:var(--mu);font-size:14px}
+.row:hover b{color:var(--lk)}
+.band{background:#14121f;color:#f4f3fb;text-align:center;padding:72px 20px}.band h2{font-size:34px;letter-spacing:-.8px;margin:0}.band p{color:#B4BAC4;margin:12px auto 0;max-width:520px}.band .cta{justify-content:center;margin-top:24px}.band .btn.sec{background:#272733;color:#f4f3fb}
+.shell{display:grid;grid-template-columns:260px minmax(0,1fr) 220px;gap:0 44px;max-width:1360px;margin:0 auto;padding:0 20px}
+#side{position:sticky;top:calc(61px + env(safe-area-inset-top,0px));height:calc(100vh - 61px - env(safe-area-inset-top,0px));overflow:auto;padding:28px 0 40px}
+.gt{margin:22px 0 6px;padding:0 12px;font-size:13px;font-weight:700;color:var(--mu)}.gt:first-child{margin-top:0}
+#side a,#toc a{display:block;padding:7px 12px;border-radius:10px;font-size:15px;line-height:1.4;color:var(--mu);font-weight:600}
+#side a:hover,#toc a:hover{color:var(--fg)}#side a[aria-current]{background:var(--tint);color:var(--lk);font-weight:800}
+#toc{position:sticky;top:calc(61px + env(safe-area-inset-top,0px));align-self:start;padding:40px 0}#toc a{padding:5px 0 5px 12px;border-left:2px solid var(--line);border-radius:0;font-size:14px}#toc a.on{border-color:var(--br);color:var(--fg)}#toc .gt{padding:0 0 6px}
+main{min-width:0;padding:40px 0 80px;max-width:760px}
+.crumb{font-size:14px;font-weight:700;color:var(--lk);margin-bottom:8px}
+article h1{font-size:clamp(30px,4vw,40px);letter-spacing:-1px}
+article h2{font-size:25px;letter-spacing:-.5px;margin:52px 0 12px;font-weight:800;line-height:1.3}
+article h2 a{color:var(--br);margin-left:8px;opacity:0;font-weight:600}article h2:hover a{opacity:1}
+article p,article li{max-width:68ch}article ul{padding-left:22px}
+p code,li code,td code{background:var(--soft);padding:2px 6px;border-radius:6px;font-size:.86em}
+.tw{overflow-x:auto;margin:16px 0}table{width:100%;border-collapse:collapse;font-size:15px;line-height:1.55}
+th{text-align:left;color:var(--mu);font-weight:600;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}td{padding:12px;border-bottom:1px solid var(--line);vertical-align:top}
+.ep{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:14px;background:var(--soft);margin:16px 0;overflow-x:auto;white-space:nowrap}
+.m{display:inline-block;min-width:56px;text-align:center;font:600 12px "JetBrains Mono",monospace;padding:3px 8px;border-radius:6px;background:var(--tint);color:var(--lk)}
+.m.get{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}.m.patch{background:color-mix(in srgb,var(--wn) 15%,transparent);color:var(--wn)}
+.note{padding:16px 20px;border-radius:16px;background:var(--tint);margin:20px 0;font-size:15px;line-height:1.65}.note b{color:var(--lk)}
+.cb{background:#0f0f16;color:#e8e6ff;border-radius:18px;overflow:hidden;margin:20px 0;text-align:left}
+.cbh{display:flex;align-items:center;justify-content:space-between;padding:8px 8px 0 10px;border-bottom:1px solid #272733}
+.tabs{display:flex;gap:2px}.tabs button{border:0;background:none;color:#a09db6;font:600 13px "Plus Jakarta Sans",sans-serif;padding:10px 14px;cursor:pointer;border-radius:10px 10px 0 0}.tabs button[aria-selected="true"]{color:#fff;background:#1d1d28}
+.cp{border:0;background:#1d1d28;color:#c9c6e6;font:600 12px "Plus Jakarta Sans",sans-serif;padding:6px 12px;border-radius:8px;cursor:pointer;margin-bottom:6px}
+pre{margin:0;padding:20px;overflow-x:auto;font-size:13.5px;line-height:1.75;tab-size:2}pre i{font-style:normal}
+pre .c{color:#9d97ff}pre .s{color:#7fe0b0}pre .g{color:#7d7a96}pre .n{color:#f0b070}
+.pg{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:64px}.pg a{padding:16px 20px;border:1px solid var(--line);border-radius:16px;font-weight:800;line-height:1.4}.pg a:hover{border-color:var(--br)}.pg small{display:block;color:var(--mu);font-weight:600}.pg a:last-child{text-align:right}
+.fb{display:flex;align-items:center;gap:10px;margin-top:40px;color:var(--mu);font-size:15px}.fb button{border:1px solid var(--line);background:none;color:var(--fg);font-weight:600;font-size:14px;font-family:inherit;padding:6px 14px;border-radius:10px;cursor:pointer}
+footer{border-top:1px solid var(--line);color:var(--mu);font-size:14px;line-height:1.7;padding:36px 20px 56px}footer div{max-width:1160px;margin:0 auto;display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap}
+dialog{border:0;border-radius:20px;padding:0;width:min(560px,92vw);background:var(--bg);color:var(--fg);box-shadow:0 30px 80px rgba(0,0,0,.35);margin:12vh auto 0}dialog::backdrop{background:rgba(10,10,20,.5)}
+dialog input{width:100%;border:0;border-bottom:1px solid var(--line);background:none;color:var(--fg);font:inherit;font-size:17px;padding:20px;outline:0}
+#rs{max-height:50vh;overflow:auto;padding:8px}#rs a{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:12px;font-weight:700}#rs a small{color:var(--mu);font-weight:500}#rs a.on{background:var(--tint)}#rs p{padding:12px;margin:0;color:var(--mu)}
+.crumb{display:flex;justify-content:space-between;align-items:center}
+.mdb{border:1px solid var(--line);background:none;color:var(--mu);font-weight:600;font-size:13px;font-family:inherit;padding:5px 12px;border-radius:10px;cursor:pointer}.mdb:hover{color:var(--fg)}
+.try{border:1px solid var(--line);border-radius:20px;padding:20px;margin:16px 0}.try .cb{margin:16px 0 0}
+.tf{display:grid;grid-template-columns:1fr 1fr;gap:12px}.tf label{font-size:13px;font-weight:700;color:var(--mu);display:grid;gap:4px}
+.tf input,.tf select{height:44px;width:100%;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--fg);font:14px "JetBrains Mono",monospace;padding:0 12px}.tf .btn{grid-column:1/-1;min-height:48px}
+.seg{display:inline-flex;background:var(--soft);border-radius:12px;padding:3px;gap:2px}.seg span{padding:6px 14px;border-radius:10px;font-size:14px;font-weight:700;color:var(--mu)}.seg .on{background:var(--bg);color:var(--fg)}
+.kv{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;margin:10px 0;flex-wrap:wrap}.kv b{min-width:110px}.kv code{flex:1;min-width:0;overflow-wrap:anywhere;font-size:13px}
+.kv button{border:0;background:var(--soft);color:var(--fg);font-weight:600;font-size:13px;font-family:inherit;padding:6px 12px;border-radius:8px;cursor:pointer}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:6px}
+.svc{padding:18px 0;border-bottom:1px solid var(--line)}.sh{display:flex;justify-content:space-between;gap:12px;margin-bottom:10px}.sh span{color:var(--ok);font-weight:700;font-size:14px}.svc small{color:var(--mu);font-size:13px}
+.up{display:flex;gap:2px;height:30px;margin-bottom:6px}.up i{flex:1;border-radius:2px;background:var(--ok)}.up i.w{background:var(--wn)}
+details{border-bottom:1px solid var(--line)}summary{cursor:pointer;padding:18px 0;font-weight:800;list-style:none;display:flex;justify-content:space-between;gap:16px}summary::-webkit-details-marker{display:none}summary::after{content:"+";color:var(--mu)}details[open] summary::after{content:"–"}details p{margin:0 0 18px;color:var(--mu)}
+.hero .lead{font-size:20px}
+.steps{padding-top:72px;padding-bottom:8px}.steps ol{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;counter-reset:s}
+.steps li{counter-increment:s;padding:28px;border-radius:24px;border:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.steps li::before{content:counter(s);width:36px;height:36px;border-radius:12px;background:var(--br);color:var(--on);display:grid;place-items:center;font-weight:800;margin-bottom:10px}
+.steps li b{font-size:20px}.steps li span{color:var(--mu);font-size:15px;line-height:1.55}.steps li a{margin-top:auto;padding-top:12px;color:var(--lk);font-weight:700}
+.shell.wide{grid-template-columns:260px minmax(0,1fr)}.shell.wide #toc{display:none}.shell.wide main{max-width:none}.shell.wide .try{max-width:900px}
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:48px;align-items:start}.split h2:first-child{margin-top:28px}
+.side{position:sticky;top:calc(84px + env(safe-area-inset-top,0px));align-self:start;min-width:0;padding-top:28px}.side .cb{margin:0}
+@media (max-width:1100px){.shell{grid-template-columns:240px minmax(0,1fr)}#toc{display:none}.split{grid-template-columns:1fr;gap:0}.side{position:static;padding-top:0}}
+@media (max-width:860px){
+.hero,.two{grid-template-columns:1fr;gap:32px}.hero{padding:40px 20px}.two{padding:48px 20px}.cards{grid-template-columns:1fr}.card.big{grid-column:auto}
+.top,.bar>.btn,.logo i{display:none}.menu{display:block;order:10;margin-right:-10px}.sb{min-width:0;margin-left:auto}.sb span,.sb kbd{display:none}.sb{width:44px;justify-content:center}
+.shell{grid-template-columns:minmax(0,1fr)}main{padding-top:24px}.tf{grid-template-columns:1fr}.steps ol{grid-template-columns:1fr}.shell.wide{grid-template-columns:minmax(0,1fr)}
+#side{display:none;position:fixed;inset:calc(61px + env(safe-area-inset-top,0px)) 0 0;height:auto;background:var(--bg);z-index:40;padding:16px 20px}body.nv #side{display:block}.pg{grid-template-columns:1fr}}
+.pbar{height:10px;border-radius:99px;background:var(--soft);overflow:hidden;margin:8px 0 4px}.pbar i{display:block;height:100%;width:0;background:var(--br);border-radius:99px;transition:width .25s}
+.ck{display:flex;gap:14px;align-items:flex-start;padding:16px 0;border-bottom:1px solid var(--line);cursor:pointer}.ck input{width:22px;height:22px;margin-top:3px;accent-color:var(--br);flex:none}.ck b{display:block;line-height:1.45}.ck span{color:var(--mu);font-size:15px;line-height:1.55}.ck input:checked+div b{text-decoration:line-through;color:var(--mu)}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+@media (pointer:coarse){.cp{min-height:40px;min-width:48px;padding:8px 14px}.logo{min-height:44px}}</style>
+<meta property="og:url" content="https://developers.itunda.im/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="itunda Developers: docs, API reference and mini apps">
+<meta name="twitter:description" content="Take payments, ship mini apps and connect your shop. Docs, sandbox keys and engineering stories for building on itunda.">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebSite", "name": "itunda Developers", "url": "https://developers.itunda.im", "description": "Take payments, ship mini apps and connect your shop. Docs, sandbox keys and engineering stories for building on itunda.", "publisher": {"@type": "Organization", "name": "itunda", "url": "https://itunda.im"}}</script>
+<style>.skiplink{position:absolute;left:-9999px;top:8px;z-index:100;background:var(--fg,#121216);color:var(--bg,#fff);padding:10px 16px;border-radius:10px;font-weight:700;text-decoration:none}.skiplink:focus{left:8px}</style><style id="vx">
+.totop{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:30;width:48px;height:48px;border-radius:50%;border:1px solid var(--line,#e7e5f3);background:var(--bg,#fff);color:var(--fg,#14121f);box-shadow:0 6px 24px rgba(20,18,31,.16);display:grid;place-items:center;cursor:pointer;opacity:0;visibility:hidden;transform:translateY(8px);transition:opacity .2s,transform .2s,visibility .2s}
+.totop.show{opacity:1;visibility:visible;transform:none}
+.totop:focus-visible{outline:3px solid var(--br,#8F89FF);outline-offset:2px}
+.totop svg{width:20px;height:20px}
+@media (prefers-reduced-motion:reduce){.totop{transition:none}}
+@media print{header,.totop,.skip,.skiplink,#bar{display:none!important}body{background:#fff;color:#000}a{color:inherit}}
+</style><style id="vx4">.env{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:99px;background:var(--tint,#eeedff);color:var(--lk,#5b54d6);font-size:12px;font-weight:800;letter-spacing:.2px}.env:before{content:"";width:7px;height:7px;border-radius:50%;background:var(--ok,#0a8f5b)}.env:focus-visible{outline:3px solid var(--br);outline-offset:2px}@media (max-width:600px){.env{display:none}}@media print{.env{display:none}}</style><style id="vx5">:root{--on:#121216;--ease:cubic-bezier(.2,.8,.2,1)}::selection{background:var(--tint,#EEEDFF);color:var(--fg)}.btn{transition:transform .2s var(--ease),filter .2s var(--ease),background-color .2s var(--ease)}.btn:active{transform:scale(.97)}@media (hover:hover){.btn:hover{filter:brightness(1.04)}}:where(a,button,summary,input,select,textarea,[tabindex]):focus-visible{outline:3px solid var(--br);outline-offset:2px}@media (prefers-reduced-motion:reduce){.btn{transition:none}.btn:active{transform:none}.js .rv{transition:none}}</style><style id="vx7">:root{--mu:#5F6B7A}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--mu:#9AA1AD}}:root[data-theme="dark"]{--mu:#9AA1AD}@media (min-width:861px) and (max-width:1100px){.sb{min-width:0;width:44px;padding:0;justify-content:center;margin-left:auto}.sb span,.sb kbd{display:none}.top a{white-space:nowrap}}@media (min-width:861px) and (max-width:960px){.env{display:none}}</style><style id="tsx">
+.rq,.op{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:8px;font-size:12px;font-weight:800;vertical-align:1px}
+.rq{background:var(--tint);color:var(--lk)}.op{background:var(--soft);color:var(--mu)}
+.mth{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px}
+.mth a{display:block;padding:24px;border-radius:24px;background:var(--soft)}.mth a:hover{background:var(--tint)}
+.mth b{display:block;font-size:20px}.mth code{font-size:13px}.mth span{display:block;margin-top:6px;color:var(--mu);font-size:15px;line-height:1.5}
+@media (max-width:900px){.mth{grid-template-columns:1fr 1fr}}@media (max-width:520px){.mth{grid-template-columns:1fr}}
+</style>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="stylesheet" media="print" onload="this.media='all'" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"><noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"></noscript><style id="real">
+:root:root:root{--bg:#fff;--fg:#333D4B;--hd:#191F28;--mu:#6B7684;--tt:#8B95A1;--line:#E5E8EB;--dv:#F2F4F6;--soft:#F2F4F6;--br:#8F89FF;--lk:#5B54D6;--on:#191F28;--tint:#F6F5FF;--ok:#009467;--wn:#C95C00;--er:#F04452;color-scheme:light}
+body{font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans",sans-serif;font-size:15px;line-height:1.65;font-weight:400;letter-spacing:-.005em;color:var(--fg)}
+h1,h2,h3,b,strong,summary,th,.logo{color:var(--hd)}
+code,pre,kbd{font-family:Menlo,Consolas,Monaco,"Andale Mono","Ubuntu Mono",monospace}
+header{border-bottom:1px solid var(--dv);background:#fff}.bar{height:60px;padding:0 32px;max-width:none;gap:20px}
+.logo{font-size:20px;font-weight:800;letter-spacing:-.04em}.logo i{font-weight:500;color:var(--tt);border-left:1px solid var(--line)}
+.top{margin-left:12px;gap:4px}.top a{padding:6px 12px;border-radius:8px;font-weight:500;font-size:15px;color:#4E5968}.top a:hover{background:rgba(2,32,71,.05);color:var(--hd)}.top a[aria-current]{background:none;color:var(--hd);font-weight:700}
+.sb{height:36px;border-radius:8px;background:var(--soft);min-width:240px;font-size:14px}.sb kbd{border-radius:4px}
+.btn{min-height:40px;padding:0 16px;border-radius:8px;font-weight:600;font-size:15px;letter-spacing:-.01em;transition:background .15s}.btn:hover{background:#8079f7}.btn.lg{min-height:52px;padding:0 24px;border-radius:12px;font-size:16px;font-weight:700}.btn.sec{background:var(--soft);color:#333D4B}.btn.sec:hover{background:var(--line)}
+.env{background:var(--tint)}
+.hero{padding-top:80px;padding-bottom:88px;gap:56px;grid-template-columns:1fr 1.1fr;max-width:1280px;align-items:center}
+h1{font-size:clamp(36px,4.6vw,56px);line-height:1.12;letter-spacing:-.04em;font-weight:800}
+.lead,.hero .lead{font-size:19px;line-height:1.6;color:#4E5968}
+.hero .sb{height:52px;border-radius:12px;margin-top:32px}
+.stat{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin:28px 0 0;font-size:14px;color:var(--tt)}.stat a{font-weight:600;color:#4E5968}.stat a:hover{color:var(--hd)}
+.cb{background:#122440;color:#EEFFFF;border-radius:16px}.cbh{border-bottom:1px solid #23354E;padding:6px 8px 0 10px}.tabs button{color:#6C7989;font-family:inherit;font-weight:600;font-size:13px}.tabs button[aria-selected="true"]{background:transparent;color:#fff;box-shadow:inset 0 -2px 0 #fff}.cp{background:#1B3252;color:#C6D2E0;font-family:inherit}
+pre{font-size:13px;line-height:1.7;color:#EEFFFF}pre .c{color:#C792EA}pre .s{color:#FFB74D}pre .g{color:#546E7A}pre .n{color:#F78C6C}
+h2.s{margin-top:8px;font-size:22px;letter-spacing:-.03em;font-weight:700;margin:0 0 16px}
+.w{max-width:1280px;padding-left:32px;padding-right:32px}
+.cards{gap:12px}.card{background:var(--soft);border-radius:16px;padding:28px;position:relative;min-height:150px;transition:background .15s}.card:hover{background:#E8EBEF}.card b{font-size:20px;letter-spacing:-.025em}.card span{color:var(--mu)}.card::after{content:"→";position:absolute;right:24px;bottom:20px;color:var(--tt);font-size:18px}
+.steps{padding-top:88px}.steps ol{gap:0;border-top:1px solid var(--line)}.steps li{border:0;border-radius:0;padding:28px 28px 28px 0;position:relative}.steps li::before{background:none;color:var(--lk);width:auto;height:auto;display:block;font-size:14px;font-weight:700;margin:0 0 8px;border-radius:0}.steps li b{font-size:19px;letter-spacing:-.02em}
+.two{padding-top:80px}.row{border-color:var(--dv)}
+.band{background:#122440;padding:80px 32px}.band h2{color:#fff;letter-spacing:-.04em}.band p{color:#A9B7C9}.band .btn.sec{background:#1B3252;color:#fff}
+.shell{grid-template-columns:228px minmax(0,1fr) 220px;gap:0 48px;max-width:1440px;padding:0 32px}
+#side{padding:24px 0 40px;border-right:1px solid var(--dv);padding-right:10px}
+.gt{font-size:13px;font-weight:700;color:var(--tt);margin:24px 0 4px}
+#side a,#toc a{padding:0 12px;min-height:35px;display:flex;align-items:center;border-radius:8px;font-size:14px;font-weight:500;color:#4E5968}
+#side a:hover{background:rgba(2,32,71,.05);color:var(--hd)}#side a[aria-current]{background:#F5F6F7;color:var(--hd);font-weight:700}
+#toc a{min-height:0;padding:5px 0 5px 12px;border-left:2px solid var(--dv);border-radius:0;font-size:13px;color:var(--tt)}#toc a.on{border-color:var(--hd);color:var(--hd)}
+main{padding:40px 0 96px}.crumb{color:var(--tt);font-weight:500;font-size:13px}
+article h1{font-size:clamp(30px,4vw,40px);letter-spacing:-.035em;font-weight:800}
+article h2{font-size:26px;letter-spacing:-.03em;font-weight:700;margin:56px 0 12px}
+article p,article li{color:var(--fg)}
+p code,li code,td code{background:rgba(2,32,71,.05);border-radius:4px;padding:2px 5px;color:#333D4B}
+table{font-size:14px}th{font-size:12px;font-weight:600;color:var(--tt);border-bottom:1px solid var(--line);text-transform:none}td{border-bottom:1px solid var(--dv)}
+.ep{background:var(--soft);border-radius:8px}.m{border-radius:4px;font-size:12px;font-family:Menlo,Consolas,monospace}
+.note{background:var(--tint);border-radius:12px;color:#333D4B}.note b{color:var(--lk)}
+.rq{border-radius:4px;background:#E7E5FF;color:#4A43C4;font-size:12px}.op{border-radius:4px;font-size:12px}
+.mth a{border-radius:12px}
+.try,.kv{border-radius:12px;border-color:var(--line)}.tf input,.tf select{border-radius:8px;font-family:Menlo,Consolas,monospace;font-size:13px}
+.pg a{border-radius:12px}
+.pbar{height:8px}
+dialog{border-radius:16px;box-shadow:0 16px 40px rgba(0,12,30,.24)}
+footer{border-top:1px solid var(--dv);background:var(--soft);padding:56px 32px 64px;color:var(--tt);font-size:13px;line-height:21px}
+.fw{max-width:1280px;margin:0 auto;display:grid!important;grid-template-columns:1.6fr repeat(3,1fr);gap:32px}.fc b{display:block;color:#4E5968;margin-bottom:8px;font-size:13px}.fc a{display:block;padding:3px 0;color:var(--tt)}.fc a:hover{color:var(--hd)}.fc p{margin:0 0 6px}
+.fl2{max-width:1280px;margin:32px auto 0;padding-top:20px;border-top:1px solid var(--line)}
+@media (max-width:1100px){.shell{grid-template-columns:228px minmax(0,1fr)}}
+.hero>*{min-width:0}.cb{max-width:100%}
+@media (max-width:860px){.sb{min-width:0;width:44px;justify-content:center}.hero .sb{width:100%;justify-content:flex-start}.hero .sb span{display:inline}.bar{padding:0 16px}.hero{padding-top:40px;padding-bottom:40px;gap:32px}.w{padding-left:20px;padding-right:20px}.steps ol{border-top:0}.steps li{border-top:1px solid var(--line);padding-right:0}.fw{grid-template-columns:1fr 1fr!important}footer{padding:40px 20px}.shell{padding:0 20px;grid-template-columns:minmax(0,1fr)}#side{border:0}}
+</style><style id="v-touch">@media (pointer:coarse),(max-width:900px){footer a,.fg a{padding:11px 0}.leg a,.note a,p a[href^="http"],p a[href^="mailto"]{display:inline-block;padding:12px 0}.btn.sm{min-height:44px}input[type=range]{height:44px}}@media (pointer:coarse),(max-width:900px){.cbh .tabs button,.cp{min-height:44px;padding-inline:16px}.card,.stat a{min-height:44px}.logo{min-height:44px}nav a{min-height:44px;display:flex;align-items:center}}@media (pointer:coarse),(max-width:900px){.bar .sb{min-height:44px}.fc a{min-height:44px;display:flex;align-items:center}main p>a:only-child,.w>a:not([class]){display:inline-flex;align-items:center;min-height:44px}}</style><script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Is there a sandbox?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Test keys never move real money, and you can simulate paid, failed and refunded payments."}}, {"@type": "Question", "name": "Which currency?", "acceptedAnswer": {"@type": "Answer", "text": "Rwandan francs (RWF), whole numbers only."}}, {"@type": "Question", "name": "Which languages do docs and apps support?", "acceptedAnswer": {"@type": "Answer", "text": "English, Kinyarwanda and Français, matching the itunda app."}}, {"@type": "Question", "name": "Can I show ads in a mini app?", "acceptedAnswer": {"@type": "Answer", "text": "Ads on itunda are always labelled and never appear near balances, Send or Pay steps, or Messages. Mini apps follow the same rule."}}, {"@type": "Question", "name": "When do I get live keys?", "acceptedAnswer": {"@type": "Answer", "text": "After a short review of your integration. Test everything in the sandbox first."}}]}</script>
+</head>
+<body><noscript><p style="margin:0;padding:12px 16px;background:#fff4d6;color:#3a2e00;font:600 15px/1.5 system-ui,sans-serif">The docs need JavaScript for search, code samples and the sandbox. Please turn it on to see everything.</p></noscript><a class="skiplink" href="#main">Skip to content</a>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><mask id="itm" maskUnits="userSpaceOnUse" x="-45" y="-50" width="90" height="90"><rect x="-45" y="-50" width="90" height="90" fill="#fff"/><g fill="none" stroke="#000" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 -9.9C3.0 -9.9 4.3 -9.7 5.2 -9.6C6.1 -9.5 7.0 -9.3 7.9 -9.1C8.8 -8.9 9.7 -8.7 10.5 -8.4C11.3 -8.1 12.2 -7.8 13.0 -7.5C13.8 -7.2 14.6 -6.8 15.3 -6.4C16.1 -6.0 16.8 -5.6 17.5 -5.2C18.2 -4.8 18.9 -4.3 19.5 -3.8C20.2 -3.3 21.0 -2.6 21.3 -2.3"/><path d="M-9.8 2.8C-10.0 2.4 -10.6 1.1 -10.9 0.3C-11.3 -0.6 -11.6 -1.4 -11.8 -2.3C-12.1 -3.2 -12.3 -4.0 -12.5 -4.9C-12.7 -5.8 -12.9 -6.6 -13.0 -7.5C-13.1 -8.3 -13.2 -9.2 -13.2 -10.0C-13.3 -10.9 -13.3 -11.7 -13.3 -12.6C-13.2 -13.4 -13.2 -14.2 -13.1 -15.0C-13.0 -15.8 -12.7 -16.9 -12.7 -17.3"/><path d="M7.3 7.1C7.1 7.5 6.3 8.6 5.7 9.3C5.1 10.1 4.5 10.7 3.9 11.4C3.3 12.1 2.7 12.7 2.0 13.3C1.4 13.9 0.7 14.5 0.0 15.0C-0.7 15.5 -1.4 16.0 -2.1 16.5C-2.8 16.9 -3.5 17.4 -4.3 17.8C-5.0 18.1 -5.7 18.5 -6.5 18.8C-7.2 19.1 -8.3 19.5 -8.7 19.6"/></g></mask><symbol id="itl" viewBox="-45 -40 90 90"><g transform="translate(0 5)" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"><path d="M0.0 -10.0C2.2 -10.0 4.4 -9.8 6.5 -9.4C8.6 -9.0 10.7 -8.4 12.6 -7.7C14.5 -6.9 16.3 -6.0 18.0 -4.9C19.6 -3.8 21.1 -2.6 22.3 -1.3C23.6 -0.1 24.6 1.4 25.4 2.8C26.2 4.2 26.8 5.7 27.1 7.1C27.4 8.5 27.4 9.9 27.3 11.3C27.1 12.6 26.6 13.9 26.0 15.0C25.3 16.1 24.4 17.2 23.4 18.0C22.3 18.8 21.0 19.5 19.7 19.9C18.3 20.4 16.7 20.6 15.1 20.6C13.5 20.6 11.7 20.4 10.0 20.0C8.3 19.6 6.5 18.9 4.7 18.0C3.0 17.1 1.3 16.0 -0.3 14.7C-1.9 13.4 -3.5 11.9 -4.9 10.3C-6.3 8.7 -7.6 6.9 -8.7 5.0C-9.7 3.1 -10.7 1.1 -11.4 -0.9C-12.1 -2.9 -12.6 -5.0 -12.9 -7.1C-13.2 -9.1 -13.3 -11.2 -13.2 -13.1C-13.1 -15.0 -12.8 -16.9 -12.3 -18.7C-11.8 -20.4 -11.1 -22.0 -10.3 -23.4C-9.5 -24.8 -8.5 -26.0 -7.4 -27.0C-6.3 -28.0 -5.1 -28.7 -3.9 -29.2C-2.6 -29.7 -1.3 -30.0 0 -30.0C1.3 -30.0 2.6 -29.7 3.9 -29.2C5.1 -28.7 6.3 -28.0 7.4 -27.0C8.5 -26.0 9.5 -24.8 10.3 -23.4C11.1 -22.0 11.8 -20.4 12.3 -18.7C12.8 -16.9 13.1 -15.0 13.2 -13.1C13.3 -11.2 13.2 -9.1 12.9 -7.1C12.6 -5.0 12.1 -2.9 11.4 -0.9C10.7 1.1 9.7 3.1 8.7 5.0C7.6 6.9 6.3 8.7 4.9 10.3C3.5 11.9 1.9 13.4 0.3 14.7C-1.3 16.0 -3.0 17.1 -4.7 18.0C-6.5 18.9 -8.3 19.6 -10.0 20.0C-11.7 20.4 -13.5 20.6 -15.1 20.6C-16.7 20.6 -18.3 20.4 -19.7 19.9C-21.0 19.5 -22.3 18.8 -23.4 18.0C-24.4 17.2 -25.3 16.1 -26.0 15.0C-26.6 13.9 -27.1 12.6 -27.3 11.3C-27.4 9.9 -27.4 8.5 -27.1 7.1C-26.8 5.7 -26.2 4.2 -25.4 2.8C-24.6 1.4 -23.6 -0.1 -22.3 -1.3C-21.1 -2.6 -19.6 -3.8 -18.0 -4.9C-16.3 -6.0 -14.5 -6.9 -12.6 -7.7C-10.7 -8.4 -8.6 -9.0 -6.5 -9.4C-4.4 -9.8 -2.2 -10.0 0 -10.0Z" mask="url(#itm)"/><path d="M2.5 -9.9C3.0 -9.9 4.3 -9.7 5.2 -9.6C6.1 -9.5 7.0 -9.3 7.9 -9.1C8.8 -8.9 9.7 -8.7 10.5 -8.4C11.3 -8.1 12.2 -7.8 13.0 -7.5C13.8 -7.2 14.6 -6.8 15.3 -6.4C16.1 -6.0 16.8 -5.6 17.5 -5.2C18.2 -4.8 18.9 -4.3 19.5 -3.8C20.2 -3.3 21.0 -2.6 21.3 -2.3"/><path d="M-9.8 2.8C-10.0 2.4 -10.6 1.1 -10.9 0.3C-11.3 -0.6 -11.6 -1.4 -11.8 -2.3C-12.1 -3.2 -12.3 -4.0 -12.5 -4.9C-12.7 -5.8 -12.9 -6.6 -13.0 -7.5C-13.1 -8.3 -13.2 -9.2 -13.2 -10.0C-13.3 -10.9 -13.3 -11.7 -13.3 -12.6C-13.2 -13.4 -13.2 -14.2 -13.1 -15.0C-13.0 -15.8 -12.7 -16.9 -12.7 -17.3"/><path d="M7.3 7.1C7.1 7.5 6.3 8.6 5.7 9.3C5.1 10.1 4.5 10.7 3.9 11.4C3.3 12.1 2.7 12.7 2.0 13.3C1.4 13.9 0.7 14.5 0.0 15.0C-0.7 15.5 -1.4 16.0 -2.1 16.5C-2.8 16.9 -3.5 17.4 -4.3 17.8C-5.0 18.1 -5.7 18.5 -6.5 18.8C-7.2 19.1 -8.3 19.5 -8.7 19.6"/></g></symbol></defs></svg>
+<header><div class="bar">
+<button type="button" class="menu" id="mb" aria-label="Open menu">≡</button>
+<a class="logo" href="#home" aria-label="itunda developers home"><svg viewBox="0 0 90 90" aria-hidden="true"><use href="#itl" width="90" height="90"/></svg>developers</a><a class="env" href="#console" title="You are using test keys. Nothing here moves real money.">Sandbox</a>
+<nav class="top" aria-label="Main"><a href="#quickstart" data-t="docs">Docs</a><a href="#api" data-t="api">API reference</a><a href="#mini" data-t="mini">Mini apps</a><a href="#blog" data-t="blog">Tech blog</a></nav>
+<button type="button" class="sb" data-search aria-label="Search docs"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span>Search docs</span><kbd class="ks">/</kbd></button>
+<a class="btn" href="#console">Get API keys</a>
+</div></header>
+
+<div id="home">
+<div class="w hero"><div>
+<h1>Take your first payment in five minutes.</h1>
+<p class="lead">Docs, sandbox keys and mini apps for building on itunda. Made by the team in Kigali.</p>
+<button type="button" class="sb" data-search><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span><span class="sl">Search payments, webhooks, mini apps</span><span class="ss">Search the docs</span></span><kbd class="ks">/</kbd></button>
+<div class="cta"><a class="btn lg" href="#quickstart">Start the quickstart</a><a class="btn lg sec" href="#mini">Build a mini app</a></div>
+<p class="stat"><a href="#status"><i class="dot"></i>All systems normal</a><span>API v1</span><span>Preview docs. Endpoints and names are illustrative.</span></p>
+</div>
+<div class="cb"><div class="cbh"><div class="tabs"></div><button type="button" class="cp">Copy</button></div>
+<pre tabindex="0" data-l="Request">curl "https://api.itunda.im/v1/payments" \
+  -H "Authorization: Bearer test_sk_..." \
+  -H "Idempotency-Key: order-1042" \
+  -d amount=7500 \
+  -d currency=RWF \
+  -d method=qr</pre>
+<pre tabindex="0" data-l="Response">{
+  "id": "pay_9f2c",
+  "status": "pending",
+  "amount": 7500,
+  "currency": "RWF",
+  "qr_url": "https://pay.itunda.im/q/9f2c"
+}</pre></div></div>
+
+<div class="w"><h2 class="s">Start with</h2><div class="cards">
+<a class="card big" href="#pay-create"><i class="ti"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 14h3v3M21 14v.01M14 21h.01M17 21h4v-4"/></svg></i><em class="tx"><b>Pay API</b><span>Accept QR, till number, card and MoMo payments online and in store. Refunds, webhooks and split bills.</span></em></a>
+<a class="card" href="#mini"><i class="ti"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2.5" width="14" height="19" rx="3"/><path d="M10 18.5h4"/></svg></i><em class="tx"><b>Mini apps</b><span>Ship a light web app inside itunda with sign-in, checkout and push built in.</span></em></a>
+<a class="card" href="#biz"><i class="ti"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l1.5-5h15L21 9v1a3 3 0 01-6 0 3 3 0 01-6 0 3 3 0 01-6 0V9z"/><path d="M5 13v8h14v-8"/></svg></i><em class="tx"><b>Business API</b><span>Connect your POS and menu. Sync sales, stock and payouts.</span></em></a>
+<a class="card" href="#inv"><i class="ti"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></i><em class="tx"><b>Invest API</b><span>Quotes for Rwandan shares and Treasury bills, plus orders.</span></em></a>
+<a class="card" href="#bills"><i class="ti"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3z"/><path d="M9 8h6M9 12h6"/></svg></i><em class="tx"><b>Bills and transit</b><span>Electricity, water, taxes, school fees, airtime and bus fares.</span></em></a></div></div>
+
+<div class="w"><h2 class="s">Pick how your customer pays</h2><div class="mth">
+<a href="#pay-create"><b>QR</b><code>method=qr</code><span>Show a code. The customer scans it with itunda Pay. You get a <code>qr_url</code>.</span></a>
+<a href="#pay-create"><b>Till number</b><code>method=till</code><span>For counters without a QR. The customer types a 6-digit till number.</span></a>
+<a href="#pay-create"><b>Card</b><code>method=card</code><span>The customer pays with their itunda card.</span></a>
+<a href="#pay-create"><b>MoMo</b><code>method=momo</code><span>The customer approves the payment with MoMo.</span></a></div>
+<p class="note" style="margin-top:16px"><b>Test mode.</b> Test keys start with <code>test_</code> and never move real money. Live keys are issued after review.</p></div>
+
+<div class="w steps"><h2 class="s">From zero to your first payment</h2><ol>
+<li><b>Get your keys</b><span>Copy the sample test keys, or open the console for keys of your own.</span><a href="#quickstart">Open the quickstart</a></li>
+<li><b>Create a payment</b><span>Send amount and method. You get back a QR code to show the customer.</span><a href="#pay-create">Create a payment</a></li>
+<li><b>Confirm on your server</b><span>Check the amount, confirm the payment and listen for the webhook.</span><a href="#checkout">Payment window (SDK)</a></li></ol></div>
+
+<div class="w two"><div><h2 class="s">What’s new</h2>
+<a class="row" href="#changelog"><div><b>Refunds can be partial</b><small>Pay API · Sample entry</small></div></a>
+<a class="row" href="#changelog"><div><b>Webhook retries now run for 24 hours</b><small>Webhooks · Sample entry</small></div></a>
+<a class="row" href="#changelog"><div><b>Mini app review in 2 working days</b><small>Mini apps · Sample entry</small></div></a></div>
+<div><h2 class="s">From the tech blog</h2>
+<a class="row" href="#blog"><div><b>Payments that survive a bad network</b><small>Reliability · Sample post</small></div></a>
+<a class="row" href="#blog"><div><b>A payment code that refreshes every minute</b><small>Security · Sample post</small></div></a>
+<a class="row" href="#blog"><div><b>One app, three languages</b><small>Localisation · Sample post</small></div></a></div></div>
+
+<section class="band"><h2>Get your sandbox keys.</h2><p>Developer access is opening soon. Request access and we will send keys first.</p><div class="cta"><a class="btn lg" href="mailto:developers@itunda.im?subject=Developer%20access">Request access</a><a class="btn lg sec" href="#quickstart">Read the quickstart</a></div></section>
+</div>
+
+<div class="shell" hidden>
+<nav id="side" aria-label="Docs"></nav>
+<main id="main">
+
+<article data-page="quickstart" hidden>
+<h1>Quickstart</h1>
+<p class="lead">Create a payment, show the QR code and get a webhook when it is paid. Amounts are in RWF with no decimals.</p>
+<h2>1. Get a test key</h2>
+<p>Shared sample keys work for your first calls. Open the <a href="#console" style="color:var(--lk);font-weight:700">console</a> for keys of your own, with test logs and webhooks. Test keys start with <code>test_</code> and never move real money.</p>
+<div class="cb"><div class="cbh"><div class="tabs"></div><button type="button" class="cp">Copy</button></div><pre tabindex="0" data-l="Sample test keys">client key  test_ck_Dm8zN3pQe2vL4xKa
+secret key  test_sk_Qe7vN2xDk4mZp9Lr</pre></div>
+<div class="note"><b>Keep the secret key private.</b> Use the client key in the browser and the secret key only on your server.</div>
+<h2>2. Create a payment</h2>
+<div class="cb"><div class="cbh"><div class="tabs"></div><button type="button" class="cp">Copy</button></div>
+<pre tabindex="0" data-l="cURL">curl "https://api.itunda.im/v1/payments" \
+  -H "Authorization: Bearer test_sk_..." \
+  -H "Idempotency-Key: order-1042" \
+  -d amount=7500 \
+  -d currency=RWF \
+  -d method=qr</pre>
+<pre tabindex="0" data-l="JavaScript">const res = await fetch("https://api.itunda.im/v1/payments", {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer test_sk_...",
+    "Idempotency-Key": "order-1042",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({ amount: 7500, currency: "RWF", method: "qr" })
+});
+const pay = await res.json(); // show pay.qr_url</pre>
+<pre tabindex="0" data-l="Python">import requests
+
+res = requests.post(
+    "https://api.itunda.im/v1/payments",
+    headers={"Authorization": "Bearer test_sk_...", "Idempotency-Key": "order-1042"},
+    json={"amount": 7500, "currency": "RWF", "method": "qr"},
+)
+pay = res.json()  # show pay["qr_url"]</pre></div>
+<p>The response has <code>status: "pending"</code> and a <code>qr_url</code>. Show it as a QR code on your screen or receipt.</p>
+<h2>3. Simulate a payment</h2>
+<p>In the sandbox, open the <code>qr_url</code> and choose <b>Paid</b>, <b>Failed</b> or <b>Refunded</b>. Your webhook receives the matching event.</p>
+<div class="note"><b>Next.</b> Verify webhook signatures before you ship. See <a href="#webhooks" style="color:var(--lk);font-weight:700">Webhooks</a>.</div>
+</article>
+
+<article data-page="auth" hidden>
+<h1>Authentication</h1>
+<p class="lead">Every request uses a secret key in the <code>Authorization</code> header. Keep keys on your server.</p>
+<h2>API keys</h2>
+<div class="tw"><table><tr><th>Prefix</th><th>Mode</th><th>Use</th></tr>
+<tr><td><code>test_sk_</code></td><td>Sandbox</td><td>Fake money. Safe for development.</td></tr>
+<tr><td><code>live_sk_</code></td><td>Live</td><td>Real payments. Issued after review.</td></tr></table></div>
+<div class="cb"><div class="cbh"><div class="tabs"></div><button type="button" class="cp">Copy</button></div><pre tabindex="0" data-l="Header">Authorization: Bearer test_sk_...</pre></div>
+<h2>Idempotency</h2>
+<p>Send an <code>Idempotency-Key</code> on every <code>POST</code>. If a request times out, retry with the same key and you will get the original result, not a second charge. Keys stay valid for 15 days.</p>
+<h2>Rate limits</h2>
+<p>Each key can make 100 requests per second. Over the limit you get <code>429</code> and a <code>Retry-After</code> header.</p>
+</article>
+
+<article data-page="pay-create" data-wide hidden>
+<h1>Create a payment</h1>
+<p class="lead">Start a payment for a customer to approve in the itunda app or with MoMo.</p>
+<div class="ep"><span class="m post">POST</span><code>/v1/payments</code></div>
+<div class="split"><div>
+<h2>Request</h2>
+<div class="tw"><table><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>amount</code></td><td>integer</td><td>Amount in RWF, no decimals.<span class="rq">Required</span></td></tr>
+<tr><td><code>currency</code></td><td>string</td><td>Always <code>RWF</code>.<span class="rq">Required</span></td></tr>
+<tr><td><code>method</code></td><td>string</td><td><code>qr</code>, <code>till</code>, <code>card</code> or <code>momo</code>.<span class="rq">Required</span></td></tr>
+<tr><td><code>reference</code></td><td>string</td><td>Your order ID. Shown on receipts.<span class="op">Optional</span></td></tr>
+<tr><td><code>return_url</code></td><td>string</td><td>Where to send the customer after paying.<span class="op">Optional</span></td></tr></table></div>
+<h2>Response</h2>
+<div class="tw"><table><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td>string</td><td>Payment ID. Starts with <code>pay_</code>.</td></tr>
+<tr><td><code>status</code></td><td>string</td><td><code>pending</code>, <code>paid</code>, <code>failed</code> or <code>expired</code>.</td></tr>
+<tr><td><code>qr_url</code></td><td>string</td><td>Show it as a QR code. Present for <code>qr</code> payments.</td></tr>
+<tr><td><code>expires_at</code></td><td>string</td><td>When an unpaid payment expires.</td></tr></table></div>
+<p>Use <a href="#webhooks" style="color:var(--lk);font-weight:700">webhooks</a> to learn when a payment becomes <code>paid</code>.</p>
+</div>
+<div class="side"><div class="cb"><div class="cbh"><div class="tabs"></div><button type="button" class="cp">Copy</button></div>
+<pre tabindex="0" data-l="cURL">curl "https://api.itunda.im/v1/payments" \
+  -H "Authorization: Bearer test_sk_..." \
+  -H "Idempotency-Key: order-1042" \
+  -d amount=7500 \
+  -d currency=RWF \
+  -d method=qr</pre>
+<pre tabindex="0" data-l="JavaScript">const res = await fetch("https://api.itunda.im/v1/payments", {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer test_sk_...",
+    "Idempotency-Key": "order-1042",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({ amount: 7500, currency: "RWF", method: "qr" })
+});</pre>
+<pre tabindex="0" data-l="Python">import requests
+
+res = requests.post(
+    "https://api.itunda.im/v1/payments",
+    headers={"Authorization": "Bearer test_sk_...", "Idempotency-Key": "order-1042"},
+    json={"amount": 7500, "currency": "RWF", "method": "qr"},
+)
+pay = res.json()  # show pay["qr_url"]</pre>
+<pre tabindex="0" data-l="PHP">$ch = curl_init("https://api.itunda.im/v1/payments");
+curl_setopt_array($ch, [
+  CURLOPT_POST => true,
+  CURLOPT_HTTPHEADER => ["Authorization: Bearer test_sk_...", "Idempotency-Key: order-1042"],
+  CURLOPT_POSTFIELDS => ["amount" => 7500, "currency" => "RWF", "method" => "qr"],
+  CURLOPT_RETURNTRANSFER => true,
+]);
+$pay = json_decode(curl_exec($ch), true);</pre>
+<pre tabindex="0" data-l="201 Created">{
+  "id": "pay_9f2c",
+  "status": "pending",
+  "amount": 7500,
+  "currency": "RWF",
+  "method": "qr",
+  "qr_url": "https://pay.itunda.im/q/9f2c",
+  "expires_at": "2026-10-24T10:15:00Z"
+}</pre></div></div></div>
+<h2>Try it</h2>
+<p>Send a request to the sandbox from here. Nothing on this page moves money.</p>
+<div class="try"><div class="tf">
+<label>amount (RWF)<input id="ta" type="number" value="7500"></label>
+<label>method<select id="tm"><option>qr</option><option>till</option><option>card</option><option>momo</option></select></label>
+<label style="grid-column:1/-1">Idempotency-Key<input id="tk" value="order-1042"></label>
+<button class="btn" type="button" id="tgo">Send test request</button></div>
+<div class="cb"><div class="cbh"><div class="tabs"></div><button type="button" class="cp">Copy</button></div><pre tabindex="0" data-l="Request" id="trq">x</pre><pre tabindex="0" data-l="Response" id="trs">// Send the request to see a response</pre></div></div>
+<h2>Refund a payment</h2>
+<div class="ep"><span class="m post">POST</span><code>/v1/payments/{id}/refunds</code></div>
+<p>Send an optional <code>amount</code> for a partial refund. Leave it out to refund the full payment. Money returns to the customer’s Bank balance.</p>
+</article>
+
+<article data-page="webhooks" data-wide hidden>
+<h1>Webhooks</h1>
+<p class="lead">itunda sends a signed <code>POST</code> to your server when something changes, so you never need to poll.</p>
+<div class="split"><div>
+<h2>Events</h2>
+<div class="tw"><table><tr><th>Type</th><th>When</th></tr>
+<tr><td><code>payment.paid</code></td><td>The customer approved and money arrived.</td></tr>
+<tr><td><code>payment.failed</code></td><td>The attempt was declined or cancelled.</td></tr>
+<tr><td><code>payment.expired</code></td><td>The QR code timed out.</td></tr>
+<tr><td><code>refund.created</code></td><td>A refund was issued.</td></tr></table></div>
+<h2>Verify the signature</h2>
+<p>Compute an HMAC-SHA256 of the raw request body with your webhook secret and compare it to the <code>Itunda-Signature</code> header.</p>
+<h2>Retries</h2>
+<p>Reply with any <code>2xx</code> within 10 seconds. Otherwise we retry with growing gaps for 24 hours.</p>
+</div>
+<div class="side"><div class="cb"><div class="cbh"><div class="tabs"></div><button type="button" class="cp">Copy</button></div><pre tabindex="0" data-l="Payload">{
+  "type": "payment.paid",
+  "data": { "id": "pay_9f2c", "amount": 7500, "currency": "RWF" }
+}</pre></div>
+<div class="cb" style="margin-top:16px"><div class="cbh"><div class="tabs"></div><button type="button" class="cp">Copy</button></div><pre tabindex="0" data-l="Node.js">import crypto from "node:crypto";
+
+function verify(raw, signature, secret) {
+  const mac = crypto.createHmac("sha256", secret).update(raw).digest("hex");
+  return crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(signature));
+}</pre>
+<pre tabindex="0" data-l="Python">import hmac, hashlib
+
+def verify(raw, signature, secret):
+    mac = hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(mac, signature)</pre></div></div></div>
+</article>
+
+<article data-page="errors" hidden>
+<h1>Errors</h1>
+<p class="lead">Errors use standard HTTP codes and a JSON body with a stable <code>code</code> you can match on.</p>
+<div class="cb"><div class="cbh"><div class="tabs"></div><button type="button" class="cp">Copy</button></div><pre tabindex="0" data-l="400 Bad Request">{
+  "error": {
+    "code": "amount_invalid",
+    "message": "amount must be a whole number of RWF."
+  }
+}</pre></div>
+<div class="tw"><table><tr><th>HTTP</th><th>Code</th><th>What to do</th></tr>
+<tr><td>400</td><td><code>amount_invalid</code></td><td>Send a positive whole number.</td></tr>
+<tr><td>401</td><td><code>key_invalid</code></td><td>Check the key and its mode.</td></tr>
+<tr><td>409</td><td><code>idempotency_conflict</code></td><td>The key was used with different parameters. Use a new key.</td></tr>
+<tr><td>429</td><td><code>rate_limited</code></td><td>Wait for <code>Retry-After</code> seconds.</td></tr>
+<tr><td>500</td><td><code>server_error</code></td><td>Retry with the same idempotency key.</td></tr></table></div>
+</article>
+
+<article data-page="console" hidden>
+<h1>Developer console</h1>
+<p class="lead">Manage keys, read test logs and set up webhooks in one place. This is a preview of the console.</p>
+<div class="seg" role="group" aria-label="Mode"><span class="on">Test</span><span>Live (opens after review)</span></div>
+<h2>API keys</h2>
+<div class="kv"><b>Client key</b><code>test_ck_Dm8zN3pQe2vL4xKa</code><button type="button" data-copy="test_ck_Dm8zN3pQe2vL4xKa">Copy</button></div>
+<div class="kv"><b>Secret key</b><code id="sk">test_sk_••••••••••••••••</code><button type="button" id="skb">Reveal</button></div>
+<p>Use the client key in the browser and the secret key only on your server. If a key leaks, roll it here and the old one stops working at once.</p>
+<h2>Test logs</h2>
+<div class="tw"><table><thead><tr><th>Time</th><th>Request</th><th>Status</th><th>ID</th></tr></thead><tbody>
+<tr><td>10:02:11</td><td><span class="m post">POST</span> <code>/v1/payments</code></td><td>201</td><td><code>pay_9f2c</code></td></tr>
+<tr><td>10:02:48</td><td><span class="m post">POST</span> <code>/v1/payments/confirm</code></td><td>200</td><td><code>pay_9f2c</code></td></tr>
+<tr><td>10:05:03</td><td><span class="m get">GET</span> <code>/v1/payments/pay_9f2c</code></td><td>200</td><td><code>pay_9f2c</code></td></tr>
+<tr><td>10:07:40</td><td><span class="m post">POST</span> <code>/v1/payments</code></td><td>400</td><td><code>amount_invalid</code></td></tr></tbody></table></div>
+<h2>Webhooks</h2>
+<div class="kv"><b><span class="dot"></span>Active</b><code>https://shop.example.rw/hooks/itunda</code><button type="button" id="whb">Send test event</button></div>
+<p>This endpoint receives <code>payment.paid</code>, <code>payment.failed</code>, <code>payment.expired</code> and <code>refund.created</code>. Recent deliveries:</p>
+<div class="tw"><table id="wl"><thead><tr><th>Time</th><th>Event</th><th>Your server replied</th></tr></thead><tbody>
+<tr><td>10:02:49</td><td><code>payment.paid</code></td><td>200 OK · 112 ms</td></tr></tbody></table></div>
+</article>
+
+<article data-page="checkout" data-wide hidden>
+<h1>Payment window (SDK)</h1>
+<p class="lead">Open the itunda payment window from your page. The customer approves in the app, then you confirm the payment on your server.</p>
+<div class="split"><div>
+<h2>Add the SDK</h2>
+<div class="cb"><div class="cbh"><div class="tabs"></div><button type="button" class="cp">Copy</button></div><pre tabindex="0" data-l="HTML">&lt;script src="https://js.itunda.im/v1"&gt;&lt;/script&gt;</pre></div>
+<h2>Request a payment</h2>
+<div class="tw"><table><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>method</code></td><td>string</td><td><code>QR</code>, <code>TILL</code>, <code>CARD</code> or <code>MOMO</code>.</td></tr>
+<tr><td><code>amount</code></td><td>integer</td><td>Amount in RWF.</td></tr>
+<tr><td><code>orderId</code></td><td>string</td><td>Unique per order, 6 to 64 characters.</td></tr>
+<tr><td><code>orderName</code></td><td>string</td><td>Shown to the customer in the window.</td></tr>
+<tr><td><code>successUrl</code>, <code>failUrl</code></td><td>string</td><td>Must include the origin, for example <code>https://shop.example.rw/success</code>.</td></tr></table></div>
+<h2>Handle the redirect</h2>
+<p>After the customer approves, itunda sends them to <code>successUrl</code> with <code>paymentKey</code>, <code>orderId</code> and <code>amount</code> in the query string. The payment is not complete yet. Confirm it from your server.</p>
+<h2>Confirm on your server</h2>
+<div class="ep"><span class="m post">POST</span><code>/v1/payments/confirm</code></div>
+<div class="note"><b>Check the amount.</b> Compare the amount in the redirect with the price in your own database before you confirm. Never trust the browser.</div>
+<p>Confirm within 10 minutes, or the payment is cancelled and the customer is not charged.</p>
+</div>
+<div class="side"><p class="gt" style="padding:0">In the browser</p>
+<div class="cb"><div class="cbh"><div class="tabs"></div><button type="button" class="cp">Copy</button></div><pre tabindex="0" data-l="JavaScript">const itunda = ItundaPay("test_ck_Dm8zN3pQe2vL4xKa");
+
+await itunda.requestPayment({
+  method: "QR",
+  amount: 7500,
+  orderId: "order-1042",
+  orderName: "Two croissants",
+  successUrl: "https://shop.example.rw/success",
+  failUrl: "https://shop.example.rw/fail"
+});</pre></div>
+<p class="gt" style="padding:0;margin-top:24px">On your server</p>
+<div class="cb"><div class="cbh"><div class="tabs"></div><button type="button" class="cp">Copy</button></div><pre tabindex="0" data-l="cURL">curl "https://api.itunda.im/v1/payments/confirm" \
+  -H "Authorization: Bearer test_sk_..." \
+  -d paymentKey=pk_9f2c \
+  -d orderId=order-1042 \
+  -d amount=7500</pre>
+<pre tabindex="0" data-l="JavaScript">const res = await fetch("https://api.itunda.im/v1/payments/confirm", {
+  method: "POST",
+  headers: { "Authorization": "Bearer test_sk_...", "Content-Type": "application/json" },
+  body: JSON.stringify({ paymentKey: "pk_9f2c", orderId: "order-1042", amount: 7500 })
+});</pre>
+<pre tabindex="0" data-l="Python">res = requests.post(
+    "https://api.itunda.im/v1/payments/confirm",
+    headers={"Authorization": "Bearer test_sk_..."},
+    json={"paymentKey": "pk_9f2c", "orderId": "order-1042", "amount": 7500},
+)</pre>
+<pre tabindex="0" data-l="PHP">$ch = curl_init("https://api.itunda.im/v1/payments/confirm");
+curl_setopt_array($ch, [
+  CURLOPT_POST => true,
+  CURLOPT_HTTPHEADER => ["Authorization: Bearer test_sk_..."],
+  CURLOPT_POSTFIELDS => ["paymentKey" => "pk_9f2c", "orderId" => "order-1042", "amount" => 7500],
+  CURLOPT_RETURNTRANSFER => true,
+]);
+$out = curl_exec($ch);</pre></div></div></div>
+</article>
+
+<article data-page="mini" hidden>
+<h1>Build a mini app</h1>
+<p class="lead">Reach itunda users without an install. Your web app opens inside itunda, already signed in and ready to pay.</p>
+<h2>Configure</h2>
+<div class="cb"><div class="cbh"><div class="tabs"></div><button type="button" class="cp">Copy</button></div><pre tabindex="0" data-l="miniapp.config.json">{
+  "name": "Kigali Bakes",
+  "permissions": ["profile", "pay"],
+  "languages": ["en", "rw", "fr"],
+  "entry": "https://bakes.example.rw"
+}</pre></div>
+<h2>Sign in and pay</h2>
+<div class="cb"><div class="cbh"><div class="tabs"></div><button type="button" class="cp">Copy</button></div><pre tabindex="0" data-l="JavaScript">import { itunda } from "@itunda/mini";
+
+const user = await itunda.signIn({ scope: ["profile"] });
+const pay = await itunda.pay({ amount: 4500, currency: "RWF" });</pre></div>
+<h2>Permissions</h2>
+<div class="tw"><table><tr><th>Permission</th><th>Gives you</th></tr>
+<tr><td><code>profile</code></td><td>Name and a stable user ID. Ask only for what you need.</td></tr>
+<tr><td><code>pay</code></td><td>One-tap checkout, no card form.</td></tr>
+<tr><td><code>push</code></td><td>Notifications the user has agreed to.</td></tr></table></div>
+<h2>Review and launch</h2>
+<p>Submit from the console. Reviews take about 2 working days. Keep pages light: they should load fast on slow networks and small phones.</p>
+<div class="note"><b>Ads.</b> Ads on itunda are always labelled and never appear near balances, Send or Pay steps, or Messages. Mini apps follow the same rule.</div>
+</article>
+
+<article data-page="api" hidden>
+<h1>API reference</h1>
+<p class="lead">Every endpoint on one page. Select an endpoint for its parameters and examples.</p>
+<h2>Base URL and versions</h2>
+<div class="cb"><div class="cbh"><div class="tabs"></div><button type="button" class="cp">Copy</button></div><pre tabindex="0" data-l="Base URL">https://api.itunda.im/v1</pre></div>
+<p>The version is in the path, and breaking changes ship as a new version. Responses are JSON, amounts are whole RWF, and times are UTC in ISO 8601. See <a href="#auth" style="color:var(--lk);font-weight:700">Authentication</a> for keys and <a href="#errors" style="color:var(--lk);font-weight:700">Errors</a> for codes.</p>
+<h2>Payments</h2>
+<div class="tw"><table><tr><th>Endpoint</th><th>Does</th></tr>
+<tr><td><span class="m post">POST</span> <a href="#pay-create"><code>/v1/payments</code></a></td><td>Create a payment.</td></tr>
+<tr><td><span class="m get">GET</span> <a href="#pay-create.response"><code>/v1/payments/{id}</code></a></td><td>Get a payment and its current status.</td></tr>
+<tr><td><span class="m post">POST</span> <a href="#checkout.confirm-on-your-server"><code>/v1/payments/confirm</code></a></td><td>Confirm a payment after the customer approves.</td></tr>
+<tr><td><span class="m post">POST</span> <a href="#pay-create.refund-a-payment"><code>/v1/payments/{id}/refunds</code></a></td><td>Refund all or part of a payment.</td></tr></table></div>
+<h2>Business</h2>
+<div class="tw"><table><tr><th>Endpoint</th><th>Does</th></tr>
+<tr><td><span class="m get">GET</span> <a href="#biz"><code>/v1/payments</code></a></td><td>List sales and ad-sourced payments.</td></tr>
+<tr><td><span class="m patch">PATCH</span> <a href="#biz"><code>/v1/menu/{id}</code></a></td><td>Mark an item sold out.</td></tr>
+<tr><td><span class="m post">POST</span> <a href="#biz"><code>/v1/eats/orders/{id}/accept</code></a></td><td>Accept an order.</td></tr>
+<tr><td><span class="m get">GET</span> <a href="#biz"><code>/v1/payouts</code></a></td><td>List Monday payouts to MoMo.</td></tr></table></div>
+<h2>Invest</h2>
+<div class="tw"><table><tr><th>Endpoint</th><th>Does</th></tr>
+<tr><td><span class="m get">GET</span> <a href="#inv"><code>/v1/quotes/{symbol}</code></a></td><td>Latest price.</td></tr>
+<tr><td><span class="m post">POST</span> <a href="#inv"><code>/v1/alerts</code></a></td><td>Notify at your price.</td></tr>
+<tr><td><span class="m post">POST</span> <a href="#inv"><code>/v1/orders</code></a></td><td>Buy from the user’s Bank balance.</td></tr></table></div>
+</article>
+
+<article data-page="biz" hidden>
+<h1>Business API</h1>
+<p class="lead">For POS vendors and shops with their own system. Push orders in, pull payments out and keep menus in sync.</p>
+<h2>Endpoints</h2>
+<div class="tw"><table><tr><th>Endpoint</th><th>Does</th></tr>
+<tr><td><span class="m get">GET</span> <code>/v1/payments</code></td><td>List sales and ad-sourced payments.</td></tr>
+<tr><td><span class="m patch">PATCH</span> <code>/v1/menu/{id}</code></td><td>Mark an item sold out.</td></tr>
+<tr><td><span class="m post">POST</span> <code>/v1/eats/orders/{id}/accept</code></td><td>Accept an order and hand it to a Picker.</td></tr>
+<tr><td><span class="m get">GET</span> <code>/v1/payouts</code></td><td>Monday payouts and cash-outs, to MTN MoMo or a bank account.</td></tr></table></div>
+<p>Business keys are issued from <a href="https://business.itunda.im" style="color:var(--lk);font-weight:700">business.itunda.im</a>. They start with <code>biz_</code> and work like the keys in <a href="#auth" style="color:var(--lk);font-weight:700">Authentication</a>.</p>
+<h2>Accept an order</h2>
+<div class="ep"><span class="m post">POST</span><code>/v1/eats/orders/{id}/accept</code></div>
+<p>Accept a new Eats order. Send <code>prep_minutes</code> so the customer sees a time. When the food is ready, itunda hands the order to a Picker.</p>
+<div class="cb"><div class="cbh"><div class="tabs"></div><button type="button" class="cp">Copy</button></div><pre tabindex="0" data-l="cURL">curl -X POST "https://api.itunda.im/v1/eats/orders/ord_1042/accept" \\
+  -H "Authorization: Bearer biz_sk_..." \\
+  -d prep_minutes=12</pre><pre tabindex="0" data-l="200 OK">{
+  "id": "ord_1042",
+  "status": "preparing",
+  "prep_minutes": 12,
+  "total": 7500,
+  "currency": "RWF"
+}</pre></div>
+<h2>Mark an item sold out</h2>
+<div class="ep"><span class="m patch">PATCH</span><code>/v1/menu/{id}</code></div>
+<p>Set <code>available</code> to <code>false</code> and customers stop seeing the item right away. Set it back to <code>true</code> when you restock.</p>
+<div class="cb"><div class="cbh"><div class="tabs"></div><button type="button" class="cp">Copy</button></div><pre tabindex="0" data-l="cURL">curl -X PATCH "https://api.itunda.im/v1/menu/itm_croissant" \\
+  -H "Authorization: Bearer biz_sk_..." \\
+  -d available=false</pre><pre tabindex="0" data-l="200 OK">{
+  "id": "itm_croissant",
+  "name": "Croissant",
+  "available": false
+}</pre></div>
+<h2>List payouts</h2>
+<div class="ep"><span class="m get">GET</span><code>/v1/payouts</code></div>
+<p>Returns payouts newest first. Use <code>limit</code> and <code>starting_after</code> to page through them.</p>
+<div class="cb"><div class="cbh"><div class="tabs"></div><button type="button" class="cp">Copy</button></div><pre tabindex="0" data-l="cURL">curl "https://api.itunda.im/v1/payouts?limit=2" \\
+  -H "Authorization: Bearer biz_sk_..."</pre><pre tabindex="0" data-l="200 OK">{
+  "data": [
+    { "id": "po_0412", "amount": 284000, "currency": "RWF",
+      "destination": "mtn_momo", "status": "sent" },
+    { "id": "po_0398", "amount": 251500, "currency": "RWF",
+      "destination": "mtn_momo", "status": "sent" }
+  ],
+  "has_more": true
+}</pre></div>
+<div class="note"><b>Sample data.</b> Names, IDs and amounts on this page are examples from the preview.</div>
+</article>
+
+<article data-page="inv" hidden>
+<h1>Invest API</h1>
+<p class="lead">Quotes and orders for Rwandan companies and Treasury bills, with price alerts and monthly auto-invest.</p>
+<h2>Endpoints</h2>
+<div class="tw"><table><tr><th>Endpoint</th><th>Does</th></tr>
+<tr><td><span class="m get">GET</span> <code>/v1/quotes/{symbol}</code></td><td>Latest price.</td></tr>
+<tr><td><span class="m post">POST</span> <code>/v1/alerts</code></td><td>Notify at your price.</td></tr>
+<tr><td><span class="m post">POST</span> <code>/v1/orders</code></td><td>Buy from the user’s Bank balance.</td></tr></table></div>
+<h2>Get a quote</h2>
+<div class="ep"><span class="m get">GET</span><code>/v1/quotes/{symbol}</code></div>
+<p>Returns the latest price in RWF and when it was last updated. Prices can be delayed, so show the time to your users.</p>
+<p>Sandbox symbols and sample prices: <code>BK</code> 420, <code>MTNR</code> 215, <code>BRL</code> 180, <code>IMR</code> 92, <code>CMR</code> 130 and <code>KCB</code> 360 RWF. These are the same samples the itunda app shows.</p>
+<div class="cb"><div class="cbh"><div class="tabs"></div><button type="button" class="cp">Copy</button></div><pre tabindex="0" data-l="cURL">curl "https://api.itunda.im/v1/quotes/BK" \\
+  -H "Authorization: Bearer test_sk_..."</pre><pre tabindex="0" data-l="200 OK">{
+  "symbol": "BK",
+  "price": 420,
+  "currency": "RWF",
+  "as_of": "2026-10-24T08:30:00Z"
+}</pre></div>
+<h2>Create a price alert</h2>
+<div class="ep"><span class="m post">POST</span><code>/v1/alerts</code></div>
+<div class="tw"><table><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>symbol</code></td><td>string</td><td>The share to watch, like <code>BK</code>.</td></tr>
+<tr><td><code>direction</code></td><td>string</td><td><code>above</code> or <code>below</code>.</td></tr>
+<tr><td><code>price</code></td><td>integer</td><td>Trigger price in RWF.</td></tr></table></div>
+<h2>Place an order</h2>
+<div class="ep"><span class="m post">POST</span><code>/v1/orders</code></div>
+<p>Buys from the user’s Bank balance. Always send an <code>Idempotency-Key</code>, and ask the user to confirm the amount before you call this.</p>
+<div class="cb"><div class="cbh"><div class="tabs"></div><button type="button" class="cp">Copy</button></div><pre tabindex="0" data-l="cURL">curl "https://api.itunda.im/v1/orders" \\
+  -H "Authorization: Bearer test_sk_..." \\
+  -H "Idempotency-Key: buy-2291" \\
+  -d symbol=BK \\
+  -d amount=50000</pre><pre tabindex="0" data-l="201 Created">{
+  "id": "inv_77ac",
+  "status": "pending",
+  "symbol": "BK",
+  "amount": 50000
+}</pre></div>
+<h2>Instruments in the app</h2><div class="tw"><table><tr><th>Instrument</th><th>Sample value</th></tr><tr><td><code>BK</code> Bank of Kigali</td><td>420 RWF</td></tr><tr><td><code>MTNR</code> MTN Rwanda</td><td>215 RWF</td></tr><tr><td><code>BRL</code> Bralirwa</td><td>180 RWF</td></tr><tr><td><code>IMR</code> I&amp;M Bank Rwanda</td><td>92 RWF</td></tr><tr><td>91-day Treasury bill</td><td>8.2% a year</td></tr><tr><td>182-day Treasury bill</td><td>9.0% a year</td></tr><tr><td>364-day Treasury bill</td><td>9.8% a year</td></tr><tr><td>5-year Treasury bond</td><td>12.1% a year</td></tr><tr><td>10-year Treasury bond</td><td>13.0% a year</td></tr></table></div><p>These are the instruments in the itunda prototype app, with its sample prices. Prices on this page are samples.</p><div class="note"><b>Not advice.</b> itunda is not a licensed broker and nothing here is investment advice. Symbols and prices on this page are samples.</div>
+</article>
+
+<article data-page="bills" hidden>
+<h1>Bills and transit</h1>
+<p class="lead">Let users pay everyday bills from your app.</p>
+<h2>Billers</h2>
+<div class="tw"><table><tr><th>Biller</th><th>Account</th><th>Amount presets in the app</th></tr><tr><td>Electricity (REG)</td><td>Meter number, 11 digits. Returns a token.</td><td>2,000 · 5,000 · 10,000 · 18,500</td></tr><tr><td>Water (WASAC)</td><td>Meter number, 9 digits</td><td>2,000 · 5,000 · 10,000 · 20,000</td></tr><tr><td>Airtime (MTN, Airtel)</td><td>Phone number, 9 digits</td><td>500 · 1,000 · 2,000 · 5,000</td></tr><tr><td>Taxes (RRA)</td><td>Tax ID (TIN), 9 digits</td><td>5,000 · 10,000 · 25,000 · 50,000</td></tr><tr><td>School fees</td><td>Student ID, 6 digits</td><td>20,000 · 50,000 · 100,000 · 120,000</td></tr><tr><td>Irembo</td><td>Application number, 8 digits</td><td>1,000 · 5,000 · 10,000 · 20,000</td></tr></table></div>
+<p>Presets are the quick amounts the app offers. Amounts are in RWF.</p>
+<h2>Groups</h2>
+<div class="tw"><table><tr><th>Group</th><th>Includes</th></tr>
+<tr><td>Utilities</td><td>Electricity and Water</td></tr>
+<tr><td>Government</td><td>Taxes and Irembo</td></tr>
+<tr><td>Education</td><td>School fees</td></tr>
+<tr><td>Airtime</td><td>MTN and Airtel</td></tr>
+<tr><td>Transit</td><td>Kigali Bus Services rides at 300 RWF</td></tr></table></div>
+<h2>Pay a bill</h2>
+<div class="ep"><span class="m post">POST</span><code>/v1/bills/payments</code></div>
+<div class="tw"><table><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>biller</code></td><td>string</td><td>For example <code>electricity</code>, <code>water</code> or <code>airtime_mtn</code>.</td></tr>
+<tr><td><code>account</code></td><td>string</td><td>Meter, TIN, student ID, application or phone number at the biller. Digit counts are in the table above.</td></tr>
+<tr><td><code>amount</code></td><td>integer</td><td>Amount in RWF.</td></tr></table></div>
+<div class="cb"><div class="cbh"><div class="tabs"></div><button type="button" class="cp">Copy</button></div><pre tabindex="0" data-l="cURL">curl "https://api.itunda.im/v1/bills/payments" \\
+  -H "Authorization: Bearer test_sk_..." \\
+  -H "Idempotency-Key: bill-5530" \\
+  -d biller=electricity \\
+  -d account=04123456789 \\
+  -d amount=5000</pre><pre tabindex="0" data-l="201 Created">{
+  "id": "bill_5530",
+  "status": "pending",
+  "biller": "electricity",
+  "amount": 5000
+}</pre></div>
+<div class="note"><b>Check the account first.</b> Show your user the account name or meter details before they confirm. A bill paid to the wrong account is hard to undo.</div>
+</article>
+
+<article data-page="status" hidden>
+<h1>System status</h1>
+<p class="lead">Uptime for each part of the platform over the last 90 days. Sample data for this preview.</p>
+<div class="note"><b>All systems operational.</b> Subscribe at <a href="mailto:developers@itunda.im?subject=Status%20updates" style="color:var(--lk);font-weight:700">developers@itunda.im</a> to get incident emails.</div>
+<h2>Services</h2>
+<div class="svc"><div class="sh"><b>Pay API</b><span><span class="dot"></span>Operational</span></div><div class="up"></div><small></small></div>
+<div class="svc"><div class="sh"><b>Webhooks</b><span><span class="dot"></span>Operational</span></div><div class="up"></div><small></small></div>
+<div class="svc"><div class="sh"><b>Payment window (SDK)</b><span><span class="dot"></span>Operational</span></div><div class="up"></div><small></small></div>
+<div class="svc"><div class="sh"><b>Mini apps</b><span><span class="dot"></span>Operational</span></div><div class="up"></div><small></small></div>
+<div class="svc"><div class="sh"><b>Business API</b><span><span class="dot"></span>Operational</span></div><div class="up"></div><small></small></div>
+<h2>Past incidents</h2>
+<p>No incidents in the last 7 days. Amber bars above mark days with slower responses.</p>
+</article>
+
+<article data-page="support" hidden>
+<h1>Support</h1>
+<p class="lead">Stuck, or something looks wrong? Tell us what you were calling and what came back.</p>
+<h2>Contact us</h2>
+<div class="tw"><table><tr><th>For</th><th>Write to</th></tr>
+<tr><td>Integration questions and access</td><td><a href="mailto:developers@itunda.im" style="color:var(--lk);font-weight:700">developers@itunda.im</a></td></tr>
+<tr><td>Security issues</td><td><a href="mailto:security@itunda.im" style="color:var(--lk);font-weight:700">security@itunda.im</a></td></tr>
+<tr><td>Shops and Business accounts</td><td><a href="https://business.itunda.im" style="color:var(--lk);font-weight:700">business.itunda.im</a></td></tr></table></div>
+<p>Include the payment <code>id</code> (like <code>pay_9f2c</code>) so we can find it in the logs.</p>
+<h2>Common questions</h2>
+<details><summary>Is there a sandbox?</summary><p>Yes. Test keys never move real money, and you can simulate paid, failed and refunded payments.</p></details>
+<details><summary>Which currency?</summary><p>Rwandan francs (RWF), whole numbers only.</p></details>
+<details><summary>Which languages do docs and apps support?</summary><p>English, Kinyarwanda and Français, matching the itunda app.</p></details>
+<details><summary>Can I show ads in a mini app?</summary><p>Ads on itunda are always labelled and never appear near balances, Send or Pay steps, or Messages. Mini apps follow the same rule.</p></details>
+<details><summary>When do I get live keys?</summary><p>After a short review of your integration. Test everything in the sandbox first.</p></details>
+</article>
+
+<article data-page="changelog" hidden>
+<h1>Changelog</h1>
+<p class="lead">Sample entries showing how releases will be announced.</p>
+<h2>Refunds can be partial</h2><p>Pass <code>amount</code> to <code>POST /v1/payments/{id}/refunds</code>.</p>
+<h2>Longer webhook retries</h2><p>Failed deliveries now retry for 24 hours instead of 6.</p>
+<h2>Faster mini app review</h2><p>Most submissions are reviewed in 2 working days.</p>
+</article>
+
+<article data-page="blog" hidden>
+<h1>Tech blog</h1>
+<p class="lead">How we build itunda. These are sample posts.</p>
+<h2>Payments that survive a bad network</h2><p>Reliability. How retries, idempotency and offline queues keep a sale from being lost or charged twice.</p>
+<h2>A payment code that refreshes every minute</h2><p>Security. Why the QR code changes, and what that means for screenshots.</p>
+<h2>One app, three languages</h2><p>Localisation. Shipping English, Kinyarwanda and Français from one codebase.</p>
+<h2>Showing ads without touching your money</h2><p>Product. Where ads can appear, and the places they never will.</p>
+</article>
+
+<article data-page="testing" hidden>
+<h1>Test data</h1>
+<p class="lead">Use these values in the sandbox to see every outcome your code needs to handle. Nothing here moves real money.</p>
+<h2>Amounts</h2>
+<div class="tw"><table><tr><th>Send</th><th>You get</th></tr>
+<tr><td><code>amount</code> of 100 or more</td><td><code>201</code> and a <code>pending</code> payment.</td></tr>
+<tr><td><code>amount</code> under 100</td><td><code>400</code> with <code>amount_invalid</code>.</td></tr>
+<tr><td>Same <code>Idempotency-Key</code>, same body</td><td>The original response, not a second payment.</td></tr>
+<tr><td>Same <code>Idempotency-Key</code>, different body</td><td><code>409</code> with <code>idempotency_conflict</code>.</td></tr></table></div>
+<h2>MoMo test numbers</h2>
+<p>With <code>method=momo</code>, the sandbox uses the number to decide the result. These numbers are fake and cannot receive real messages.</p>
+<div class="tw"><table><tr><th>Number</th><th>Result</th><th>Webhook</th></tr>
+<tr><td><code>078 000 0001</code></td><td>Customer approves</td><td><code>payment.paid</code></td></tr>
+<tr><td><code>078 000 0002</code></td><td>Customer cancels</td><td><code>payment.failed</code></td></tr>
+<tr><td><code>078 000 0003</code></td><td>No reply, then timeout</td><td><code>payment.expired</code></td></tr></table></div>
+<h2>QR payments</h2>
+<p>Open the <code>qr_url</code> in the sandbox and choose <b>Paid</b>, <b>Failed</b> or <b>Refunded</b>. Each choice sends the matching event to your webhook.</p>
+<div class="note"><b>Test your unhappy paths.</b> Most payment bugs show up when a customer cancels, a webhook arrives twice or a request times out. Try each one before you <a href="#golive" style="color:var(--lk);font-weight:700">go live</a>.</div>
+</article>
+
+<article data-page="golive" hidden>
+<h1>Go live checklist</h1>
+<p class="lead">Tick each item as you finish it. Your progress is saved in this browser. When every box is ticked, request live keys.</p>
+<div class="pbar" role="progressbar" aria-label="Checklist progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="gp"></i></div><small id="gt" style="color:var(--mu)"></small>
+<div id="gl"></div>
+<div class="note" style="margin-top:28px"><b>Ready?</b> Email <a href="mailto:developers@itunda.im?subject=Live%20keys" style="color:var(--lk);font-weight:700">developers@itunda.im</a> with your integration name and a sample payment <code>id</code>. We review it and issue <code>live_</code> keys.</div>
+</article>
+
+<nav class="pg" id="pg" aria-label="Pages"></nav>
+<div class="fb" id="fb"><span>Was this page helpful?</span><button type="button">Yes</button><button type="button">No</button></div>
+</main>
+<aside id="toc" aria-label="On this page"></aside>
+</div>
+
+<footer><div class="fw"><div class="fc"><b>itunda developers</b><p>Kigali, Rwanda</p><p>Preview site. Names, endpoints and posts are samples.</p></div><div class="fc"><b>Build</b><a href="#quickstart">Quickstart</a><a href="#pay-create">Pay API</a><a href="#mini">Mini apps</a><a href="#api">API reference</a></div><div class="fc"><b>Resources</b><a href="#changelog">Changelog</a><a href="#status">System status</a><a href="#blog">Tech blog</a><a href="#support">Support</a></div><div class="fc"><b>itunda</b><a href="https://itunda.im">itunda.im</a><a href="https://business.itunda.im">Business</a><a href="mailto:developers@itunda.im">developers@itunda.im</a></div></div><p class="fl2">Version 32</p></footer>
+
+<dialog id="sd" aria-label="Search"><input id="q" type="search" placeholder="Search docs" autocomplete="off" aria-label="Search docs"><div id="rs"></div></dialog>
+
+<script>
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
+const NAV=[["Get started",[["quickstart","Quickstart"],["auth","Authentication"],["console","Developer console"],["testing","Test data"],["golive","Go live checklist"]]],["Payments",[["pay-create","Create a payment"],["checkout","Payment window (SDK)"],["webhooks","Webhooks"],["errors","Errors"]]],["Mini apps",[["mini","Build a mini app"]]],["APIs",[["api","API reference"],["biz","Business API"],["inv","Invest API"],["bills","Bills and transit"]]],["Resources",[["changelog","Changelog"],["status","System status"],["support","Support"],["blog","Tech blog"]]]];
+const flat=NAV.flatMap(([g,l])=>l.map(([id,t])=>({id,t,g})));
+const TAB={mini:"mini",blog:"blog","pay-create":"api",checkout:"api",api:"api",webhooks:"api",errors:"api",biz:"api",inv:"api",bills:"api"};
+const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;");
+const hl=s=>esc(s).replace(/(#.*$|\/\/.*$)|("(?:[^"\\\n]|\\.)*")|\b(const|await|import|from|function|return)\b|\b(\d+)\b/gm,(m,c,st,k,n)=>c?`<i class="g">${c}</i>`:st?`<i class="s">${st}</i>`:k?`<i class="c">${k}</i>`:`<i class="n">${n}</i>`);
+$("#side").innerHTML=NAV.map(([g,l])=>`<p class="gt">${g}</p>`+l.map(([id,t])=>`<a href="#${id}" data-id="${id}">${t}</a>`).join("")).join("");
+const arts=$$("article[data-page]");
+arts.forEach(a=>{const id=a.dataset.page,f=flat.find(x=>x.id==id);
+  $("h1",a).insertAdjacentHTML("beforebegin",`<div class="crumb"><span>${f.g}</span><button class="mdb" type="button">Copy page</button></div>`);
+  $(".mdb",a).onclick=e=>{const b=e.target,N=String.fromCharCode(10)+String.fromCharCode(10);try{navigator.clipboard.writeText("# "+$("h1",a).textContent+N+[...a.children].slice(2).map(x=>x.innerText).join(N)).then(()=>{b.textContent="Copied";setTimeout(()=>b.textContent="Copy page",1500)},()=>{})}catch(_){}};
+  $$("h2",a).forEach(h=>{const t=h.textContent;h.id=id+"."+t.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");h.insertAdjacentHTML("beforeend",`<a href="#${h.id}" aria-label="Link to ${t}">#</a>`)})});
+$$(".cb").forEach(cb=>{const ps=$$("pre",cb),t=$(".tabs",cb);
+  ps.forEach((p,i)=>{p.tabIndex=0;p.innerHTML=hl(p.textContent);p.hidden=i>0;
+    const b=document.createElement("button");b.textContent=p.dataset.l;b.setAttribute("role","tab");b.setAttribute("aria-selected",i==0);
+    b.onclick=()=>ps.forEach((q,j)=>{q.hidden=j!=i;t.children[j].setAttribute("aria-selected",j==i)});t.append(b)});
+  $(".cp",cb).onclick=e=>{const b=e.target,p=ps.find(x=>!x.hidden);try{navigator.clipboard.writeText(p.textContent).then(()=>{b.textContent="Copied";setTimeout(()=>b.textContent="Copy",1500)},()=>{})}catch(_){}}});
+const LG=["cURL","JavaScript","Node.js","Python","PHP"],nm=l=>l=="Node.js"?"JavaScript":l;
+const pick=l=>$$(".tabs button").forEach(x=>{if(LG.includes(x.textContent)&&nm(x.textContent)==nm(l)&&x.getAttribute("aria-selected")!="true")x.click()});
+document.addEventListener("click",e=>{const b=e.target.closest(".tabs button");if(!b||!LG.includes(b.textContent))return;try{localStorage.setItem("lang",b.textContent)}catch(_){}pick(b.textContent)});
+try{const l=localStorage.getItem("lang");if(l)pick(l)}catch(_){}
+let spy;
+function route(){
+  const [id,sec]=(location.hash.slice(1)||"home").split(".");
+  const a=arts.find(x=>x.dataset.page==id),f=a&&flat.find(x=>x.id==id);
+  $("#home").hidden=!!a;$(".shell").hidden=!a;$(".shell").classList.toggle("wide",!!a&&a.hasAttribute("data-wide"));arts.forEach(x=>x.hidden=x!==a);document.body.classList.remove("nv");
+  $$("#side a").forEach(l=>l.dataset.id==id?l.setAttribute("aria-current","page"):l.removeAttribute("aria-current"));
+  $$(".top a").forEach(l=>l.dataset.t==(TAB[id]||"docs")&&a?l.setAttribute("aria-current","page"):l.removeAttribute("aria-current"));
+  document.title=f?f.t+" · itunda Developers":"itunda Developers: docs, API reference and mini apps";
+  if(spy)spy.disconnect();
+  if(a){const hs=$$("h2",a);
+    $("#toc").innerHTML=hs.length?'<p class="gt">On this page</p>'+hs.map(h=>`<a href="#${h.id}">${h.firstChild.textContent}</a>`).join(""):"";
+    spy=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)$$("#toc a").forEach(l=>l.classList.toggle("on",l.getAttribute("href")=="#"+e.target.id))}),{rootMargin:"-80px 0px -70% 0px"});hs.forEach(h=>spy.observe(h));
+    const i=flat.indexOf(f),p=flat[i-1],n=flat[i+1];
+    $("#pg").innerHTML=(p?`<a href="#${p.id}"><small>Previous</small>${p.t}</a>`:"<span></span>")+(n?`<a href="#${n.id}"><small>Next</small>${n.t}</a>`:"");
+    $("#fb").innerHTML='<span>Was this page helpful?</span><button type="button">Yes</button><button type="button">No</button>';
+    $$("#fb button").forEach(b=>b.onclick=()=>{$("#fb").textContent="Thanks. Your feedback helps us fix these docs."})}
+  const t=sec&&document.getElementById(id+"."+sec);
+  t?t.scrollIntoView():scrollTo({top:0,behavior:"instant"})}
+addEventListener("hashchange",route);route();
+(()=>{const mb=$("#mb"),sync=()=>{const o=document.body.classList.contains("nv");mb.setAttribute("aria-expanded",o);mb.setAttribute("aria-label",o?"Close menu":"Open menu");mb.textContent=o?"\u2715":"\u2261"};mb.onclick=()=>{document.body.classList.toggle("nv");sync()};document.addEventListener("keydown",e=>{if(e.key==="Escape"&&document.body.classList.contains("nv")){document.body.classList.remove("nv");sync();mb.focus()}});new MutationObserver(sync).observe(document.body,{attributes:true,attributeFilter:["class"]});mb.setAttribute("aria-expanded","false")})();
+const idx=[];flat.forEach(f=>{idx.push({h:"#"+f.id,t:f.t,s:f.g});$$("h2",$(`[data-page="${f.id}"]`)).forEach(h=>idx.push({h:"#"+h.id,t:h.firstChild.textContent,s:f.t}))});
+const sd=$("#sd"),q=$("#q"),rs=$("#rs");let cur=0;
+function find(){const w=q.value.toLowerCase().split(/\s+/).filter(Boolean);
+  const r=idx.filter(x=>w.every(k=>(x.t+" "+x.s).toLowerCase().includes(k))).slice(0,8);cur=0;
+  rs.innerHTML=r.length?r.map((x,i)=>`<a href="${x.h}" class="${i?"":"on"}">${x.t}<small>${x.s}</small></a>`).join(""):'<p>No pages match. Try “webhook” or “refund”.</p>'}
+const open=()=>{sd.showModal();q.value="";find();q.focus()};
+$$("[data-search]").forEach(b=>b.onclick=open);
+q.oninput=find;
+sd.onclick=e=>{if(e.target===sd||e.target.closest("a"))sd.close()};
+q.onkeydown=e=>{const l=$$("#rs a");if(!l.length)return;
+  if(e.key=="ArrowDown"||e.key=="ArrowUp"){e.preventDefault();l[cur].classList.remove("on");cur=(cur+(e.key=="ArrowDown"?1:-1)+l.length)%l.length;l[cur].classList.add("on");l[cur].scrollIntoView({block:"nearest"})}
+  if(e.key=="Enter"){location.hash=l[cur].getAttribute("href");sd.close()}};
+addEventListener("keydown",e=>{const typing=/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)||document.activeElement.isContentEditable||e.metaKey||e.ctrlKey||e.altKey;
+  if((e.key=="k"&&(e.metaKey||e.ctrlKey))||(e.key=="/"&&!typing)){e.preventDefault();if(!sd.open)open()}});
+const NL=String.fromCharCode(10),BS=String.fromCharCode(92),setp=(p,t)=>{p.innerHTML=hl(t)};
+const trq=()=>setp($("#trq"),['curl "https://api.itunda.im/v1/payments" '+BS,'  -H "Authorization: Bearer test_sk_..." '+BS,'  -H "Idempotency-Key: '+$("#tk").value+'" '+BS,'  -d amount='+$("#ta").value+' '+BS,'  -d currency=RWF '+BS,'  -d method='+$("#tm").value].join(NL));
+$("#tgo").onclick=()=>{const a=+$("#ta").value,ok=Number.isInteger(a)&&a>=100,id=Math.random().toString(16).slice(2,6),tb=$$(".tabs button",$("#trs").closest(".cb"))[1];
+  tb.textContent=ok?"201 Created":"400 Bad Request";
+  setp($("#trs"),JSON.stringify(ok?{id:"pay_"+id,status:"pending",amount:a,currency:"RWF",method:$("#tm").value,qr_url:"https://pay.itunda.im/q/"+id,expires_at:new Date(Date.now()+9e5).toISOString()}:{error:{code:"amount_invalid",message:"amount must be a whole number of at least 100 RWF."}},null,2));tb.click()};
+["#ta","#tm","#tk"].forEach(s=>$(s).oninput=trq);trq();
+let shown=false;$("#skb").onclick=e=>{shown=!shown;$("#sk").textContent=shown?"test_sk_Qe7vN2xDk4mZp9Lr":"test_sk_••••••••••••••••";e.target.textContent=shown?"Hide":"Reveal"};
+$$("[data-copy]").forEach(b=>b.onclick=()=>{try{navigator.clipboard.writeText(b.dataset.copy).then(()=>{b.textContent="Copied";setTimeout(()=>b.textContent="Copy",1500)},()=>{})}catch(_){}});
+$$(".up").forEach((u,k)=>{let bad=0,h="";for(let i=0;i<90;i++){const w=(i*i*7+i*k*13+k*29)%61<1;bad+=w;h+=`<i class="${w?"w":""}" title="${w?"Slower than usual":"Operational"}, ${90-i} days ago"></i>`}u.innerHTML=h;u.nextElementSibling.textContent=(100-bad*.07).toFixed(2)+"% uptime, last 90 days"});
+$("#whb").onclick=()=>{$("#wl tbody").insertAdjacentHTML("afterbegin",`<tr><td>${new Date().toTimeString().slice(0,8)}</td><td><code>payment.paid</code></td><td>200 OK · 84 ms</td></tr>`)};
+const GL=[["Secret key stays on my server","Only the client key is used in the browser."],["I check the amount on my server","The amount from the redirect matches my own price before I confirm."],["Every POST has an Idempotency-Key","Retries never create a second payment."],["Webhook signatures are verified","I compare the HMAC of the raw body with Itunda-Signature."],["Webhooks can arrive twice","My handler gives the same result when it sees the same event again."],["I handle 429 and 500","I wait for Retry-After and retry with the same key."],["I tested paid, failed, expired and refunded","Using the sandbox values on the Test data page."],["Customers see a clear message when payment fails","With a way to try again."]];
+let gs=[];try{gs=JSON.parse(localStorage.getItem("golive")||"[]")}catch(_){}
+$("#gl").innerHTML=GL.map((g,i)=>`<label class="ck"><input type="checkbox" data-i="${i}"${gs.includes(i)?" checked":""}><div><b>${g[0]}</b><span>${g[1]}</span></div></label>`).join("");
+function gup(){const n=$$("#gl input:checked").length,p=Math.round(n/GL.length*100);$("#gp").style.width=p+"%";$("#gt").textContent=n+" of "+GL.length+" done";$("#gp").parentElement.setAttribute("aria-valuenow",p);try{localStorage.setItem("golive",JSON.stringify($$("#gl input:checked").map(x=>+x.dataset.i)))}catch(_){}}
+$("#gl").onchange=gup;gup();
+</script>
+<button class="totop" id="totop" type="button" aria-label="Back to top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button><script>(function(){var b=document.getElementById("totop");if(!b)return;var t=0;function f(){t=0;b.classList.toggle("show",window.scrollY>900)}addEventListener("scroll",function(){if(!t)t=requestAnimationFrame(f)},{passive:true});b.addEventListener("click",function(){window.scrollTo({top:0});var h=document.getElementById("top")||document.getElementById("home")||document.body;if(h&&h.focus){h.setAttribute("tabindex","-1");h.focus({preventScroll:true})}});f()})();</script><script>(function(){var m=/Mac|iPhone|iPad/.test(navigator.platform||navigator.userAgent);document.querySelectorAll("kbd.ks").forEach(function(k){k.textContent=m?"⌘K":"Ctrl K"})})();</script><script>(function(){document.addEventListener("click",function(e){var b=e.target.closest&&e.target.closest(".cp");if(!b||navigator.clipboard)return;var p=b.closest(".cb"),pre=p&&[].slice.call(p.querySelectorAll("pre")).filter(function(x){return !x.hidden})[0];if(!pre)return;var t=document.createElement("textarea");t.value=pre.textContent;t.setAttribute("readonly","");t.style.cssText="position:fixed;top:0;left:0;opacity:0";document.body.appendChild(t);t.select();var ok=false;try{ok=document.execCommand("copy")}catch(_){}document.body.removeChild(t);if(ok){b.textContent="Copied";setTimeout(function(){b.textContent="Copy"},1500)}b.focus()},true);document.querySelectorAll(".cp").forEach(function(b){b.setAttribute("aria-live","polite")})})();</script><style id="itunda-layer">
+/* itunda design layer: aligns the web sites with the itunda app (v654).
+   Flat surfaces, neutral greys, one brand purple, 800 max weight, 18/24px radii, spring motion. */
+:root{--sp-soft:linear(0,0.016,0.059,0.12,0.194,0.275,0.359,0.443,0.524,0.601,0.672,0.736,0.793,0.843,0.886,0.922,0.952,0.976,0.996,1.011,1.022,1.03,1.035,1.037,1.038,1.038,1.036,1.034,1.031,1.028,1.025,1.022,1.019,1.016,1.013,1.01,1.008,1.006,1.005,1.003,1)}
+:root:root:root:root{--bg:#fff;--fg:#191F28;--hd:#191F28;--mu:#6B7684;--tt:#8B95A1;--line:#E5E8EB;--dv:#E5E8EB;--soft:#F4F5F8;--card:#F4F5F8;--br:#8F89FF;--brd:#5B54D6;--lk:#5B54D6;--on:#121216;--tint:#EEEDFF;--ok:#0A8F5B;--wn:#B85C00;--er:#C4281B;--dk:#121216;--dkfg:#F4F5F7;--dk2:#25252D;--dkln:#2E2E37;--dkmu:#9AA1AD;--code:#121216;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:root:root:root:not([data-theme=light]){--bg:#121216;--fg:#F4F5F7;--hd:#F4F5F7;--mu:#9AA1AD;--tt:#7A818C;--line:#2E2E37;--dv:#2E2E37;--soft:#25252D;--card:#25252D;--brd:#B3AEFF;--lk:#B3AEFF;--tint:#2A2850;--ok:#4CC88D;--wn:#F0A050;--er:#FF7B6E;--dk:#0A0A0D;--code:#1A1A23;color-scheme:dark}}
+:root:root:root:root[data-theme=dark]{--bg:#121216;--fg:#F4F5F7;--hd:#F4F5F7;--mu:#9AA1AD;--tt:#7A818C;--line:#2E2E37;--dv:#2E2E37;--soft:#25252D;--card:#25252D;--brd:#B3AEFF;--lk:#B3AEFF;--tint:#2A2850;--ok:#4CC88D;--wn:#F0A050;--er:#FF7B6E;--dk:#0A0A0D;--code:#1A1A23;color-scheme:dark}
+
+/* type: same stack as the app, 800 is the heaviest weight, tracking opens up a little */
+body{font-family:'Pretendard Variable','Pretendard','Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',Roboto,'Noto Sans',sans-serif;letter-spacing:0;color:var(--fg)}
+h1,h2,h3,.logo,.sbg b,.dc h3{font-weight:800}
+h1,h2{text-wrap:balance}
+h1{letter-spacing:-.03em;line-height:1.1}
+h2{letter-spacing:-.025em;line-height:1.18}
+.logo{letter-spacing:-.03em}
+.lead,.hero .lead{color:var(--mu)}
+code,pre,kbd{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace}
+.eyebrow{color:var(--lk)}
+.note a,.fine a,.leg a{color:var(--lk);font-weight:700;text-decoration:underline;text-underline-offset:3px}
+
+/* buttons: app .btn is an 18px-radius, 800-weight, press-to-shrink control */
+.btn{border-radius:18px;font-weight:800;transition:transform .35s var(--sp-soft),opacity .2s,background .2s}
+.btn:active,.tile:active,.card:active,.mth a:active,.pg a:active{transform:scale(.97)}
+.btn.sm{border-radius:14px}
+.btn.sec{background:var(--card);color:var(--fg)}
+.tabs button,.kinds span{font-weight:700}
+.tabs button{transition:background .2s,color .2s}
+
+/* inputs: filled chip, brand ring on focus (like the app search field) */
+.sign input,.fi input,.wl input{background:var(--card);border:2px solid transparent;border-radius:18px;color:var(--fg)}
+.sign input:focus,.fi input:focus,.wl input:focus{border-color:var(--br);outline:0;box-shadow:none}
+.sign input::placeholder,.wl input::placeholder{color:var(--tt)}
+
+/* flat surfaces: no shadows, no glow, no bordered cards */
+.shot img{border:1px solid var(--line);border-radius:36px;box-shadow:none}
+.tile,.card{box-shadow:none;border:0;border-radius:24px}
+.tile:hover,.card:hover{transform:none;background:var(--tint)}
+.tile,.card{transition:background .2s,transform .35s var(--sp-soft)}
+.toast,.fl{box-shadow:none;border:1px solid var(--line);border-radius:18px}
+.pop{box-shadow:none;border:1px solid var(--line);border-radius:24px}
+.totop{box-shadow:none;background:var(--card);border:0}
+dialog{box-shadow:none;border:1px solid var(--line);border-radius:28px}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+.alt{background:var(--bg);box-shadow:inset 0 8px 0 var(--card),inset 0 -8px 0 var(--card)}
+footer{background:var(--card);border-top:0}
+/* motion: the app fades up 6px and springs; do the same on scroll reveal */
+.js .rv{transform:translateY(10px);transition:opacity .4s ease-out,transform .7s var(--sp-soft)}
+
+
+/* follow the app's light/dark switch (the earlier site themes hard-coded white) */
+body{background:var(--bg);color:var(--fg)}
+header{background:color-mix(in srgb,var(--bg) 92%,transparent)}
+.logo{color:var(--fg)}
+.dc{background:var(--card);border-radius:24px}
+.fl{background:var(--bg)}
+.tag,.r .ic{background:var(--bg)}
+.tabs button[aria-selected=true]{background:var(--fg);color:var(--bg)}
+#promise{background:var(--dk);color:var(--dkfg)}
+
+/* contrast: secondary text and tertiary text meet 4.5:1 on white and on card grey, light and dark */
+:root:root:root:root{--mu:#5F6B7A;--tt:#66707D}
+@media (prefers-color-scheme:dark){:root:root:root:root:not([data-theme=light]){--tt:#8C94A0}}
+:root:root:root:root[data-theme=dark]{--tt:#8C94A0}
+section#faq.alt,section#help.alt,section.alt{background:var(--bg)}
+a>i,.k i{color:var(--lk)}
+i.up{color:var(--ok)}i.dn{color:var(--er)}
+.dark a,#promise a{color:var(--dkmu)}
+:root:root:root:root{--ok:#087A4E}
+@media (prefers-color-scheme:dark){:root:root:root:root:not([data-theme=light]){--ok:#4CC88D}}
+:root:root:root:root[data-theme=dark]{--ok:#4CC88D}
+a i:not(.ti){color:var(--lk)!important}
+i.up{color:var(--ok)!important}i.dn{color:var(--er)!important}
+/* ---------- developers site: it had been themed as a generic docs site (navy code, 4-8px radii, 500 weights) ---------- */
+body{font-size:16px}
+h2.s,article h2{font-weight:800;letter-spacing:-.025em}
+article h1{letter-spacing:-.03em;font-weight:800}
+header{background:var(--bg);border-bottom-color:var(--line)}
+.bar{gap:16px}
+.top a{border-radius:12px;font-weight:700;color:var(--mu)}
+.top a:hover{background:var(--card);color:var(--fg)}
+.top a[aria-current]{background:var(--card);color:var(--fg);font-weight:800}
+.sb{border-radius:14px;height:40px;background:var(--card)}
+.hero .sb{height:56px;border-radius:18px}
+.sb kbd{border-radius:8px;background:var(--bg);border-color:var(--line)}
+.btn:not(.lg):not(.sm){border-radius:14px}
+.btn.lg{border-radius:18px;min-height:52px}
+.notice{background:var(--tint);color:var(--lk)}
+.stat a{color:var(--mu)}
+.card{padding:32px;background:var(--card)}
+.card b{font-size:22px;letter-spacing:-.025em}
+.note{border-radius:20px;color:var(--fg);background:var(--tint)}
+.ep{border-radius:16px;background:var(--card)}
+.m,.rq,.op{border-radius:8px}
+.rq{background:var(--tint);color:var(--lk)}
+p code,li code,td code{background:var(--card);color:var(--fg);border-radius:8px}
+.try,.kv{background:var(--card);border:0;border-radius:20px}
+.pg a{background:var(--card);border:0;border-radius:18px}
+.pg a:hover{background:var(--tint)}
+.mth a{border-radius:18px}
+#side{border-right:0}
+#side a,#toc a{color:var(--mu);font-weight:700;border-radius:12px}
+#side a:hover{background:var(--card);color:var(--fg)}
+#side a[aria-current]{background:var(--tint);color:var(--lk);font-weight:800}
+#toc a{border-left-color:var(--line);border-radius:0;font-weight:600}
+#toc a.on{border-color:var(--br);color:var(--fg)}
+th{color:var(--tt);border-bottom-color:var(--line)}
+td{border-bottom-color:var(--line)}
+.fc b,.fc a{color:var(--mu)}
+.fc a:hover{color:var(--fg)}
+.cb{background:var(--code);color:#F4F5F7;border-radius:24px}
+.cbh{border-bottom:1px solid var(--dkln)}
+.cb .tabs button{color:var(--dkmu);background:none}
+.cb .tabs button[aria-selected=true]{color:#fff;box-shadow:inset 0 -2px 0 var(--br)}
+.cp{background:var(--dk2);color:#F4F5F7;border-radius:12px}
+pre{color:#F4F5F7}
+pre .c{color:#B3AEFF}pre .s{color:#4CC88D}pre .g{color:#7A818C}pre .n{color:#F0A050}
+
+@media (prefers-reduced-motion:reduce){.btn,.tile,.card{transition:none}.btn:active,.tile:active,.card:active{transform:none}.js .rv{transform:none;transition:none}}
+
+.band{background:var(--dk);color:var(--dkfg)}.band p{color:var(--dkmu)}.band .btn.sec{background:var(--dk2);color:var(--dkfg)}
+.cards+h2.s,.mth+h2.s,h2.s+.cards{margin-top:0}.cards{margin-bottom:56px}
+@media (max-width:900px){.hero{grid-template-columns:minmax(0,1fr)!important;gap:32px}.hero .sb span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cb{max-width:100%}}
+/* "Start with" entries as app-style rows: tinted icon circle, title, muted line, chevron */
+.cards{grid-template-columns:repeat(2,1fr);gap:4px 48px}
+.card,.card.big{grid-column:auto;display:flex;align-items:center;gap:14px;min-height:0;padding:12px 8px;margin:0 -8px;background:none;border-radius:20px}
+.card:hover{background:var(--card)}
+.card .ti{width:44px;height:44px;border-radius:22px;background:var(--tint);color:var(--lk);display:flex;align-items:center;justify-content:center;flex:none}
+.card .tx{font-style:normal;flex:1;min-width:0}
+.card b{font-size:16px;line-height:22px;font-weight:700;letter-spacing:0}
+.card span{font-size:14px;line-height:20px;margin-top:2px}
+.card::after{content:"";position:static;width:8px;height:8px;border:solid var(--tt);border-width:2px 2px 0 0;transform:rotate(45deg);flex:none;margin-right:6px;inset:auto}
+@media (max-width:900px){.cards{grid-template-columns:1fr}}
+/* code tabs: keep "201 Created" on one line and never clip the Copy button */
+.cbh{gap:8px}.cb .tabs{min-width:0;overflow-x:auto;scrollbar-width:none}.cb .tabs::-webkit-scrollbar{display:none}.cb .tabs button{white-space:nowrap;flex:none}.cp{flex:none}
+.cb .tabs button{padding:10px 9px}
+.sb .ss{display:none!important}@media (min-width:561px){.hero .sb .sl{display:inline!important}}@media (max-width:560px){.sb .sl{display:none!important}.sb .ss{display:inline!important}}@media (max-width:560px){.cta{flex-direction:column;align-items:stretch}.cta .btn{justify-content:center;text-align:center;width:100%}}@media (min-width:880px) and (max-width:1199px){.bar{gap:10px;padding:0 20px}.logo i{display:none}.top{margin-left:4px;gap:0}.top a{padding:6px 9px}.bar>.btn{padding-inline:14px;flex:none}}</style>
+<style id="v28">@media (min-width:861px) and (max-width:1100px){.bar{gap:8px;padding:0 16px}.bar .sb{min-width:0;width:44px;padding:0;justify-content:center;margin-left:auto}.bar .sb span,.bar .sb kbd{display:none}.top{margin-left:0}.top a{padding:6px 8px}}@media (max-width:900px),(pointer:coarse){.steps li>a{display:inline-flex;align-items:center;min-height:44px}}</style><style id="v25">@media (max-width:900px),(pointer:coarse){.fc a{display:block;padding:11px 0}[data-copy],.cb>button{min-height:40px;min-width:56px}}</style>
+<style id="v25b">footer .fc{display:block!important}footer .fw{row-gap:28px;justify-content:stretch;justify-items:stretch}footer .fc{text-align:left;width:auto;margin:0}</style>
+<script>(function(){function fb(t){var p=document.activeElement,a=document.createElement("textarea"),ok=false;a.value=t;a.setAttribute("readonly","");a.style.cssText="position:fixed;top:0;left:0;opacity:0";document.body.appendChild(a);a.select();try{ok=document.execCommand("copy")}catch(e){}a.remove();if(p&&p.focus)p.focus();return ok?Promise.resolve():Promise.reject(new Error("copy"))}var c=navigator.clipboard;if(c&&c.writeText){var w=c.writeText.bind(c);c.writeText=function(t){return w(t).catch(function(){return fb(t)})}}else{try{Object.defineProperty(navigator,"clipboard",{value:{writeText:fb},configurable:true})}catch(e){}}})();</script>
+</body>
+</html>
