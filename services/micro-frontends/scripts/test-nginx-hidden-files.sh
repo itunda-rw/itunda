@@ -53,12 +53,11 @@ assert_status "/" 200
 assert_status "/account/settings" 200
 assert_status "/.git/config" 404
 assert_status "/.env" 404
-assert_status "/.backup" 404
-assert_status "/.well-known/security.txt" 200
-
 if grep -q 'must-not-be-served' "$TMP_DIR/response"; then
   echo "Unexpected hidden-file content in response" >&2
   exit 1
 fi
+assert_status "/.backup" 404
+assert_status "/.well-known/security.txt" 200
 
 echo "Nginx hidden-file regression tests passed."
