@@ -301,7 +301,7 @@ metadata:
   namespace: itunda
 type: Opaque
 stringData:
-  secret: ${JWT_SECRET:-itunda-dev-secret-do-not-use-in-production}
+  secret: ${JWT_SECRET}
 ---
 apiVersion: v1
 kind: ConfigMap
