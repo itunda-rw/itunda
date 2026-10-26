@@ -43,6 +43,8 @@ assert_status() {
   echo "PASS $path -> HTTP $actual"
 }
 
+assert_status "/healthz" 200
+assert_status "/index.html" 200
 assert_status "/" 200
 assert_status "/account/settings" 200
 assert_status "/.git/config" 404
