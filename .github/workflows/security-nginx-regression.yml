@@ -1,0 +1,27 @@
+name: Security Nginx Regression
+
+on:
+  pull_request:
+    paths:
+      - "services/micro-frontends/nginx.conf"
+      - "services/micro-frontends/scripts/test-nginx-hidden-files.sh"
+      - ".github/workflows/security-nginx-regression.yml"
+  push:
+    branches: [main]
+    paths:
+      - "services/micro-frontends/nginx.conf"
+      - "services/micro-frontends/scripts/test-nginx-hidden-files.sh"
+      - ".github/workflows/security-nginx-regression.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  nginx-hidden-file-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Test Nginx hidden-file denial and SPA fallback
+        run: bash services/micro-frontends/scripts/test-nginx-hidden-files.sh
