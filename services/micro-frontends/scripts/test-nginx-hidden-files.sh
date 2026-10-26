@@ -32,7 +32,7 @@ BASE="http://127.0.0.1:$PORT"
 
 # Wait for Nginx to become ready.
 for _ in $(seq 1 30); do
-  if curl --silent --fail "$BASE/" >/dev/null; then break; fi
+  if curl --silent --fail "$BASE/healthz" >/dev/null; then break; fi
   sleep 1
 done
 
