@@ -283,6 +283,8 @@ ensure_runtime_env() {
 render_runtime_config_manifest() {
   local manifest_path="$1"
 
+  : "${JWT_SECRET:?JWT_SECRET must be set before generating production runtime secrets}"
+
   cat >"$manifest_path" <<EOF
 apiVersion: v1
 kind: Secret
