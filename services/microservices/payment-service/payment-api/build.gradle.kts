@@ -20,4 +20,10 @@ dependencies {
     // alongside infra/k8s/production/payment-service.yaml).
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     runtimeOnly("io.micrometer:micrometer-registry-prometheus")
+
+    testImplementation(kotlin("test"))
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
