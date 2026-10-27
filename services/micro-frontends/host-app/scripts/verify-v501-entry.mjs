@@ -30,7 +30,7 @@ checks.push(
   ['host iframe is labelled v501', index.includes('Itunda consumer app v501')],
   ['production copy has no sign-in bypass link', !production.includes('Skip sign-in (prototype shortcut)') && !production.includes('>Skip (prototype)</a>')],
   ['production copy has no hardcoded phone shortcut', !production.includes('onclick="phDemo();return false"') && !production.includes("S.ob.ph='788123456'")],
-  ['production copy keeps English, Kinyarwanda and French', production.includes('en: {') && production.includes('rw: {') && production.includes('fr: {')],
+  ['production copy keeps English, Kinyarwanda and French', production.includes('en:{') && production.includes('rw:{') && production.includes('fr:{')],
   ['production copy keeps dark-mode support', production.includes('prefers-color-scheme:dark')],
   ['production copy keeps reduced-motion support', production.includes('prefers-reduced-motion:reduce')],
   ['Nginx cache rules cover all UI entry points', protectedPaths.every((path) => nginx.includes('location = ' + path + ' {'))],
