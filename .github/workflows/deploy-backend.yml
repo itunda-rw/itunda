@@ -65,5 +65,26 @@ jobs:
             --set-env-vars="^@^DB_HOST=${MYSQL_HOST}@DB_PORT=3306@DB_NAME=itunda@DB_USER=itunda@REDIS_HOST=${REDIS_HOST}@REDIS_PORT=6379@KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP}@ITUNDA_CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}" \
             --set-secrets="^@^DB_PASSWORD=itunda-db-password:3@JWT_SECRET=itunda-jwt-secret:1" \
             --quiet
-      - name: Show service URL
-        run: gcloud run services describe "${SERVICE_NAME}" --region="${REGION}" --project="${PROJECT_ID}" --format="value(status.url)"
+      - name: Capture service URL
+        id: service
+        run: |
+          URL="$(gcloud run services describe "${SERVICE_NAME}" --region="${REGION}" --project="${PROJECT_ID}" --format="value(status.url)")"
+          test -n "${URL}"
+          echo "url=${URL}" >> "${GITHUB_OUTPUT}"
+          echo "Deployed service URL: ${URL}"
+      - name: Smoke-test public health endpoint
+        env:
+          SERVICE_URL: ${{ steps.service.outputs.url }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 12); do
+            response="$(curl --silent --show-error --fail --max-time 10 "${SERVICE_URL}/actuator/health" 2>/dev/null || true)"
+            if echo "${response}" | jq -e '.status == "UP"' >/dev/null 2>&1; then
+              echo "Health check passed on attempt ${attempt}: ${response}"
+              exit 0
+            fi
+            echo "Health check attempt ${attempt}/12 did not return status UP."
+            sleep 5
+          done
+          echo "Deployment completed, but /actuator/health did not return status UP."
+          exit 1
