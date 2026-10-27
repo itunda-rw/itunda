@@ -18,6 +18,7 @@ env:
   PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   GAR_REPOSITORY: ${{ vars.GAR_REPOSITORY || 'itunda' }}
   SERVICE_NAME: ${{ vars.CLOUD_RUN_SERVICE || 'itunda-api' }}
+  SPRING_PROFILES_ACTIVE: "production"
   RUNTIME_SERVICE_ACCOUNT: ${{ vars.GCP_RUNTIME_SERVICE_ACCOUNT || 'itunda-api@itunda-org.iam.gserviceaccount.com' }}
   MYSQL_HOST: "10.79.0.3"
   REDIS_HOST: "10.103.51.123"
@@ -62,7 +63,7 @@ jobs:
             --network=default \
             --subnet=default \
             --vpc-egress=private-ranges-only \
-            --set-env-vars="^@^DB_HOST=${MYSQL_HOST}@DB_PORT=3306@DB_NAME=itunda@DB_USER=itunda@REDIS_HOST=${REDIS_HOST}@REDIS_PORT=6379@KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP}@ITUNDA_CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}" \
+            --set-env-vars="^@^DB_HOST=${MYSQL_HOST}@DB_PORT=3306@DB_NAME=itunda@DB_USER=itunda@REDIS_HOST=${REDIS_HOST}@REDIS_PORT=6379@KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP}@ITUNDA_CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}@SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE}" \
             --set-secrets="^@^DB_PASSWORD=itunda-db-password:3@JWT_SECRET=itunda-jwt-secret:1" \
             --quiet
       - name: Capture service URL
