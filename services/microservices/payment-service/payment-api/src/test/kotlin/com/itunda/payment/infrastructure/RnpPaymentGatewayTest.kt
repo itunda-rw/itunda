@@ -1,7 +1,6 @@
 package com.itunda.payment.infrastructure
 
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
@@ -14,7 +13,7 @@ class RnpPaymentGatewayTest {
             gateway.processMobileMoneyTransfer("test-payment", 7_500L)
         }
 
-        assertTrue(error.message.orEmpty().contains("not configured"))
+        assertTrue(error.message.orEmpty().contains("No real mobile-money provider"))
         assertTrue(error.message.orEmpty().contains("not silently approved"))
     }
 
