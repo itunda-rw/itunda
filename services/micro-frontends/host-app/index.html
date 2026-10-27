@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#8F89FF" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#090B0F" media="(prefers-color-scheme: dark)" />
     <meta name="color-scheme" content="light dark" />
-    <meta name="description" content="Itunda — consumer experience preview aligned to the canonical v434 UI/UX prototype." />
+    <meta name="description" content="Itunda — consumer experience preview aligned to the canonical v501 UI/UX prototype." />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Itunda</title>
     <style>
@@ -31,9 +31,9 @@
         <img src="/brand/itunda-splash-light.svg" alt="" />
       </picture>
     </div>
-    <div id="itunda-demo-banner" role="status" aria-live="polite"><span>DEMO MODE · Sample data only</span><button type="button" id="itunda-exit-demo">Exit demo</button></div>
+    <div id="itunda-demo-banner" role="status" aria-live="polite"><span>PREVIEW MODE · Sample data only</span><button type="button" id="itunda-exit-demo">Exit demo</button></div>
     <main id="prototype-root">
-      <iframe id="prototype-frame" title="Itunda consumer app v434" allow="clipboard-read; clipboard-write"></iframe>
+      <iframe id="prototype-frame" title="Itunda consumer app v501" allow="clipboard-read; clipboard-write"></iframe>
     </main>
     <script>
       (function () {
@@ -41,7 +41,6 @@
         var frame = document.getElementById("prototype-frame");
         var banner = document.getElementById("itunda-demo-banner");
         var demoMode = new URLSearchParams(window.location.search).get("demo") === "1";
-        var enteredDemo = false;
         var hide = function () {
           if (!splash) return;
           splash.classList.add("is-hidden");
@@ -54,17 +53,9 @@
           });
         }
         frame.addEventListener("load", function () {
-          if (demoMode && !enteredDemo) {
-            enteredDemo = true;
-            window.setTimeout(function () {
-              try {
-                if (frame.contentWindow && typeof frame.contentWindow.obSkip === "function") frame.contentWindow.obSkip();
-              } catch (_) {}
-            }, 80);
-          }
           window.setTimeout(hide, 180);
         });
-        frame.src = "/itunda-prototype-v434.html" + (demoMode ? "?demo=1" : "");
+        frame.src = "/itunda-prototype-v501.html" + (demoMode ? "?demo=1" : "");
         window.setTimeout(hide, 1800);
       })();
     </script>
