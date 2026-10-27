@@ -56,7 +56,7 @@ jobs:
             --port=4001 \
             --memory=1Gi \
             --max=10 \
-            --update-annotations=autoscaling.knative.dev/maxScale=10 \
+            --max-instances=10 \
             --service-account="${RUNTIME_SERVICE_ACCOUNT}" \
             --allow-unauthenticated \
             --network=default \
