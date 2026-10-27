@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/sync-v501-entry.mjs && node --check scripts/sync-v501-entry.mjs && node scripts/verify-v501-entry.mjs && vite build && node scripts/verify-v501-entry.mjs",
+    "build": "node scripts/sync-v501-entry.mjs && node --check scripts/sync-v501-entry.mjs && node scripts/verify-v501-entry.mjs && vite build && node -e \"require('node:fs').copyFileSync('public/itunda-prototype-v501.html','dist/itunda-prototype-v501.html')\" && node scripts/verify-v501-entry.mjs",
     "typecheck": "tsc -b",
     "lint": "oxlint",
     "preview": "vite preview"
