@@ -1,9 +1,10 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 const root = new URL('../', import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), 'utf8');
 const canonical = read('../../../v501.html');
 const production = read('public/itunda-prototype-v501.html');
-const built = read('dist/itunda-prototype-v501.html');
+const builtPath = new URL('dist/itunda-prototype-v501.html', root);
+const built = existsSync(builtPath) ? readFileSync(builtPath, 'utf8') : null;
 const index = read('index.html');
 const nginx = read('../nginx.conf');
 const cacheHeader = 'no-store, no-cache, must-revalidate, max-age=0';
@@ -25,9 +26,10 @@ for (const [label, needle, replacement] of sanitizers) {
 }
 checks.push(
   ['production copy exactly matches sanitized v501 source', expected === production],
-  ['built v501 asset exactly matches verified production copy', built === production],
+  ['built v501 asset matches verified production copy when present', built === null || built === production],
   ['host points at v501', index.includes('frame.src = "/itunda-prototype-v501.html"')],
   ['host iframe is labelled v501', index.includes('Itunda consumer app v501')],
+  ['built v501 asset exists for final verification', built !== null || process.argv.includes('--allow-missing-built')],
   ['production copy has no sign-in bypass link', !production.includes('Skip sign-in (prototype shortcut)') && !production.includes('>Skip (prototype)</a>')],
   ['production copy has no hardcoded phone shortcut', !production.includes('onclick="phDemo();return false"') && !production.includes("S.ob.ph='788123456'")],
   ['production copy keeps English, Kinyarwanda and French', production.includes('en:{') && production.includes('rw:{') && production.includes('fr:{')],
