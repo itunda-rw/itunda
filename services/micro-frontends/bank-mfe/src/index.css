@@ -4173,3 +4173,71 @@ button:disabled,
 :root[data-theme="dark"] body {
   background-color: #0A0A0D;
 }
+
+
+/* v689 Home pass 2: use the prototype's calm, separated section rhythm rather
+   than a long uninterrupted feed. Surfaces use semantic theme tokens; the live
+   Home components and their click handlers are unchanged. */
+.itunda-home-page {
+  padding: 12px 24px 28px;
+  background: color-mix(in srgb, var(--itunda-text-primary) 3%, var(--itunda-surface-default));
+}
+
+.itunda-home-money,
+.itunda-home-actions-section,
+.itunda-home-local-services,
+.itunda-home-spending,
+.itunda-home-for-you {
+  margin: 12px -8px 0;
+  padding: 20px 12px 12px;
+  border-radius: 24px;
+  background: var(--itunda-surface-default);
+}
+
+.itunda-home-money {
+  margin-top: 8px;
+  padding-top: 18px;
+}
+
+.itunda-home-actions-section,
+.itunda-home-local-services,
+.itunda-home-spending,
+.itunda-home-for-you {
+  scroll-margin-top: 84px;
+}
+
+.itunda-home-actions-section > h2,
+.itunda-home-prototype-section-heading,
+.itunda-home-for-you > h2 {
+  margin-bottom: 12px;
+}
+
+.itunda-home-for-you__item {
+  padding-inline: 4px;
+}
+
+@media (max-width: 430px) {
+  .itunda-home-page {
+    padding-inline: 20px;
+  }
+
+  .itunda-home-money,
+  .itunda-home-actions-section,
+  .itunda-home-local-services,
+  .itunda-home-spending,
+  .itunda-home-for-you {
+    margin-inline: -4px;
+    padding-inline: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itunda-home-page,
+  .itunda-home-money,
+  .itunda-home-actions-section,
+  .itunda-home-local-services,
+  .itunda-home-spending,
+  .itunda-home-for-you {
+    scroll-behavior: auto;
+  }
+}
