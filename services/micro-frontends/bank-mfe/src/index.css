@@ -4163,3 +4163,13 @@ button:disabled,
     }
   }
 }
+
+
+/* The prototype also allows an in-app theme choice, so the surrounding desktop
+   canvas must follow that choice rather than only the operating-system setting. */
+:root[data-theme="light"] body {
+  background-color: #E9EBF0;
+}
+:root[data-theme="dark"] body {
+  background-color: #0A0A0D;
+}
