@@ -4384,3 +4384,79 @@ button:disabled,
     transition: none;
   }
 }
+
+
+/* v689 parity pass 5 — make Pay and Explore destinations scan like the
+   prototype: clear primary actions, quieter supporting rows, and consistent
+   touch targets. Existing live data and navigation remain the source of truth. */
+.itunda-pay-page .itunda-pay-balance {
+  padding: 22px 18px;
+  border-radius: 24px;
+  background: var(--itunda-surface-subtle);
+}
+
+.itunda-pay-page .itunda-pay-primary-actions button {
+  min-height: 52px;
+  font-weight: 700;
+  box-shadow: none;
+  transition: background-color 140ms ease, transform 140ms ease;
+}
+
+.itunda-pay-page .itunda-pay-primary-actions button:active {
+  transform: scale(.985);
+}
+
+.itunda-pay-page .itunda-flat-section > button,
+.itunda-pay-page .itunda-flat-section > div > button {
+  min-height: 56px;
+}
+
+.itunda-explore-page .itunda-explore-row {
+  padding-inline: 8px;
+  border-radius: 16px;
+  transition: background-color 140ms ease;
+}
+
+.itunda-explore-page .itunda-explore-row:active {
+  background: color-mix(in srgb, var(--itunda-brand) 7%, var(--itunda-surface-default));
+}
+
+.itunda-explore-page .itunda-explore-row__icon {
+  background: color-mix(in srgb, var(--itunda-brand) 9%, var(--itunda-surface-default));
+  color: var(--itunda-text-primary);
+}
+
+.itunda-home-topbar {
+  min-height: 56px;
+}
+
+.itunda-home-topbar > button {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  transition: background-color 140ms ease;
+}
+
+.itunda-home-topbar > button:active {
+  background: color-mix(in srgb, var(--itunda-brand) 8%, transparent);
+}
+
+@media (max-width: 430px) {
+  .itunda-pay-page .itunda-pay-balance {
+    padding: 20px 16px;
+  }
+
+  .itunda-explore-page .itunda-explore-row {
+    min-height: 64px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itunda-pay-page .itunda-pay-primary-actions button,
+  .itunda-explore-page .itunda-explore-row,
+  .itunda-home-topbar > button {
+    transition: none;
+  }
+}
