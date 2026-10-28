@@ -4241,3 +4241,79 @@ button:disabled,
     scroll-behavior: auto;
   }
 }
+
+
+/* v689 parity pass 3 — refine the flat destination lists and primary navigation.
+   Keep rows action-driven and low-chrome; no changes to tab routing or handlers. */
+.itunda-explore-page .itunda-flat-section > div > .itunda-btn,
+.itunda-you-page > .itunda-flat-section > div > .itunda-btn {
+  min-height: 58px;
+  gap: 12px;
+  transition: background-color 140ms ease, padding-inline 140ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.itunda-explore-page .itunda-flat-section > div > .itunda-btn:active,
+.itunda-you-page > .itunda-flat-section > div > .itunda-btn:active {
+  background: color-mix(in srgb, var(--itunda-brand) 7%, transparent);
+}
+
+.itunda-explore-page .itunda-flat-section > div > .itunda-btn:focus-visible,
+.itunda-you-page > .itunda-flat-section > div > .itunda-btn:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid var(--itunda-brand);
+  outline-offset: -2px;
+  border-radius: 12px;
+}
+
+.itunda-bottom-nav {
+  border: 1px solid color-mix(in srgb, var(--itunda-border-default) 75%, transparent);
+  box-shadow: 0 6px 24px rgba(25, 31, 40, 0.07);
+}
+
+.itunda-bottom-nav__item {
+  min-height: 56px;
+  border-radius: 15px;
+  transition: color 140ms ease, background-color 140ms ease, transform 140ms ease;
+}
+
+.itunda-bottom-nav__item.is-active {
+  background: color-mix(in srgb, var(--itunda-brand) 11%, var(--itunda-surface-default));
+  font-weight: 700;
+}
+
+.itunda-bottom-nav__item:focus-visible {
+  outline: 2px solid var(--itunda-brand);
+  outline-offset: -2px;
+}
+
+@media (max-width: 430px) {
+  .itunda-bottom-nav {
+    border-color: color-mix(in srgb, var(--itunda-border-default) 65%, transparent);
+    box-shadow: 0 4px 18px rgba(25, 31, 40, 0.08);
+  }
+
+  .itunda-explore-page .itunda-flat-section > div > .itunda-btn,
+  .itunda-you-page > .itunda-flat-section > div > .itunda-btn {
+    min-height: 56px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .itunda-bottom-nav {
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+  }
+}
+
+:root[data-theme="dark"] .itunda-bottom-nav {
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itunda-explore-page .itunda-flat-section > div > .itunda-btn,
+  .itunda-you-page > .itunda-flat-section > div > .itunda-btn,
+  .itunda-bottom-nav__item {
+    transition: none;
+  }
+}
