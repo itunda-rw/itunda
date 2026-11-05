@@ -1,6 +1,8 @@
 package rw.itunda.rider.ui
 
 import rw.itunda.core.designsystem.components.pressScaleClickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +23,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
+import rw.itunda.core.designsystem.components.AccountPinPad
 import rw.itunda.core.designsystem.components.FixedBottomCta
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.PetalMark
@@ -43,6 +46,12 @@ enum class RiderAppLocale { EN, RW, FR }
 
 private val riderLoginStrings: Map<RiderAppLocale, Map<String, String>> = mapOf(
     RiderAppLocale.EN to mapOf(
+        "next" to "Next",
+        "enterPin" to "Enter your 6-digit PIN",
+        "usePassword" to "Use my password instead",
+        "usePin" to "Use my 6-digit PIN",
+        "changeNumber" to "Change phone number",
+        "emptyPhone" to "Enter your phone number.",
         "title" to "itunda picker",
         "headline" to "Deliver and earn",
         "subtitle" to "Log in with your existing itunda account to start delivering.",
@@ -56,6 +65,12 @@ private val riderLoginStrings: Map<RiderAppLocale, Map<String, String>> = mapOf(
         "connectionError" to "Couldn't reach itunda. Check your connection and try again.",
     ),
     RiderAppLocale.RW to mapOf(
+        "next" to "Komeza",
+        "enterPin" to "Andika PIN yawe y'imibare 6",
+        "usePassword" to "Koresha ijambo ry'ibanga",
+        "usePin" to "Koresha PIN y'imibare 6",
+        "changeNumber" to "Hindura numero ya telefoni",
+        "emptyPhone" to "Andika numero yawe ya telefoni.",
         "title" to "itunda picker",
         "headline" to "Tanga ibicuruzwa, wunguke",
         "subtitle" to "Injira ukoresheje konti yawe ya itunda kugira ngo utangire gutwara ibicuruzwa.",
@@ -69,6 +84,12 @@ private val riderLoginStrings: Map<RiderAppLocale, Map<String, String>> = mapOf(
         "connectionError" to "Ntibishoboka kugera kuri itunda. Reba interineti yawe hanyuma ugerageze nanone.",
     ),
     RiderAppLocale.FR to mapOf(
+        "next" to "Suivant",
+        "enterPin" to "Entrez votre code PIN à 6 chiffres",
+        "usePassword" to "Utiliser mon mot de passe",
+        "usePin" to "Utiliser mon code PIN à 6 chiffres",
+        "changeNumber" to "Changer de numéro",
+        "emptyPhone" to "Entrez votre numéro de téléphone.",
         "title" to "itunda picker",
         "headline" to "Livrez et gagnez",
         "subtitle" to "Connectez-vous avec votre compte itunda existant pour commencer à livrer.",
@@ -99,119 +120,174 @@ private fun loadRiderStoredLocale(context: android.content.Context): RiderAppLoc
     }
 }
 
+private enum class LoginStep { PHONE, PIN, PASSWORD }
+
 @Composable
 fun LoginScreen(onLoggedIn: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var locale by remember { mutableStateOf(loadRiderStoredLocale(context)) }
     fun t(key: String) = riderLoginStrings[locale]?.get(key) ?: riderLoginStrings[RiderAppLocale.EN]?.get(key) ?: key
 
+    var step by remember { mutableStateOf(LoginStep.PHONE) }
     var phoneNumber by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    // One pinned CTA at the bottom, content scrolls above it (UI_UX_GUIDELINES rule 1) --
-    // the same welcome -> log-in shape as the Picker prototype, minus its demo-only PIN
-    // and sign-up steps (this app authenticates with the main itunda account).
-    FixedBottomCta(
-        content = {
-            androidx.compose.foundation.layout.Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                PetalMark(size = 40.dp, color = Ids.colors.brand)
-                Text(
-                    locale.name,
-                    style = IdsTypography.Body2,
-                    color = Ids.colors.textSecondary,
-                    modifier = Modifier.pressScaleClickable {
-                        val currentIndex = riderSupportedLocales.indexOf(locale).coerceAtLeast(0)
-                        locale = riderSupportedLocales[(currentIndex + 1) % riderSupportedLocales.size]
-                        context.getSharedPreferences("itunda_rider_locale_prefs", android.content.Context.MODE_PRIVATE)
-                            .edit().putString(RIDER_LOCALE_KEY, locale.name).apply()
-                    },
-                )
+    // One sign-in path for both credentials: the backend hashes the 6-digit PIN into the
+    // same field as a password (AuthService.login / User.pinSet), so the PIN is simply sent
+    // as `password`. Accounts that predate the PIN scheme still have a free-form password,
+    // which is why the password step stays reachable.
+    fun signIn(credential: String) {
+        busy = true
+        error = null
+        scope.launch {
+            try {
+                val res = NetworkClient.authApi.login(LoginRequest(phoneNumber.trim(), credential))
+                NetworkClient.currentTokenStore().saveSession(res.user.id, res.accessToken, res.refreshToken)
+                // Real push device-token registration (item 130) -- best-effort,
+                // fire-and-forget: a registration failure must never block an
+                // otherwise successful login. See ApiService.kt's own doc comment.
+                scope.launch {
+                    try {
+                        NetworkClient.apiService.registerDeviceToken(
+                            RegisterDeviceTokenRequest(DevicePlatform.ANDROID, NetworkClient.currentDeviceStore().getOrCreateDeviceId()),
+                        )
+                    } catch (e: Exception) {
+                        // Best-effort, see doc comment above.
+                    }
+                }
+                onLoggedIn()
+            } catch (e: HttpException) {
+                // Real Toss-style error handling (2026-08-12) -- 401 stays a friendly,
+                // specific message; every OTHER real HTTP error (429 rate limit, 403
+                // suspended, 5xx) keeps whatever real reason the backend gave.
+                error = if (e.code() == 401) {
+                    t("incorrectCredentials")
+                } else {
+                    rw.itunda.rider.network.parseApiError(e).message
+                        ?: "itunda is having a brief hiccup on our end -- not something you did. Try again in a moment."
+                }
+            } catch (e: IOException) {
+                error = t("connectionError")
+            } finally {
+                busy = false
             }
+        }
+    }
+
+    when (step) {
+        LoginStep.PIN -> Column(
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(48.dp))
+            AccountPinPad(
+                headline = t("enterPin"),
+                subtitle = phoneNumber.trim(),
+                errorMessage = error,
+                busy = busy,
+                onComplete = { signIn(it) },
+            )
             androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(24.dp))
-            Text(t("title"), style = IdsTypography.Title1, color = Ids.colors.brand)
-            Text(t("headline"), style = IdsTypography.Title1, color = Ids.colors.textPrimary)
-            Text(t("subtitle"), style = IdsTypography.Body1, color = Ids.colors.textSecondary)
-            androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(16.dp))
-            IdsTextField(
-                value = phoneNumber,
-                onValueChange = { phoneNumber = it },
-                label = t("phoneNumber"),
-                keyboardType = KeyboardType.Phone,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            IdsTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = t("password"),
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            error?.let { Text(it, color = Ids.colors.danger, style = IdsTypography.Body2) }
             Text(
-                t("noAccount"),
-                style = IdsTypography.Typography7,
+                t("usePassword"),
+                style = IdsTypography.Body2,
                 color = Ids.colors.textSecondary,
+                modifier = Modifier.pressScaleClickable(enabled = !busy) { error = null; step = LoginStep.PASSWORD }.padding(12.dp),
             )
-        },
-        cta = {
-            IdsButton(
-                text = if (busy) t("loggingIn") else t("logIn"),
-                enabled = !busy,
-                loading = busy,
-                modifier = Modifier.fillMaxWidth(),
-                onClick = {
-                    if (phoneNumber.isBlank() || password.isBlank()) {
-                        error = t("emptyFields")
-                        return@IdsButton
-                    }
-                    busy = true
-                    error = null
-                    scope.launch {
-                        try {
-                            val res = NetworkClient.authApi.login(LoginRequest(phoneNumber.trim(), password))
-                            NetworkClient.currentTokenStore().saveSession(res.user.id, res.accessToken, res.refreshToken)
-                            // Real push device-token registration (item 130) -- best-effort,
-                            // fire-and-forget: a registration failure must never block an
-                            // otherwise successful login. See ApiService.kt's own doc comment.
-                            scope.launch {
-                                try {
-                                    NetworkClient.apiService.registerDeviceToken(
-                                        RegisterDeviceTokenRequest(DevicePlatform.ANDROID, NetworkClient.currentDeviceStore().getOrCreateDeviceId()),
-                                    )
-                                } catch (e: Exception) {
-                                    // Best-effort, see doc comment above.
-                                }
-                            }
-                            onLoggedIn()
-                        } catch (e: HttpException) {
-                            // Real Toss-style error handling (2026-08-12) -- 401 stays a
-                            // real, friendly, specific message, but every OTHER real HTTP
-                            // error (429 rate limit, 403 suspended, 5xx, etc.) was
-                            // discarding any real backend message for a vague "Couldn't
-                            // reach itunda" -- wrong on two counts: not a reachability
-                            // problem if a real response came back, and it silently
-                            // dropped whatever specific reason the backend actually gave.
-                            error = if (e.code() == 401) {
-                                t("incorrectCredentials")
+            Text(
+                t("changeNumber"),
+                style = IdsTypography.Body2,
+                color = Ids.colors.textSecondary,
+                modifier = Modifier.pressScaleClickable(enabled = !busy) { error = null; step = LoginStep.PHONE }.padding(12.dp),
+            )
+        }
+        else -> FixedBottomCta(
+            content = {
+                androidx.compose.foundation.layout.Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    PetalMark(size = 40.dp, color = Ids.colors.brand)
+                    Text(
+                        locale.name,
+                        style = IdsTypography.Body2,
+                        color = Ids.colors.textSecondary,
+                        modifier = Modifier.pressScaleClickable {
+                            val currentIndex = riderSupportedLocales.indexOf(locale).coerceAtLeast(0)
+                            locale = riderSupportedLocales[(currentIndex + 1) % riderSupportedLocales.size]
+                            context.getSharedPreferences("itunda_rider_locale_prefs", android.content.Context.MODE_PRIVATE)
+                                .edit().putString(RIDER_LOCALE_KEY, locale.name).apply()
+                        },
+                    )
+                }
+                androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(24.dp))
+                Text(t("title"), style = IdsTypography.Title1, color = Ids.colors.brand)
+                Text(t("headline"), style = IdsTypography.Title1, color = Ids.colors.textPrimary)
+                Text(t("subtitle"), style = IdsTypography.Body1, color = Ids.colors.textSecondary)
+                androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(16.dp))
+                IdsTextField(
+                    value = phoneNumber,
+                    onValueChange = { phoneNumber = it },
+                    label = t("phoneNumber"),
+                    keyboardType = KeyboardType.Phone,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (step == LoginStep.PASSWORD) {
+                    IdsTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = t("password"),
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(
+                        t("usePin"),
+                        style = IdsTypography.Body2,
+                        color = Ids.colors.textSecondary,
+                        modifier = Modifier.pressScaleClickable { error = null; step = LoginStep.PIN }.padding(vertical = 8.dp),
+                    )
+                }
+                error?.let { Text(it, color = Ids.colors.danger, style = IdsTypography.Body2) }
+                Text(
+                    t("noAccount"),
+                    style = IdsTypography.Typography7,
+                    color = Ids.colors.textSecondary,
+                )
+            },
+            cta = {
+                if (step == LoginStep.PASSWORD) {
+                    IdsButton(
+                        text = if (busy) t("loggingIn") else t("logIn"),
+                        enabled = !busy,
+                        loading = busy,
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = {
+                            if (phoneNumber.isBlank() || password.isBlank()) {
+                                error = t("emptyFields")
                             } else {
-                                rw.itunda.rider.network.parseApiError(e).message
-                                    ?: "itunda is having a brief hiccup on our end -- not something you did. Try again in a moment."
+                                signIn(password)
                             }
-                        } catch (e: IOException) {
-                            error = t("connectionError")
-                        } finally {
-                            busy = false
-                        }
-                    }
-                },
-            )
-        },
-    )
+                        },
+                    )
+                } else {
+                    IdsButton(
+                        text = t("next"),
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = {
+                            if (phoneNumber.isBlank()) {
+                                error = t("emptyPhone")
+                            } else {
+                                error = null
+                                step = LoginStep.PIN
+                            }
+                        },
+                    )
+                }
+            },
+        )
+    }
 }
