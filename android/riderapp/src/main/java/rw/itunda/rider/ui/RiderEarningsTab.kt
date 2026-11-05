@@ -30,6 +30,7 @@ import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsTypography
 import rw.itunda.rider.network.CommerceOrderDto
 import rw.itunda.rider.network.EatsOrderDto
+import rw.itunda.rider.network.RiderAccountDto
 
 private enum class EarningsPeriod(val label: String, val days: Long) {
     Today("Today", 1),
@@ -51,6 +52,7 @@ private fun orderDate(createdAt: String): LocalDate? = runCatching { LocalDate.p
 fun RiderEarningsTab(
     eatsMine: List<EatsOrderDto>?,
     commerceMine: List<CommerceOrderDto>?,
+    wallet: RiderAccountDto? = null,
     today: LocalDate = LocalDate.now(),
 ) {
     var period by remember { mutableStateOf(EarningsPeriod.Week) }
@@ -84,6 +86,26 @@ fun RiderEarningsTab(
                     color = Ids.colors.textSecondary,
                 )
                 Spacer(modifier = Modifier.height(24.dp))
+                wallet?.let { w ->
+                    // Real balance of the rider's own itunda account -- delivery fees land here
+                    // the moment a delivery is marked delivered. Withdrawing is done from the
+                    // main itunda app (Cash out), so no payout button is faked here.
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Your wallet", style = IdsTypography.Body1, color = Ids.colors.textSecondary)
+                        Text("${formatMoney(w.balance)} ${w.currency}", style = IdsTypography.Subtitle1, color = Ids.colors.textPrimary)
+                    }
+                    Text(
+                        "Delivery fees are paid straight into your itunda wallet. To withdraw, use Cash out in the itunda app.",
+                        style = IdsTypography.Typography7,
+                        color = Ids.colors.textTertiary,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
                 WeekBars(deliveredEats, today)
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(

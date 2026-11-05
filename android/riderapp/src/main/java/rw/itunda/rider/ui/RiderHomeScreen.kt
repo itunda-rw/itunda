@@ -80,6 +80,8 @@ fun RiderHomeScreen(
     var rider by remember { mutableStateOf<RiderDto?>(null) }
     // Real rider rating (item 142) -- see ApiService.kt's own doc comment on getRiderRating.
     var rating by remember { mutableStateOf<RiderRatingResponse?>(null) }
+    // Real wallet balance: delivery fees are paid into the rider's own MAIN account.
+    var wallet by remember { mutableStateOf<rw.itunda.rider.network.RiderAccountDto?>(null) }
     var available by remember { mutableStateOf<List<EatsOrderDto>?>(null) }
     var mine by remember { mutableStateOf<List<EatsOrderDto>?>(null) }
     var availableCommerce by remember { mutableStateOf<List<CommerceOrderDto>?>(null) }
@@ -99,12 +101,16 @@ fun RiderHomeScreen(
         try {
             rider = NetworkClient.apiService.getMyRiderProfile().rider
             rider?.let { r -> rating = try { NetworkClient.apiService.getRiderRating(r.id) } catch (e: Exception) { null } }
+            rider?.let { r ->
+                wallet = try { NetworkClient.apiService.getAccounts().accounts.firstOrNull { it.id == r.accountId } } catch (e: Exception) { wallet }
+            }
         } catch (e: Exception) { /* keep last known state */ }
     }
 
     suspend fun refreshDeliveries() {
         try {
             available = NetworkClient.apiService.getAvailableDeliveries().orders
+            rider?.let { r -> wallet = runCatching { NetworkClient.apiService.getAccounts().accounts.firstOrNull { it.id == r.accountId } }.getOrDefault(wallet) }
             mine = NetworkClient.apiService.getRiderDeliveries().orders
             error = null
         } catch (e: Exception) {
@@ -258,7 +264,7 @@ fun RiderHomeScreen(
                     onClaim = ::claim,
                     onOpen = ::openDelivery,
                 )
-                RiderTab.Earnings -> RiderEarningsTab(eatsMine = mine, commerceMine = mineCommerce)
+                RiderTab.Earnings -> RiderEarningsTab(eatsMine = mine, commerceMine = mineCommerce, wallet = wallet)
                 RiderTab.Me -> RiderMeTab(
                     rider = rider,
                     rating = rating,
