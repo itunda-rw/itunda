@@ -12,11 +12,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import java.util.Locale
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.components.FixedBottomCta
+import rw.itunda.core.designsystem.theme.IdsTypography
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsLoading
 import rw.itunda.core.designsystem.components.IdsErrorText
-import androidx.compose.material3.Card
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -28,7 +29,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -98,77 +98,89 @@ fun DeliveryDetailScreen(orderId: String, onBack: () -> Unit) {
             return@Column
         }
 
-        Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(restaurantName ?: current.restaurantId, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                StatusBadge(current.status)
-                Spacer(modifier = Modifier.height(12.dp))
-                Text("Deliver to", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(current.deliveryAddress, style = MaterialTheme.typography.bodyLarge)
-                current.deliveryNotes?.takeIf { it.isNotBlank() }?.let {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text("Note: $it", style = MaterialTheme.typography.bodyMedium)
-                }
-                current.distanceKm?.let {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text("${String.format(Locale.US, "%.1f", it)} km", style = MaterialTheme.typography.bodyMedium)
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                    Text("Order total", style = MaterialTheme.typography.bodyMedium)
-                    Text("${String.format(Locale.US, "%,.0f", current.itemsSubtotal)} RWF", style = MaterialTheme.typography.bodyMedium)
-                }
-                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                    Text("Your delivery fee", fontWeight = FontWeight.Bold)
-                    Text("${String.format(Locale.US, "%,.0f", current.deliveryFee)} RWF", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                }
-            }
-        }
-
-        if (!locationPermissionGranted) {
-            Text(
-                "Location permission is needed so the buyer can see you're on the way.",
-                color = Ids.colors.danger,
-                modifier = Modifier.padding(horizontal = 16.dp),
-            )
-        }
-
-        error?.let { IdsErrorText(it, modifier = Modifier.padding(horizontal = 16.dp)) }
-
         val nextAction = when (current.status) {
             "RIDER_ASSIGNED" -> "PICKED_UP" to "I've picked up the order"
             "PICKED_UP" -> "DELIVERED" to "I've delivered the order"
             else -> null
         }
-        if (nextAction != null) {
-            val (nextStatus, label) = nextAction
-            IdsButton(
-                text = if (advancing) "Updating…" else label,
-                enabled = !advancing,
-                modifier = Modifier.padding(16.dp),
-                onClick = {
-                    advancing = true
-                    scope.launch {
-                        try {
-                            order = NetworkClient.apiService.updateRiderOrderStatus(orderId, UpdateEatsOrderStatusRequest(nextStatus)).order
-                            if (nextStatus == "DELIVERED") onBack()
-                        } catch (e: retrofit2.HttpException) {
-                            error = parseApiError(e).message ?: "Couldn't update this delivery's status. Try again."
-                        } catch (e: Exception) {
-                            error = "Couldn't update this delivery's status. Try again."
-                        } finally {
-                            advancing = false
-                        }
+        // Flat rows on the page + one pinned action at the bottom, like the Picker
+        // prototype's job screen (UI_UX_GUIDELINES rules 1 and 10) -- was a Material Card
+        // with MaterialTheme colors, which ignored the itunda tokens and dark theme.
+        Box(modifier = Modifier.weight(1f)) {
+            FixedBottomCta(
+                content = {
+                    Text(restaurantName ?: current.restaurantId, style = IdsTypography.Title1, color = Ids.colors.textPrimary)
+                    StatusBadge(current.status)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    DetailRow("Deliver to", current.deliveryAddress)
+                    current.deliveryNotes?.takeIf { it.isNotBlank() }?.let { DetailRow("Note", it) }
+                    current.distanceKm?.let { DetailRow("Distance", "${String.format(Locale.US, "%.1f", it)} km") }
+                    DetailRow("Order total", "${String.format(Locale.US, "%,.0f", current.itemsSubtotal)} RWF")
+                    DetailRow("Your delivery fee", "${String.format(Locale.US, "%,.0f", current.deliveryFee)} RWF", emphasize = true)
+                    if (!locationPermissionGranted) {
+                        Text(
+                            "Location permission is needed so the buyer can see you're on the way.",
+                            style = IdsTypography.Body2,
+                            color = Ids.colors.danger,
+                        )
+                    }
+                    error?.let { IdsErrorText(it) }
+                    if (current.status == "DELIVERED") {
+                        Text(
+                            "Delivered -- ${String.format(Locale.US, "%,.0f", current.deliveryFee)} RWF paid to your account.",
+                            style = IdsTypography.Subtitle1,
+                            color = Ids.colors.brand,
+                        )
+                    }
+                },
+                cta = {
+                    if (nextAction != null) {
+                        val (nextStatus, label) = nextAction
+                        IdsButton(
+                            text = if (advancing) "Updating…" else label,
+                            enabled = !advancing,
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = {
+                                advancing = true
+                                scope.launch {
+                                    try {
+                                        order = NetworkClient.apiService.updateRiderOrderStatus(orderId, UpdateEatsOrderStatusRequest(nextStatus)).order
+                                        if (nextStatus == "DELIVERED") onBack()
+                                    } catch (e: retrofit2.HttpException) {
+                                        error = parseApiError(e).message ?: "Couldn't update this delivery's status. Try again."
+                                    } catch (e: Exception) {
+                                        error = "Couldn't update this delivery's status. Try again."
+                                    } finally {
+                                        advancing = false
+                                    }
+                                }
+                            },
+                        )
+                    } else {
+                        IdsButton(text = "Back to work", onClick = onBack, modifier = Modifier.fillMaxWidth())
                     }
                 },
             )
-        } else if (current.status == "DELIVERED") {
+        }
+    }
+}
+
+@Composable
+internal fun DetailRow(label: String, value: String, emphasize: Boolean = false) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(label, style = IdsTypography.Body1, color = Ids.colors.textSecondary, modifier = Modifier.padding(end = 16.dp))
             Text(
-                "Delivered -- ${String.format(Locale.US, "%,.0f", current.deliveryFee)} RWF paid to your account.",
-                modifier = Modifier.padding(16.dp),
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
+                value,
+                style = if (emphasize) IdsTypography.Subtitle1 else IdsTypography.Body1,
+                color = if (emphasize) Ids.colors.brand else Ids.colors.textPrimary,
+                textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                modifier = Modifier.weight(1f),
             )
         }
+        Divider(color = Ids.colors.divider, thickness = 0.5.dp)
     }
 }
