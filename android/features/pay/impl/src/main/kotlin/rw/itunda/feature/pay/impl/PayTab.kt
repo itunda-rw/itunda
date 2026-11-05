@@ -270,11 +270,14 @@ fun PayEntryPoint(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(999.dp)).background(Ids.colors.surfaceSoft).padding(4.dp),
             ) {
-                listOf(PayTabMode.MY_CODE to "My code", PayTabMode.PAY_MERCHANT to "Pay a merchant").forEach { (m, label) ->
+                // Scan first, like the prototype's Scan | My code tabs (Pay v928). Labels used a
+                // hard-coded Color.White, which is invisible on the light theme's white pill
+                // (UI_UX_GUIDELINES: semantic tokens only) -- active reads textPrimary, idle textSecondary.
+                listOf(PayTabMode.PAY_MERCHANT to "Scan & pay", PayTabMode.MY_CODE to "My code").forEach { (m, label) ->
                     val active = mode == m
                     Text(
                         label, fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                        color = if (active) Ids.colors.textPrimary else Ids.colors.textSecondary,
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(999.dp))
