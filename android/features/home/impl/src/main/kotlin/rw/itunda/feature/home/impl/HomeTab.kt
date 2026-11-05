@@ -199,6 +199,10 @@ fun HomeTab(
             verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
         ) {
             item { HomeTopBar(onOpenPay = onOpenPay, onOpenNotifications = onOpenNotifications, onOpenOverview = onOpenOverview, onOpenAccountDetail = onOpenAccountDetail, unreadCount = unreadNotificationCount) }
+            // Prototype Home (v928) leads with "My money"; hidden while the user is searching.
+            if (searchQuery.isBlank()) {
+                item { HomeMoneyOverview(refreshKey = isRefreshing, onOpenBank = onOpenBank, onOpenPay = onOpenPay) }
+            }
         item {
             HomeSearchBar(
                 query = searchQuery,
@@ -292,6 +296,10 @@ fun HomeTab(
         // product... tabs are not products, are just access points." Home no longer
         // carries any Bank- or Pay-specific data or destinations at all -- see
         // BankHubScreen/PayTab's own doc comments for where that content moved.
+        // Superseded in part (2026-11-05, direct user decision: "follow the prototype"):
+        // Home now leads with a read-only "My money" summary (HomeMoneyOverview) like the
+        // clickable prototype's Home. It only SHOWS balances/spend; every tap still goes to
+        // Bank or Pay, where the details and actions live, so the isolation above holds.
         val remainingDiscoverItems = discoverItems.filter { it.id != heroDiscoverItem?.id }
         if (remainingDiscoverItems.isNotEmpty()) {
             item { DiscoverSection(remainingDiscoverItems) }
