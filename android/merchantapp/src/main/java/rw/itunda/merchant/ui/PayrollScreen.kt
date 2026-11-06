@@ -12,7 +12,6 @@ import java.util.Locale
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
@@ -108,7 +107,7 @@ private fun PayrollHistorySection() {
         }
     }
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    FlatBlock {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Payroll history", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             when {
@@ -181,7 +180,7 @@ private fun AddEmployeeCard(onAdded: () -> Unit) {
     var submitting by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    FlatBlock {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Add an employee", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             Text(
@@ -264,7 +263,7 @@ private fun RosterHeaderCard(
         )
     }
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    FlatBlock {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (error != null) {
                 Text(error, color = MaterialTheme.colorScheme.error)
@@ -298,7 +297,7 @@ private fun EmployeeRow(employee: PayrollEmployeeDto, onChanged: () -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    FlatBlock {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Text(employee.employeeName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
