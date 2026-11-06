@@ -1,6 +1,7 @@
 package rw.itunda.feature.home.impl
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +17,6 @@ import androidx.compose.material.icons.outlined.CardGiftcard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,11 +27,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import rw.itunda.core.designsystem.components.IdsButton
-import rw.itunda.core.designsystem.components.IdsButtonSize
-import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsCard
 import rw.itunda.core.designsystem.components.IdsIconButton
 import rw.itunda.core.designsystem.theme.AccentIndigo
@@ -56,65 +54,48 @@ internal data class HomeFeedEntry(
     val photoUrl: String? = null,
 )
 
-// Real personalized recommendation card -- see HomeTab's own doc comment on
-// heroDiscoverItem for the full account of what real Toss reference screenshot this
-// was compared against and what it promotes. Real fetch is scoped locally, not
-// through MainViewModel.profile, same "each screen fetches its own minimal real
-// data" precedent this codebase uses throughout.
+// Slim recommendation row (prototype v941, 2026-11-07). The old large illustrated card
+// (2026-08-11, modelled on a Toss Bank reference) is replaced by the prototype's one
+// slim row under the balance summary: small brand icon, ONE line of text, close
+// button, tap anywhere to open. The backend still ranks server-side (see HomeTab's
+// heroDiscoverItem); only the presentation got quieter. The title is the one line;
+// the long subtitle/description/first-name CTA no longer render here.
 @Composable
 internal fun PersonalRecommendationCard(item: rw.itunda.core.network.DiscoverItem, onOpenAction: () -> Unit) {
-    var firstName by remember { mutableStateOf<String?>(null) }
     var dismissed by remember(item.id) { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        try {
-            val profile = rw.itunda.core.network.NetworkClient.authApi.getProfile()
-            if (profile.success) firstName = profile.user.firstName
-        } catch (_: Exception) {
-            // Best-effort -- the card still works with a generic CTA if this fails.
-        }
-    }
     val accentColor = try {
         Color(android.graphics.Color.parseColor(item.color))
     } catch (_: IllegalArgumentException) {
         AccentIndigo
     }
     if (dismissed) return
-    Box(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
-            .background(accentColor.copy(alpha = 0.10f)),
+            .clip(RoundedCornerShape(16.dp))
+            .background(Ids.colors.surfaceSoft)
+            .clickable(onClick = onOpenAction)
+            .padding(start = 12.dp, top = 6.dp, bottom = 6.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(accentColor.copy(alpha = 0.18f)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Outlined.CardGiftcard, contentDescription = null, modifier = Modifier.size(24.dp), tint = accentColor)
-                }
-                if (item.isNew) {
-                    Spacer(modifier = Modifier.weight(1f))
-                    Text(
-                        stringResource(R.string.home_new_badge), color = accentColor, fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(accentColor.copy(alpha = 0.14f)).padding(horizontal = 10.dp, vertical = 4.dp),
-                    )
-                }
-            }
-            Text(item.title, color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold, lineHeight = 28.sp)
-            Text(item.subtitle, color = Ids.colors.textSecondary, fontSize = 14.sp)
-            IdsButton(
-                firstName?.let { stringResource(R.string.home_recommendation_cta_named, it, item.description) } ?: item.description,
-                onClick = onOpenAction,
-                variant = IdsButtonVariant.Filled,
-                size = IdsButtonSize.Large,
-            )
+        Box(
+            modifier = Modifier.size(32.dp).clip(RoundedCornerShape(10.dp)).background(accentColor.copy(alpha = 0.18f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Outlined.CardGiftcard, contentDescription = null, modifier = Modifier.size(18.dp), tint = accentColor)
         }
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            item.title,
+            color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
         IdsIconButton(
             IdsIcons.Close,
             contentDescription = stringResource(R.string.home_dismiss_recommendation),
             onClick = { dismissed = true },
-            modifier = Modifier.align(Alignment.TopEnd).padding(10.dp).size(32.dp),
+            modifier = Modifier.size(40.dp),
         )
     }
 }
