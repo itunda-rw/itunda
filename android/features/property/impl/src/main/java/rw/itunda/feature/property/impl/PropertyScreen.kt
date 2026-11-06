@@ -371,7 +371,7 @@ fun PropertyContent(
         if (view == PropertyView.NEARBY) item {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { listOf(1.0, 3.0, 5.0, 10.0).forEach { radius ->
                 val active = nearbyRadiusKm == radius
-                Text("${radius.toInt()} km", color = if (active) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft).pressScaleClickable { nearbyRadiusKm = radius; requestNearbyLocation() }.padding(horizontal = 12.dp, vertical = 7.dp))
+                Text("${radius.toInt()} km", color = if (active) Ids.colors.background else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(if (active) Ids.colors.textPrimary else Ids.colors.surfaceSoft).pressScaleClickable { nearbyRadiusKm = radius; requestNearbyLocation() }.padding(horizontal = 12.dp, vertical = 7.dp))
             } }
         }
         if (view == PropertyView.BROWSE) {
@@ -381,11 +381,11 @@ fun PropertyContent(
                         val active = listingTypeFilter == v
                         Box(
                             modifier = Modifier
-                                .background(if (active) Ids.colors.brand else Ids.colors.surface, RoundedCornerShape(999.dp))
-                                .border(1.dp, if (active) Ids.colors.brand else Ids.colors.textSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
+                                .background(if (active) Ids.colors.textPrimary else Ids.colors.surface, RoundedCornerShape(999.dp))
+                                .border(1.dp, if (active) Ids.colors.textPrimary else Ids.colors.textSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
                                 .pressScaleClickable { listingTypeFilter = if (active) null else v }
                                 .padding(horizontal = 12.dp, vertical = 6.dp),
-                        ) { Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Color.White else Ids.colors.textPrimary) }
+                        ) { Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Ids.colors.background else Ids.colors.textPrimary) }
                     }
                 }
             }
@@ -399,11 +399,11 @@ fun PropertyContent(
                             val active = propertyTypeFilter == t.id
                             Box(
                                 modifier = Modifier
-                                    .background(if (active) Ids.colors.brand else Ids.colors.surface, RoundedCornerShape(999.dp))
-                                    .border(1.dp, if (active) Ids.colors.brand else Ids.colors.textSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
+                                    .background(if (active) Ids.colors.textPrimary else Ids.colors.surface, RoundedCornerShape(999.dp))
+                                    .border(1.dp, if (active) Ids.colors.textPrimary else Ids.colors.textSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
                                     .pressScaleClickable { propertyTypeFilter = if (active) null else t.id }
                                     .padding(horizontal = 12.dp, vertical = 6.dp),
-                            ) { Text(t.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Color.White else Ids.colors.textPrimary) }
+                            ) { Text(t.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Ids.colors.background else Ids.colors.textPrimary) }
                         }
                     }
                 }
@@ -543,10 +543,10 @@ private fun NewPropertyListingForm(propertyTypes: List<PropertyTypeDto>, onCreat
                 listOf("RENT" to "For rent", "SALE" to "For sale").forEach { (v, label) ->
                     val selected = listingType == v
                     Text(
-                        label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else Ids.colors.textPrimary,
+                        label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Ids.colors.background else Ids.colors.textPrimary,
                         modifier = Modifier
                             .clip(RoundedCornerShape(10.dp))
-                            .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
+                            .background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
                             .pressScaleClickable { listingType = v }
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                     )
@@ -560,10 +560,10 @@ private fun NewPropertyListingForm(propertyTypes: List<PropertyTypeDto>, onCreat
                     val selected = propertyType == t.id
                     Box(
                         modifier = Modifier
-                            .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft, RoundedCornerShape(999.dp))
+                            .background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft, RoundedCornerShape(999.dp))
                             .pressScaleClickable { propertyType = t.id }
                             .padding(horizontal = 12.dp, vertical = 6.dp),
-                    ) { Text(t.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else Ids.colors.textPrimary) }
+                    ) { Text(t.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Ids.colors.background else Ids.colors.textPrimary) }
                 }
             }
             IdsTextField(value = title, onValueChange = { title = it }, label = stringResource(R.string.property_title_placeholder), singleLine = true, modifier = Modifier.fillMaxWidth())

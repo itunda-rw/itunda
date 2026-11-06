@@ -52,10 +52,10 @@ internal fun rememberVehicleListingState(): VehicleListingState = remember { Veh
 private fun ToggleChip(label: String, active: Boolean, onClick: () -> Unit) {
     Text(
         label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
-        color = if (active) Color.White else Ids.colors.textPrimary,
+        color = if (active) Ids.colors.background else Ids.colors.textPrimary,
         modifier = Modifier
             .clip(RoundedCornerShape(999.dp))
-            .background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft)
+            .background(if (active) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
             .pressScaleClickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 7.dp),
     )
