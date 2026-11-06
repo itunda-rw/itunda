@@ -394,3 +394,13 @@ same gap before assuming it's covered.
 11. Does this "create X" flow have real non-obvious mechanics (a fee/margin, a bonus
     structure, a feature the user wouldn't guess exists) that the creation form alone
     won't explain? → apply rule 13.
+
+## Filter / category chips (2026-11-07, prototype v998b/v1000)
+
+Chips carry no brand colour. Selected = neutral ink fill (`Ids.colors.textPrimary`) with a
+page-colour label (`Ids.colors.background`); unselected = `surfaceSoft` with a secondary
+label. Brand stays on primary buttons, switches and links. Android: use
+`IdsChip(label, selected, onClick)` (`core/designsystem/.../IdsChip.kt`) instead of a
+local `if (selected) Color.White ... brand` pill. `SearchAndCategoryChips` already uses
+it; ~20 other call sites (Jobs, Community, Transit, Ride, Pay, ...) still carry the old
+brand-fill pill and should migrate one module at a time.
