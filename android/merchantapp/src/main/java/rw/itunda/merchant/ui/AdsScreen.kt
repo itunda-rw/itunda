@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import java.util.Locale
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsSegmentedControl
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
@@ -71,7 +70,7 @@ fun AdsTab() {
         val current = merchant
         val activeAd = ad
         if (activeAd != null && runCatching { java.time.Instant.parse(activeAd.activeUntil).isAfter(java.time.Instant.now()) }.getOrDefault(false)) {
-            Card(modifier = Modifier.fillMaxWidth()) {
+            FlatBlock {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("Your active ad", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                     Text(activeAd.title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
@@ -101,7 +100,7 @@ private fun LocationSetupCard(onSaved: () -> Unit) {
     var submitting by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    FlatBlock {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Set your business location", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             Text(
@@ -152,7 +151,7 @@ private fun CreateOrExtendAdCard(onCreated: () -> Unit) {
     val scope = rememberCoroutineScope()
     val selectedTier = AD_DURATION_TIERS.find { it.days == days } ?: AD_DURATION_TIERS.first()
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    FlatBlock {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Run a local ad", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             IdsTextField(value = title, onValueChange = { title = it }, label = "Title", modifier = Modifier.fillMaxWidth())
