@@ -386,11 +386,11 @@ fun CommunityContent(
                         val active = activeCategory == c.id
                         Box(
                             modifier = Modifier
-                                .background(if (active) Ids.colors.brand else Ids.colors.surface, RoundedCornerShape(999.dp))
-                                .border(1.dp, if (active) Ids.colors.brand else Ids.colors.textSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
+                                .background(if (active) Ids.colors.textPrimary else Ids.colors.surface, RoundedCornerShape(999.dp))
+                                .border(1.dp, if (active) Ids.colors.textPrimary else Ids.colors.textSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
                                 .pressScaleClickable { activeCategory = if (active) null else c.id }
                                 .padding(horizontal = 12.dp, vertical = 6.dp),
-                        ) { Text(c.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Color.White else Ids.colors.textPrimary) }
+                        ) { Text(c.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Ids.colors.background else Ids.colors.textPrimary) }
                     }
                 }
             }
@@ -405,11 +405,11 @@ fun CommunityContent(
                         val active = activeTopic == t.id
                         Box(
                             modifier = Modifier
-                                .background(if (active) Ids.colors.brand else Ids.colors.surface, RoundedCornerShape(999.dp))
-                                .border(1.dp, if (active) Ids.colors.brand else Ids.colors.textSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
+                                .background(if (active) Ids.colors.textPrimary else Ids.colors.surface, RoundedCornerShape(999.dp))
+                                .border(1.dp, if (active) Ids.colors.textPrimary else Ids.colors.textSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
                                 .pressScaleClickable { activeTopic = if (active) null else t.id }
                                 .padding(horizontal = 12.dp, vertical = 6.dp),
-                        ) { Text(t.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Color.White else Ids.colors.textPrimary) }
+                        ) { Text(t.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Ids.colors.background else Ids.colors.textPrimary) }
                     }
                 }
             }
@@ -571,10 +571,10 @@ private fun NewCommunityPostForm(categories: List<CommunityCategoryDto>, onCreat
                     val selected = category == c.id
                     Box(
                         modifier = Modifier
-                            .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft, RoundedCornerShape(999.dp))
+                            .background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft, RoundedCornerShape(999.dp))
                             .pressScaleClickable { category = c.id }
                             .padding(horizontal = 12.dp, vertical = 6.dp),
-                    ) { Text(c.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else Ids.colors.textPrimary) }
+                    ) { Text(c.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Ids.colors.background else Ids.colors.textPrimary) }
                 }
             }
             IdsTextField(value = title, onValueChange = { title = it }, label = stringResource(R.string.community_title_placeholder), singleLine = true, modifier = Modifier.fillMaxWidth())
