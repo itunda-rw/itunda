@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -63,7 +62,7 @@ fun CreditScoreScreen(onBack: () -> Unit) {
                 if (error == null) item { SkeletonBlock() }
             } else {
                 item {
-                    Card(Modifier.fillMaxWidth()) {
+                    FlatBlock {
                         Column(Modifier.padding(16.dp)) {
                             Text("Your score", style = MaterialTheme.typography.labelMedium)
                             Text("${current.score} / 850", style = MaterialTheme.typography.headlineMedium)
@@ -76,7 +75,7 @@ fun CreditScoreScreen(onBack: () -> Unit) {
                 }
                 item { Text("What makes up your score", style = MaterialTheme.typography.titleMedium) }
                 items(current.factors, key = { it.name }) { factor ->
-                    Card(Modifier.fillMaxWidth()) {
+                    FlatBlock {
                         Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                             Column(Modifier.weight(1f)) {
                                 Text(factor.name, style = MaterialTheme.typography.bodyLarge)
@@ -90,7 +89,7 @@ fun CreditScoreScreen(onBack: () -> Unit) {
                 if (!suggestionList.isNullOrEmpty()) {
                     item { Text("Ways to raise your score", style = MaterialTheme.typography.titleMedium) }
                     items(suggestionList, key = { it.action }) { suggestion ->
-                        Card(Modifier.fillMaxWidth()) {
+                        FlatBlock {
                             Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Column(Modifier.weight(1f)) {
                                     Text(suggestion.action, style = MaterialTheme.typography.bodyLarge)
