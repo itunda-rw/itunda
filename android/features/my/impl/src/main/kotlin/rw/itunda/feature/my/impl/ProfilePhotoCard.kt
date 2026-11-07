@@ -1,5 +1,8 @@
 package rw.itunda.feature.my.impl
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,95 +18,91 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import rw.itunda.core.designsystem.components.IdsAvatar
 import rw.itunda.core.designsystem.components.IdsButton
-import rw.itunda.core.designsystem.components.IdsCard
-import rw.itunda.core.designsystem.components.IdsTextField
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.superAppErrorMessage
 import retrofit2.HttpException
 import java.io.IOException
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
-// Real profile photo (URL, not a binary upload) -- also the real, buildable half of
-// Rewards' task_profile. Found 2026-07-29 via a full-backend-endpoint sweep: a real,
-// working `PUT /api/v1/auth/profile/photo` endpoint with zero client anywhere, and
-// `PublicUser.profilePhotoUrl` wasn't even carried by this DTO until now.
+// Profile photo (prototype v929: tap the photo, pick one). The old card asked people to
+// paste a link because itunda "doesn't host photo uploads yet"; it does now
+// (`uploadPhoto` returns a hosted URL, same pipeline Property's ownership documents
+// use), so this picks from the gallery, uploads, and saves the returned URL with the
+// existing `PUT /api/v1/auth/profile/photo`. Camera and the prototype's 24 characters
+// are not built: camera needs a FileProvider + permission flow, characters need assets.
 //
-// Moved here from :app's ItundaAppScreen.kt (2026-09-02, My Feature-module
-// decomposition) -- confirmed used only by MyTab, which moved to this same module
-// in the same slice.
+// Flat, no card (UI_UX_GUIDELINES rule 10).
 @Composable
 internal fun ProfilePhotoCard() {
     var profilePhotoUrl by rememberSaveable { mutableStateOf<String?>(null) }
     var displayName by rememberSaveable { mutableStateOf("") }
-    var urlInput by rememberSaveable { mutableStateOf("") }
     var saving by rememberSaveable { mutableStateOf(false) }
     var error by rememberSaveable { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         try {
             val user = rw.itunda.core.network.NetworkClient.authApi.getProfile().user
             profilePhotoUrl = user.profilePhotoUrl
-            urlInput = user.profilePhotoUrl ?: ""
             displayName = "${user.firstName} ${user.lastName}".trim()
         } catch (_: Exception) {
             // Real, non-critical -- the rest of "My" still works without this.
         }
     }
 
-    IdsCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                IdsAvatar(
-                    name = displayName.ifBlank { "?" },
-                    photoUrl = urlInput.trim().ifBlank { profilePhotoUrl },
-                    size = 56.dp,
-                )
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Profile photo", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                    Text(
-                        "Paste a link to a photo hosted elsewhere -- itunda doesn't host photo uploads yet.",
-                        color = Ids.colors.textSecondary, fontSize = 12.sp,
-                    )
+    val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        saving = true
+        error = null
+        coroutineScope.launch {
+            try {
+                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                if (bytes == null) {
+                    error = "Couldn't read that photo."
+                    return@launch
                 }
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
-                IdsTextField(
-                    value = urlInput, onValueChange = { urlInput = it },
-                    label = "Photo link",
-                    placeholder = "https://example.com/my-photo.jpg",
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                IdsButton(
-                    text = if (saving) "Saving…" else "Save photo",
-                    enabled = !saving,
-                    onClick = {
-                        val trimmed = urlInput.trim()
-                        if (trimmed.isEmpty()) { error = "Enter a photo URL."; return@IdsButton }
-                        saving = true
-                        error = null
-                        coroutineScope.launch {
-                            try {
-                                profilePhotoUrl = rw.itunda.core.network.NetworkClient.authApi.updateProfilePhoto(
-                                    rw.itunda.core.network.UpdateProfilePhotoRequest(trimmed),
-                                ).user.profilePhotoUrl
-                            } catch (e: HttpException) {
-                                error = superAppErrorMessage(e)
-                            } catch (e: IOException) {
-                                error = "Couldn't reach itunda. Check your connection and try again."
-                            } finally {
-                                saving = false
-                            }
-                        }
-                    },
-                )
+                val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
+                val part = MultipartBody.Part.createFormData("file", "profile.jpg", bytes.toRequestBody(mimeType.toMediaTypeOrNull()))
+                val hostedUrl = rw.itunda.core.network.NetworkClient.apiService.uploadPhoto(part).url
+                profilePhotoUrl = rw.itunda.core.network.NetworkClient.authApi.updateProfilePhoto(
+                    rw.itunda.core.network.UpdateProfilePhotoRequest(hostedUrl),
+                ).user.profilePhotoUrl
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                saving = false
             }
         }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        IdsAvatar(name = displayName.ifBlank { "?" }, photoUrl = profilePhotoUrl, size = 80.dp)
+        if (displayName.isNotBlank()) {
+            Text(displayName, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+        }
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
+        IdsButton(
+            text = if (saving) "Saving…" else if (profilePhotoUrl.isNullOrBlank()) "Add a photo" else "Change photo",
+            enabled = !saving,
+            onClick = { pickPhoto.launch("image/*") },
+            variant = IdsButtonVariant.Tinted,
+        )
     }
 }
