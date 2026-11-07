@@ -170,7 +170,7 @@ fun LoansScreen(onBack: () -> Unit) {
                     // interestRate is real, already-fetched data, not an invented metric.
                     val bestRate = currentOffers.minOf { it.interestRate }
                     items(currentOffers, key = { it.id }) { offer ->
-                    OfferCard(offer, busyId == offer.id, isBestRate = offer.interestRate == bestRate) { amount ->
+                    OfferRow(offer, busyId == offer.id, isBestRate = offer.interestRate == bestRate) { amount ->
                         busyId = offer.id
                         scope.launch {
                             try {
@@ -265,7 +265,7 @@ fun LoansScreen(onBack: () -> Unit) {
 private val LOAN_APPLY_STEPS = listOf("Checking your credit score", "Confirming loan terms", "Disbursing your funds")
 
 @Composable
-private fun LoanApplyProgress() {
+internal fun LoanApplyProgress() {
     var stepIndex by remember { mutableStateOf(0) }
     LaunchedEffect(Unit) {
         for (i in 1 until LOAN_APPLY_STEPS.size) {
@@ -277,46 +277,6 @@ private fun LoanApplyProgress() {
         CircularProgressIndicator(modifier = Modifier.padding(bottom = 14.dp), color = Ids.colors.brand)
         Crossfade(targetState = stepIndex, label = "loanApplyStep") { idx ->
             Text(LOAN_APPLY_STEPS[idx], color = Ids.colors.textSecondary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-        }
-    }
-}
-
-@Composable
-private fun OfferCard(offer: LoanOfferDto, busy: Boolean, isBestRate: Boolean = false, onApply: (BigDecimal) -> Unit) {
-    var amountText by remember { mutableStateOf(offer.maxAmount.toPlainString()) }
-    Card(Modifier.fillMaxWidth()) {
-        if (busy) {
-            LoanApplyProgress()
-            return@Card
-        }
-        Column(Modifier.padding(16.dp)) {
-            if (isBestRate) {
-                Text(
-                    "Best rate",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = Ids.colors.brand,
-                    modifier = Modifier
-                        .background(Ids.colors.brand.copy(alpha = 0.1f), RoundedCornerShape(999.dp))
-                        .padding(horizontal = 8.dp, vertical = 2.dp),
-                )
-                Spacer(Modifier.height(4.dp))
-            }
-            Text(offer.name, style = MaterialTheme.typography.titleMedium)
-            Text(offer.lenderName, style = MaterialTheme.typography.bodySmall)
-            Text("Up to ${formatMoney(offer.maxAmount)} RWF · ${offer.interestRate}% · ${offer.term}", style = MaterialTheme.typography.bodyMedium)
-            Text(offer.requirements, style = MaterialTheme.typography.bodySmall)
-            Spacer(Modifier.height(8.dp))
-            IdsTextField(value = amountText, onValueChange = { amountText = it }, label = "Amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
-            Spacer(Modifier.height(8.dp))
-            IdsButton(
-                text = "Apply",
-                enabled = true,
-                onClick = {
-                    val amount = amountText.toBigDecimalOrNull()
-                    if (amount != null && amount > BigDecimal.ZERO) onApply(amount)
-                },
-            )
         }
     }
 }
