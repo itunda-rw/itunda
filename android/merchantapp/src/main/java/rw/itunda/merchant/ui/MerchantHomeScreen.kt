@@ -16,19 +16,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.outlined.RateReview
 import rw.itunda.core.designsystem.components.IdsEmptyState
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
-import rw.itunda.core.designsystem.components.IdsTabs
 import rw.itunda.core.designsystem.components.IdsLoading
 import rw.itunda.core.designsystem.components.IdsErrorText
 import rw.itunda.core.designsystem.components.StatusBadge
 import rw.itunda.core.designsystem.theme.Ids
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -49,82 +46,10 @@ import rw.itunda.merchant.network.MerchantDto
 import rw.itunda.merchant.network.NetworkClient
 import rw.itunda.merchant.network.UpdateEatsOrderStatusRequest
 
-private enum class MerchantTab { ORDERS, DINE_IN, BOOKINGS, CATALOG, REGISTER, BUSINESS_ACCOUNT, REPORTS, REVIEWS, COUPONS, VISITORS, FOLLOWERS, UPDATES, PHOTOS, PAYROLL, ADS, BILLING, CASH_ADVANCE, VOUCHERS }
-
 @Composable
 fun MerchantHomeScreen(merchant: MerchantDto, onLogout: () -> Unit) {
-    var tab by remember { mutableStateOf(MerchantTab.ORDERS) }
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column {
-                Text("Itunda Merchant", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(merchant.businessName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    // Real Coupang badge system (2026-08-05) -- see docs/DESIGN_REFERENCES.md
-                    // Section 9. A real, named verification tier next to the business name.
-                    if (merchant.kybVerified) {
-                        StatusBadge("✓ Verified", tint = Ids.colors.brand)
-                    }
-                }
-            }
-            IconButton(onClick = { NetworkClient.currentTokenStore().clearSession(); onLogout() }) {
-                Icon(Icons.Filled.ExitToApp, contentDescription = "Log out")
-            }
-        }
-
-        val tabs = listOf(
-            MerchantTab.ORDERS to "Orders",
-            MerchantTab.DINE_IN to "Dine-in",
-            MerchantTab.BOOKINGS to "Bookings",
-            MerchantTab.CATALOG to "Catalog",
-            MerchantTab.REGISTER to "Register",
-            MerchantTab.BUSINESS_ACCOUNT to "Business",
-            MerchantTab.REPORTS to "Reports",
-            MerchantTab.REVIEWS to "Reviews",
-            MerchantTab.COUPONS to "Coupons",
-            MerchantTab.VISITORS to "Visitors",
-            MerchantTab.FOLLOWERS to "Followers",
-            MerchantTab.UPDATES to "Updates",
-            MerchantTab.PHOTOS to "Photos",
-            MerchantTab.PAYROLL to "Payroll",
-            MerchantTab.ADS to "Ads",
-            MerchantTab.BILLING to "Billing",
-            MerchantTab.CASH_ADVANCE to "Cash advance",
-            MerchantTab.VOUCHERS to "Vouchers",
-        )
-        IdsTabs(
-            labels = tabs.map { it.second },
-            selectedIndex = tabs.indexOfFirst { it.first == tab }.coerceAtLeast(0),
-            onSelectedIndexChange = { tab = tabs[it].first },
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        when (tab) {
-            MerchantTab.ORDERS -> OrdersTab()
-            MerchantTab.DINE_IN -> DineInTab(restaurantId = merchant.id)
-            MerchantTab.BOOKINGS -> BookingTab()
-            MerchantTab.CATALOG -> CatalogTab()
-            MerchantTab.REGISTER -> PosTab()
-            MerchantTab.BUSINESS_ACCOUNT -> BusinessAccountTab()
-            MerchantTab.REPORTS -> ReportsTab()
-            MerchantTab.REVIEWS -> ReviewsTab(restaurantId = merchant.id)
-            MerchantTab.COUPONS -> CouponsTab()
-            MerchantTab.VISITORS -> VisitorAnalyticsTab()
-            MerchantTab.FOLLOWERS -> FollowersTab()
-            MerchantTab.UPDATES -> UpdatesTab(merchantId = merchant.id)
-            MerchantTab.PHOTOS -> PhotosTab()
-            MerchantTab.PAYROLL -> PayrollTab()
-            MerchantTab.ADS -> AdsTab()
-            MerchantTab.BILLING -> BillingTab()
-            MerchantTab.CASH_ADVANCE -> VendorCashAdvanceTab(merchantId = merchant.id)
-            MerchantTab.VOUCHERS -> VoucherRedeemTab()
-        }
-    }
+    // Navigation (bottom tabs, Store/Payments lists) lives in MerchantShell.kt.
+    MerchantShell(merchant = merchant, onLogout = onLogout)
 }
 
 /**
@@ -135,7 +60,7 @@ fun MerchantHomeScreen(merchant: MerchantDto, onLogout: () -> Unit) {
  * rider claims it, this app's job is done (rider-driven statuses have no action here).
  */
 @Composable
-private fun OrdersTab() {
+internal fun OrdersTab() {
     var orders by remember { mutableStateOf<List<EatsOrderDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -251,7 +176,7 @@ private fun nextRestaurantAction(status: String): Pair<String, String>? = when (
 // no aggregate "all my products' reviews" backend endpoint exists, so this fans out one
 // real per-product review fetch across the merchant's own catalog (getProductCatalog).
 @Composable
-private fun ReviewsTab(restaurantId: String) {
+internal fun ReviewsTab(restaurantId: String) {
     var restaurantReviews by remember { mutableStateOf<List<rw.itunda.merchant.network.EatsReviewDto>?>(null) }
     var productReviews by remember { mutableStateOf<List<Pair<String, rw.itunda.merchant.network.ProductReviewDto>>?>(null) }
     // Real post-appointment booking reviews + owner-side reply (Merchant product-

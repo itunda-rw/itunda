@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.VerifiedUser
-import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -60,7 +59,7 @@ internal fun KybCard(merchant: MerchantDto) {
     val latestKyb = submissions?.filter { it.documentType == "BUSINESS_TIN" }?.maxByOrNull { it.submittedAt }
     val pending = latestKyb?.status == "PENDING"
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    FlatBlock {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Outlined.VerifiedUser, contentDescription = null, tint = if (merchant.kybVerified) Ids.colors.brand else Ids.colors.textTertiary)
