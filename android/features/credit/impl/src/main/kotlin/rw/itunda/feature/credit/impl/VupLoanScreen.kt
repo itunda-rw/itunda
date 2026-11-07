@@ -201,10 +201,10 @@ fun VupLoanScreen(onBack: () -> Unit) {
                                 listOf(1, 2, 3).forEach { c ->
                                     Box(
                                         modifier = Modifier.clip(RoundedCornerShape(10.dp))
-                                            .background(if (category == c) Ids.colors.brand else Ids.colors.surfaceSoft)
+                                            .background(if (category == c) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
                                             .pressScaleClickable { category = c }
                                             .padding(horizontal = 16.dp, vertical = 10.dp),
-                                    ) { Text("Category $c", color = if (category == c) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+                                    ) { Text("Category $c", color = if (category == c) Ids.colors.background else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
                                 }
                             }
                             Text("Purpose", color = Ids.colors.textSecondary, fontSize = 12.sp)
@@ -212,10 +212,10 @@ fun VupLoanScreen(onBack: () -> Unit) {
                                 listOf("FARMING" to "Farming", "LIVESTOCK" to "Livestock", "BUSINESS" to "Business").forEach { (value, label) ->
                                     Box(
                                         modifier = Modifier.clip(RoundedCornerShape(10.dp))
-                                            .background(if (purpose == value) Ids.colors.brand else Ids.colors.surfaceSoft)
+                                            .background(if (purpose == value) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
                                             .pressScaleClickable { purpose = value }
                                             .padding(horizontal = 14.dp, vertical = 10.dp),
-                                    ) { Text(label, color = if (purpose == value) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+                                    ) { Text(label, color = if (purpose == value) Ids.colors.background else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
                                 }
                             }
                             IdsTextField(

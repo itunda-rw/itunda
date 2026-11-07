@@ -86,6 +86,10 @@ jobs:
         working-directory: android
         run: ./gradlew :app:assembleDebug --stacktrace
 
+      - name: Assemble Picker and Business debug APKs
+        working-directory: android
+        run: ./gradlew :riderapp:assembleDebug :merchantapp:assembleDebug --stacktrace
+
       - name: Run Android unit tests
         working-directory: android
         run: ./gradlew testDebugUnitTest --stacktrace
@@ -95,5 +99,15 @@ jobs:
         with:
           name: itunda-android-debug-${{ github.run_number }}
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload Picker and Business debug APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: itunda-picker-business-debug-${{ github.run_number }}
+          path: |
+            android/riderapp/build/outputs/apk/debug/*.apk
+            android/merchantapp/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 7

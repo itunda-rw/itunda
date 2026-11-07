@@ -363,21 +363,7 @@ fun SearchAndCategoryChips(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 listOf<String?>(null).plus(categories).forEach { c ->
-                    val selected = c == selectedCategory
-                    val interactionSource = remember { MutableInteractionSource() }
-                    val pressScale = rememberPressScale(interactionSource)
-                    Text(
-                        c ?: "All",
-                        color = if (selected) Color.White else Ids.colors.textSecondary,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        modifier = Modifier
-                            .scale(pressScale)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
-                            .clickable(interactionSource = interactionSource, indication = LocalIndication.current) { onSelectCategory(c) }
-                            .padding(horizontal = 14.dp, vertical = 6.dp),
-                    )
+                    IdsChip(label = c ?: "All", selected = c == selectedCategory, onClick = { onSelectCategory(c) })
                 }
             }
         }

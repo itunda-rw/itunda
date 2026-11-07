@@ -13,7 +13,6 @@ import androidx.compose.foundation.lazy.items
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import rw.itunda.core.designsystem.components.IdsTextField
@@ -200,7 +199,7 @@ fun BusinessAccountTab() {
         merchant?.let { m -> item { MoreStoreSettingsCard(merchant = m, onUpdated = { merchant = it }) } }
         merchant?.let { m -> item { KybCard(merchant = m) } }
         item {
-            Card(modifier = Modifier.fillMaxWidth()) {
+            FlatBlock {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Business balance", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("${String.format(java.util.Locale.US, "%,.0f", current.balance)} RWF", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
@@ -209,7 +208,7 @@ fun BusinessAccountTab() {
             }
         }
         item {
-            Card(modifier = Modifier.fillMaxWidth()) {
+            FlatBlock {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Move money", fontWeight = FontWeight.Bold)
                     IdsTextField(value = moveAmount, onValueChange = { moveAmount = it }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
@@ -244,7 +243,7 @@ fun BusinessAccountTab() {
             item { EmptyState("No business transactions yet — once you send or receive money, it'll show up here.", icon = Icons.Outlined.ReceiptLong) }
         } else {
             items(txns, key = { it.id }) { entry ->
-                Card(modifier = Modifier.fillMaxWidth()) {
+                FlatBlock {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(14.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -289,7 +288,7 @@ private fun BusinessExpenseSummaryCard() {
         }
     }
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    FlatBlock {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Expense summary", fontWeight = FontWeight.Bold)
             Text(
@@ -334,7 +333,7 @@ private fun FeeWaiverCard(merchant: MerchantDto, onUpdated: (MerchantDto) -> Uni
     val waived = merchant.feeRateOverride == 0.0
     val scope = rememberCoroutineScope()
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    FlatBlock {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -392,7 +391,7 @@ private fun WebhookUrlCard(merchant: MerchantDto, onUpdated: (MerchantDto) -> Un
     var saved by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    FlatBlock {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Webhook URL", fontWeight = FontWeight.Bold)
             IdsTextField(value = webhookUrl, onValueChange = { webhookUrl = it; saved = false }, label = "https://your-server.example.com/webhooks/itunda", modifier = Modifier.fillMaxWidth())
@@ -456,7 +455,7 @@ private fun ApiIntegrationCard() {
     }
     LaunchedEffect(Unit) { loadDeliveries() }
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    FlatBlock {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("API integration", fontWeight = FontWeight.Bold)
             Text(
@@ -587,7 +586,7 @@ private fun StoreSettingsCard(merchant: MerchantDto, onUpdated: (MerchantDto) ->
     var scheduledError by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    FlatBlock {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Store settings", fontWeight = FontWeight.Bold)
             IdsTextField(value = category, onValueChange = { category = it; saved = false }, label = "Category (e.g. Rwandan, Bakery, Cafe)", modifier = Modifier.fillMaxWidth())

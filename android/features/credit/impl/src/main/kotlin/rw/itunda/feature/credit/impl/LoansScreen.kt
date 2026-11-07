@@ -3,6 +3,7 @@ package rw.itunda.feature.credit.impl
 import rw.itunda.core.designsystem.components.formatMoney
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsChip
 import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsSegmentedControl
 import rw.itunda.core.designsystem.components.SkeletonBlock
@@ -24,7 +25,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -140,7 +140,7 @@ fun LoansScreen(onBack: () -> Unit) {
             payoffMessage?.let { item { Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium) } }
             refinanceResult?.let { result ->
                 item {
-                    Card(Modifier.fillMaxWidth()) {
+                    FlatBlock {
                         Column(Modifier.padding(16.dp)) {
                             Text("Refinanced into ${result.newLoanName}", style = MaterialTheme.typography.titleSmall)
                             Text("${result.oldInterestRate}% → ${result.newInterestRate}%", style = MaterialTheme.typography.bodySmall)
@@ -152,9 +152,9 @@ fun LoansScreen(onBack: () -> Unit) {
                 lenders?.let { currentLenders ->
                     item {
                         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            LenderChip("All lenders", selected = lenderId == null) { selectLender(null) }
+                            IdsChip("All lenders", selected = lenderId == null, onClick = { selectLender(null) })
                             currentLenders.forEach { lender ->
-                                LenderChip(lender.name, selected = lenderId == lender.id) { selectLender(lender.id) }
+                                IdsChip(lender.name, selected = lenderId == lender.id, onClick = { selectLender(lender.id) })
                             }
                         }
                     }
@@ -169,7 +169,7 @@ fun LoansScreen(onBack: () -> Unit) {
                     // interestRate is real, already-fetched data, not an invented metric.
                     val bestRate = currentOffers.minOf { it.interestRate }
                     items(currentOffers, key = { it.id }) { offer ->
-                    OfferCard(offer, busyId == offer.id, isBestRate = offer.interestRate == bestRate) { amount ->
+                    OfferRow(offer, busyId == offer.id, isBestRate = offer.interestRate == bestRate) { amount ->
                         busyId = offer.id
                         scope.launch {
                             try {
@@ -197,14 +197,14 @@ fun LoansScreen(onBack: () -> Unit) {
                 if (currentLoans == null) item { SkeletonBlock() }
                 else if (currentLoans.isEmpty()) item { Text("You have no loans yet.") }
                 else items(currentLoans, key = { it.id }) { loan ->
-                    MyLoanCard(
+                    MyLoanRow(
                         loan = loan,
                         busy = busyId == loan.id,
                         repayText = repayAmounts[loan.id] ?: "",
                         onRepayTextChanged = { repayAmounts = repayAmounts + (loan.id to it) },
                         onRepay = {
                             val amount = (repayAmounts[loan.id] ?: "").toBigDecimalOrNull()
-                            if (amount == null || amount <= BigDecimal.ZERO) { error = "Enter a valid repayment amount."; return@MyLoanCard }
+                            if (amount == null || amount <= BigDecimal.ZERO) { error = "Enter a valid repayment amount."; return@MyLoanRow }
                             busyId = loan.id
                             error = null
                             scope.launch {
@@ -264,7 +264,7 @@ fun LoansScreen(onBack: () -> Unit) {
 private val LOAN_APPLY_STEPS = listOf("Checking your credit score", "Confirming loan terms", "Disbursing your funds")
 
 @Composable
-private fun LoanApplyProgress() {
+internal fun LoanApplyProgress() {
     var stepIndex by remember { mutableStateOf(0) }
     LaunchedEffect(Unit) {
         for (i in 1 until LOAN_APPLY_STEPS.size) {
@@ -279,100 +279,6 @@ private fun LoanApplyProgress() {
         }
     }
 }
-
-@Composable
-private fun OfferCard(offer: LoanOfferDto, busy: Boolean, isBestRate: Boolean = false, onApply: (BigDecimal) -> Unit) {
-    var amountText by remember { mutableStateOf(offer.maxAmount.toPlainString()) }
-    Card(Modifier.fillMaxWidth()) {
-        if (busy) {
-            LoanApplyProgress()
-            return@Card
-        }
-        Column(Modifier.padding(16.dp)) {
-            if (isBestRate) {
-                Text(
-                    "Best rate",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = Ids.colors.brand,
-                    modifier = Modifier
-                        .background(Ids.colors.brand.copy(alpha = 0.1f), RoundedCornerShape(999.dp))
-                        .padding(horizontal = 8.dp, vertical = 2.dp),
-                )
-                Spacer(Modifier.height(4.dp))
-            }
-            Text(offer.name, style = MaterialTheme.typography.titleMedium)
-            Text(offer.lenderName, style = MaterialTheme.typography.bodySmall)
-            Text("Up to ${formatMoney(offer.maxAmount)} RWF · ${offer.interestRate}% · ${offer.term}", style = MaterialTheme.typography.bodyMedium)
-            Text(offer.requirements, style = MaterialTheme.typography.bodySmall)
-            Spacer(Modifier.height(8.dp))
-            IdsTextField(value = amountText, onValueChange = { amountText = it }, label = "Amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
-            Spacer(Modifier.height(8.dp))
-            IdsButton(
-                text = "Apply",
-                enabled = true,
-                onClick = {
-                    val amount = amountText.toBigDecimalOrNull()
-                    if (amount != null && amount > BigDecimal.ZERO) onApply(amount)
-                },
-            )
-        }
-    }
-}
-
-@Composable
-private fun MyLoanCard(
-    loan: LoanAccountDto,
-    busy: Boolean,
-    repayText: String,
-    onRepayTextChanged: (String) -> Unit,
-    onRepay: () -> Unit,
-    onRefinance: () -> Unit,
-) = Card(Modifier.fillMaxWidth()) {
-    Column(Modifier.padding(16.dp)) {
-        Text("${formatMoney(loan.principal)} RWF loan", style = MaterialTheme.typography.titleMedium)
-        Text("Outstanding: ${formatMoney(loan.outstanding)} RWF", style = MaterialTheme.typography.bodyMedium)
-        Text("Status: ${loan.status} · ${loan.interestRate}%", style = MaterialTheme.typography.bodySmall)
-        if (loan.status == "ACTIVE") {
-            Spacer(Modifier.height(8.dp))
-            IdsTextField(value = repayText, onValueChange = onRepayTextChanged, label = "Repay amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
-            Spacer(Modifier.height(8.dp))
-            IdsButton(text = if (busy) "Repaying…" else "Repay", enabled = !busy, onClick = onRepay)
-            Spacer(Modifier.height(8.dp))
-            IdsButton(
-                text = if (busy) "Checking…" else "Refinance to a lower rate",
-                enabled = !busy,
-                onClick = onRefinance,
-                variant = IdsButtonVariant.Tinted,
-            )
-        }
-    }
-}
-
-// Selectable filter chip, not a CTA -- kept as a custom shape (same call as the Maps
-// search pill earlier this sweep) rather than forced into IdsButton, which has no
-// "selected" visual state. Real bug was the *colors*: MaterialTheme.colorScheme.primary/
-// onSurface/outline are stock Material3 defaults, not itunda's Ids tokens, so this
-// rendered off-brand purple/black regardless of what the rest of the screen looked like.
-@Composable
-private fun LenderChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    OutlinedButton(
-        onClick = onClick,
-        shape = RoundedCornerShape(14.dp),
-        colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = if (selected) Ids.colors.pressed else androidx.compose.ui.graphics.Color.Transparent,
-            contentColor = if (selected) Ids.colors.textBrand else Ids.colors.textPrimary,
-        ),
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            if (selected) Ids.colors.brand else Ids.colors.divider,
-        ),
-    ) {
-        Text(label, style = MaterialTheme.typography.labelMedium)
-    }
-}
-
-
 
 /** Feature composition entry point. Keeps the app shell independent of concrete screen names. */
 @Composable

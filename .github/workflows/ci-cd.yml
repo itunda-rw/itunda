@@ -368,6 +368,12 @@ jobs:
         working-directory: android
         run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
 
+      # The standalone Picker (riderapp) and Business (merchantapp) apps were never built in
+      # CI, so a broken change to either could merge green. Compile-only (assembleDebug).
+      - name: Assemble Picker and Business debug APKs
+        working-directory: android
+        run: ./gradlew :riderapp:assembleDebug :merchantapp:assembleDebug --no-daemon --stacktrace
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:

@@ -22,7 +22,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import rw.itunda.core.designsystem.components.IdsTextField
@@ -90,7 +89,7 @@ internal fun OverdraftPanel() {
 
     val current = account
     if (current == null) {
-        Card(Modifier.fillMaxWidth()) {
+        FlatBlock {
             Column(Modifier.padding(16.dp)) {
                 Text("Open an overdraft line", style = MaterialTheme.typography.titleMedium)
                 Text(
@@ -126,7 +125,7 @@ internal fun OverdraftPanel() {
     }
 
     val availableCredit = current.creditLimit.subtract(current.drawnBalance)
-    Card(Modifier.fillMaxWidth()) {
+    FlatBlock {
         Column(Modifier.padding(16.dp)) {
             Text("Overdraft line", style = MaterialTheme.typography.titleMedium)
             Text("Drawn: ${formatMoney(current.drawnBalance)} of ${formatMoney(current.creditLimit)} RWF", style = MaterialTheme.typography.bodyMedium)
@@ -221,7 +220,7 @@ internal fun PostpaidCreditPanel() {
 
     val current = line
     if (current == null) {
-        Card(Modifier.fillMaxWidth()) {
+        FlatBlock {
             Column(Modifier.padding(16.dp)) {
                 Text("Get postpaid credit", style = MaterialTheme.typography.titleMedium)
                 Text(
@@ -254,7 +253,7 @@ internal fun PostpaidCreditPanel() {
 
     val availableCredit = current.creditLimit.subtract(current.currentBalance)
     val suspended = current.status == "SUSPENDED"
-    Card(Modifier.fillMaxWidth()) {
+    FlatBlock {
         Column(Modifier.padding(16.dp)) {
             Text("Postpaid credit", style = MaterialTheme.typography.titleMedium)
             Text("Owed: ${formatMoney(current.currentBalance)} of ${formatMoney(current.creditLimit)} RWF", style = MaterialTheme.typography.bodyMedium)

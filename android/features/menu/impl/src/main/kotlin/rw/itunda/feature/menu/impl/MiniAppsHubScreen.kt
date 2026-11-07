@@ -160,9 +160,9 @@ private fun CategoryChip(label: String, selected: Boolean, onClick: () -> Unit) 
     Box(
         modifier = Modifier
             .pressScaleClickable(onClick = onClick)
-            .background(if (selected) Ids.colors.brand else Ids.colors.chip, RoundedCornerShape(999.dp))
+            .background(if (selected) Ids.colors.textPrimary else Ids.colors.chip, RoundedCornerShape(999.dp))
             .padding(horizontal = 14.dp, vertical = 6.dp),
     ) {
-        Text(label, color = if (selected) Color.White else Ids.colors.textSecondary, fontSize = 12.sp)
+        Text(label, color = if (selected) Ids.colors.background else Ids.colors.textSecondary, fontSize = 12.sp)
     }
 }
