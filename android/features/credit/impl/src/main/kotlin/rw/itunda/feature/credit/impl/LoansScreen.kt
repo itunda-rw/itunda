@@ -25,7 +25,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -141,7 +140,7 @@ fun LoansScreen(onBack: () -> Unit) {
             payoffMessage?.let { item { Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium) } }
             refinanceResult?.let { result ->
                 item {
-                    Card(Modifier.fillMaxWidth()) {
+                    FlatBlock {
                         Column(Modifier.padding(16.dp)) {
                             Text("Refinanced into ${result.newLoanName}", style = MaterialTheme.typography.titleSmall)
                             Text("${result.oldInterestRate}% → ${result.newInterestRate}%", style = MaterialTheme.typography.bodySmall)
