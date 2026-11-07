@@ -99,7 +99,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y librsvg2-bin
           bash scripts/sync-native-brand-assets.sh
-          rsvg-convert --format=png --width=108 --height=108 packages/brand-assets/canonical/itunda-brand/app-icons/itunda-android-adaptive-foreground.svg > android/app/src/main/res/drawable/itunda_adaptive_foreground.png
+          rsvg-convert --format=png --width=432 --height=432 packages/brand-assets/canonical/itunda-brand/app-icons/itunda-android-adaptive-foreground.svg > android/app/src/main/res/drawable/itunda_adaptive_foreground.png
 
       - name: Verify archive and every deployed brand copy
         run: |
