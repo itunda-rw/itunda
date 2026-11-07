@@ -248,12 +248,12 @@ fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
                                     TRANSIT_OPERATORS.forEach { op ->
                                         Row(
                                             modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
-                                                .background(if (operator == op) Ids.colors.brand else Ids.colors.surfaceSoft)
+                                                .background(if (operator == op) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
                                                 .pressScaleClickable(onClick = { operator = op })
                                                 .padding(vertical = 10.dp),
                                             horizontalArrangement = Arrangement.Center,
                                         ) {
-                                            Text(op, fontSize = 12.sp, color = if (operator == op) androidx.compose.ui.graphics.Color.White else Ids.colors.textPrimary)
+                                            Text(op, fontSize = 12.sp, color = if (operator == op) Ids.colors.background else Ids.colors.textPrimary)
                                         }
                                     }
                                 }

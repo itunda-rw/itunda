@@ -78,11 +78,11 @@ fun BikeRentalScreen(onBack: () -> Unit) {
                 val selected = tab == value
                 Box(
                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
-                        .background(if (selected) Ids.colors.brand else Color.Transparent)
+                        .background(if (selected) Ids.colors.textPrimary else Color.Transparent)
                         .pressScaleClickable { tab = value }.padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(label, color = if (selected) Ids.colors.background else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -394,11 +394,11 @@ private fun BikeMineContent() {
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
                                 modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
-                                    .background(if (bikeType == value) Ids.colors.brand else Ids.colors.surfaceSoft)
+                                    .background(if (bikeType == value) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
                                     .pressScaleClickable { bikeType = value }.padding(vertical = 10.dp),
                             ) {
                                 BikeTypeGlyph(electric = value == "ELECTRIC", size = 13.dp)
-                                Text(label, color = if (bikeType == value) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text(label, color = if (bikeType == value) Ids.colors.background else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

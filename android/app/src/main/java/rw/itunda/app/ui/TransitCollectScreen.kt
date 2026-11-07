@@ -184,11 +184,11 @@ fun TransitCollectScreen(onBack: () -> Unit) {
                                     val isSelected = operator == op
                                     Row(
                                         modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
-                                            .background(if (isSelected) Ids.colors.brand else Ids.colors.surfaceSoft)
+                                            .background(if (isSelected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
                                             .pressScaleClickable(onClick = { operator = op }).padding(vertical = 10.dp),
                                         horizontalArrangement = Arrangement.Center,
                                     ) {
-                                        Text(op, fontSize = 12.sp, color = if (isSelected) Color.White else Ids.colors.textPrimary)
+                                        Text(op, fontSize = 12.sp, color = if (isSelected) Ids.colors.background else Ids.colors.textPrimary)
                                     }
                                 }
                             }
