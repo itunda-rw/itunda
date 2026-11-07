@@ -215,12 +215,12 @@ fun StudentLoanScreen(onBack: () -> Unit) {
                                 val selected = value == level
                                 Text(
                                     label,
-                                    color = if (selected) Color.White else Ids.colors.textPrimary,
+                                    color = if (selected) Ids.colors.background else Ids.colors.textPrimary,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(999.dp))
-                                        .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
+                                        .background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
                                         .pressScaleClickable { level = value }
                                         .padding(horizontal = 12.dp, vertical = 6.dp),
                                 )
