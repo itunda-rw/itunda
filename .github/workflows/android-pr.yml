@@ -84,7 +84,7 @@ jobs:
 
       - name: Assemble Android debug APK
         working-directory: android
-        run: ./gradlew :app:assembleDebug --stacktrace
+        run: ./gradlew :app:assembleDebug -PdemoMode=true --stacktrace
 
       - name: Assemble Picker and Business debug APKs
         working-directory: android

@@ -147,6 +147,9 @@ android {
         // and a physical device can't resolve 10.0.2.2 at all. Defaults to the emulator
         // alias at the right port; override for a physical device on the same LAN with
         // e.g. `-PapiBaseUrl=http://192.168.0.63:4001/` (2026-07-11 fix).
+        // Demo mode: `-PdemoMode=true` answers every API call with prototype dummy data
+        // (core/network DemoInterceptor) so the UI/UX can be tested with no backend.
+        buildConfigField("boolean", "DEMO_MODE", "${project.findProperty("demoMode") == "true"}")
         buildConfigField(
             "String",
             "API_BASE_URL",
