@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
+import rw.itunda.core.designsystem.components.rememberCountUp
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.designsystem.theme.IdsTypography
@@ -57,6 +58,7 @@ internal fun HomeMoneyOverview(
     var spent by remember { mutableStateOf<Double?>(null) }
     var failed by remember { mutableStateOf(false) }
     var hidden by remember { mutableStateOf(false) }
+    var week by remember { mutableStateOf<List<DaySpend>>(emptyList()) }
 
     // Re-runs when the pull-to-refresh indicator toggles, so a refresh updates the totals.
     LaunchedEffect(refreshKey) {
@@ -70,6 +72,12 @@ internal fun HomeMoneyOverview(
             spent = NetworkClient.apiService.getSpendingInsight().totalSpent.toDouble()
         } catch (e: Exception) {
             // Spending row simply stays hidden; balances are the important part.
+        }
+        try {
+            val userId = accounts?.firstOrNull()?.userId
+            if (userId != null) week = weekSpend(NetworkClient.apiService.getTransactionHistory().transactions, userId)
+        } catch (e: Exception) {
+            // Chart simply stays hidden.
         }
     }
 
@@ -102,7 +110,7 @@ internal fun HomeMoneyOverview(
         }
         Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(top = 4.dp)) {
             Text(
-                if (hidden) HIDDEN_AMOUNT else rwf(rwfAccounts.sumOf { it.balance }),
+                if (hidden) HIDDEN_AMOUNT else rwf(rememberCountUp(rwfAccounts.sumOf { it.balance })),
                 style = IdsTypography.LargeAmount,
                 color = Ids.colors.textPrimary,
             )
@@ -113,6 +121,7 @@ internal fun HomeMoneyOverview(
                 modifier = Modifier.padding(bottom = 4.dp),
             )
         }
+        WeekSpendChart(week, hidden)
         Spacer(modifier = Modifier.height(12.dp))
         rwfAccounts.sortedByDescending { it.balance }.take(3).forEach { account ->
             MoneyRow(

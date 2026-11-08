@@ -34,6 +34,7 @@ import kotlinx.coroutines.launch
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
+import rw.itunda.core.designsystem.components.IdsAppBarTitle
 import rw.itunda.core.designsystem.components.IdsIconButton
 import rw.itunda.core.designsystem.components.dashedBorder
 import rw.itunda.core.designsystem.components.pressScaleClickable
@@ -243,7 +244,7 @@ fun PayEntryPoint(
     ) {
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Pay", color = Ids.colors.textPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                IdsAppBarTitle(area = "pay")
                 IdsIconButton(icon = Icons.Outlined.Settings, contentDescription = "Pay settings", onClick = onOpenSettings)
             }
         }

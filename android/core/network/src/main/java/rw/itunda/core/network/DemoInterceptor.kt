@@ -50,7 +50,7 @@ internal class DemoInterceptor : Interceptor {
                     {"name":"Food","amount":62400},{"name":"Transport","amount":38900},
                     {"name":"Shopping","amount":51200},{"name":"Bills","amount":31800}]}"""
             path == "api/v1/account/transactions" || path.endsWith("/transactions") ->
-                """{"success":true,"transactions":$TRANSACTIONS}"""
+                """{"success":true,"transactions":${transactions()}}"""
             path == "api/v1/discover" ->
                 """{"success":true,"items":[{"id":"d1","category":"Offers","title":"Get 5,000 RWF when you invite a friend",
                     "subtitle":"Invite","description":"Share your code and you both earn.","color":"#8B89FF","isNew":true,"badge":"New","priority":1}]}"""
@@ -89,11 +89,24 @@ internal class DemoInterceptor : Interceptor {
             {"id":"a2","userId":"demo-user","accountNumber":"0010 2233 9988","accountName":"Savings","nickname":"Rainy day","type":"SAVINGS",
              "balance":350000,"availableBalance":350000,"currency":"RWF","isActive":true}]"""
 
-        const val TRANSACTIONS = """[
-            {"id":"t1","senderId":"demo-user","recipientId":"m1","type":"PAYMENT","amount":4500,"fee":0,"currency":"RWF","status":"COMPLETED","description":"Java House","createdAt":"2026-11-08T08:12:00Z"},
-            {"id":"t2","senderId":"demo-user","recipientId":"m2","type":"TRANSIT","amount":600,"fee":0,"currency":"RWF","status":"COMPLETED","description":"Bus fare","createdAt":"2026-11-07T17:40:00Z"},
-            {"id":"t3","senderId":"u2","recipientId":"demo-user","type":"TRANSFER","amount":25000,"fee":0,"currency":"RWF","status":"COMPLETED","description":"From Eric","createdAt":"2026-11-07T10:05:00Z"},
-            {"id":"t4","senderId":"demo-user","recipientId":"m3","type":"BILL","amount":12000,"fee":0,"currency":"RWF","status":"COMPLETED","description":"Electricity","createdAt":"2026-11-06T09:30:00Z"}]"""
+        // Relative to "now" so the Home 7-day spending chart always has data to show.
+        private fun transactions(): String {
+            fun at(daysAgo: Long, hour: Long) = java.time.Instant.now().minus(daysAgo, java.time.temporal.ChronoUnit.DAYS)
+                .minus(hour, java.time.temporal.ChronoUnit.HOURS).toString()
+            fun out(id: String, to: String, type: String, amount: Int, desc: String, daysAgo: Long, hour: Long) =
+                """{"id":"$id","senderId":"demo-user","recipientId":"$to","type":"$type","amount":$amount,"fee":0,"currency":"RWF","status":"COMPLETED","description":"$desc","createdAt":"${at(daysAgo, hour)}"}"""
+            return "[" + listOf(
+                out("t1", "m1", "PAYMENT", 4500, "Java House", 0, 1),
+                out("t2", "m2", "TRANSIT", 600, "Bus fare", 0, 5),
+                """{"id":"t3","senderId":"u2","recipientId":"demo-user","type":"TRANSFER","amount":25000,"fee":0,"currency":"RWF","status":"COMPLETED","description":"From Eric","createdAt":"${at(1, 3)}"}""",
+                out("t4", "m3", "BILL", 12000, "Electricity", 1, 6),
+                out("t5", "m4", "PAYMENT", 18500, "Simba Supermarket", 2, 2),
+                out("t6", "m2", "TRANSIT", 1200, "Moto fare", 3, 4),
+                out("t7", "m5", "PAYMENT", 9800, "Inzozi Cafe", 4, 3),
+                out("t8", "m6", "PAYMENT", 31000, "Kigali Mall", 5, 5),
+                out("t9", "m7", "PAYMENT", 6400, "Pharmacy", 6, 2),
+            ).joinToString(",") + "]"
+        }
 
         const val STOCKS = """[
             {"id":"s1","symbol":"BKG","name":"Bank of Kigali","price":312,"change":4,"changePercent":1.3,"marketCap":"280B","volume":120400,"market":"RSE"},

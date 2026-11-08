@@ -39,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
+import rw.itunda.core.designsystem.components.IdsAppBarTitle
 import rw.itunda.core.designsystem.components.IdsIconButton
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
@@ -67,7 +68,7 @@ internal fun HomeTopBar(
             modifier = Modifier.pressScaleClickable { showAccountSwitcher = true },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("itunda", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            IdsAppBarTitle()
             Icon(
                 Icons.Outlined.ExpandMore, contentDescription = stringResource(R.string.home_account_switcher),
                 modifier = Modifier.size(20.dp), tint = Ids.colors.textPrimary,
