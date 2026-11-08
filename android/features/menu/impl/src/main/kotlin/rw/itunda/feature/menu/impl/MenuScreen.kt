@@ -165,6 +165,7 @@ fun MenuEntryPoint(
                 onOpenAuthentication = onOpenIdentity,
                 onOpenHelp = onOpenSupport,
                 onOpenSettings = onOpenSettings,
+                onOpenMiniApps = { showMiniAppsHub = true },
             )
         }
         item {
@@ -192,6 +193,7 @@ fun MenuEntryPoint(
                     },
                 )
             }
+            item { ExploreOffersCarousel() }
             item {
                 IconGridSection(
                     "Shortcuts",
