@@ -359,17 +359,7 @@ internal fun SwipeableConversationRow(
         // to actually cover backgroundContent at rest; without this the red/blue swipe
         // reveal showed through underneath the row even when not swiping.
         Box(modifier = Modifier.background(Ids.colors.background)) {
-            ConversationRow(
-                conversation,
-                online = online,
-                onClick = onClick,
-                // Real KakaoTalk pin-to-top toggle (2026-08-18) -- only offered on the
-                // active list, matching the swipe-to-archive action above and bank-mfe's
-                // own active-list-only gating (pinning an archived room to the top of
-                // the active list would be a confusing, silently-unarchiving side effect).
-                onPinToggle = if (isArchived) null else onPinToggle,
-                onFavoriteToggle = if (isArchived) null else onFavoriteToggle,
-            )
+            ProtoChatRow(conversation, online, onClick, if (isArchived) null else onPinToggle)
         }
     }
 }
