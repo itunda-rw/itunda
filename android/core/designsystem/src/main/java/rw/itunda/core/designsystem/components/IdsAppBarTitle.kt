@@ -27,7 +27,7 @@ import rw.itunda.core.designsystem.theme.IdsIcons
  * against the prototype showed that was wrong).
  */
 @Composable
-fun IdsAppBarTitle(area: String? = null, onClick: (() -> Unit)? = null, modifier: Modifier = Modifier) {
+fun IdsAppBarTitle(area: String? = null, brandWord: Boolean = true, onClick: (() -> Unit)? = null, modifier: Modifier = Modifier) {
     Row(
         modifier = if (onClick != null) modifier.pressScaleClickable(onClick = onClick) else modifier,
         verticalAlignment = Alignment.CenterVertically,
@@ -38,7 +38,7 @@ fun IdsAppBarTitle(area: String? = null, onClick: (() -> Unit)? = null, modifier
         )
         Spacer(Modifier.width(2.dp))
         Text(
-            if (area != null) "itunda $area" else "itunda",
+            if (area == null) "itunda" else if (brandWord) "itunda $area" else area,
             color = Color(0xFF7C8594), fontWeight = FontWeight.ExtraBold, fontSize = 24.sp,
         )
         if (onClick != null) {

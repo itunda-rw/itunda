@@ -66,7 +66,7 @@ fun ProtoExploreContent(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            Box(Modifier.padding(top = 16.dp)) {
+            Box(Modifier.padding(top = 24.dp)) {
                 AllTopBar(onOpenAuthentication = { onOpen("verify") }, onOpenHelp = onHelp, onOpenSettings = onSettings, onOpenMiniApps = { onOpen("apps") })
             }
         }

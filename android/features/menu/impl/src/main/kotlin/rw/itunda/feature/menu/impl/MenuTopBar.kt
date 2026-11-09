@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
@@ -54,10 +55,11 @@ internal fun AllTopBar(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IdsAppBarTitle(area = "mini apps", onClick = onOpenMiniApps)
+        IdsAppBarTitle(area = "mini apps", brandWord = false, onClick = onOpenMiniApps)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IdsIconButton(Icons.Outlined.HelpOutline, contentDescription = "Support", onClick = onOpenHelp)
-            IdsIconButton(Icons.Outlined.Settings, contentDescription = "Settings", onClick = onOpenSettings)
+            Icon(Icons.Outlined.HelpOutline, "Support", Modifier.size(28.dp).pressScaleClickable(onClick = onOpenHelp), tint = Color(0xFF7C8594))
+            Spacer(Modifier.width(16.dp))
+            Icon(Icons.Outlined.Settings, "Settings", Modifier.size(28.dp).pressScaleClickable(onClick = onOpenSettings), tint = Color(0xFF7C8594))
         }
     }
 }
@@ -70,15 +72,15 @@ internal fun MenuSearchBar(query: String, onQueryChange: (String) -> Unit, place
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(Ids.colors.surfaceSoft)
+            .clip(RoundedCornerShape(22.dp))
+            .background(Ids.colors.surface)
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        Icon(IdsIcons.Search, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(18.dp))
-        Spacer(modifier = Modifier.width(10.dp))
+        Icon(IdsIcons.Search, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(22.dp))
+        Spacer(modifier = Modifier.width(12.dp))
         Box(modifier = Modifier.weight(1f)) {
             if (query.isEmpty()) {
-                Text(placeholder, color = Ids.colors.textSecondary, fontSize = 16.sp)
+                Text(placeholder, color = Ids.colors.textTertiary, fontSize = 18.sp)
             }
             BasicTextField(
                 value = query,
