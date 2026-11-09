@@ -84,6 +84,11 @@ fun PayEntryPoint(
     // web's own placement.
     onOpenRequestMoney: () -> Unit = {},
 ) {
+    ProtoPayTab(
+        onOpenPay = {}, onSettings = onOpenSettings, onChangeFunding = onOpenCard,
+        onReceive = onOpenRequestMoney, scanContent = payAMerchantSection,
+    )
+    if (true) return
     var facePayEnrolled by remember { mutableStateOf(false) }
     var facePayBusy by remember { mutableStateOf(false) }
     var rewardTasks by remember { mutableStateOf<List<rw.itunda.core.network.RewardTaskDto>>(emptyList()) }

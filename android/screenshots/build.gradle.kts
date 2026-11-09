@@ -30,6 +30,7 @@ dependencies {
     implementation(project(":core:designsystem"))
     implementation(project(":core:network"))
     implementation(project(":features:home:impl"))
+    implementation(project(":features:pay:impl"))
 
     testImplementation(platform("androidx.compose:compose-bom:2024.02.00"))
     testImplementation(libs.junit4)
