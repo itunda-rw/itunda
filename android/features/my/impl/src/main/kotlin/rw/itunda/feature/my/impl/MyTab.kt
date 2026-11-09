@@ -1,5 +1,12 @@
 package rw.itunda.feature.my.impl
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -55,6 +62,8 @@ fun MyEntryPoint(
     onSwitchToJobs: () -> Unit = {},
     onSwitchToProperty: () -> Unit = {},
 ) {
+    var profile by remember { mutableStateOf<rw.itunda.core.network.PublicUser?>(null) }
+    LaunchedEffect(Unit) { try { profile = rw.itunda.core.network.NetworkClient.authApi.getProfile().user } catch (_: Exception) { } }
     var shopOrders by remember { mutableStateOf<List<rw.itunda.core.network.OrderDto>>(emptyList()) }
     var eatsOrders by remember { mutableStateOf<List<rw.itunda.core.network.EatsOrderDto>>(emptyList()) }
     var favoriteListingsCount by remember { mutableStateOf(0) }
@@ -103,6 +112,23 @@ fun MyEntryPoint(
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
         item { Text("You", color = Ids.colors.textPrimary, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)) }
+        profile?.let { u ->
+            item {
+                Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(72.dp).clip(CircleShape).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
+                        rw.itunda.core.designsystem.components.ItundaArt("shopkeeper", rw.itunda.core.designsystem.components.ItundaArtSet.Face, 58.dp)
+                    }
+                    Spacer(Modifier.width(16.dp))
+                    Column {
+                        Text("${u.firstName} ${u.lastName}", color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+                        Text(
+                            u.phoneNumber.let { if (it.length > 7) it.take(4) + " ••• " + it.takeLast(3) else it } + if (u.kycVerified) " · Verified" else "",
+                            color = Ids.colors.textTertiary, fontSize = 15.sp,
+                        )
+                    }
+                }
+            }
+        }
         item { ProfilePhotoCard() }
         item { PinUpgradeCard() }
         item { VerificationCard() }
