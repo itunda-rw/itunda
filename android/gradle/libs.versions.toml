@@ -21,6 +21,10 @@ zxing = "3.5.3"
 firebaseBom = "33.5.1"
 
 [libraries]
+junit4 = { module = "junit:junit", version = "4.13.2" }
+robolectric = { module = "org.robolectric:robolectric", version = "4.14.1" }
+roborazzi = { module = "io.github.takahirom.roborazzi:roborazzi", version = "1.43.0" }
+roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose", version = "1.43.0" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
 androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "androidxLifecycle" }
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidxLifecycle" }
