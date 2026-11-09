@@ -94,6 +94,22 @@ fun HomeTab(
     // name/shape bank-mfe's identical HomeView effect already fires.
     LaunchedEffect(Unit) { rw.itunda.core.network.recordAnalyticsEvent("home_view") }
 
+    // 2026-11-09: Home is rebuilt from the HTML prototype (v1038), see ProtoHome.kt.
+    // Everything below this return is the previous Home, now unreachable; it stays only
+    // until the prototype layout is confirmed on a device, then it can be deleted.
+    ProtoHomeTab(
+        refreshKey = isRefreshing,
+        unreadNotificationCount = unreadNotificationCount,
+        onOpenBank = onOpenBank,
+        onOpenPay = onOpenPay,
+        onOpenNotifications = onOpenNotifications,
+        onOpenSavings = onOpenBank,
+        onOpenCard = onOpenPay,
+        onOpenSeeAll = onOpenOverview,
+        onOpenRewards = onOpenOverview,
+    )
+    if (true) return
+
     var stocks by remember { mutableStateOf<List<rw.itunda.core.network.StockDto>>(emptyList()) }
     var trendingListings by remember { mutableStateOf<List<rw.itunda.core.network.ListingDto>>(emptyList()) }
     var feedEntries by remember { mutableStateOf<List<HomeFeedEntry>>(emptyList()) }
