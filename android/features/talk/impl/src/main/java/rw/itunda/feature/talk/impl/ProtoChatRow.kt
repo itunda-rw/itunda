@@ -77,6 +77,7 @@ internal fun ProtoChatRow(conversation: ConversationSummaryDto, online: Boolean,
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 /** Filter chips under the Messages header: the selected one is solid ink, the rest soft grey. */
 @Composable
 internal fun <T> ProtoChips(options: List<Pair<T, String>>, selected: T, onSelect: (T) -> Unit, modifier: Modifier = Modifier) {
