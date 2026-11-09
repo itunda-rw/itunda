@@ -101,19 +101,19 @@ private fun Segments(mode: ProtoPayMode, onMode: (ProtoPayMode) -> Unit) {
 @Composable
 private fun MyCode(qrContent: String?, secondsLeft: Int, fundingName: String, fundingBalance: String, onReceive: () -> Unit) {
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(32.dp)).background(Ids.colors.surfaceSoft).padding(vertical = 20.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(32.dp)).background(Ids.colors.surfaceSoft).padding(vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(Modifier.size(204.dp).clip(RoundedCornerShape(24.dp)).background(Color.White), contentAlignment = Alignment.Center) {
             if (qrContent != null) {
                 val qr = remember(qrContent) { generatePayQrBitmap(qrContent) }
-                Image(qr, "Your payment code", Modifier.size(176.dp), contentScale = ContentScale.Fit)
+                Image(qr, "Your payment code", Modifier.size(196.dp), contentScale = ContentScale.Fit)
             }
             Box(Modifier.size(44.dp).clip(CircleShape).background(Ids.colors.brand), contentAlignment = Alignment.Center) {
                 Text("i", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
             }
         }
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(10.dp))
         CountdownRing(secondsLeft)
         Spacer(Modifier.height(14.dp))
         Text("Pays from", color = Ids.colors.textTertiary, fontSize = 15.sp)
