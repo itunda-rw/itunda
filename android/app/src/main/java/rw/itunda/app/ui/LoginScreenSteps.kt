@@ -56,6 +56,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import rw.itunda.app.R
@@ -100,13 +101,14 @@ internal fun LanguageSwitcher(locale: String, onLocaleChange: (String) -> Unit) 
     val label = stringResource(R.string.login_language_switcher_label)
     val currentIndex = SUPPORTED_LOCALES.indexOf(locale).coerceAtLeast(0)
     Text(
-        text = locale.uppercase(),
+        text = when (locale) { "rw" -> "Kinyarwanda"; "fr" -> "Français"; else -> "English" },
         style = IdsTypography.Body2.copy(fontWeight = FontWeight.SemiBold),
-        color = Ids.colors.textSecondary,
+        color = Ids.colors.textPrimary,
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(20.dp))
+            .background(Ids.colors.surfaceSoft)
             .pressScaleClickable { onLocaleChange(SUPPORTED_LOCALES[(currentIndex + 1) % SUPPORTED_LOCALES.size]) }
-            .padding(horizontal = 10.dp, vertical = 6.dp)
+            .padding(horizontal = 16.dp, vertical = 10.dp)
             .semantics { contentDescription = label },
     )
 }
@@ -193,16 +195,12 @@ internal fun PhoneStep(
     headline: String,
     subtitle: String,
 ) {
-    val focusRequester = rememberAutoFocus("phone")
     Column {
-        StepHeadline(headline, subtitle)
-        IdsTextField(
-            value = phoneNumber,
-            onValueChange = onPhoneNumberChange,
-            label = stringResource(R.string.login_label_phone_number),
-            keyboardType = KeyboardType.Phone,
-            modifier = Modifier.focusRequester(focusRequester),
-        )
+        Text(text = headline, color = Ids.colors.textPrimary, fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 42.sp)
+        Spacer(modifier = Modifier.height(24.dp))
+        PhoneDisplay(phoneNumber)
+        Spacer(modifier = Modifier.height(18.dp))
+        Text(text = subtitle, style = IdsTypography.Body1, color = Ids.colors.textPrimary)
     }
 }
 
