@@ -49,7 +49,7 @@ private val quickTiles = listOf(Triple("bank", "🏛️", "Bank"), Triple("apps"
 
 /** Explore tab in the prototype's layout: bar, search, quick tiles, offers, white section cards. */
 @Composable
-internal fun ProtoExploreContent(
+fun ProtoExploreContent(
     query: String,
     onQuery: (String) -> Unit,
     onOpen: (String) -> Unit,
