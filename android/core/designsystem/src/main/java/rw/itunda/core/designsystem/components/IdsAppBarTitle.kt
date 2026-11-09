@@ -1,5 +1,6 @@
 package rw.itunda.core.designsystem.components
 
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -33,15 +34,15 @@ fun IdsAppBarTitle(area: String? = null, onClick: (() -> Unit)? = null, modifier
     ) {
         Icon(
             painterResource(R.drawable.itunda_mark), contentDescription = null,
-            modifier = Modifier.size(26.dp), tint = Ids.colors.textTertiary,
+            modifier = Modifier.size(26.dp), tint = Color(0xFF7C8594),
         )
         Spacer(Modifier.width(2.dp))
         Text(
             if (area != null) "itunda $area" else "itunda",
-            color = Ids.colors.textTertiary, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp,
+            color = Color(0xFF7C8594), fontWeight = FontWeight.ExtraBold, fontSize = 24.sp,
         )
         if (onClick != null) {
-            Icon(IdsIcons.ChevronRight, contentDescription = null, modifier = Modifier.size(20.dp), tint = Ids.colors.textTertiary)
+            Icon(IdsIcons.ChevronRight, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF7C8594))
         }
     }
 }
