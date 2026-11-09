@@ -90,19 +90,19 @@ internal fun FriendRecipientRow(contact: ContactUi, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .pressScaleClickable(onClick = onClick)
-            .padding(vertical = 10.dp),
+            .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            modifier = Modifier.size(44.dp).clip(CircleShape).background(avatarColor),
+            modifier = Modifier.size(48.dp).clip(CircleShape).background(avatarColor),
             contentAlignment = Alignment.Center
         ) {
             Text(contact.letter.ifBlank { contact.name.take(1) }, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column {
-            Text(contact.name, color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            Text(contact.phoneNumber, color = Ids.colors.textTertiary, fontSize = 13.sp)
+            Text(contact.name, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            Text(contact.phoneNumber, color = Ids.colors.textTertiary, fontSize = 14.sp)
         }
     }
 }
