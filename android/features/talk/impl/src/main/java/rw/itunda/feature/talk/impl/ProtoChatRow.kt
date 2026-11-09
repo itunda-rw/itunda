@@ -22,9 +22,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import rw.itunda.core.designsystem.components.IdsAvatar
+import rw.itunda.core.designsystem.components.ItundaArt
+import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.ConversationSummaryDto
+
+// People without a profile photo get one of itunda's own character faces, picked from their name so it stays stable.
+private val chatFaces = listOf("shopkeeper", "farmer", "student", "teacher", "fisherman", "moto-rider", "tea-picker", "community-health-worker", "intore-dancer", "momo-agent")
+
+@Composable
+internal fun ChatFace(name: String, size: Int) {
+    Box(Modifier.size(size.dp).clip(CircleShape).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
+        ItundaArt(chatFaces[Math.floorMod(name.hashCode(), chatFaces.size)], ItundaArtSet.Face, (size * 0.8f).dp)
+    }
+}
 
 /** "now", "8 min", "1 h", "Yesterday", or a short date -- the prototype's own row timestamps. */
 internal fun chatTimeLabel(iso: String, now: java.time.Instant = java.time.Instant.now()): String = try {
@@ -52,7 +63,7 @@ internal fun ProtoChatRow(conversation: ConversationSummaryDto, online: Boolean,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(48.dp), contentAlignment = Alignment.BottomEnd) {
-            IdsAvatar(name = conversation.otherUserName)
+            ChatFace(conversation.otherUserName, 48)
             if (online) Box(Modifier.size(12.dp).clip(CircleShape).background(Ids.colors.background).padding(2.dp).clip(CircleShape).background(Ids.colors.success))
         }
         Spacer(Modifier.width(14.dp))

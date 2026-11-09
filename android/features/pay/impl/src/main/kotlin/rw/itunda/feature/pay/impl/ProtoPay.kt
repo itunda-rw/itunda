@@ -37,6 +37,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.components.IdsAppBarTitle
+import rw.itunda.core.designsystem.components.ItundaArt
+import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.components.generatePayQrBitmap
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
@@ -153,7 +155,7 @@ private fun FundingCard(name: String, balance: String, onChange: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.brand.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
-            Icon(painterResource(rw.itunda.core.designsystem.R.drawable.itunda_mark), null, Modifier.size(24.dp), tint = Ids.colors.brand)
+            ItundaArt("wallet", ItundaArtSet.Color, 28.dp)
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
