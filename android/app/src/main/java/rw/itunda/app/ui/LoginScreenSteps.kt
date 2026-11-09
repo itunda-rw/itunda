@@ -129,10 +129,10 @@ internal fun StepDots(total: Int, current: Int) {
 
 @Composable
 private fun StepHeadline(headline: String, subtitle: String? = null) {
-    Text(text = headline, style = IdsTypography.Title1, color = Ids.colors.textPrimary)
+    Text(text = headline, color = Ids.colors.textPrimary, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold)
     if (subtitle != null) {
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(text = subtitle, style = IdsTypography.Body1, color = Ids.colors.textSecondary)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(text = subtitle, fontSize = 15.sp, color = Ids.colors.textTertiary)
     }
     Spacer(modifier = Modifier.height(32.dp))
 }
