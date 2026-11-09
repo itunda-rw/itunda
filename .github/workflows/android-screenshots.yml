@@ -41,17 +41,18 @@ jobs:
           ./gradlew :screenshots:testDebugUnitTest --stacktrace
       - name: Push PNGs to ci-screenshots branch
         if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -e
-          mkdir -p /tmp/shots
-          cp -r android/screenshots/build/screenshots/. /tmp/shots/ 2>/dev/null || true
-          ls /tmp/shots || true
+          rm -rf /tmp/shots-repo && mkdir -p /tmp/shots-repo/${GITHUB_SHA::7}
+          cp -r android/screenshots/build/screenshots/. /tmp/shots-repo/${GITHUB_SHA::7}/ 2>/dev/null || true
+          cd /tmp/shots-repo
+          ls -R . | head -50
+          git init -q -b ci-screenshots
           git config user.name "ci-screenshots"
           git config user.email "ci-screenshots@users.noreply.github.com"
-          git fetch origin ci-screenshots || true
-          git checkout --orphan shots-tmp
-          git rm -rf . >/dev/null 2>&1 || true
-          cp -r /tmp/shots/. .
           git add -A
-          git commit -m "screenshots for ${GITHUB_SHA}" || exit 0
-          git push -f origin shots-tmp:ci-screenshots
+          git commit -q -m "screenshots for ${GITHUB_SHA}" || exit 0
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push -f origin ci-screenshots
