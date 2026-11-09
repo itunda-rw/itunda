@@ -25,27 +25,37 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.theme.IdsIcons
+import rw.itunda.core.designsystem.components.ItundaArt
+import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 
 /** One tappable row of the Explore catalogue. [key] is what the host maps to a destination. */
-internal data class ExploreRow(val key: String, val title: String, val subtitle: String, val emoji: String)
+internal data class ExploreRow(val key: String, val title: String, val subtitle: String, val art: String)  // art = "<set>/<name>", see ItundaArt
 internal data class ExploreSection(val title: String, val rows: List<ExploreRow>)
 
 // The prototype's own catalogue (v1038), in its order.
 internal val exploreSections = listOf(
-    ExploreSection("Everyday", listOf(ExploreRow("shop", "Shop", "Products · Deals", "🛍️"), ExploreRow("eats", "Eats", "Food · Delivery", "🍴"), ExploreRow("front", "Front", "Eat here · To go", "🧾"))),
-    ExploreSection("Your neighbourhood", listOf(ExploreRow("marketplace", "Marketplace", "Buy · Sell", "🏪"), ExploreRow("community", "Community", "Posts · Q&A", "💬"), ExploreRow("jobs", "Jobs", "Gigs · Part-time", "💼"), ExploreRow("property", "Property", "Rent · Buy", "🏠"), ExploreRow("places", "Places", "Discover · Reserve · Pay", "🏬"))),
-    ExploreSection("Money tools", listOf(ExploreRow("benefits", "Benefits", "Points · Coupons", "🎁"), ExploreRow("invest", "Invest", "RSE · Stocks", "📊"), ExploreRow("week26", "26-Week Savings", "Auto-save", "💵"), ExploreRow("day31", "31-Day Savings", "Daily streak", "💵"))),
-    ExploreSection("Accounts & cards", listOf(ExploreRow("open", "Open account", "itunda · Other banks", "🏦"), ExploreRow("assets", "My assets", "Accounts · Loans · Cards", "👜"), ExploreRow("card", "Card", "Limits · Freeze", "💳"), ExploreRow("transit", "Transit", "Bus fare", "🚌"), ExploreRow("spending", "Spending", "By category", "📈"), ExploreRow("group", "Group account", "Dues · Split", "👥"), ExploreRow("family", "Family", "Guardian · Child", "👨‍👩‍👧"), ExploreRow("fx", "Foreign currency", "USD · EUR · GBP", "🌍"), ExploreRow("subs", "Subscriptions", "Recurring", "🕒"), ExploreRow("cert", "Digital certificate", "Sign", "✅"))),
-    ExploreSection("Send & pay", listOf(ExploreRow("transfer", "Transfer", "Auto · Split", "📨"), ExploreRow("request", "Request money", "Payment code", "🧾"), ExploreRow("topup", "Auto top-up", "Refill", "🔄"), ExploreRow("mobile", "Mobile plan", "MTN · Airtel", "📱"))),
-    ExploreSection("Save & grow", listOf(ExploreRow("deposit", "12-month deposit", "Interest upfront", "🏧"), ExploreRow("youth", "Youth account", "Ages 7-18", "🧒"), ExploreRow("ikimina", "Ikimina", "Group savings", "🤝"), ExploreRow("sacco", "SACCO shares", "Dividends", "🌱"))),
-    ExploreSection("Borrow", listOf(ExploreRow("loan", "Get a loan", "Personal · SME", "💰"), ExploreRow("credit", "Credit score", "Free check", "📉"), ExploreRow("harvest", "Harvest advance", "Coffee co-op", "☕"), ExploreRow("vup", "VUP Financial Services", "Microloan", "🌾"), ExploreRow("student", "Student loan", "BRD", "🎓"), ExploreRow("moto", "Moto-Taxi Ownership", "Down payment", "🛵"))),
-    ExploreSection("Transport", listOf(ExploreRow("rides", "Rides", "Ride · Drive", "🚗"), ExploreRow("bike", "Bike rental", "Bikes · Scooters", "🚲"), ExploreRow("bus", "Bus", "Intercity seats", "🚌"), ExploreRow("directions", "Directions", "Bus · Car · Walk · Bike", "🧭"))),
-    ExploreSection("Support", listOf(ExploreRow("chat", "Live chat", "Call support", "💬"), ExploreRow("report", "Report an issue with a transaction", "", "⚠️"), ExploreRow("news", "Announcements", "", "📢"), ExploreRow("ussd", "USSD access", "Any phone", "☎️")))
+    ExploreSection("Everyday", listOf(ExploreRow("shop", "Shop", "Products · Deals", "color/bag"), ExploreRow("eats", "Eats", "Food · Delivery", "color/restaurant"), ExploreRow("front", "Front", "Eat here · To go", "color/receipt"))),
+    ExploreSection("Your neighbourhood", listOf(ExploreRow("marketplace", "Marketplace", "Buy · Sell", "color/market"), ExploreRow("community", "Community", "Posts · Q&A", "color/chat"), ExploreRow("jobs", "Jobs", "Gigs · Part-time", "color/briefcase"), ExploreRow("property", "Property", "Rent · Buy", "color/house"), ExploreRow("places", "Places", "Discover · Reserve · Pay", "color/market"))),
+    ExploreSection("Money tools", listOf(ExploreRow("benefits", "Benefits", "Points · Coupons", "color/gift"), ExploreRow("invest", "Invest", "RSE · Stocks", "color/chart"), ExploreRow("week26", "26-Week Savings", "Auto-save", "color/money"), ExploreRow("day31", "31-Day Savings", "Daily streak", "color/money"))),
+    ExploreSection("Accounts & cards", listOf(ExploreRow("open", "Open account", "itunda · Other banks", "color/bank"), ExploreRow("assets", "My assets", "Accounts · Loans · Cards", "proto/my-assets"), ExploreRow("card", "Card", "Limits · Freeze", "proto/card"), ExploreRow("transit", "Transit", "Bus fare", "color/transit"), ExploreRow("spending", "Spending", "By category", "proto/spending"), ExploreRow("group", "Group account", "Dues · Split", "proto/group-accounts"), ExploreRow("family", "Family", "Guardian · Child", "proto/youth-account"), ExploreRow("fx", "Foreign currency", "USD · EUR · GBP", "color/globe"), ExploreRow("subs", "Subscriptions", "Recurring", "color/clock"), ExploreRow("cert", "Digital certificate", "Sign", "color/verified"))),
+    ExploreSection("Send & pay", listOf(ExploreRow("transfer", "Transfer", "Auto · Split", "color/send"), ExploreRow("request", "Request money", "Payment code", "color/receipt"), ExploreRow("topup", "Auto top-up", "Refill", "color/wallet"), ExploreRow("mobile", "Mobile plan", "MTN · Airtel", "color/airtime"))),
+    ExploreSection("Save & grow", listOf(ExploreRow("deposit", "12-month deposit", "Interest upfront", "proto/12-month-deposit"), ExploreRow("youth", "Youth account", "Ages 7-18", "proto/youth-account"), ExploreRow("ikimina", "Ikimina", "Group savings", "proto/ikimina"), ExploreRow("sacco", "SACCO shares", "Dividends", "proto/sacco-shares"))),
+    ExploreSection("Borrow", listOf(ExploreRow("loan", "Get a loan", "Personal · SME", "proto/get-a-loan"), ExploreRow("credit", "Credit score", "Free check", "proto/my-credit-score"), ExploreRow("harvest", "Harvest advance", "Coffee co-op", "proto/harvest-advance"), ExploreRow("vup", "VUP Financial Services", "Microloan", "proto/vup-financial-services"), ExploreRow("student", "Student loan", "BRD", "proto/student-loan"), ExploreRow("moto", "Moto-Taxi Ownership", "Down payment", "proto/moto-taxi-ownership"))),
+    ExploreSection("Transport", listOf(ExploreRow("rides", "Rides", "Ride · Drive", "color/moto"), ExploreRow("bike", "Bike rental", "Bikes · Scooters", "color/bike"), ExploreRow("bus", "Bus", "Intercity seats", "color/bus-stop"), ExploreRow("directions", "Directions", "Bus · Car · Walk · Bike", "color/pin"))),
+    ExploreSection("Support", listOf(ExploreRow("chat", "Live chat", "Call support", "color/chat"), ExploreRow("report", "Report an issue with a transaction", "", "proto/report-a-problem"), ExploreRow("news", "Announcements", "", "color/bell"), ExploreRow("ussd", "USSD access", "Any phone", "faces/ussd-phone")))
 )
 
-private val quickTiles = listOf(Triple("bank", "🏛️", "Bank"), Triple("apps", "👥", "Mini apps"), Triple("games", "🎉", "Games"), Triple("verify", "✅", "Verify"))
+private val quickTiles = listOf(Triple("bank", "color/bank", "Bank"), Triple("apps", "color/community", "Mini apps"), Triple("games", "color/celebrate", "Games"), Triple("verify", "color/verified", "Verify"))
+
+/** Draws an `<set>/<name>` reference from the itunda art library. */
+@Composable
+internal fun ExploreArt(art: String, size: androidx.compose.ui.unit.Dp) {
+    val (set, name) = art.substringBefore('/') to art.substringAfter('/')
+    val artSet = when (set) { "proto" -> ItundaArtSet.Proto; "faces" -> ItundaArtSet.Face; else -> ItundaArtSet.Color }
+    ItundaArt(name, artSet, size)
+}
 
 /** Explore tab in the prototype's layout: bar, search, quick tiles, offers, white section cards. */
 @Composable
@@ -85,10 +95,10 @@ private fun QuickTiles(onOpen: (String) -> Unit) {
         Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Ids.colors.surface).padding(horizontal = 8.dp, vertical = 16.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
-        quickTiles.forEach { (key, emoji, label) ->
+        quickTiles.forEach { (key, art, label) ->
             Column(Modifier.width(80.dp).pressScaleClickable { onOpen(key) }, horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(Modifier.size(48.dp).clip(RoundedCornerShape(18.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
-                    Text(emoji, fontSize = 24.sp)
+                    ExploreArt(art, 30.dp)
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(label, color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Medium)
@@ -110,7 +120,7 @@ private fun SectionCard(section: ExploreSection, onOpen: (String) -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(Modifier.size(40.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
-                    Text(row.emoji, fontSize = 20.sp)
+                    ExploreArt(row.art, 28.dp)
                 }
                 Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f)) {

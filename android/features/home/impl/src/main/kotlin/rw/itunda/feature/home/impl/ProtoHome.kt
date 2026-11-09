@@ -48,6 +48,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
 import rw.itunda.core.designsystem.components.IdsAppBarTitle
+import rw.itunda.core.designsystem.components.ItundaArt
+import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsIcons
@@ -125,7 +127,7 @@ fun ProtoHomeContent(
                     )
                     Spacer(Modifier.height(34.dp))
                     AccountRow(
-                        tile = { WalletGlyph() },
+                        tile = { ItundaArt("wallet", ItundaArtSet.Color, 26.dp) },
                         amount = state.payBalance,
                         subtitle = buildAnnotatedString { append("itunda Pay") },
                         action = "Add", onAction = onAdd,
@@ -154,7 +156,7 @@ fun ProtoHomeContent(
                         Box(
                             Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(Brush.linearGradient(listOf(Color(0xFFEEEDFF), Color(0xFFC9C5FF)))),
                             contentAlignment = Alignment.Center,
-                        ) { Text("🎁", fontSize = 24.sp) }
+                        ) { ItundaArt("gift", ItundaArtSet.Color, 32.dp) }
                         Spacer(Modifier.width(14.dp))
                         Text(
                             buildAnnotatedString {
@@ -186,7 +188,7 @@ fun ProtoHomeContent(
                     state.bill?.let { bill ->
                         Spacer(Modifier.height(20.dp))
                         Row(Modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) {
-                            IconTile { Icon(Icons.Outlined.ReceiptLong, null, Modifier.size(22.dp), tint = Ids.colors.danger) }
+                            IconTile { ItundaArt("bill", ItundaArtSet.Color, 26.dp) }
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(bill.title, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
