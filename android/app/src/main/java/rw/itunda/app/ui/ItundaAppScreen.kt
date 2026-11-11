@@ -2005,6 +2005,7 @@ fun ItundaAppScreen(
                         onSwitchToMarketplace = { showMarketplace = true },
                         onSwitchToJobs = { showJobs = true },
                         onSwitchToProperty = { showProperty = true },
+                        onOpenSettings = { showSettings = true },
                     )
                 }
             }
