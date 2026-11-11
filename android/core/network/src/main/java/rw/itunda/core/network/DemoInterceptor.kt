@@ -45,6 +45,7 @@ internal class DemoInterceptor : Interceptor {
         if (method != "GET") return OK
         return when {
             path == "api/v1/auth/profile" -> """{"success":true,"user":$USER}"""
+            path == "api/v1/messages/conversations" -> """{"success":true,"conversations":${conversations()}}"""
             path == "api/v1/auth/terms" -> """{"success":true,"terms":[]}"""
             path == "api/v1/account" -> """{"success":true,"accounts":$ACCOUNTS}"""
             path == "api/v1/account/spending" ->
@@ -90,6 +91,20 @@ internal class DemoInterceptor : Interceptor {
              "balance":1284500,"availableBalance":1284500,"currency":"RWF","isActive":true},
             {"id":"a2","userId":"demo-user","accountNumber":"0010 2233 9988","accountName":"Savings","nickname":"Rainy day","type":"SAVINGS",
              "balance":350000,"availableBalance":350000,"currency":"RWF","isActive":true}]"""
+
+        // The prototype's Messages rows (names, previews, unread badges), timestamps relative to now.
+        private fun conversations(): String {
+            fun ago(min: Long) = java.time.Instant.now().minus(min, java.time.temporal.ChronoUnit.MINUTES).toString()
+            fun c(id: String, name: String, preview: String, unread: Int, min: Long) =
+                """{"conversationId":"$id","otherUserId":"u-$id","otherUserName":"$name","lastMessageAt":"${ago(min)}","lastMessagePreview":"$preview","unreadCount":$unread}"""
+            return "[" + listOf(
+                c("c1", "Patrick H.", "Yes, still available. Can you come tomorrow?", 1, 8),
+                c("c2", "Amina K.", "See you on Friday", 1, 2),
+                c("c3", "Umurenge Savers", "Contributions are due on Friday", 0, 60),
+                c("c4", "Kigali Bakery", "Your order is on the way", 0, 300),
+                c("c5", "itunda support", "Your report was reviewed. Thank you.", 0, 1500),
+            ).joinToString(",") + "]"
+        }
 
         // Relative to "now" so the Home 7-day spending chart always has data to show.
         private fun transactions(): String {

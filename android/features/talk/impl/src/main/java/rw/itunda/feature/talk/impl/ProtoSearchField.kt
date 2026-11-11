@@ -33,7 +33,7 @@ internal fun ProtoSearchField(query: String, onQuery: (String) -> Unit, modifier
         ItundaArt("search", ItundaArtSet.Line, 20.dp, tint = Ids.colors.textTertiary)
         Spacer(Modifier.width(10.dp))
         Box(Modifier.weight(1f)) {
-            if (query.isEmpty()) Text("Search chats", color = Ids.colors.textTertiary, fontSize = 16.sp)
+            if (query.isEmpty()) Text("Search messages", color = Ids.colors.textTertiary, fontSize = 16.sp)
             BasicTextField(
                 value = query, onValueChange = onQuery, singleLine = true,
                 textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 16.sp),
