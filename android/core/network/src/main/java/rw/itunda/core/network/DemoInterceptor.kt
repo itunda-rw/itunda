@@ -45,6 +45,10 @@ internal class DemoInterceptor : Interceptor {
         if (method != "GET") return OK
         return when {
             path == "api/v1/auth/profile" -> """{"success":true,"user":$USER}"""
+            path == "api/v1/affiliate/links/my-links" -> """{"success":true,"links":[]}"""
+            path == "api/v1/affiliate/commissions/my-commissions" -> """{"success":true,"commissions":[]}"""
+            path == "api/v1/p2p/scam-reports/mine" -> """{"success":true,"reports":[]}"""
+            path == "api/v1/merchant/reviews/my-reviews" -> """{"success":true,"reviews":[]}"""
             path == "api/v1/messages/presence" -> """{"success":true,"presence":{"u-c1":true,"u-c2":true}}"""
             path == "api/v1/orders/my-orders" || path == "api/v1/eats/orders/my-orders" -> """{"success":true,"orders":[]}"""
             path == "api/v1/messages/conversations" -> """{"success":true,"conversations":${conversations()}}"""
