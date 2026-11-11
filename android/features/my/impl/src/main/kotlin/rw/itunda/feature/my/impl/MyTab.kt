@@ -137,7 +137,6 @@ fun MyEntryPoint(
                 }
             }
         }
-        item { ProfilePhotoCard() }
         item { PinUpgradeCard() }
         item { VerificationCard() }
         if (affiliateLinks.isNotEmpty()) {
@@ -246,5 +245,6 @@ fun MyEntryPoint(
                 Divider(color = Ids.colors.divider, thickness = 0.5.dp)
             }
         }
+        item { ProfilePhotoCard() }
     }
 }
