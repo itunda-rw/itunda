@@ -227,17 +227,20 @@ private fun IkiminaListContent(refreshKey: Int, onOpen: (String) -> Unit, onStar
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
-            Text(
-                "Everyone contributes the same amount each round; one member takes home the full pot, in turn.",
-                color = Ids.colors.textSecondary, fontSize = 12.sp,
-            )
+            Column(Modifier.padding(top = 12.dp, bottom = 8.dp)) {
+                Text("Ikimina", color = Ids.colors.textPrimary, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
+                Text(
+                    "Everyone contributes the same amount each round; one member takes home the full pot, in turn.",
+                    color = Ids.colors.textTertiary, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp),
+                )
+            }
         }
         item {
             Box(
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                    .pressScaleClickable { onStartCreate() }.padding(vertical = 14.dp),
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Ids.colors.brand)
+                    .pressScaleClickable { onStartCreate() }.padding(vertical = 16.dp),
                 contentAlignment = Alignment.Center,
-            ) { Text("+ New ikimina", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
+            ) { Text("New ikimina", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
         }
         error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
         when {
@@ -249,16 +252,19 @@ private fun IkiminaListContent(refreshKey: Int, onOpen: (String) -> Unit, onStar
             }
             else -> items(ikiminas!!, key = { it.id }) { k ->
                 // Real fix (flat-design sweep): dropped the per-row Card.
-                Column(modifier = Modifier.fillMaxWidth().pressScaleClickable { onOpen(k.id) }) {
-                        Text(k.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Row(Modifier.fillMaxWidth().pressScaleClickable { onOpen(k.id) }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) { rw.itunda.core.designsystem.components.ItundaArt("community", rw.itunda.core.designsystem.components.ItundaArtSet.Color, 28.dp) }
+                    Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                        Text(k.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         Text(
                             when (k.status) {
-                                "FORMING" -> "Forming — invite members before starting"
+                                "FORMING" -> "Forming · invite members before starting"
                                 "ACTIVE" -> "Round ${k.currentRound}"
                                 else -> "Completed"
                             },
-                            color = Ids.colors.textSecondary, fontSize = 12.sp,
+                            color = Ids.colors.textTertiary, fontSize = 14.sp,
                         )
+                    }
                 }
             }
         }
