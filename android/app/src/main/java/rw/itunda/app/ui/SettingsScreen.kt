@@ -650,7 +650,6 @@ private fun NotificationSettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     Column(modifier = Modifier.fillMaxSize().background(Ids.colors.background)) {
         SettingsSubScreenHeader(stringResource(R.string.settings_manage_notifications), onBack)
-        // Prototype rows; only two real OS channels exist, so no fake per-topic switches.
         Text("Choose what itunda can notify you about.", color = Ids.colors.textTertiary, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp))
         listOf(
             Triple(stringResource(R.string.settings_channel_money), "Money in, money out, bills", rw.itunda.app.push.NotificationChannels.CHANNEL_MONEY),
