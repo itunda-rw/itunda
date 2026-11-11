@@ -151,15 +151,14 @@ private fun UpfrontDepositRow(deposit: UpfrontDepositDto, onChanged: () -> Unit)
         modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("${formatMoney(deposit.principal)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-            Text(depositStatusLabel(deposit), color = depositStatusColor(deposit), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        // Prototype v1038 deposit detail: caption, big principal, interest line, soft facts block.
+        Text("Locked principal", color = Ids.colors.textTertiary, fontSize = 14.sp)
+        Text("${formatMoney(deposit.principal)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 32.sp)
+        Text("Interest already paid: ${formatMoney(deposit.interestPaid)} RWF", color = Ids.colors.success, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Column(Modifier.fillMaxWidth().padding(vertical = 10.dp).clip(RoundedCornerShape(20.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 20.dp, vertical = 4.dp)) {
+            DepositSummaryLine(if (deposit.status == "ACTIVE") "Unlocks on" else "Matured on", formatUpfrontDate(deposit.maturesAt))
+            DepositSummaryLine("Status", depositStatusLabel(deposit), depositStatusColor(deposit))
         }
-        Text("Interest paid upfront: ${formatMoney(deposit.interestPaid)} RWF at ${deposit.interestRate}%/yr", color = Ids.colors.success, fontSize = 13.sp)
-        Text(
-            if (deposit.status == "ACTIVE") "Locked until ${formatUpfrontDate(deposit.maturesAt)}" else "Matured ${formatUpfrontDate(deposit.maturesAt)}",
-            color = Ids.colors.textSecondary, fontSize = 12.sp,
-        )
         error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
         Text(
             if (showHistory) "Hide history" else "View history",
