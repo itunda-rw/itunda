@@ -25,7 +25,6 @@ class MessagesYouScreenshotTest {
     @get:Rule val rule = createComposeRule()
 
     @Test fun messagesLight() {
-        NetworkClient.init(org.robolectric.RuntimeEnvironment.getApplication(), "http://localhost/")
         NetworkClient.demoMode = true
         rule.setContent { IdsTheme(darkTheme = false) { TalkEntryPoint(null, {}, { _, _, _ -> }) } }
         rule.waitUntil(10_000) { rule.onAllNodesWithText("Patrick H.").fetchSemanticsNodes().isNotEmpty() }
@@ -33,7 +32,6 @@ class MessagesYouScreenshotTest {
     }
 
     @Test fun youLight() {
-        NetworkClient.init(org.robolectric.RuntimeEnvironment.getApplication(), "http://localhost/")
         NetworkClient.demoMode = true
         rule.setContent { IdsTheme(darkTheme = false) { MyEntryPoint(onBack = {}) } }
         rule.waitUntil(10_000) { rule.onAllNodesWithText("Aline Uwase").fetchSemanticsNodes().isNotEmpty() }
