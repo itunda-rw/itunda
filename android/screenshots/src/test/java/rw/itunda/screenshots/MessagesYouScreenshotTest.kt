@@ -49,7 +49,7 @@ class MessagesYouScreenshotTest {
         NetworkClient.demoMode = true
         rule.setContent { IdsTheme(darkTheme = false) { Box(Modifier.fillMaxSize().background(Ids.colors.background)) { MyEntryPoint(onBack = {}) } } }
         rule.waitUntil(10_000) { rule.onAllNodesWithText("Aline Uwase").fetchSemanticsNodes().isNotEmpty() }
-        rule.onNodeWithText("Aline Uwase").performClick()
+        rule.onAllNodesWithText("Aline Uwase")[0].performClick()
         rule.waitUntil(10_000) { rule.onAllNodesWithText("Verification").fetchSemanticsNodes().isNotEmpty() }
         rule.onRoot().captureRoboImage("build/screenshots/profile-light.png")
     }
