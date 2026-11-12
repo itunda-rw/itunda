@@ -3,6 +3,8 @@ package rw.itunda.screenshots
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
 import androidx.compose.foundation.background
@@ -41,6 +43,15 @@ class MessagesYouScreenshotTest {
         rule.setContent { IdsTheme(darkTheme = false) { Box(Modifier.fillMaxSize().background(Ids.colors.background)) { MyEntryPoint(onBack = {}) } } }
         rule.waitUntil(10_000) { rule.onAllNodesWithText("Aline Uwase").fetchSemanticsNodes().isNotEmpty() }
         rule.onRoot().captureRoboImage("build/screenshots/you-light.png")
+    }
+
+    @Test fun profileLight() {
+        NetworkClient.demoMode = true
+        rule.setContent { IdsTheme(darkTheme = false) { Box(Modifier.fillMaxSize().background(Ids.colors.background)) { MyEntryPoint(onBack = {}) } } }
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Aline Uwase").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithText("Aline Uwase").performClick()
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Verification").fetchSemanticsNodes().isNotEmpty() }
+        rule.onRoot().captureRoboImage("build/screenshots/profile-light.png")
     }
 
     @Test fun messagesDark() {

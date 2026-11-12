@@ -65,6 +65,8 @@ fun MyEntryPoint(
     onOpenSettings: () -> Unit = {},
 ) {
     var profile by remember { mutableStateOf<rw.itunda.core.network.PublicUser?>(null) }
+    var showProfile by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    profile?.let { if (showProfile) { ProfileDetail(it, onBack = { showProfile = false }); return } }
     LaunchedEffect(Unit) { try { profile = rw.itunda.core.network.NetworkClient.authApi.getProfile().user } catch (_: Exception) { } }
     var shopOrders by remember { mutableStateOf<List<rw.itunda.core.network.OrderDto>>(emptyList()) }
     var eatsOrders by remember { mutableStateOf<List<rw.itunda.core.network.EatsOrderDto>>(emptyList()) }
@@ -124,7 +126,7 @@ fun MyEntryPoint(
         item {
             Column {
                 profile?.let { u ->
-                    Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth().pressScaleClickable { showProfile = true }.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(72.dp).clip(CircleShape).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
                             rw.itunda.core.designsystem.components.ItundaArt("shopkeeper", rw.itunda.core.designsystem.components.ItundaArtSet.Face, 58.dp)
                         }
@@ -132,7 +134,7 @@ fun MyEntryPoint(
                         Column {
                             Text("${u.firstName} ${u.lastName}", color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
                             Text(
-                                u.phoneNumber.let { if (it.length > 7) it.take(4) + " ••• " + it.takeLast(3) else it } + if (u.kycVerified) " · Verified" else "",
+                                u.phoneNumber.let { if (it.length > 7) it.take(4) + " ••• " + it.takeLast(3) else it } + " · View profile ›",
                                 color = Ids.colors.textTertiary, fontSize = 15.sp,
                             )
                         }
