@@ -360,4 +360,5 @@
     <string name="account_manage_copy">Copier le numéro</string>
     <string name="account_manage_share">Partager</string>
     <string name="account_manage_copied">Numéro de compte copié</string>
+    <string name="settings_sign_out_others">Déconnecter tous les autres appareils</string>
 </resources>

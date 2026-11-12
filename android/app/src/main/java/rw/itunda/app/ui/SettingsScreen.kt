@@ -586,6 +586,18 @@ internal fun DeviceListScreen(
             items(devices, key = { it.deviceId }) { device ->
                 DeviceRow(device, onRevoke = { onRevoke(device.deviceId) })
             }
+            item {
+                // Real bulk action: revokes every other device one by one through the same endpoint.
+                val thisId = remember { NetworkClient.currentDeviceStore().getOrCreateDeviceId() }
+                val others = devices.filter { it.deviceId != thisId }
+                if (others.isNotEmpty()) {
+                    Box(
+                        Modifier.padding(top = 16.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Ids.colors.brand.copy(alpha = 0.12f))
+                            .pressScaleClickable { others.forEach { onRevoke(it.deviceId) } }.padding(vertical = 18.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text(stringResource(R.string.settings_sign_out_others), color = Ids.colors.textBrand, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
+                }
+            }
         }
     }
 }
@@ -674,19 +686,18 @@ internal fun NotificationListScreen(
 // same screen family, not a different pattern.
 @Composable
 internal fun SettingsSubScreenHeader(title: String, onBack: () -> Unit, trailing: @Composable () -> Unit = {}) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    // Prototype header: back arrow on its own row, then a large title underneath.
+    Column {
         Box(
-            modifier = Modifier.size(44.dp).clip(CircleShape).pressScaleClickable(onClick = onBack),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp).size(44.dp).clip(CircleShape).pressScaleClickable(onClick = onBack),
             contentAlignment = Alignment.Center,
         ) {
             Icon(IdsIcons.Back, contentDescription = stringResource(R.string.settings_back), modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
         }
-        Text(title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary, modifier = Modifier.weight(1f))
-        trailing()
-        Spacer(modifier = Modifier.width(8.dp))
+        Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(title, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Ids.colors.textPrimary, modifier = Modifier.weight(1f))
+            trailing()
+        }
     }
 }
 
@@ -719,37 +730,23 @@ private fun SettingsChevronRow(label: String, onClick: () -> Unit) {
 @Composable
 private fun DeviceRow(device: rw.itunda.core.network.TrustedDeviceDto, onRevoke: () -> Unit) {
     val isThisDevice = remember { device.deviceId == NetworkClient.currentDeviceStore().getOrCreateDeviceId() }
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier.size(44.dp).clip(CircleShape).background(Ids.colors.chip),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Outlined.PhoneAndroid, contentDescription = null, tint = Ids.colors.textPrimary)
-        }
-        Spacer(modifier = Modifier.width(14.dp))
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 (device.deviceName ?: stringResource(R.string.settings_unknown_device)) + if (isThisDevice) stringResource(R.string.settings_this_device_suffix) else "",
-                color = Ids.colors.textPrimary,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
+                color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
             )
             Text(
                 if (device.trusted) stringResource(R.string.settings_trusted) else stringResource(R.string.settings_not_verified),
-                color = if (device.trusted) Ids.colors.textTertiary else Ids.colors.danger,
-                fontSize = 12.sp,
+                color = if (device.trusted) Ids.colors.textTertiary else Ids.colors.danger, fontSize = 13.sp,
             )
         }
-        Text(
-            stringResource(R.string.settings_remove),
-            color = Ids.colors.danger,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.pressScaleClickable(onClick = onRevoke),
-        )
+        // The device you are using is never removable from here (prototype shows no button on it).
+        if (!isThisDevice) {
+            Box(
+                Modifier.clip(RoundedCornerShape(16.dp)).background(Ids.colors.surfaceSoft).pressScaleClickable(onClick = onRevoke).padding(horizontal = 18.dp, vertical = 12.dp),
+            ) { Text(stringResource(R.string.settings_remove), color = Ids.colors.danger, fontSize = 14.sp, fontWeight = FontWeight.Bold) }
+        }
     }
 }
 
