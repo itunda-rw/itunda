@@ -60,7 +60,7 @@ internal fun chatTimeLabel(iso: String, now: java.time.Instant = java.time.Insta
 internal fun ProtoChatRow(conversation: ConversationSummaryDto, online: Boolean, onClick: () -> Unit, onPinToggle: (() -> Unit)?) {
     val unread = conversation.unreadCount > 0
     Row(
-        Modifier.fillMaxWidth().height(80.dp).combinedClickable(onClick = onClick, onLongClick = onPinToggle).padding(horizontal = 16.dp),
+        Modifier.fillMaxWidth().height(80.dp).combinedClickable(onClick = onClick, onLongClick = onPinToggle),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(48.dp), contentAlignment = Alignment.BottomEnd) {
