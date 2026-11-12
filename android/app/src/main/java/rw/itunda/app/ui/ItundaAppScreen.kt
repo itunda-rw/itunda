@@ -1626,7 +1626,7 @@ fun ItundaAppScreen(
             val manageContext = androidx.compose.ui.platform.LocalContext.current
             AccountManageScreen(
                 accountId = viewModel.primaryAccount.value?.id ?: "",
-                accountNumber = viewModel.primaryAccount.value?.accountNumber ?: "",
+                accountNumber = viewModel.primaryAccount.value?.accountNumber ?: "", holderName = viewModel.profile.value?.let { "${it.firstName} ${it.lastName}" } ?: "",
                 nickname = viewModel.primaryAccount.value?.nickname,
                 onNicknameChanged = viewModel::updatePrimaryAccountNickname,
                 onBack = { showAccountManage = false },
