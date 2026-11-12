@@ -44,4 +44,10 @@
     <string name="transfer_gift_note">Izabikwa kugeza uyihawe — isubizwa nyuma y’iminsi 7 itafashwe. Ikora gusa kuri nimero ya telefone, si nimero ya konti.</string>
     <string name="transfer_gift_note_hint">Ongeraho ubutumwa (si ngombwa)</string>
     <string name="transfer_memo_hint">Ongeraho ubutumwa — uyahawe azabubona</string>
+    <string name="transfer_review">Suzuma</string>
+    <string name="transfer_review_title">Kohereza RWF %1$s kuri %2$s?</string>
+    <string name="transfer_review_to">Kuri</string>
+    <string name="transfer_review_from">Kuva kuri</string>
+    <string name="transfer_review_amount">Amafaranga</string>
+    <string name="transfer_review_bank">itunda Bank</string>
 </resources>
