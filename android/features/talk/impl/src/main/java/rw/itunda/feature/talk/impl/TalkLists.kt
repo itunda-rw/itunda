@@ -162,11 +162,20 @@ internal fun DirectMessagesList(
     var showNewChat by remember { mutableStateOf(false) }
     LazyColumn(verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)) {
         item {
-            Text(
-                if (showNewChat) "Hide new chat" else "New chat",
-                color = Ids.colors.textBrand, fontWeight = FontWeight.Bold, fontSize = 16.sp,
-                modifier = Modifier.pressScaleClickable { showNewChat = !showNewChat }.padding(vertical = 8.dp),
-            )
+            val archivedCount = archivedConversations?.size ?: 0
+            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (showNewChat) "Hide new chat" else "New chat",
+                    color = Ids.colors.textBrand, fontWeight = FontWeight.Bold, fontSize = 16.sp,
+                    modifier = Modifier.pressScaleClickable { showNewChat = !showNewChat }.padding(vertical = 8.dp),
+                )
+                Spacer(Modifier.weight(1f))
+                if (archivedCount > 0) Text(
+                    if (showArchived) "Show active chats" else "Archived ($archivedCount)",
+                    color = Ids.colors.textTertiary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.pressScaleClickable { showArchived = !showArchived }.padding(vertical = 8.dp),
+                )
+            }
         }
         if (showNewChat) item {
             // Flat form, shown on demand so the list matches the prototype's Messages screen.
@@ -246,12 +255,6 @@ internal fun DirectMessagesList(
                         }
                     }
                     startError?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
-            }
-        }
-        val archivedCount = archivedConversations?.size ?: 0
-        if (archivedCount > 0) item {
-            TextButton(onClick = { showArchived = !showArchived }) {
-                Text(if (showArchived) "Show active chats" else "Archived ($archivedCount)", color = Ids.colors.textSecondary)
             }
         }
         // Real KakaoTalk pinned-rooms-float-to-top behavior (2026-08-18) -- see
