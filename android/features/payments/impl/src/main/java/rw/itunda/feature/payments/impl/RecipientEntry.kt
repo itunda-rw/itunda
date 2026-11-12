@@ -38,6 +38,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.components.EmptyState
+import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsIcons
@@ -126,7 +127,7 @@ fun RecipientEntryScreen(
             Spacer(Modifier.height(16.dp))
         }
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FlowNextBar(enabled = canContinue, label = stringResource(R.string.transfer_next)) { onNext(typedDigits) }
+            IdsButton(text = stringResource(R.string.transfer_next), onClick = { onNext(typedDigits) }, enabled = canContinue)
         }
     }
 }
