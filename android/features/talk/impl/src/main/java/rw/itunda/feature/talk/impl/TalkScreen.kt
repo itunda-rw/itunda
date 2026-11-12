@@ -324,7 +324,16 @@ fun TalkTab(
             Icon(Icons.Outlined.Edit, "New message", Modifier.size(26.dp).pressScaleClickable { view = TalkView.FRIENDS }, tint = Ids.colors.textPrimary)
         }
         if (view == TalkView.DIRECT) { ProtoSearchField(chatQuery, { chatQuery = it }); Spacer(Modifier.height(12.dp)) }
-        ProtoChips(listOf(TalkView.DIRECT to "All", TalkView.GROUPS to "Groups", TalkView.FRIENDS to "Friends"), view, { view = it })
+        // One chip row (prototype): All / Unread / Calls filter the direct list, Groups / Friends switch view.
+        ProtoChips(
+            listOf(
+                (TalkView.DIRECT to TalkDirectFilter.ALL) to "All", (TalkView.DIRECT to TalkDirectFilter.UNREAD) to "Unread",
+                (TalkView.DIRECT to TalkDirectFilter.CALLS) to "Calls", (TalkView.GROUPS to TalkDirectFilter.ALL) to "Groups",
+                (TalkView.FRIENDS to TalkDirectFilter.ALL) to "Friends",
+            ),
+            view to (if (view == TalkView.DIRECT) directFilter else TalkDirectFilter.ALL),
+            { (v, f) -> view = v; directFilter = f },
+        )
         if (view == TalkView.FRIENDS) {
             FriendsView(
                 onStarted = { conversationId ->
@@ -341,7 +350,6 @@ fun TalkTab(
             // so they're rendered here rather than injected into `conversations`.
             SyntheticTalkChannelRow("itunda", "Payments, security, and account updates", onClick = { showServiceChannel = true })
             SyntheticTalkChannelRow("itunda AI", "Ask anything -- powered by a self-hosted model", onClick = { showAiChat = true })
-            TalkFilterTabsRow(selected = directFilter, onSelect = { directFilter = it })
             if (directFilter == TalkDirectFilter.CALLS) {
                 CallHistoryList(conversations = conversations)
             } else {
