@@ -37,4 +37,5 @@
     <string name="transfer_amount_insufficient">Amafaranga ntahagije — ufite RWF %1$s</string>
     <string name="transfer_send">Ohereza</string>
     <string name="transfer_delete_digit">Siba</string>
+    <string name="transfer_search_recipient_placeholder">Izina cyangwa nimero ya telefone</string>
 </resources>
