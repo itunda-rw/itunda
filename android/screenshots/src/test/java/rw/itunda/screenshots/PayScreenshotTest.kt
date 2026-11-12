@@ -20,10 +20,10 @@ import rw.itunda.feature.pay.impl.ProtoPayMode
 class PayScreenshotTest {
     @get:Rule val rule = createComposeRule()
 
-    private fun render(dark: Boolean, name: String) {
+    private fun render(dark: Boolean, name: String, mode: ProtoPayMode = ProtoPayMode.MY_CODE) {
         rule.setContent {
             IdsTheme(darkTheme = dark) {
-                ProtoPayContent(ProtoPayMode.MY_CODE, {}, "ITUNDA-DEMO-1", 4, "itunda Pay Money", "120,500", {}, {}, {}, {}, {})
+                ProtoPayContent(mode, {}, "ITUNDA-DEMO-1", 4, "itunda Pay Money", "120,500", {}, {}, {}, {}, {})
             }
         }
         rule.onRoot().captureRoboImage("build/screenshots/$name.png")
@@ -31,4 +31,8 @@ class PayScreenshotTest {
 
     @Test fun payLight() = render(false, "pay-light")
     @Test fun payDark() = render(true, "pay-dark")
+    @Test fun tapLight() = render(false, "pay-tap-light", ProtoPayMode.TAP)
+    @Test fun tapDark() = render(true, "pay-tap-dark", ProtoPayMode.TAP)
+    // Scan hosts the real camera (CameraX, not available on the JVM); only the dark chrome is checked here.
+    @Test fun scanDark() = render(false, "pay-scan-dark", ProtoPayMode.SCAN)
 }
