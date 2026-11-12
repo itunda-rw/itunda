@@ -254,8 +254,8 @@ fun MyEntryPoint(
 private fun ArtTile(name: String, badge: Boolean = false) {
     Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
         rw.itunda.core.designsystem.components.ItundaArt(name, rw.itunda.core.designsystem.components.ItundaArtSet.Color, 28.dp)
-        if (badge) Box(Modifier.align(Alignment.BottomEnd).size(16.dp).clip(CircleShape).background(Ids.colors.danger), contentAlignment = Alignment.Center) {
-            rw.itunda.core.designsystem.components.ItundaArt("heartred", rw.itunda.core.designsystem.components.ItundaArtSet.Proto, 10.dp)
+        if (badge) Box(Modifier.align(Alignment.BottomEnd).size(18.dp).clip(CircleShape).background(Ids.colors.surface), contentAlignment = Alignment.Center) {
+            rw.itunda.core.designsystem.components.ItundaArt("heartred", rw.itunda.core.designsystem.components.ItundaArtSet.Proto, 14.dp)
         }
     }
 }
