@@ -223,7 +223,7 @@ private fun HomeBar(hasUnread: Boolean, onOpenBank: () -> Unit, onOpenPay: () ->
     Row(Modifier.fillMaxWidth().height(78.dp).padding(start = 10.dp, top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
         IdsAppBarTitle(area = "bank", onClick = onOpenBank)
         Spacer(Modifier.weight(1f))
-        ItundaArt("qr", ItundaArtSet.Line, 28.dp, tint = Ids.colors.textTertiary, modifier = Modifier.pressScaleClickable(onClick = onOpenPay))
+        PayScanGlyph(30.dp, Ids.colors.textTertiary, Modifier.pressScaleClickable(onClick = onOpenPay))
         Spacer(Modifier.width(20.dp))
         Box(Modifier.pressScaleClickable(onClick = onOpenNotifications).padding(end = 6.dp)) {
             ItundaArt("bell", ItundaArtSet.Line, 28.dp, tint = Ids.colors.textTertiary)
