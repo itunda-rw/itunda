@@ -2,7 +2,6 @@ package rw.itunda.feature.pay.impl
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -30,6 +30,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -63,7 +64,7 @@ fun ProtoPayContent(
     scanContent: @Composable () -> Unit,
 ) {
     // Scan is the prototype's one dark screen: force the dark token set for it only.
-    IdsTheme(darkTheme = mode == ProtoPayMode.SCAN || isSystemInDarkTheme()) {
+    IdsTheme(darkTheme = mode == ProtoPayMode.SCAN || MaterialTheme.colorScheme.background.luminance() < 0.5f) {
     Column(Modifier.fillMaxSize().background(Ids.colors.surface).padding(horizontal = 20.dp)) {
         Row(Modifier.fillMaxWidth().height(78.dp).padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             IdsAppBarTitle(area = "pay", onClick = onOpenPay)

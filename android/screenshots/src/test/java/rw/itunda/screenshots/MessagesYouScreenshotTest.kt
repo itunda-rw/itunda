@@ -5,6 +5,11 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
+import rw.itunda.core.designsystem.theme.Ids
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -26,28 +31,28 @@ class MessagesYouScreenshotTest {
 
     @Test fun messagesLight() {
         NetworkClient.demoMode = true
-        rule.setContent { IdsTheme(darkTheme = false) { TalkEntryPoint(null, {}, { _, _, _ -> }) } }
+        rule.setContent { IdsTheme(darkTheme = false) { Box(Modifier.fillMaxSize().background(Ids.colors.background)) { TalkEntryPoint(null, {}, { _, _, _ -> }) } } }
         rule.waitUntil(10_000) { rule.onAllNodesWithText("Patrick H.").fetchSemanticsNodes().isNotEmpty() }
         rule.onRoot().captureRoboImage("build/screenshots/messages-light.png")
     }
 
     @Test fun youLight() {
         NetworkClient.demoMode = true
-        rule.setContent { IdsTheme(darkTheme = false) { MyEntryPoint(onBack = {}) } }
+        rule.setContent { IdsTheme(darkTheme = false) { Box(Modifier.fillMaxSize().background(Ids.colors.background)) { MyEntryPoint(onBack = {}) } } }
         rule.waitUntil(10_000) { rule.onAllNodesWithText("Aline Uwase").fetchSemanticsNodes().isNotEmpty() }
         rule.onRoot().captureRoboImage("build/screenshots/you-light.png")
     }
 
     @Test fun messagesDark() {
         NetworkClient.demoMode = true
-        rule.setContent { IdsTheme(darkTheme = true) { TalkEntryPoint(null, {}, { _, _, _ -> }) } }
+        rule.setContent { IdsTheme(darkTheme = true) { Box(Modifier.fillMaxSize().background(Ids.colors.background)) { TalkEntryPoint(null, {}, { _, _, _ -> }) } } }
         rule.waitUntil(10_000) { rule.onAllNodesWithText("Patrick H.").fetchSemanticsNodes().isNotEmpty() }
         rule.onRoot().captureRoboImage("build/screenshots/messages-dark.png")
     }
 
     @Test fun youDark() {
         NetworkClient.demoMode = true
-        rule.setContent { IdsTheme(darkTheme = true) { MyEntryPoint(onBack = {}) } }
+        rule.setContent { IdsTheme(darkTheme = true) { Box(Modifier.fillMaxSize().background(Ids.colors.background)) { MyEntryPoint(onBack = {}) } } }
         rule.waitUntil(10_000) { rule.onAllNodesWithText("Aline Uwase").fetchSemanticsNodes().isNotEmpty() }
         rule.onRoot().captureRoboImage("build/screenshots/you-dark.png")
     }
