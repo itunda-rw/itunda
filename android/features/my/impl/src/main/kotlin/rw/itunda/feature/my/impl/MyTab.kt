@@ -120,25 +120,27 @@ fun MyEntryPoint(
                 }
             }
         }
-        profile?.let { u ->
-            item {
-                Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(72.dp).clip(CircleShape).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
-                        rw.itunda.core.designsystem.components.ItundaArt("shopkeeper", rw.itunda.core.designsystem.components.ItundaArtSet.Face, 58.dp)
-                    }
-                    Spacer(Modifier.width(16.dp))
-                    Column {
-                        Text("${u.firstName} ${u.lastName}", color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
-                        Text(
-                            u.phoneNumber.let { if (it.length > 7) it.take(4) + " ••• " + it.takeLast(3) else it } + if (u.kycVerified) " · Verified" else "",
-                            color = Ids.colors.textTertiary, fontSize = 15.sp,
-                        )
-                    }
+        item {
+            Column {
+                profile?.let { u ->
+                    Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(72.dp).clip(CircleShape).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
+                            rw.itunda.core.designsystem.components.ItundaArt("shopkeeper", rw.itunda.core.designsystem.components.ItundaArtSet.Face, 58.dp)
+                        }
+                        Spacer(Modifier.width(16.dp))
+                        Column {
+                            Text("${u.firstName} ${u.lastName}", color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+                            Text(
+                                u.phoneNumber.let { if (it.length > 7) it.take(4) + " ••• " + it.takeLast(3) else it } + if (u.kycVerified) " · Verified" else "",
+                                color = Ids.colors.textTertiary, fontSize = 15.sp,
+                            )
+                        }
                 }
+                }
+                PinUpgradeCard()
+                VerificationCard()
             }
         }
-        item { PinUpgradeCard() }
-        item { VerificationCard() }
         if (affiliateLinks.isNotEmpty()) {
             item {
                 Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -186,10 +188,9 @@ fun MyEntryPoint(
                 }
             }
         }
-        item { Text("My favorites", color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 8.dp)) }
         item {
             FlatSection(
-                "",
+                "My favorites",
                 listOf(
                     FlatRow("Marketplace wishlist", trailing = "$favoriteListingsCount", glyph = { ArtTile("market", badge = true) }, onClick = onSwitchToMarketplace),
                     FlatRow("Jobs wishlist", trailing = "$favoriteJobPostsCount", glyph = { ArtTile("briefcase", badge = true) }, onClick = onSwitchToJobs),
@@ -254,8 +255,8 @@ fun MyEntryPoint(
 private fun ArtTile(name: String, badge: Boolean = false) {
     Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
         rw.itunda.core.designsystem.components.ItundaArt(name, rw.itunda.core.designsystem.components.ItundaArtSet.Color, 28.dp)
-        if (badge) Box(Modifier.align(Alignment.BottomEnd).size(18.dp).clip(CircleShape).background(Ids.colors.surface), contentAlignment = Alignment.Center) {
-            rw.itunda.core.designsystem.components.ItundaArt("heartred", rw.itunda.core.designsystem.components.ItundaArtSet.Proto, 14.dp)
+        if (badge) Box(Modifier.align(Alignment.BottomEnd).size(16.dp).clip(CircleShape).background(androidx.compose.ui.graphics.Color(0xFFF04452)), contentAlignment = Alignment.Center) {
+            androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.Favorite, contentDescription = null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(10.dp))
         }
     }
 }
