@@ -18,6 +18,8 @@ import rw.itunda.core.designsystem.theme.IdsTheme
 import rw.itunda.feature.payments.impl.ContactUi
 import rw.itunda.feature.payments.impl.RecipientEntryScreen
 import rw.itunda.feature.payments.impl.TransferAmountScreen
+import rw.itunda.feature.payments.impl.TransactionDisplayItem
+import rw.itunda.feature.payments.impl.TransactionHistoryScreen
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.onNodeWithText
 
@@ -59,5 +61,24 @@ class SendScreenshotTest {
         }
         rule.onNodeWithText("+5,000").performClick()
         rule.onRoot().captureRoboImage("build/screenshots/send-amount-light.png")
+    }
+
+    @Test fun activityLight() {
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                Box(Modifier.fillMaxSize().background(Ids.colors.background)) {
+                    TransactionHistoryScreen(
+                        transactions = listOf(
+                            TransactionDisplayItem("1", "Amina K.", 25000.0, "RWF", "COMPLETED", false),
+                            TransactionDisplayItem("2", "Kigali Bus Services", 300.0, "RWF", "COMPLETED", true),
+                            TransactionDisplayItem("3", "Kigali Bakery", 4500.0, "RWF", "COMPLETED", true),
+                            TransactionDisplayItem("4", "Top up", 50000.0, "RWF", "COMPLETED", false),
+                        ),
+                        onBack = {},
+                    )
+                }
+            }
+        }
+        rule.onRoot().captureRoboImage("build/screenshots/activity-light.png")
     }
 }
