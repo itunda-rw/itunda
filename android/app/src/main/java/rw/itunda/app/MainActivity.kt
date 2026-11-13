@@ -59,6 +59,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (BuildConfig.DEBUG) { DebugCrashReport.install(applicationContext); DebugCrashReport.showIfPresent(this) }
 
         // Real screenshot/screen-recording protection (2026-08-09) -- found missing during a
         // Toss-parity security audit: zero FLAG_SECURE usage existed anywhere in this codebase,
