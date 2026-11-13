@@ -32,13 +32,26 @@ import rw.itunda.core.designsystem.theme.Ids
 private data class ProtoItem(val name: String, val discount: Int, val price: String, val art: String)
 
 private val protoItems = listOf(
-    ProtoItem("Mountain coffee, 500 g", 19, "6,500 RWF", "coffee"),
+    ProtoItem("Mountain coffee, 500 g", 19, "6,500 RWF", "basket"),
     ProtoItem("Umuganda tee, cotton", 14, "9,000 RWF", "bag"),
 )
 
 @Composable
 fun ShopProtoHome() {
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            ItundaArt("back", ItundaArtSet.Line, 24.dp, tint = Ids.colors.textPrimary)
+            Row(
+                Modifier.weight(1f).height(48.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ItundaArt("search", ItundaArtSet.Line, 20.dp, tint = Ids.colors.textTertiary)
+                Spacer(Modifier.width(12.dp))
+                Text("Search products", color = Ids.colors.textTertiary, fontSize = 16.sp)
+            }
+            ItundaArt("user", ItundaArtSet.Line, 24.dp, tint = Ids.colors.textPrimary)
+            ItundaArt("bag", ItundaArtSet.Line, 24.dp, tint = Ids.colors.textPrimary)
+        }
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("Home", "Beauty", "Fresh", "Categories").forEachIndexed { i, label ->
                 Box(
