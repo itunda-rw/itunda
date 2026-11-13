@@ -78,6 +78,10 @@ internal class DemoInterceptor : Interceptor {
                 """{"success":true,"portfolio":{"totalValue":842000,"totalReturn":61200,"totalReturnPercent":7.84,"holdings":[
                     {"stockId":"s1","symbol":"BKG","name":"Bank of Kigali","shares":1200,"avgPrice":290,"currentPrice":312,"value":374400,"return":26400},
                     {"stockId":"s2","symbol":"MTNR","name":"MTN Rwandacell","shares":2200,"avgPrice":195,"currentPrice":212,"value":466400,"return":37400}]}}"""
+            path == "api/v1/credit-score" ->
+                """{"success":true,"score":692,"factors":[],"computedAt":"2026-11-13T09:00:00Z"}"""
+            path == "api/v1/credit-score/suggestions" ->
+                """{"success":true,"suggestions":[]}"""
             path == "api/v1/savings/goals" ->
                 """{"success":true,"goals":[
                     {"id":"g1","userId":"demo-user","accountId":"a2","name":"Rainy day","targetAmount":500000,"currentAmount":350000,
