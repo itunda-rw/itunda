@@ -79,7 +79,7 @@ fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
     var loadingMoreTrips by remember { mutableStateOf(false) }
     var topUpAmount by remember { mutableStateOf("1000") }
     var operator by remember { mutableStateOf(TRANSIT_OPERATORS[0]) }
-    var fare by remember { mutableStateOf(MIN_FARE.toFloat()) }
+    var fare by remember { mutableStateOf(300f) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var tapMessage by remember { mutableStateOf<String?>(null) }
@@ -186,13 +186,11 @@ fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
                 TransitMode.LOADING -> item { SkeletonBlock(height = 120.dp) }
                 TransitMode.NO_BALANCE, TransitMode.ACTIVE -> {
                     item {
-                        Column {
-                            Text(stringResource(R.string.transit_balance_label), fontSize = 13.sp, color = Ids.colors.textSecondary)
-                            Text(
-                                "${formatMoneyTransit(balance?.balance ?: BigDecimal.ZERO)} RWF",
-                                fontSize = 28.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
-                            )
-                        }
+                        val bal = balance?.balance ?: BigDecimal.ZERO
+                        TransitProtoTop(
+                            balance = formatMoneyTransit(bal), fare = formatMoneyTransit(fare), operator = operator,
+                            lowBalance = bal < BigDecimal.valueOf(fare.toLong()), onTopUp = ::topUp,
+                        )
                     }
                     item {
                         Text(
