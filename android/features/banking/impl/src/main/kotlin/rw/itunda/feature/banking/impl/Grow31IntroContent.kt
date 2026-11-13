@@ -49,7 +49,7 @@ fun Grow31IntroContent(onContinue: (dailyAmount: Long) -> Unit) {
     FixedBottomCta(
         content = {
             Text("31-day savings", color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            Text("Save a little each day, earn up to 10%", color = Ids.colors.textPrimary, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 34.sp)
+            Text("Save a little each\nday, earn up to 10%", color = Ids.colors.textPrimary, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 32.sp)
             Text("Your bonus grows at day 7, 14, 21 and 31.", color = Ids.colors.textTertiary, fontSize = 15.sp)
             BonusIllustration()
             Text("How much each day?", color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
