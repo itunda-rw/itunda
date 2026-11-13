@@ -567,8 +567,8 @@ fun CommerceShopContent(
             // "Recommended for you" 2-column grid -- all three real, backend-connected,
             // shown only on the unfiltered landing state (same discipline the Deals/
             // Time Deals/Nearby/Recently-viewed rails below already established).
-            if (selectedCategory == null && searchInput.isBlank() && banners.isNotEmpty()) {
-                item { ShoppingBannerCarousel(banners) }
+            if (selectedCategory == null && searchInput.isBlank()) {
+                item { if (banners.isNotEmpty()) ShoppingBannerCarousel(banners) else ShopProtoHome() }
             }
             if (selectedCategory == null && searchInput.isBlank() && missions.isNotEmpty()) {
                 item {
