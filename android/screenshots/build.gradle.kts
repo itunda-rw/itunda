@@ -42,6 +42,7 @@ dependencies {
     implementation(project(":features:payments:impl"))
     implementation(project(":features:shop:impl"))
     implementation(project(":features:eats:impl"))
+    implementation(project(":features:front:impl"))
 
     testImplementation(platform("androidx.compose:compose-bom:2024.02.00"))
     testImplementation(libs.junit4)

@@ -17,7 +17,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsTheme
-import rw.itunda.feature.menu.impl.FrontHome
+import rw.itunda.feature.front.impl.FrontEntryPoint
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -28,7 +28,7 @@ class FrontScreenshotTest {
     @Test fun frontLight() {
         rule.setContent {
             IdsTheme(darkTheme = false) {
-                Box(Modifier.fillMaxSize().background(Ids.colors.background)) { FrontHome({}) }
+                Box(Modifier.fillMaxSize().background(Ids.colors.background)) { FrontEntryPoint({}) }
             }
         }
         rule.onRoot().captureRoboImage("build/screenshots/front-light.png")

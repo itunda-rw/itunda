@@ -182,6 +182,7 @@ import rw.itunda.feature.talk.impl.TalkEntryPoint
 import rw.itunda.feature.maps.impl.MapsEntryPoint
 import rw.itunda.feature.shop.impl.CommerceShopEntryPoint
 import rw.itunda.feature.eats.impl.EatsEntryPoint
+import rw.itunda.feature.front.impl.FrontEntryPoint
 import rw.itunda.feature.credit.impl.LoansEntryPoint
 import rw.itunda.feature.credit.impl.CreditScoreEntryPoint
 import rw.itunda.feature.credit.impl.StudentLoanEntryPoint
@@ -478,6 +479,7 @@ fun ItundaAppScreen(
         // composable is called directly instead, no wrapper toggle).
         var showShop by rememberSaveable { mutableStateOf(false) }
         var showEats by rememberSaveable { mutableStateOf(false) }
+        var showFront by rememberSaveable { mutableStateOf(false) }
         // Hood's own chip row (Market/Life/Jobs/Home) retired the same way (see
         // HoodSectionScreen's own doc comment): 4 flat destinations instead of one
         // Hood entry with an internal switcher.
@@ -1247,6 +1249,7 @@ fun ItundaAppScreen(
             }
             return@IdsTheme
         }
+        if (showFront) { FrontEntryPoint(onBack = { showFront = false }); return@IdsTheme }
         if (showEats) {
             BackHandler { showEats = false }
             Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
@@ -1928,6 +1931,7 @@ fun ItundaAppScreen(
                         MenuEntryPoint(
                             onOpenShop = { showShop = true },
                             onOpenEats = { showEats = true },
+                            onOpenFront = { showFront = true },
                             onOpenMarketplace = { showMarketplace = true },
                             onOpenCommunity = { showCommunity = true },
                             onOpenJobs = { showJobs = true },
