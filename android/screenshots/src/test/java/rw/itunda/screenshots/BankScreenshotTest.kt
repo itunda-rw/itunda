@@ -19,6 +19,11 @@ import rw.itunda.core.network.Account
 import rw.itunda.core.network.MoneyActionResult
 import rw.itunda.feature.banking.impl.BankHubEntryPoint
 import rw.itunda.feature.banking.impl.Grow31IntroContent
+import rw.itunda.feature.wealth.impl.InvestIndexHeader
+import rw.itunda.feature.wealth.impl.InvestStartCard
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -51,5 +56,14 @@ class BankScreenshotTest {
             IdsTheme(darkTheme = false) { Box(Modifier.fillMaxSize().background(Ids.colors.background)) { Grow31IntroContent {} } }
         }
         rule.onRoot().captureRoboImage("build/screenshots/save31-light.png")
+    }
+
+    @Test fun investLight() {
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                Box(Modifier.fillMaxSize().background(Ids.colors.background).padding(24.dp)) { Column { InvestIndexHeader(); InvestStartCard {} } }
+            }
+        }
+        rule.onRoot().captureRoboImage("build/screenshots/invest-light.png")
     }
 }
