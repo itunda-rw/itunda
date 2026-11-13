@@ -18,6 +18,7 @@ import rw.itunda.core.designsystem.theme.IdsTheme
 import rw.itunda.core.network.Account
 import rw.itunda.core.network.MoneyActionResult
 import rw.itunda.feature.banking.impl.BankHubEntryPoint
+import rw.itunda.feature.banking.impl.Grow31IntroContent
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -43,5 +44,12 @@ class BankScreenshotTest {
             }
         }
         rule.onRoot().captureRoboImage("build/screenshots/bank-light.png")
+    }
+
+    @Test fun grow31Light() {
+        rule.setContent {
+            IdsTheme(darkTheme = false) { Box(Modifier.fillMaxSize().background(Ids.colors.background)) { Grow31IntroContent {} } }
+        }
+        rule.onRoot().captureRoboImage("build/screenshots/save31-light.png")
     }
 }
