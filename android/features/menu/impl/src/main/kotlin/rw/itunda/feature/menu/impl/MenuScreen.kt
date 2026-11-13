@@ -116,6 +116,11 @@ fun MenuEntryPoint(
     var partnerLoadError by remember { mutableStateOf<String?>(null) }
     var loadingPartnerAppId by remember { mutableStateOf<String?>(null) }
     var showMiniAppsHub by remember { mutableStateOf(false) }
+    var showFront by remember { mutableStateOf(false) }
+    if (showFront) {
+        FrontHome(onBack = { showFront = false })
+        return
+    }
     // Real Toss/Kakao mini-app-store reference (2026-09-11) -- promoted from an
     // inline "Load more" list into its own dedicated hub screen (real category
     // filter + search), matching CouponBoxScreen/MembershipScreen's own
@@ -160,7 +165,7 @@ fun MenuEntryPoint(
         query = menuSearchQuery, onQuery = { menuSearchQuery = it }, onHelp = onOpenSupport, onSettings = onOpenSettings,
         onOpen = { key ->
             when (key) {
-                "shop" -> onOpenShop(); "eats", "front" -> onOpenEats(); "marketplace" -> onOpenMarketplace()
+                "shop" -> onOpenShop(); "eats" -> onOpenEats(); "front" -> showFront = true; "marketplace" -> onOpenMarketplace()
                 "community" -> onOpenCommunity(); "jobs" -> onOpenJobs(); "property" -> onOpenProperty(); "places", "directions" -> onOpenMap()
                 "benefits" -> onOpenRewardTasksMiniApp(); "invest" -> onOpenInvest(); "week26" -> onOpenWeeklySavings(); "day31" -> onOpenGrow31Savings()
                 "open" -> onOpenBank(); "assets" -> onOpenOverview(); "card" -> onOpenCard(); "transit" -> onOpenTransit(); "spending" -> onOpenSpending()
