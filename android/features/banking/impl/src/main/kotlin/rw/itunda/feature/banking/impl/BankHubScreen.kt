@@ -212,34 +212,20 @@ fun BankHubEntryPoint(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Row(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
-            BackTopBar(title = stringResource(R.string.bank_title), onBack = onBack)
+        if (primaryAccount != null) {
+            BankHubHeader(
+                title = stringResource(R.string.bank_title), accountNumber = primaryAccount.accountNumber,
+                balance = rememberCountUp(primaryAccount.balance), currency = primaryAccount.currency,
+                onBack = onBack, onOpenAccountDetail = onOpenAccountDetail, onDeposit = onOpenPay, onSend = onOpenPay,
+            )
+        } else {
+            Row(modifier = Modifier.fillMaxWidth().padding(20.dp)) { BackTopBar(title = stringResource(R.string.bank_title), onBack = onBack) }
         }
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal),
             contentPadding = PaddingValues(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
         ) {
-            if (primaryAccount != null) {
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpenAccountDetail).padding(vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column {
-                            Text(stringResource(R.string.bank_account_account), fontSize = 13.sp, color = Ids.colors.textSecondary)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            val animatedBalance = rememberCountUp(primaryAccount!!.balance)
-                            Text(
-                                String.format(Locale.US, "%,.0f ${primaryAccount!!.currency}", animatedBalance),
-                                fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary,
-                            )
-                        }
-                        Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
-                    }
-                }
-            }
             // Dual-balance UI (2026-08-29): a small flat secondary "itunda Pay" line,
             // matching bank-mfe's identical AccountSummaryRow.tsx fix.
             if (payAccount != null) {
