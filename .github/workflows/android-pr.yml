@@ -88,13 +88,21 @@ jobs:
         working-directory: android
         run: ./gradlew :app:assembleDebug -PdemoMode=true --stacktrace
 
+      # Picker and Business are parked while the itunda app is brought to prototype parity: skipped on the
+      # prototype branch so its builds stay fast; every other branch still builds them.
       - name: Assemble Picker and Business debug APKs
+        if: ${{ !(github.head_ref == 'integration/prototype-parity' || github.ref == 'refs/heads/integration/prototype-parity') }}
         working-directory: android
         run: ./gradlew :riderapp:assembleDebug :merchantapp:assembleDebug --stacktrace
 
-      - name: Run Android unit tests
+      - name: Run Android unit tests (itunda app only on the prototype branch)
         working-directory: android
-        run: ./gradlew testDebugUnitTest --stacktrace
+        run: |
+          if [ "${{ github.head_ref }}" = "integration/prototype-parity" ] || [ "${{ github.ref }}" = "refs/heads/integration/prototype-parity" ]; then
+            ./gradlew :app:testDebugUnitTest --stacktrace
+          else
+            ./gradlew testDebugUnitTest --stacktrace
+          fi
 
       - name: Upload validated Android debug APK
         uses: actions/upload-artifact@v4
@@ -105,6 +113,7 @@ jobs:
           retention-days: 7
 
       - name: Upload Picker and Business debug APKs
+        if: ${{ !(github.head_ref == 'integration/prototype-parity' || github.ref == 'refs/heads/integration/prototype-parity') }}
         uses: actions/upload-artifact@v4
         with:
           name: itunda-picker-business-debug-${{ github.run_number }}
@@ -123,8 +132,6 @@ jobs:
         run: |
           mkdir -p /tmp/rel
           cp android/app/build/outputs/apk/debug/app-debug.apk /tmp/rel/itunda-app.apk
-          for f in android/riderapp/build/outputs/apk/debug/*.apk; do cp "$f" /tmp/rel/itunda-picker.apk; done
-          for f in android/merchantapp/build/outputs/apk/debug/*.apk; do cp "$f" /tmp/rel/itunda-business.apk; done
           gh release delete prototype-latest --yes --cleanup-tag || true
           gh release create prototype-latest /tmp/rel/*.apk --prerelease --target "${GITHUB_SHA}" \
             --title "Prototype parity build #${{ github.run_number }}" \
