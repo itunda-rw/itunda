@@ -372,7 +372,7 @@ val assembleConsumerPrototypeAsset = tasks.register("assembleConsumerPrototypeAs
     outputs.file(consumerPrototypeAsset)
     doLast {
         val parts = consumerPrototypeParts.files.sortedBy { it.name }
-        check(parts.size == 6) { "Expected 6 ordered consumer prototype v1038 source parts, found ${parts.size}" }
+        check(parts.size == 8) { "Expected 8 ordered consumer prototype v1038 source parts, found ${parts.size}" }
         val output = consumerPrototypeAsset.get().asFile
         output.parentFile.mkdirs()
         output.outputStream().buffered().use { stream ->
