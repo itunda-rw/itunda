@@ -45,7 +45,7 @@ class FeatureIsolationTest {
             "payments", "marketplace", "jobs", "property", "ride", "community",
             "shop", "eats", "talk", "maps", "bills", "merchant", "credit",
             "wealth", "insurance", "engagement", "assets", "banking", "home",
-            "pay", "menu", "my",
+            "pay", "menu", "my", "front",
         )
 
         val missing = features.mapNotNull { feature ->
@@ -96,6 +96,7 @@ class FeatureIsolationTest {
             "talk" to "TalkEntryPoint",
             "shop" to "CommerceShopEntryPoint",
             "eats" to "EatsEntryPoint",
+            "front" to "FrontEntryPoint",
             "maps" to "MapsEntryPoint",
             "wealth" to "InvestEntryPoint",
             "credit" to "LoansEntryPoint",

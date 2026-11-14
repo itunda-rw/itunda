@@ -209,9 +209,9 @@ fun KnowledgeScreen(onBack: () -> Unit) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Box(
                             modifier = Modifier.clip(RoundedCornerShape(8.dp))
-                                .background(if (activeCategory == null) Ids.colors.brand else Ids.colors.surfaceSoft)
+                                .background(if (activeCategory == null) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
                                 .pressScaleClickable { activeCategory = null }.padding(horizontal = 12.dp, vertical = 6.dp),
-                        ) { Text("All", color = if (activeCategory == null) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                        ) { Text("All", color = if (activeCategory == null) Ids.colors.background else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                     }
                 }
                 item {
@@ -220,9 +220,9 @@ fun KnowledgeScreen(onBack: () -> Unit) {
                             val selected = activeCategory == c.id
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(8.dp))
-                                    .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
+                                    .background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
                                     .pressScaleClickable { activeCategory = c.id }.padding(horizontal = 12.dp, vertical = 6.dp),
-                            ) { Text(c.label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                            ) { Text(c.label, color = if (selected) Ids.colors.background else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                         }
                     }
                 }
@@ -318,9 +318,9 @@ private fun KnowledgeAskCard(categories: List<KnowledgeCategory>, onAsked: () ->
                     val selected = category == c.id
                     Box(
                         modifier = Modifier.clip(RoundedCornerShape(8.dp))
-                            .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
+                            .background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
                             .pressScaleClickable { category = c.id }.padding(horizontal = 12.dp, vertical = 6.dp),
-                    ) { Text(c.label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                    ) { Text(c.label, color = if (selected) Ids.colors.background else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                 }
             }
             IdsTextField(value = title, onValueChange = { title = it }, label = "Your question", modifier = Modifier.fillMaxWidth())

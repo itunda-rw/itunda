@@ -204,7 +204,16 @@ object NetworkClient {
         }
     }
 
+    // Demo mode (see DemoInterceptor): set from the app's BuildConfig.DEMO_MODE before the
+    // first request. Checked per request so it can sit first in the chain without
+    // rebuilding the client.
+    @Volatile
+    var demoMode: Boolean = false
+
+    private val demoInterceptor = DemoInterceptor()
+
     private val okHttpClient = OkHttpClient.Builder()
+        .addInterceptor { chain -> if (demoMode) demoInterceptor.intercept(chain) else chain.proceed(chain.request()) }
         .addInterceptor(diagnosticLoggingInterceptor)
         .addInterceptor(authInterceptor)
         .authenticator(refreshAuthenticator)

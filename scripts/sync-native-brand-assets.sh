@@ -7,17 +7,17 @@ test -s "$ICON"
 command -v rsvg-convert >/dev/null
 
 render() {
-  local size="$1" output="$2"
+  local size="$1" output="$2" src="${3:-$ICON}"
   mkdir -p "$(dirname "$output")"
-  rsvg-convert --format=png --width="$size" --height="$size" "$ICON" > "$output"
+  rsvg-convert --format=png --width="$size" --height="$size" "$src" > "$output"
 }
 
-# Android launcher bitmaps at standard density sizes, from the canonical SVG.
+# Android launcher bitmaps (white tile + purple knot) from android/brand, not the canonical purple tile.
 for spec in "mdpi:48" "hdpi:72" "xhdpi:96" "xxhdpi:144" "xxxhdpi:192"; do
   density="${spec%%:*}"
   size="${spec##*:}"
-  render "$size" "android/app/src/main/res/mipmap-$density/ic_launcher.png"
-  render "$size" "android/app/src/main/res/mipmap-$density/ic_launcher_round.png"
+  render "$size" "android/app/src/main/res/mipmap-$density/ic_launcher.png" android/brand/launcher-icon.svg
+  render "$size" "android/app/src/main/res/mipmap-$density/ic_launcher_round.png" android/brand/launcher-icon-round.svg
 done
 
 # iOS asset-catalog filenames are part of Contents.json's contract.

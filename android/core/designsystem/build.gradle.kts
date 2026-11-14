@@ -53,6 +53,7 @@ dependencies {
     // Added 2026-08-05 for IdsAvatar.kt -- same version already used by :app and
     // :features:talk:impl, so this stays a single real dependency, not a second one.
     implementation(libs.coil.compose)
+    implementation(libs.androidsvg)
 
     // Added 2026-08-21 for CameraQrScanner.kt -- relocated here from
     // :features:shop:impl (item 244) once a real second Feature (:features:talk:impl,

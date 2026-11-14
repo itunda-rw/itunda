@@ -377,7 +377,7 @@ internal fun RidePassengerContent(onReportIssue: (String) -> Unit = {}) {
                 // Real fix (flat-design sweep): dropped the Card wrapper -- the
                 // screen's own main content when no ride is active.
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Request a ride", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        RideProtoPicker(pickupAddress, dropoffAddress) { n, la, ln -> dropoffAddress = n; dropoffLat = la.toString(); dropoffLng = ln.toString() }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             IdsTextField(value = pickupAddress, onValueChange = { pickupAddress = it }, label = "Pickup", modifier = Modifier.weight(1f))
                             Box(

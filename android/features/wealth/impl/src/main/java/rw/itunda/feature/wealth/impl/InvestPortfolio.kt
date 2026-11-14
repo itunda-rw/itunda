@@ -51,7 +51,7 @@ import java.util.UUID
 import kotlin.math.max
 
 @Composable
-internal fun PortfolioContent() {
+internal fun PortfolioContent(onBrowse: () -> Unit = {}) {
     var portfolio by remember { mutableStateOf<StockPortfolioDto?>(null) }
     var history by remember { mutableStateOf<List<PortfolioValuePointDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -86,26 +86,21 @@ internal fun PortfolioContent() {
             // section and the holdings list below it, matching ShellSection's shape.
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
-                    Text("Total value", color = Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    Text("${formatMoney(p.totalValue)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 26.sp)
-                    Text(
-                        "${if (positive) "+" else ""}${formatMoney(p.totalReturn)} RWF (${if (positive) "+" else ""}${String.format(Locale.US, "%.2f", p.totalReturnPercent)}%)",
-                        color = if (positive) Ids.colors.success else Ids.colors.danger, fontSize = 14.sp, fontWeight = FontWeight.Bold,
-                    )
-                    if (!history.isNullOrEmpty()) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Sparkline(history!!.map { it.value }, positive = positive)
-                        Spacer(modifier = Modifier.height(4.dp))
+                    Text("Invested value", color = Ids.colors.textTertiary, fontSize = 14.sp)
+                    Text("${formatMoney(p.totalValue)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 32.sp)
+                    if (p.holdings.isNotEmpty()) {
                         Text(
-                            "Last 30 days -- based on your current holdings applied to real historical prices, not a full historical reconstruction",
-                            color = Ids.colors.textSecondary, fontSize = 11.sp,
+                            "${if (positive) "+" else ""}${formatMoney(p.totalReturn)} RWF (${if (positive) "+" else ""}${String.format(Locale.US, "%.2f", p.totalReturnPercent)}%)",
+                            color = if (positive) Ids.colors.success else Ids.colors.danger, fontSize = 14.sp, fontWeight = FontWeight.Bold,
                         )
                     }
+                    Spacer(modifier = Modifier.height(20.dp))
+                    InvestIndexHeader()
                 }
                 AddFundsCard(onFunded = ::load)
                 Divider(color = Ids.colors.divider, thickness = 0.5.dp)
                 if (p.holdings.isEmpty()) {
-                    Text("You don't hold any real shares yet. Browse the Market tab to buy some.", color = Ids.colors.textSecondary, fontSize = 14.sp)
+                    InvestStartCard(onBrowse)
                 } else {
                     p.holdings.forEach { HoldingRow(it) }
                 }

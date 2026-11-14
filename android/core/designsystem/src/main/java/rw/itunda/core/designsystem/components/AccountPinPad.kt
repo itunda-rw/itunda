@@ -32,7 +32,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.components.rememberPressScale
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsIcons
@@ -61,6 +63,8 @@ fun AccountPinPad(
     subtitle: String? = null,
     errorMessage: String? = null,
     busy: Boolean = false,
+    leading: (@Composable () -> Unit)? = null,
+    footer: (@Composable () -> Unit)? = null,
     onComplete: (String) -> Unit,
 ) {
     var pin by remember { mutableStateOf("") }
@@ -102,17 +106,19 @@ fun AccountPinPad(
         }
     }
 
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-        Text(headline, style = IdsTypography.Title1, color = Ids.colors.textPrimary)
+    // Prototype layout: left-aligned headline block, quiet grey dots, links, keypad docked to the bottom.
+    Column(horizontalAlignment = Alignment.Start, modifier = Modifier.fillMaxWidth()) {
+        leading?.let { it(); Spacer(modifier = Modifier.height(16.dp)) }
+        Text(headline, color = Ids.colors.textPrimary, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold)
         if (subtitle != null || errorMessage != null) {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 errorMessage ?: subtitle.orEmpty(),
-                style = IdsTypography.Body1,
-                color = if (errorMessage != null) Ids.colors.danger else Ids.colors.textSecondary,
+                fontSize = 15.sp,
+                color = if (errorMessage != null) Ids.colors.danger else Ids.colors.textTertiary,
             )
         }
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(48.dp))
         if (busy) {
             CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Ids.colors.brand, strokeWidth = 3.dp)
         } else {
@@ -120,13 +126,14 @@ fun AccountPinPad(
                 repeat(ACCOUNT_PIN_LENGTH) { index ->
                     Box(
                         modifier = Modifier
-                            .size(16.dp)
+                            .size(14.dp)
                             .clip(CircleShape)
-                            .background(if (index < pin.length) Ids.colors.brand else Ids.colors.divider),
+                            .background(if (index < pin.length) Ids.colors.textPrimary else Ids.colors.surfaceSoft),
                     )
                 }
             }
         }
+        footer?.let { Spacer(modifier = Modifier.height(28.dp)); it() }
         Spacer(modifier = Modifier.height(32.dp))
         AccountPinKeypad(enabled = !busy, onDigit = ::onDigit, onBackspace = { if (pin.isNotEmpty()) pin = pin.dropLast(1) })
     }

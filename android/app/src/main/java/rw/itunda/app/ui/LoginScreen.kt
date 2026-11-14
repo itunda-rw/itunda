@@ -260,7 +260,11 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                             }
                         } catch (e: Exception) {
                             isSubmitting = false
-                            errorMessage = checkingPhoneError
+                            // Debug builds append the real cause (HTTP status or exception
+                            // type) so a "not working" report says why; release builds keep
+                            // the plain message.
+                            val cause = if (e is retrofit2.HttpException) "HTTP ${e.code()}" else e.javaClass.simpleName
+                            errorMessage = if (rw.itunda.app.BuildConfig.DEBUG) "$checkingPhoneError ($cause)" else checkingPhoneError
                         }
                     }
                 }
@@ -289,7 +293,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
 
         val requiredTermsAccepted = terms.filter { it.required }.let { it.isNotEmpty() && it.all { t -> acceptedTermsIds.contains(t.id) } }
         val currentStepValid = when (stage) {
-            AuthStage.PHONE -> phoneNumber.isNotBlank()
+            AuthStage.PHONE -> isCompletePhone(phoneNumber)
             AuthStage.NOT_FOUND -> true
             AuthStage.NAME -> firstName.isNotBlank() && lastName.isNotBlank()
             AuthStage.TERMS -> requiredTermsAccepted
@@ -333,7 +337,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                         }
                     }
                     Spacer(modifier = Modifier.weight(1f))
-                    StepDots(total = stepCount, current = stepIndex)
+                    if (stage != AuthStage.PHONE) StepProgress(total = stepCount, current = stepIndex, modifier = Modifier.weight(1f))
                     Spacer(modifier = Modifier.weight(1f))
                     LanguageSwitcher(
                         locale = locale,
@@ -369,10 +373,6 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                     // button down to dock against the keyboard.
                     verticalArrangement = Arrangement.Top,
                 ) {
-                    if (stage == AuthStage.PHONE) {
-                        BrandMark()
-                        Spacer(modifier = Modifier.height(Ids.layout.sectionGap))
-                    }
 
                     // Real Toss reverse-stacking mechanism -- see this composable's own
                     // doc comment for the full sourced account. AnimatedContent is
@@ -434,10 +434,8 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                                             errorMessage = "That didn't match. Try again."
                                         }
                                     },
-                                    onPinEntered = { entered ->
-                                        password = entered
-                                        submit()
-                                    },
+                                    onPinEntered = { entered -> password = entered; submit() },
+                                    onUseDifferentNumber = { stage = AuthStage.PHONE },
                                 )
                             }
                         }
@@ -496,6 +494,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                             enabled = currentStepValid,
                         )
                     }
+                    if (stage == AuthStage.PHONE) PhoneKeypad(phoneNumber) { phoneNumber = it }
                 }
             }
         }

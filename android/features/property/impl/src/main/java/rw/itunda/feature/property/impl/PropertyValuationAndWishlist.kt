@@ -126,8 +126,8 @@ internal fun PropertyValuationCard(propertyTypes: List<PropertyTypeDto>) {
                 propertyTypes.forEach { t ->
                     val active = propertyType == t.id
                     Text(
-                        t.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Color.White else Ids.colors.textPrimary,
-                        modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft)
+                        t.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Ids.colors.background else Ids.colors.textPrimary,
+                        modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(if (active) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
                             .pressScaleClickable { propertyType = t.id }.padding(horizontal = 12.dp, vertical = 6.dp),
                     )
                 }
@@ -136,8 +136,8 @@ internal fun PropertyValuationCard(propertyTypes: List<PropertyTypeDto>) {
                 listOf("SALE" to "For sale", "RENT" to "For rent").forEach { (v, label) ->
                     val active = listingType == v
                     Text(
-                        label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Color.White else Ids.colors.textPrimary,
-                        modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft)
+                        label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Ids.colors.background else Ids.colors.textPrimary,
+                        modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(if (active) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
                             .pressScaleClickable { listingType = v }.padding(horizontal = 12.dp, vertical = 6.dp),
                     )
                 }

@@ -255,10 +255,10 @@ internal fun NewJobPostForm(categories: List<JobCategoryDto>, onCreated: () -> U
                     val selected = category == c.id
                     Box(
                         modifier = Modifier
-                            .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft, RoundedCornerShape(999.dp))
+                            .background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft, RoundedCornerShape(999.dp))
                             .pressScaleClickable { category = c.id }
                             .padding(horizontal = 12.dp, vertical = 6.dp),
-                    ) { Text(c.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else Ids.colors.textPrimary) }
+                    ) { Text(c.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Ids.colors.background else Ids.colors.textPrimary) }
                 }
             }
             IdsTextField(value = title, onValueChange = { title = it }, label = stringResource(R.string.jobs_title_placeholder), singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -267,10 +267,10 @@ internal fun NewJobPostForm(categories: List<JobCategoryDto>, onCreated: () -> U
                 listOf("HOURLY" to "Per hour", "FIXED" to "Fixed price").forEach { (v, label) ->
                     val selected = payType == v
                     Text(
-                        label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else Ids.colors.textPrimary,
+                        label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Ids.colors.background else Ids.colors.textPrimary,
                         modifier = Modifier
                             .clip(RoundedCornerShape(10.dp))
-                            .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
+                            .background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
                             .pressScaleClickable { payType = v }
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                     )

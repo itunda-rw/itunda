@@ -104,7 +104,7 @@ fun IdsCelebrationScreen(
         // Real Toss-style auto-advance -- the screen is a real acknowledgment moment,
         // not a dialog someone has to dismiss to get their money moving; "Done" below
         // still works immediately for anyone who doesn't want to wait it out.
-        delay(if (celebratory) 800 else 2200)
+        delay(if (celebratory) 800 else if (recipientLabel != null) 6000 else 2200)
         onDone()
     }
     Box(modifier = Modifier.fillMaxSize()) {
@@ -113,28 +113,35 @@ fun IdsCelebrationScreen(
                 .fillMaxSize()
                 .background(Ids.colors.background)
                 .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.Start,
         ) {
+            Spacer(modifier = Modifier.height(72.dp))
             Box(
                 modifier = Modifier
-                    .size(96.dp)
+                    .size(72.dp)
                     .scale(checkScale.value)
                     .clip(CircleShape)
-                    .background(Ids.colors.success),
+                    .background(Ids.colors.brand),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Filled.Check, contentDescription = null, tint = IdsColors.White, modifier = Modifier.size(48.dp))
+                Icon(Icons.Filled.Check, contentDescription = null, tint = IdsColors.White, modifier = Modifier.size(40.dp))
             }
             Spacer(modifier = Modifier.height(24.dp))
             Text(headline, style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
             if (message.isNotBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(message, fontSize = 15.sp, color = Ids.colors.textSecondary, textAlign = TextAlign.Center)
+                Text(message, fontSize = 15.sp, color = Ids.colors.textSecondary, textAlign = TextAlign.Start)
             }
             if (recipientLabel != null) {
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("To $recipientLabel", fontSize = 18.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, color = Ids.colors.textPrimary)
+                Text("Sent to $recipientLabel", fontSize = 16.sp, color = Ids.colors.textSecondary)
+                Spacer(modifier = Modifier.height(32.dp))
+                // Real receipt line: the moment the success screen opened (the transfer just completed).
+                val sentAt = remember { java.text.SimpleDateFormat("hh:mm a", java.util.Locale.getDefault()).format(java.util.Date()) }
+                androidx.compose.foundation.layout.Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Time", fontSize = 15.sp, color = Ids.colors.textSecondary)
+                    Text(sentAt, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
+                }
             }
             if (fraudWarnings.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(14.dp))
@@ -151,13 +158,13 @@ fun IdsCelebrationScreen(
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(40.dp))
+            Spacer(modifier = Modifier.weight(1f))
             if (onShare != null) {
                 androidx.compose.foundation.layout.Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    IdsButton(text = "Share", onClick = onShare, variant = IdsButtonVariant.Tinted, modifier = Modifier.weight(1f))
+                    IdsButton(text = "Share receipt", onClick = onShare, variant = IdsButtonVariant.Tinted, modifier = Modifier.weight(1f))
                     IdsButton(text = "Done", onClick = onDone, modifier = Modifier.weight(1f))
                 }
             } else {

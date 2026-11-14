@@ -79,6 +79,7 @@ import rw.itunda.core.network.NetworkClient
 fun AccountManageScreen(
     accountId: String,
     accountNumber: String,
+    holderName: String = "",
     nickname: String?,
     onNicknameChanged: (String?) -> Unit,
     onBack: () -> Unit,
@@ -136,10 +137,9 @@ fun AccountManageScreen(
             }
         }
         Column(modifier = Modifier.padding(horizontal = Ids.layout.screenHorizontal)) {
-            Text(
-                stringResource(R.string.account_manage_caption, formattedAccountNumber),
-                color = Ids.colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(bottom = 24.dp),
-            )
+            Text(stringResource(R.string.account_manage_title), color = Ids.colors.textPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 16.dp))
+            AccountSummaryBlock(holderName, formattedAccountNumber, accountNumber)
+            SectionSpacer()
 
             FlatSection(title = stringResource(R.string.account_manage_section_account), rows = listOf(
                 FlatRow(title = stringResource(R.string.account_manage_debit_card), showChevron = true, onClick = onOpenCard),

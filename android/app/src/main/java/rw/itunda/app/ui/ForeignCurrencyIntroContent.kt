@@ -76,12 +76,12 @@ internal fun ForeignCurrencyIntroContent(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(if (isSelected) Ids.colors.brand else Ids.colors.surfaceSoft)
+                                .background(if (isSelected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
                                 .pressScaleClickable { onSelect(code) }
                                 .padding(vertical = 14.dp, horizontal = 8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            Text(code, color = if (isSelected) androidx.compose.ui.graphics.Color.White else Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            Text(code, color = if (isSelected) Ids.colors.background else Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                             Text(CURRENCY_FULL_NAME[code] ?: code, color = if (isSelected) androidx.compose.ui.graphics.Color.White else Ids.colors.textSecondary, fontSize = 11.sp)
                         }
                     }

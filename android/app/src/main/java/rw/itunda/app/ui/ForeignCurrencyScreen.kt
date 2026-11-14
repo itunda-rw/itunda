@@ -261,9 +261,9 @@ private fun ConvertPanel(accounts: List<AccountDto>, onConverted: () -> Unit) {
                 accounts.map { it.currency }.forEach { code ->
                     val selected = code == foreignCurrency
                     Box(
-                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
+                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
                             .pressScaleClickable { foreignCurrency = code }.padding(horizontal = 14.dp, vertical = 8.dp),
-                    ) { Text(code, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+                    ) { Text(code, color = if (selected) Ids.colors.background else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
                 }
             }
             IdsTextField(value = amountText, onValueChange = { amountText = it }, label = "Amount ($fromCurrency)", modifier = Modifier.fillMaxWidth())
@@ -367,9 +367,9 @@ private fun RateAlertsPanel(accounts: List<AccountDto>, alerts: List<ExchangeRat
                         accounts.map { it.currency }.forEach { code ->
                             val selected = code == currency
                             Box(
-                                modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
+                                modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
                                     .pressScaleClickable { currency = code }.padding(horizontal = 14.dp, vertical = 8.dp),
-                            ) { Text("RWF/$code", color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+                            ) { Text("RWF/$code", color = if (selected) Ids.colors.background else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
                         }
                     }
                     Row(

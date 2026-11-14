@@ -8,7 +8,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BRAND_ROOT = ROOT / "packages/brand-assets/canonical/itunda-brand"
 APP_ICON_SVG = BRAND_ROOT / "app-icons/itunda-app-icon.svg"
-ADAPTIVE_FOREGROUND_SVG = BRAND_ROOT / "app-icons/itunda-android-adaptive-foreground.svg"
+ADAPTIVE_FOREGROUND_SVG = ROOT / "android/brand/launcher-foreground.svg"
+ANDROID_ICON_SVG = ROOT / "android/brand/launcher-icon.svg"
+ANDROID_ROUND_SVG = ROOT / "android/brand/launcher-icon-round.svg"
 failures = []
 
 
@@ -49,13 +51,13 @@ for density, size in [("mdpi", 48), ("hdpi", 72), ("xhdpi", 96), ("xxhdpi", 144)
         check(path.is_file(), f"missing {path}")
         if path.is_file():
             check(png_size(path) == (size, size), f"{path}: expected {size}x{size}, got {png_size(path)}")
-            check_render_matches(path, APP_ICON_SVG, size)
+            check_render_matches(path, ANDROID_ROUND_SVG if "round" in name else ANDROID_ICON_SVG, size)
 
 adaptive = ROOT / "android/app/src/main/res/drawable/itunda_adaptive_foreground.png"
 check(adaptive.is_file(), f"missing {adaptive}")
 if adaptive.is_file():
-    check(png_size(adaptive) == (108, 108), f"{adaptive}: expected 108x108, got {png_size(adaptive)}")
-    check_render_matches(adaptive, ADAPTIVE_FOREGROUND_SVG, 108)
+    check(png_size(adaptive) == (432, 432), f"{adaptive}: expected 432x432, got {png_size(adaptive)}")
+    check_render_matches(adaptive, ADAPTIVE_FOREGROUND_SVG, 432)
 
 icon_dir = ROOT / "ios/App/Resources/Assets.xcassets/AppIcon.appiconset"
 catalog = json.loads((icon_dir / "Contents.json").read_text())
@@ -78,7 +80,7 @@ for filename, size in expected.items():
 foreground_xml = (ROOT / "android/app/src/main/res/drawable/ic_launcher_foreground.xml").read_text()
 background_xml = (ROOT / "android/app/src/main/res/drawable/ic_launcher_background.xml").read_text()
 check("@drawable/itunda_adaptive_foreground" in foreground_xml, "Android adaptive foreground does not reference generated canonical raster")
-check("#8F89FF" in background_xml, "Android adaptive background does not use v3 brand color")
+check("#FFFFFF" in background_xml, "Android adaptive background must be white (launcher = white tile + purple knot)")
 
 if failures:
     print("\n".join("FAIL: " + item for item in failures))

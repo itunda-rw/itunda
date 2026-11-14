@@ -44,7 +44,7 @@ import java.io.IOException
 // history from the new calling backend; this pass is call-log-display only, no
 // dial/answer/end UI (that's a separate, later pass -- see CallService.kt's own
 // doc comment on why calling is scoped to 1:1 this pass).
-internal enum class TalkDirectFilter(val label: String) { ALL("전체"), UNREAD("안읽음"), CALLS("통화") }
+internal enum class TalkDirectFilter(val label: String) { ALL("All"), UNREAD("Unread"), CALLS("Calls") }
 
 @Composable
 internal fun TalkFilterTabsRow(selected: TalkDirectFilter, onSelect: (TalkDirectFilter) -> Unit) {

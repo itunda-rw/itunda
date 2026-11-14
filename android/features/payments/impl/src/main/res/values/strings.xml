@@ -43,4 +43,17 @@
     <string name="transfer_amount_insufficient">Not enough balance — you have RWF %1$s</string>
     <string name="transfer_send">Send</string>
     <string name="transfer_delete_digit">Delete</string>
+    <string name="transfer_search_recipient_placeholder">Name or phone number</string>
+    <string name="transfer_balance_after">Balance after: %1$s RWF</string>
+    <string name="transfer_send_gift">Send gift</string>
+    <string name="transfer_gift_toggle">Send as a gift instead</string>
+    <string name="transfer_gift_note">Held until they claim it — auto-refunded after 7 days if unclaimed. Only works if the recipient is a phone number, not an account number.</string>
+    <string name="transfer_gift_note_hint">Add a note (optional)</string>
+    <string name="transfer_memo_hint">Add a memo — the recipient will see this</string>
+    <string name="transfer_review">Review</string>
+    <string name="transfer_review_title">Send %1$s RWF to %2$s?</string>
+    <string name="transfer_review_to">To</string>
+    <string name="transfer_review_from">From</string>
+    <string name="transfer_review_amount">Amount</string>
+    <string name="transfer_review_bank">itunda Bank</string>
 </resources>

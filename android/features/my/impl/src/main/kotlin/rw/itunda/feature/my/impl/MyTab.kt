@@ -1,5 +1,13 @@
 package rw.itunda.feature.my.impl
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -54,7 +62,12 @@ fun MyEntryPoint(
     onSwitchToMarketplace: () -> Unit = {},
     onSwitchToJobs: () -> Unit = {},
     onSwitchToProperty: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
 ) {
+    var profile by remember { mutableStateOf<rw.itunda.core.network.PublicUser?>(null) }
+    var showProfile by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    profile?.let { if (showProfile) { ProfileDetail(it, onBack = { showProfile = false }); return } }
+    LaunchedEffect(Unit) { try { profile = rw.itunda.core.network.NetworkClient.authApi.getProfile().user } catch (_: Exception) { } }
     var shopOrders by remember { mutableStateOf<List<rw.itunda.core.network.OrderDto>>(emptyList()) }
     var eatsOrders by remember { mutableStateOf<List<rw.itunda.core.network.EatsOrderDto>>(emptyList()) }
     var favoriteListingsCount by remember { mutableStateOf(0) }
@@ -102,30 +115,53 @@ fun MyEntryPoint(
         modifier = Modifier.fillMaxSize().padding(start = Ids.layout.screenHorizontal, end = Ids.layout.screenHorizontal, top = Ids.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
-        item { BackTopBar("My", onBack) }
-        item { ProfilePhotoCard() }
-        item { PinUpgradeCard() }
-        item { VerificationCard() }
+        item {
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("You", color = Ids.colors.textPrimary, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
+                Box(Modifier.size(44.dp).clip(CircleShape).pressScaleClickable(onClick = onOpenSettings), contentAlignment = Alignment.Center) {
+                    rw.itunda.core.designsystem.components.ItundaArt("gear", rw.itunda.core.designsystem.components.ItundaArtSet.Line, 26.dp, tint = Ids.colors.textTertiary)
+                }
+            }
+        }
+        item {
+            Column {
+                profile?.let { u ->
+                    Row(Modifier.fillMaxWidth().pressScaleClickable { showProfile = true }.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(72.dp).clip(CircleShape).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
+                            rw.itunda.core.designsystem.components.ItundaArt("shopkeeper", rw.itunda.core.designsystem.components.ItundaArtSet.Face, 58.dp)
+                        }
+                        Spacer(Modifier.width(16.dp))
+                        Column {
+                            Text("${u.firstName} ${u.lastName}", color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+                            Text(
+                                u.phoneNumber.let { if (it.length > 7) it.take(4) + " ••• " + it.takeLast(3) else it } + " · View profile ›",
+                                color = Ids.colors.textTertiary, fontSize = 15.sp,
+                            )
+                        }
+                }
+                }
+                PinUpgradeCard()
+                VerificationCard()
+            }
+        }
         if (affiliateLinks.isNotEmpty()) {
+            item {
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("Partner earnings", color = Ids.colors.textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 22.sp)
+                    Text("Earn 3% when people buy via your links.", color = Ids.colors.textTertiary, fontSize = 14.sp)
+                }
+            }
             item {
                 val totalClicks = affiliateLinks.sumOf { it.clickCount }
                 val totalEarned = affiliateCommissions.sumOf { it.commissionAmount }
-                Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Partner earnings", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    Text("Earn 3% on any purchase made through a product link you've shared.", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Links shared", color = Ids.colors.textSecondary, fontSize = 13.sp)
-                        Text("${affiliateLinks.size}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Total clicks", color = Ids.colors.textSecondary, fontSize = 13.sp)
-                        Text("$totalClicks", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Total earned", color = Ids.colors.textSecondary, fontSize = 13.sp)
-                        Text("${String.format(Locale.US, "%,.0f", totalEarned)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    }
-                }
+                FlatSection(
+                    "",
+                    listOf(
+                        FlatRow("Shared links", trailing = "${affiliateLinks.size}", glyph = { ArtTile("send") }),
+                        FlatRow("Clicks", trailing = "$totalClicks", glyph = { ArtTile("chart") }),
+                        FlatRow("Earned", trailing = "${String.format(Locale.US, "%,.0f", totalEarned)} RWF", glyph = { ArtTile("money") }),
+                    ),
+                )
             }
         }
         if (shopOrders.isNotEmpty() || eatsOrders.isNotEmpty()) {
@@ -155,15 +191,14 @@ fun MyEntryPoint(
                 }
             }
         }
-        item { Text("My favorites", color = Ids.colors.textPrimary, fontSize = 19.sp, fontWeight = FontWeight.Bold) }
         item {
             FlatSection(
-                "",
+                "My favorites",
                 listOf(
-                    FlatRow("Marketplace wishlist", trailing = "$favoriteListingsCount", glyph = { WishlistHeart(favorited = true, size = 28.dp) }, onClick = onSwitchToMarketplace),
-                    FlatRow("Jobs wishlist", trailing = "$favoriteJobPostsCount", glyph = { WishlistHeart(favorited = true, size = 28.dp) }, onClick = onSwitchToJobs),
-                    FlatRow("Property wishlist", trailing = "$favoritePropertyListingsCount", glyph = { WishlistHeart(favorited = true, size = 28.dp) }, onClick = onSwitchToProperty),
-                    FlatRow("Restaurant favorites", trailing = "$favoriteRestaurantsCount", glyph = { WishlistHeart(favorited = true, size = 28.dp) }, onClick = onSwitchToEats),
+                    FlatRow("Marketplace wishlist", trailing = "$favoriteListingsCount", glyph = { ArtTile("market", badge = true) }, onClick = onSwitchToMarketplace),
+                    FlatRow("Jobs wishlist", trailing = "$favoriteJobPostsCount", glyph = { ArtTile("briefcase", badge = true) }, onClick = onSwitchToJobs),
+                    FlatRow("Property wishlist", trailing = "$favoritePropertyListingsCount", glyph = { ArtTile("house", badge = true) }, onClick = onSwitchToProperty),
+                    FlatRow("Restaurant favorites", trailing = "$favoriteRestaurantsCount", glyph = { ArtTile("restaurant", badge = true) }, onClick = onSwitchToEats),
                 ),
             )
         }
@@ -171,9 +206,9 @@ fun MyEntryPoint(
             FlatSection(
                 "My listings",
                 listOf(
-                    FlatRow("Marketplace", trailing = "$myListingsCount", glyph = { PlaceMarket(size = 28.dp) }, onClick = onSwitchToMarketplace),
-                    FlatRow("Jobs posted", trailing = "$myJobPostsCount", glyph = { BriefcaseGlyph(size = 28.dp) }, onClick = onSwitchToJobs),
-                    FlatRow("Property listed", trailing = "$myPropertyListingsCount", glyph = { TravelHouse(size = 28.dp) }, onClick = onSwitchToProperty),
+                    FlatRow("Marketplace", trailing = "$myListingsCount", glyph = { ArtTile("market") }, onClick = onSwitchToMarketplace),
+                    FlatRow("Jobs posted", trailing = "$myJobPostsCount", glyph = { ArtTile("briefcase") }, onClick = onSwitchToJobs),
+                    FlatRow("Property listed", trailing = "$myPropertyListingsCount", glyph = { ArtTile("house") }, onClick = onSwitchToProperty),
                 ),
             )
         }
@@ -213,6 +248,17 @@ fun MyEntryPoint(
                 }
                 Divider(color = Ids.colors.divider, thickness = 0.5.dp)
             }
+        }
+    }
+}
+
+/** Prototype row glyph: 40dp soft tile with the illustrated icon; [badge] adds the small red heart. */
+@Composable
+private fun ArtTile(name: String, badge: Boolean = false) {
+    Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
+        rw.itunda.core.designsystem.components.ItundaArt(name, rw.itunda.core.designsystem.components.ItundaArtSet.Color, 28.dp)
+        if (badge) Box(Modifier.align(Alignment.BottomEnd).size(16.dp).clip(CircleShape).background(androidx.compose.ui.graphics.Color(0xFFF04452)), contentAlignment = Alignment.Center) {
+            androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.Favorite, contentDescription = null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(10.dp))
         }
     }
 }

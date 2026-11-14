@@ -147,6 +147,9 @@ android {
         // and a physical device can't resolve 10.0.2.2 at all. Defaults to the emulator
         // alias at the right port; override for a physical device on the same LAN with
         // e.g. `-PapiBaseUrl=http://192.168.0.63:4001/` (2026-07-11 fix).
+        // Demo mode: `-PdemoMode=true` answers every API call with prototype dummy data
+        // (core/network DemoInterceptor) so the UI/UX can be tested with no backend.
+        buildConfigField("boolean", "DEMO_MODE", "${project.findProperty("demoMode") == "true"}")
         buildConfigField(
             "String",
             "API_BASE_URL",
@@ -179,6 +182,18 @@ android {
             "GLYPHS_BASE_URL",
             "\"${project.findProperty("glyphsBaseUrl") ?: "http://192.168.252.4:8091"}\""
         )
+    }
+
+    // One committed debug keystore (public password, debug-only) so every CI build is signed with the
+    // same key; with CI's random per-run debug key, installing a newer APK over an older one fails
+    // with "App not installed" (signature mismatch).
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug-shared.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {
@@ -272,6 +287,7 @@ dependencies {
     implementation(project(":features:community:impl"))
     implementation(project(":features:shop:impl"))
     implementation(project(":features:eats:impl"))
+    implementation(project(":features:front:impl"))
     implementation(project(":features:talk:impl"))
     implementation(project(":features:maps:impl"))
     // Real content moved in 2026-09-02: LoansScreen.kt/CreditScoreScreen.kt/

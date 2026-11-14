@@ -16,11 +16,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
@@ -111,29 +110,26 @@ fun IkiminaScreen(onBack: () -> Unit) {
 private fun IkiminaIntroContent(onContinue: () -> Unit) {
     rw.itunda.core.designsystem.components.FixedBottomCta(
         content = {
-            Text(
-                "A rotating savings group with people you trust",
-                color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp,
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Everyone contributes the same fixed amount", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            IkiminaIntroHeader()
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Everyone contributes the same fixed amount", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Text(
                     "Every member pays in the same amount, on the same weekly or monthly schedule you set when you create the group.",
-                    color = Ids.colors.textSecondary, fontSize = 13.sp,
+                    color = Ids.colors.textTertiary, fontSize = 15.sp,
                 )
             }
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("One member takes home the full pot each round", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("One member takes home the full pot each round", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Text(
                     "The payout rotates in a pre-agreed order until every member has been paid exactly once -- not itunda deciding who's next, the group's own real turn order.",
-                    color = Ids.colors.textSecondary, fontSize = 13.sp,
+                    color = Ids.colors.textTertiary, fontSize = 15.sp,
                 )
             }
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("You choose the size and schedule", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("You choose the size and schedule", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Text(
                     "Set a max member count and a weekly or monthly contribution cycle -- the group only starts once you're ready.",
-                    color = Ids.colors.textSecondary, fontSize = 13.sp,
+                    color = Ids.colors.textTertiary, fontSize = 15.sp,
                 )
             }
         },
@@ -149,7 +145,6 @@ private fun IkiminaCreateContent(onCreated: () -> Unit) {
     var contributionAmount by remember { mutableStateOf("") }
     var cycleFrequencyDays by remember { mutableStateOf(30) }
     var memberCap by remember { mutableStateOf("10") }
-    var frequencyMenuOpen by remember { mutableStateOf(false) }
     var creating by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
@@ -178,18 +173,20 @@ private fun IkiminaCreateContent(onCreated: () -> Unit) {
         content = {
             IdsTextField(value = name, onValueChange = { name = it }, label = "Group name (e.g. Umuryango)", modifier = Modifier.fillMaxWidth())
             IdsTextField(value = contributionAmount, onValueChange = { contributionAmount = it }, label = "Contribution per round (RWF)", modifier = Modifier.fillMaxWidth())
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Box(modifier = Modifier.weight(1f)) {
+            Text("How often?", color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                listOf("Weekly" to 7, "Monthly" to 30).forEach { (label, days) ->
+                    val on = cycleFrequencyDays == days
                     Box(
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                            .pressScaleClickable { frequencyMenuOpen = true }.padding(vertical = 14.dp, horizontal = 12.dp),
-                    ) { Text(if (cycleFrequencyDays == 7) "Weekly" else "Monthly", fontSize = 14.sp) }
-                    DropdownMenu(expanded = frequencyMenuOpen, onDismissRequest = { frequencyMenuOpen = false }) {
-                        DropdownMenuItem(text = { Text("Weekly") }, onClick = { cycleFrequencyDays = 7; frequencyMenuOpen = false })
-                        DropdownMenuItem(text = { Text("Monthly") }, onClick = { cycleFrequencyDays = 30; frequencyMenuOpen = false })
-                    }
+                        Modifier.weight(1f).height(48.dp).clip(RoundedCornerShape(16.dp))
+                            .background(if (on) Ids.colors.brand else Ids.colors.surfaceSoft)
+                            .pressScaleClickable { cycleFrequencyDays = days },
+                        contentAlignment = Alignment.Center,
+                    ) { Text(label, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = if (on) Ids.colors.textPrimary else Ids.colors.textTertiary) }
                 }
-                IdsTextField(value = memberCap, onValueChange = { memberCap = it }, label = "Max members", modifier = Modifier.weight(1f))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                IdsTextField(value = memberCap, onValueChange = { memberCap = it }, label = "Max members", modifier = Modifier.fillMaxWidth())
             }
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
         },
@@ -226,17 +223,20 @@ private fun IkiminaListContent(refreshKey: Int, onOpen: (String) -> Unit, onStar
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
-            Text(
-                "Everyone contributes the same amount each round; one member takes home the full pot, in turn.",
-                color = Ids.colors.textSecondary, fontSize = 12.sp,
-            )
+            Column(Modifier.padding(top = 12.dp, bottom = 8.dp)) {
+                Text("Ikimina", color = Ids.colors.textPrimary, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
+                Text(
+                    "Everyone contributes the same amount each round; one member takes home the full pot, in turn.",
+                    color = Ids.colors.textTertiary, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp),
+                )
+            }
         }
         item {
             Box(
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                    .pressScaleClickable { onStartCreate() }.padding(vertical = 14.dp),
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Ids.colors.brand)
+                    .pressScaleClickable { onStartCreate() }.padding(vertical = 16.dp),
                 contentAlignment = Alignment.Center,
-            ) { Text("+ New ikimina", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
+            ) { Text("New ikimina", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
         }
         error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
         when {
@@ -248,16 +248,19 @@ private fun IkiminaListContent(refreshKey: Int, onOpen: (String) -> Unit, onStar
             }
             else -> items(ikiminas!!, key = { it.id }) { k ->
                 // Real fix (flat-design sweep): dropped the per-row Card.
-                Column(modifier = Modifier.fillMaxWidth().pressScaleClickable { onOpen(k.id) }) {
-                        Text(k.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Row(Modifier.fillMaxWidth().pressScaleClickable { onOpen(k.id) }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) { rw.itunda.core.designsystem.components.ItundaArt("community", rw.itunda.core.designsystem.components.ItundaArtSet.Color, 28.dp) }
+                    Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                        Text(k.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         Text(
                             when (k.status) {
-                                "FORMING" -> "Forming — invite members before starting"
+                                "FORMING" -> "Forming · invite members before starting"
                                 "ACTIVE" -> "Round ${k.currentRound}"
                                 else -> "Completed"
                             },
-                            color = Ids.colors.textSecondary, fontSize = 12.sp,
+                            color = Ids.colors.textTertiary, fontSize = 14.sp,
                         )
+                    }
                 }
             }
         }
@@ -395,60 +398,61 @@ private fun IkiminaDetailContent(id: String) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            // Real fix (flat-design sweep): dropped the Card wrapper.
-            Column {
-                    Text(current.ikimina.name, color = Ids.colors.textSecondary, fontSize = 13.sp)
-                    val animatedBalance = rememberCountUp(current.balance.toDouble())
-                    Text("${formatMoney(java.math.BigDecimal.valueOf(animatedBalance))} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
-                    Text(
-                        when (current.ikimina.status) {
-                            "FORMING" -> "Forming · ${current.members.size} member${if (current.members.size == 1) "" else "s"}"
-                            "ACTIVE" -> "Round ${current.ikimina.currentRound} · pot ${formatMoney(pot)} RWF"
-                            else -> "Completed"
-                        },
-                        color = Ids.colors.textSecondary, fontSize = 12.sp,
-                    )
-            }
-        }
-        item {
-            Column {
-                    Text("Members & payout order", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    current.members.sortedBy { it.payoutOrder }.forEach { m ->
-                        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Column {
-                                Text("${m.payoutOrder}. ${m.firstName} ${m.lastName}${if (m.userId == myUserId) " (you)" else ""}", fontSize = 13.sp)
-                                if (current.ikimina.status == "ACTIVE") {
-                                    val contributed = current.currentRoundContributions.find { it.userId == m.userId }?.contributed ?: false
-                                    Text(
-                                        if (contributed) "✓ Contributed this round" else "Not yet contributed",
-                                        color = if (contributed) Ids.colors.success else Ids.colors.textSecondary, fontSize = 11.sp,
-                                    )
-                                }
-                            }
-                            if (m.hasReceivedPayout) Text("✓ Paid", color = Ids.colors.success, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                            else if (m.isOrganizer) Text("Organizer", color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+            // Prototype v1038 Ikimina detail: caption, big pot, tinted "Next to receive", flat roster.
+            val ordered = current.members.sortedBy { it.payoutOrder }
+            val next = ordered.firstOrNull { !it.hasReceivedPayout }
+            val animatedBalance = rememberCountUp(current.balance.toDouble())
+            Column(Modifier.padding(top = 12.dp)) {
+                Text("${current.ikimina.name} · ${current.members.size} member${if (current.members.size == 1) "" else "s"}", color = Ids.colors.textTertiary, fontSize = 14.sp)
+                Text("${formatMoney(java.math.BigDecimal.valueOf(animatedBalance))} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 32.sp)
+                Text(
+                    when (current.ikimina.status) {
+                        "FORMING" -> "Forming"
+                        "ACTIVE" -> "Round ${current.ikimina.currentRound} · pot ${formatMoney(pot)} RWF"
+                        else -> "Completed"
+                    },
+                    color = Ids.colors.textTertiary, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp),
+                )
+                if (current.ikimina.status == "ACTIVE" && next != null) {
+                    Column(Modifier.fillMaxWidth().padding(top = 20.dp).clip(RoundedCornerShape(20.dp)).background(Ids.colors.brand.copy(alpha = 0.08f)).padding(horizontal = 18.dp, vertical = 14.dp)) {
+                        Text("Next to receive", color = Ids.colors.textBrand, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
+                        Text("${next.firstName} ${next.lastName}${if (next.userId == myUserId) " (you)" else ""}", color = Ids.colors.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 2.dp))
+                        Text("Payout order ${next.payoutOrder} of ${ordered.size}", color = Ids.colors.textTertiary, fontSize = 14.sp, modifier = Modifier.padding(top = 2.dp))
+                    }
+                }
+                Text(if (current.ikimina.status == "ACTIVE") "This round" else "Members", color = Ids.colors.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 24.dp, bottom = 4.dp))
+                ordered.forEach { m ->
+                    val contributed = current.currentRoundContributions.find { it.userId == m.userId }?.contributed ?: false
+                    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) { rw.itunda.core.designsystem.components.ItundaArt("community", rw.itunda.core.designsystem.components.ItundaArtSet.Color, 24.dp) }
+                        Text("${m.firstName} ${m.lastName}${if (m.userId == myUserId) " (you)" else ""}", color = Ids.colors.textPrimary, fontSize = 15.sp, modifier = Modifier.weight(1f).padding(start = 12.dp))
+                        when {
+                            m.hasReceivedPayout -> Text("Paid out", color = Ids.colors.success, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            current.ikimina.status == "ACTIVE" -> Text(if (contributed) "Paid" else "Due", color = if (contributed) Ids.colors.success else Ids.colors.danger, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            m.isOrganizer -> Text("Organizer", color = Ids.colors.textBrand, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
                     }
+                }
             }
         }
         if (current.ikimina.status == "FORMING" && isOrganizer) {
             item {
                 // Real fix (flat-design sweep): dropped the Card wrapper.
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Invite a member", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("Invite a member", color = Ids.colors.textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             IdsTextField(value = phoneNumber, onValueChange = { phoneNumber = it }, label = "Phone number", modifier = Modifier.weight(1f))
                             Box(
-                                modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
+                                modifier = Modifier.clip(RoundedCornerShape(16.dp)).background(Ids.colors.brand)
                                     .pressScaleClickable(enabled = !busy && phoneNumber.isNotBlank()) { invite() }
-                                    .padding(horizontal = 20.dp, vertical = 14.dp),
-                            ) { Text(if (busy) "…" else "Invite", color = Color.White, fontWeight = FontWeight.Bold) }
+                                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                            ) { Text(if (busy) "…" else "Invite", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
                         }
                         Box(
-                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                .pressScaleClickable(enabled = !busy && current.members.size >= 2) { start() }.padding(vertical = 14.dp),
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Ids.colors.brand)
+                                .pressScaleClickable(enabled = !busy && current.members.size >= 2) { start() }.padding(vertical = 16.dp),
                             contentAlignment = Alignment.Center,
-                        ) { Text(if (busy) "…" else "Start the cycle", color = Color.White, fontWeight = FontWeight.Bold) }
+                        ) { Text(if (busy) "…" else "Start the cycle", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
                 }
             }
         }
@@ -457,22 +461,22 @@ private fun IkiminaDetailContent(id: String) {
                 // Real fix (flat-design sweep): dropped the Card wrapper.
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(
-                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
                                 .background(if (iContributed) Ids.colors.surfaceSoft else Ids.colors.brand)
-                                .pressScaleClickable(enabled = !busy && !iContributed) { contribute() }.padding(vertical = 14.dp),
+                                .pressScaleClickable(enabled = !busy && !iContributed) { contribute() }.padding(vertical = 16.dp),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
                                 if (iContributed) "✓ You've contributed this round" else if (busy) "…" else "Contribute ${formatMoney(current.ikimina.contributionAmount)} RWF",
-                                color = if (iContributed) Ids.colors.textPrimary else Color.White, fontWeight = FontWeight.Bold,
+                                color = if (iContributed) Ids.colors.textPrimary else Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp,
                             )
                         }
                         if (allContributed) {
                             Box(
-                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                    .pressScaleClickable(enabled = !busy) { triggerPayout() }.padding(vertical = 14.dp),
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Ids.colors.brand)
+                                    .pressScaleClickable(enabled = !busy) { triggerPayout() }.padding(vertical = 16.dp),
                                 contentAlignment = Alignment.Center,
-                            ) { Text(if (busy) "…" else "Trigger this round's payout", color = Color.White, fontWeight = FontWeight.Bold) }
+                            ) { Text(if (busy) "…" else "Trigger this round's payout", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
                         }
                         payoutMessage?.let { Text(it, color = Ids.colors.success, fontSize = 13.sp) }
                 }

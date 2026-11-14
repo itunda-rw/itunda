@@ -182,6 +182,7 @@ import rw.itunda.feature.talk.impl.TalkEntryPoint
 import rw.itunda.feature.maps.impl.MapsEntryPoint
 import rw.itunda.feature.shop.impl.CommerceShopEntryPoint
 import rw.itunda.feature.eats.impl.EatsEntryPoint
+import rw.itunda.feature.front.impl.FrontEntryPoint
 import rw.itunda.feature.credit.impl.LoansEntryPoint
 import rw.itunda.feature.credit.impl.CreditScoreEntryPoint
 import rw.itunda.feature.credit.impl.StudentLoanEntryPoint
@@ -362,7 +363,7 @@ private fun TransferSuccessScreen(amountRwf: Long, recipientLabel: String, fraud
     // own affiliate-link share), not something invented for this screen.
     val shareContext = androidx.compose.ui.platform.LocalContext.current
     rw.itunda.core.designsystem.components.IdsCelebrationScreen(
-        headline = String.format(java.util.Locale.US, "%,d RWF sent", amountRwf),
+        headline = String.format(java.util.Locale.US, "%,d RWF", amountRwf),
         message = "",
         recipientLabel = recipientLabel,
         onShare = {
@@ -478,6 +479,7 @@ fun ItundaAppScreen(
         // composable is called directly instead, no wrapper toggle).
         var showShop by rememberSaveable { mutableStateOf(false) }
         var showEats by rememberSaveable { mutableStateOf(false) }
+        var showFront by rememberSaveable { mutableStateOf(false) }
         // Hood's own chip row (Market/Life/Jobs/Home) retired the same way (see
         // HoodSectionScreen's own doc comment): 4 flat destinations instead of one
         // Hood entry with an internal switcher.
@@ -619,6 +621,7 @@ fun ItundaAppScreen(
         // Real 토스뱅크 외화통장 (foreign-currency account) screen (2026-07-25) -- same
         // "backend existed with zero mobile UI" gap-close pattern as the two above.
         var showForeignCurrency by rememberSaveable { mutableStateOf(false) }
+        var showProtoBills by rememberSaveable { mutableStateOf(false) }
         // Real person-to-person payment request (item 170) -- same "backend real,
         // live-verified, zero mobile UI" gap-close pattern as the two above.
         var showRequestMoney by rememberSaveable { mutableStateOf(false) }
@@ -1246,6 +1249,7 @@ fun ItundaAppScreen(
             }
             return@IdsTheme
         }
+        if (showFront) { FrontEntryPoint(onBack = { showFront = false }); return@IdsTheme }
         if (showEats) {
             BackHandler { showEats = false }
             Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
@@ -1625,7 +1629,7 @@ fun ItundaAppScreen(
             val manageContext = androidx.compose.ui.platform.LocalContext.current
             AccountManageScreen(
                 accountId = viewModel.primaryAccount.value?.id ?: "",
-                accountNumber = viewModel.primaryAccount.value?.accountNumber ?: "",
+                accountNumber = viewModel.primaryAccount.value?.accountNumber ?: "", holderName = viewModel.profile.value?.let { "${it.firstName} ${it.lastName}" } ?: "",
                 nickname = viewModel.primaryAccount.value?.nickname,
                 onNicknameChanged = viewModel::updatePrimaryAccountNickname,
                 onBack = { showAccountManage = false },
@@ -1636,7 +1640,7 @@ fun ItundaAppScreen(
                 onOpenScheduledTransfers = { showAccountManage = false; showTransferHub = true; showScheduledTransfers = true },
                 onOpenDelayedTransfers = { showAccountManage = false; showTransferHub = true; showDelayedTransfers = true },
                 onOpenForeignCurrency = { showAccountManage = false; showForeignCurrency = true },
-                onOpenBills = { manageContext.startActivity(android.content.Intent(manageContext, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java)) },
+                onOpenBills = { showAccountManage = false; showProtoBills = true },
                 onOpenSupport = { showAccountManage = false; showSupport = true },
             )
             return@IdsTheme
@@ -1766,6 +1770,7 @@ fun ItundaAppScreen(
             ParkingScreen(onBack = { showParking = false })
             return@IdsTheme
         }
+        if (showProtoBills) { ProtoBillsScreen(onBack = { showProtoBills = false }); return@IdsTheme }
         // Real 토스뱅크 외화통장 screen (2026-07-25) -- same pattern.
         if (showForeignCurrency) {
             BackHandler { showForeignCurrency = false }
@@ -1834,6 +1839,7 @@ fun ItundaAppScreen(
                         val homePrimaryAccount by viewModel.primaryAccount.collectAsState()
                         val homeProfile by viewModel.profile.collectAsState()
                         val homeIsRefreshing by viewModel.isRefreshing.collectAsState()
+                        val homeContext = androidx.compose.ui.platform.LocalContext.current
                         HomeEntryPoint(
                         discoverItems = homeDiscoverItems,
                         unreadNotificationCount = homeUnreadNotificationCount,
@@ -1843,24 +1849,14 @@ fun ItundaAppScreen(
                         isRefreshing = homeIsRefreshing,
                         onRetry = { viewModel.retry() },
                         onOpenPay = { selectedTab = ItundaTab.Pay },
+                        onOpenSend = { showTransferHub = true },
+                        onOpenBills = { showProtoBills = true },
                         onOpenNotifications = { showNotificationsFeed = true },
                         onOpenOverview = { showOverview = true },
                         onOpenBank = { showBank = true },
                         onOpenIdentity = { showIdentity = true },
                         onOpenLoans = { showLoans = true },
-                        // Real fix (2026-08-14, direct user complaint: "when user click on
-                        // that itunda account is when they see itunda bank details that's
-                        // wrong bank details suppose to be accessed from bank not account
-                        // right"). AccountDetailScreen is a real Toss BANK account-detail
-                        // view (interest jar, Card/Manage, full ledger) -- same category of
-                        // mistake this file's own onOpenCreditScore/onOpenSpendingInsight/
-                        // autoTransferCount comments already document being caught and moved
-                        // off Home once before. Tapping "itunda Bank account" (renamed
-                        // 2026-08-23, see this row's own doc comment in
-                        // AccountSwitcherSheet) in the account switcher now goes to Bank
-                        // (its real home) instead of opening the ledger directly over Home;
-                        // Bank's own new account-account card below is what actually opens
-                        // AccountDetailScreen.
+                        // AccountDetailScreen is a Bank view, so the Home account switcher goes to Bank (2026-08-14 fix).
                         onOpenAccountDetail = { showBank = true },
                         // Real Naver-style Home redesign (2026-08-14, direct user
                         // reference: 5 real Naver Home screenshots -- search bar, weather/
@@ -1935,6 +1931,7 @@ fun ItundaAppScreen(
                         MenuEntryPoint(
                             onOpenShop = { showShop = true },
                             onOpenEats = { showEats = true },
+                            onOpenFront = { showFront = true },
                             onOpenMarketplace = { showMarketplace = true },
                             onOpenCommunity = { showCommunity = true },
                             onOpenJobs = { showJobs = true },
@@ -1988,9 +1985,7 @@ fun ItundaAppScreen(
                             onOpenRewardTasksMiniApp = {
                                 menuContext.startActivity(android.content.Intent(menuContext, rw.itunda.app.miniapps.RewardTasksMiniAppActivity::class.java))
                             },
-                            onOpenPayBillsMiniApp = {
-                                menuContext.startActivity(android.content.Intent(menuContext, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))
-                            },
+                            onOpenPayBillsMiniApp = { showProtoBills = true },
                             onOpenInsuranceMiniApp = {
                                 menuContext.startActivity(android.content.Intent(menuContext, rw.itunda.app.miniapps.InsuranceMiniAppActivity::class.java))
                             },
@@ -2014,6 +2009,7 @@ fun ItundaAppScreen(
                         onSwitchToMarketplace = { showMarketplace = true },
                         onSwitchToJobs = { showJobs = true },
                         onSwitchToProperty = { showProperty = true },
+                        onOpenSettings = { showSettings = true },
                     )
                 }
             }

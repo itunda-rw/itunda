@@ -44,7 +44,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
-import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.StatusBadge
 import rw.itunda.core.designsystem.components.IdsTextField
@@ -116,8 +115,8 @@ internal fun RestaurantMenuView(
         expandedProductId = null
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(vertical = Ids.layout.screenVertical)) {
-        BackTopBar(restaurant.businessName, onBack)
+    Column(modifier = Modifier.fillMaxSize().padding(bottom = Ids.layout.screenVertical)) {
+        EatsRestaurantHero(restaurant.businessName, onBack)
         RestaurantRatingBadge(restaurant.merchantId)
         LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
             if (menu == null) {

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -69,7 +70,7 @@ internal enum class InvestMode { MARKET, PORTFOLIO, WATCHLIST }
 @Composable
 fun InvestScreen(onBack: () -> Unit) {
     BackHandler(onBack = onBack)
-    var mode by remember { mutableStateOf(InvestMode.MARKET) }
+    var mode by remember { mutableStateOf(InvestMode.PORTFOLIO) }
     var selectedStock by remember { mutableStateOf<StockDto?>(null) }
     var watchlist by remember { mutableStateOf<List<StockDto>?>(null) }
     val coroutineScope = rememberCoroutineScope()
@@ -100,25 +101,23 @@ fun InvestScreen(onBack: () -> Unit) {
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp)
-                .clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).padding(4.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = Ids.layout.screenHorizontal),
+            horizontalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             listOf(
-                InvestMode.MARKET to stringResource(R.string.invest_tab_market),
                 InvestMode.PORTFOLIO to stringResource(R.string.invest_tab_portfolio),
+                InvestMode.MARKET to stringResource(R.string.invest_tab_market),
                 InvestMode.WATCHLIST to stringResource(R.string.invest_tab_watchlist),
             ).forEach { (m, label) ->
                 val selected = mode == m
-                Box(
-                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
-                        .background(if (selected) Ids.colors.brand else Color.Transparent)
-                        .pressScaleClickable { mode = m }.padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Column(modifier = Modifier.pressScaleClickable { mode = m }.padding(top = 8.dp)) {
+                    Text(label, color = if (selected) Ids.colors.textPrimary else Ids.colors.textTertiary, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(Modifier.height(2.dp).fillMaxWidth().background(if (selected) Ids.colors.textPrimary else Color.Transparent))
                 }
             }
         }
+        androidx.compose.material3.HorizontalDivider(color = Ids.colors.divider, thickness = 0.5.dp)
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -127,7 +126,7 @@ fun InvestScreen(onBack: () -> Unit) {
         ) {
             when (mode) {
                 InvestMode.MARKET -> item { MarketContent(watchlist, onOpen = { selectedStock = it }) }
-                InvestMode.PORTFOLIO -> item { PortfolioContent() }
+                InvestMode.PORTFOLIO -> item { PortfolioContent(onBrowse = { mode = InvestMode.MARKET }) }
                 InvestMode.WATCHLIST -> item { WatchlistContent(watchlist, onOpen = { selectedStock = it }) }
             }
         }

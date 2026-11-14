@@ -1,5 +1,9 @@
 package rw.itunda.feature.talk.impl
 
+import rw.itunda.core.designsystem.components.ItundaArtSet
+import rw.itunda.core.designsystem.components.ItundaArt
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
@@ -16,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -67,6 +72,7 @@ fun TalkTab(
     // Real KakaoTalk 전체/안읽음/통화 filter (itunda Talk redesign, 2026-08-28) -- see
     // TalkFilterTabs.kt's own doc comment.
     var directFilter by remember { mutableStateOf(TalkDirectFilter.ALL) }
+    var chatQuery by remember { mutableStateOf("") }
     var showServiceChannel by remember { mutableStateOf(false) }
     var showAiChat by remember { mutableStateOf(false) }
     // Real per-room Links/Settings + input-lock (itunda Talk redesign, 2026-08-28) --
@@ -312,13 +318,22 @@ fun TalkTab(
     // ItundaAppScreen.kt's PayTab/MenuScreen/MyTab (that file's own doc comment has
     // the full account): this bottom padding was stacking with the Scaffold's already
     // -correct bottomBar inset. Top kept, bottom now comes from Scaffold alone.
-    Column(modifier = Modifier.fillMaxSize().padding(start = Ids.layout.screenHorizontal, end = Ids.layout.screenHorizontal, top = Ids.layout.screenVertical)) {
-        TabHeader("Talk")
-        IdsSegmentedControl(
-            options = listOf(TalkView.DIRECT to "Direct", TalkView.GROUPS to "Groups", TalkView.FRIENDS to "Friends"),
-            selected = view,
-            onSelect = { view = it },
-            modifier = Modifier.padding(bottom = Ids.layout.cardGap),
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth().background(Ids.colors.surfaceSoft).padding(start = Ids.layout.screenHorizontal, end = Ids.layout.screenHorizontal, top = Ids.layout.screenVertical + 8.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("Messages", color = Ids.colors.textPrimary, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
+            Icon(Icons.Outlined.Edit, "New message", Modifier.size(26.dp).pressScaleClickable { view = TalkView.FRIENDS }, tint = Ids.colors.textPrimary)
+        }
+        Column(Modifier.padding(horizontal = Ids.layout.screenHorizontal)) {
+        if (view == TalkView.DIRECT) { ProtoSearchField(chatQuery, { chatQuery = it }); Spacer(Modifier.height(12.dp)) }
+        // One chip row (prototype): All / Unread / Calls filter the direct list, Groups / Friends switch view.
+        ProtoChips(
+            listOf(
+                (TalkView.DIRECT to TalkDirectFilter.ALL) to "All", (TalkView.DIRECT to TalkDirectFilter.UNREAD) to "Unread",
+                (TalkView.DIRECT to TalkDirectFilter.CALLS) to "Calls", (TalkView.GROUPS to TalkDirectFilter.ALL) to "Groups",
+                (TalkView.FRIENDS to TalkDirectFilter.ALL) to "Friends",
+            ),
+            view to (if (view == TalkView.DIRECT) directFilter else TalkDirectFilter.ALL),
+            { (v, f) -> view = v; directFilter = f },
         )
         if (view == TalkView.FRIENDS) {
             FriendsView(
@@ -334,14 +349,11 @@ fun TalkTab(
             // they're always reachable regardless of the current filter. Neither is a
             // real conversation row (see ServiceChannelService.kt's own doc comment),
             // so they're rendered here rather than injected into `conversations`.
-            SyntheticTalkChannelRow("itunda", "Payments, security, and account updates", onClick = { showServiceChannel = true })
-            SyntheticTalkChannelRow("itunda AI", "Ask anything -- powered by a self-hosted model", onClick = { showAiChat = true })
-            TalkFilterTabsRow(selected = directFilter, onSelect = { directFilter = it })
             if (directFilter == TalkDirectFilter.CALLS) {
                 CallHistoryList(conversations = conversations)
             } else {
                 DirectMessagesList(
-                    conversations = if (directFilter == TalkDirectFilter.UNREAD) conversations?.filter { it.unreadCount > 0 } else conversations,
+                    conversations = conversations?.filter { (directFilter != TalkDirectFilter.UNREAD || it.unreadCount > 0) && it.otherUserName.contains(chatQuery.trim(), ignoreCase = true) },
                     archivedConversations = archivedConversations,
                     error = conversationsError,
                     presence = presence,
@@ -355,6 +367,10 @@ fun TalkTab(
                     archivedLoadingMore = archivedLoadingMore,
                     onLoadMore = ::loadMoreConversations,
                     onLoadMoreArchived = ::loadMoreArchivedConversations,
+                    footer = {
+                        SyntheticTalkChannelRow("itunda", "Payments, security, and account updates", onClick = { showServiceChannel = true })
+                        SyntheticTalkChannelRow("itunda AI", "Ask anything -- powered by a self-hosted model", onClick = { showAiChat = true })
+                    },
                 )
             }
         } else {
@@ -369,6 +385,7 @@ fun TalkTab(
                 onLoadMore = ::loadMoreGroups,
             )
         }
+        }
     }
 }
 
@@ -378,18 +395,18 @@ fun TalkTab(
 // that real state to show.
 @Composable
 private fun SyntheticTalkChannelRow(name: String, subtitle: String, onClick: () -> Unit) {
+    // Same row anatomy as ProtoChatRow: 52dp soft circle avatar, bold name, tertiary preview.
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(64.dp)
-            .pressScaleClickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth().height(72.dp).pressScaleClickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IdsAvatar(name = name)
-        Spacer(modifier = Modifier.width(12.dp))
+        Box(Modifier.size(52.dp).clip(CircleShape).background(Ids.colors.brand.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
+            ItundaArt(if (name == "itunda AI") "chat" else "bell", ItundaArtSet.Proto, 30.dp)
+        }
+        Spacer(modifier = Modifier.width(14.dp))
         Column {
-            Text(name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Medium, fontSize = 16.sp)
-            Text(subtitle, color = Ids.colors.textSecondary, fontSize = 13.sp, maxLines = 1)
+            Text(name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(subtitle, color = Ids.colors.textTertiary, fontSize = 14.sp, maxLines = 1)
         }
     }
 }

@@ -60,6 +60,8 @@ import rw.itunda.core.designsystem.components.EmptyState
  * SaccoSharesSection exactly, same no-ViewModel, direct-NetworkClient-call convention
  * IkiminaScreen.kt already established.
  */
+private const val SHARE_PRICE = 5_000L
+
 @Composable
 fun SaccoScreen(onBack: () -> Unit) {
     BackHandler(onBack = onBack)
@@ -142,40 +144,52 @@ fun SaccoScreen(onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                Text(
-                    "Buy real cooperative shares and earn a real periodic dividend, matching Rwanda's own Umurenge SACCO model.",
-                    color = Ids.colors.textSecondary, fontSize = 12.sp,
-                )
-            }
-            item {
-                // Real fix (flat-design sweep): dropped the Card wrapper.
-                Column {
-                        Text("Shares held", color = Ids.colors.textSecondary, fontSize = 13.sp)
-                        Text("${formatMoney(sharesHeld ?: BigDecimal.ZERO)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
-                        Text("Total contributed: ${formatMoney(totalContributed ?: BigDecimal.ZERO)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                // Prototype v1038: big share count with RWF value, soft facts block, Buy 1 / Buy 5.
+                // The backend counts shares in RWF, so a "share" here is SHARE_PRICE RWF.
+                val held = sharesHeld ?: BigDecimal.ZERO
+                val count = held.divide(BigDecimal(SHARE_PRICE), 0, java.math.RoundingMode.DOWN)
+                if (count.signum() == 0) { SaccoIntro(formatMoney(SHARE_PRICE.toBigDecimal())); return@item }
+                Column(Modifier.padding(top = 16.dp)) {
+                    Text("Your shares", color = Ids.colors.textTertiary, fontSize = 14.sp)
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text("$count", color = Ids.colors.textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 32.sp)
+                        Text(" (${formatMoney(currentValue ?: held)} RWF)", color = Ids.colors.textPrimary, fontSize = 20.sp, modifier = Modifier.padding(bottom = 3.dp))
+                    }
+                    Text("Total contributed: ${formatMoney(totalContributed ?: BigDecimal.ZERO)} RWF", color = Ids.colors.success, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
+                    Text(
+                        "Own a part of your cooperative. Each share is ${formatMoney(SHARE_PRICE.toBigDecimal())} RWF and earns a dividend when the SACCO makes a surplus.",
+                        color = Ids.colors.textTertiary, fontSize = 15.sp, modifier = Modifier.padding(top = 16.dp),
+                    )
                 }
             }
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        rw.itunda.core.designsystem.components.AmountKeypadInput(
-                            digits = amount, onDigitsChange = { amount = it },
-                            quickAmounts = listOf(10_000L, 100_000L),
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Box(
-                                modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                    .pressScaleClickable(enabled = !busy && amount.toBigDecimalOrNull()?.signum() == 1) { buy() }
-                                    .padding(vertical = 14.dp),
-                                contentAlignment = Alignment.Center,
-                            ) { Text(if (busy) "…" else "Buy shares", color = Color.White, fontWeight = FontWeight.Bold) }
-                            Box(
-                                modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                    .pressScaleClickable(enabled = !busy && amount.toBigDecimalOrNull()?.signum() == 1) { redeem() }
-                                    .padding(vertical = 14.dp),
-                                contentAlignment = Alignment.Center,
-                            ) { Text(if (busy) "…" else "Redeem", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
+                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 20.dp, vertical = 4.dp)) {
+                    Row(Modifier.fillMaxWidth().height(52.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Share price", color = Ids.colors.textTertiary, fontSize = 15.sp, modifier = Modifier.weight(1f))
+                        Text("${formatMoney(SHARE_PRICE.toBigDecimal())} RWF", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    listOf(1, 5).forEachIndexed { i, n ->
+                        Box(
+                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(16.dp))
+                                .background(if (i == 0) Ids.colors.brand else Ids.colors.surfaceSoft)
+                                .pressScaleClickable(enabled = !busy) { amount = (SHARE_PRICE * n).toString(); buy() }
+                                .padding(vertical = 16.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(if (busy) "…" else "Buy $n", color = if (i == 0) Ids.colors.textPrimary else Ids.colors.textBrand, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         }
+                    }
                 }
+            }
+            item {
+                Text(
+                    "Redeem 1 share", color = Ids.colors.textBrand, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.pressScaleClickable(enabled = !busy) { amount = SHARE_PRICE.toString(); redeem() }.padding(vertical = 4.dp),
+                )
             }
             error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
             item { Text("Dividend history", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }

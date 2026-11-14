@@ -31,7 +31,6 @@ import java.util.Locale
 import rw.itunda.app.ui.AppLockScreen
 import rw.itunda.app.ui.ItundaAppScreen
 import rw.itunda.core.designsystem.components.LocalRealActivity
-import rw.itunda.app.ui.PrototypeParityScreen
 import rw.itunda.app.ui.LoginScreen
 import rw.itunda.app.ui.PinEntryScreen
 import rw.itunda.core.designsystem.components.IdsToastHost
@@ -60,6 +59,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (BuildConfig.DEBUG) { DebugCrashReport.install(applicationContext); DebugCrashReport.showIfPresent(this) }
 
         // Real screenshot/screen-recording protection (2026-08-09) -- found missing during a
         // Toss-parity security audit: zero FLAG_SECURE usage existed anywhere in this codebase,
@@ -210,21 +210,18 @@ class MainActivity : FragmentActivity() {
                                         )
                                     }
                                 } else {
-                                    if (testRoute != null || mapDeepLinkRequested ||
-                                        mapSharedFolderFromDeepLink != null || identityVerifyRequestId != null
-                                    ) {
-                                        ItundaAppScreen(
-                                            openMapFromDeepLink = mapDeepLinkRequested,
-                                            initialMapSearchQuery = mapSearchFromDeepLink,
-                                            initialMapSharedFolder = mapSharedFolderFromDeepLink,
-                                            identityVerifyRequestId = identityVerifyRequestId,
-                                            initialTestRoute = testRoute,
-                                            onIdentityVerifyConsumed = { identityVerifyRequestId = null },
-                                            onMapDeepLinkConsumed = { mapDeepLinkRequested = false },
-                                        )
-                                    } else {
-                                        PrototypeParityScreen()
-                                    }
+                                    // Always the native app. A WebView of the old v434 HTML used to be the default
+                                    // here, but that file was never bundled into the APK, so every signed-in user
+                                    // saw "Itunda screen failed to load" instead of the real screens.
+                                    ItundaAppScreen(
+                                        openMapFromDeepLink = mapDeepLinkRequested,
+                                        initialMapSearchQuery = mapSearchFromDeepLink,
+                                        initialMapSharedFolder = mapSharedFolderFromDeepLink,
+                                        identityVerifyRequestId = identityVerifyRequestId,
+                                        initialTestRoute = testRoute,
+                                        onIdentityVerifyConsumed = { identityVerifyRequestId = null },
+                                        onMapDeepLinkConsumed = { mapDeepLinkRequested = false },
+                                    )
                                 }
                             }
                             is SessionState.LoggedOut -> {
