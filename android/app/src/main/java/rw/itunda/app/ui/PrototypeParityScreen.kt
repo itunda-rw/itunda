@@ -21,7 +21,7 @@ fun PrototypeParityScreen(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize(),
         factory = { context ->
             WebView(context).apply {
-                setBackgroundColor(AndroidColor.WHITE)
+                setBackgroundColor(AndroidColor.TRANSPARENT)
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
                 settings.allowFileAccess = true
