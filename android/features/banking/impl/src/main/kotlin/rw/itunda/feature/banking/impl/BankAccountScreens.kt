@@ -109,7 +109,7 @@ internal fun BankStatementScreen(onBack: () -> Unit) {
         Column(Modifier.weight(1f).padding(horizontal = 24.dp)) {
             Text("Choose a period\nand format.", color = Ids.colors.textPrimary, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 38.sp)
             BankSectionLabel("Period")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { periods.forEachIndexed { i, p -> BankChip(p, period == i, { period = i }) } }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { periods.forEachIndexed { i, p -> BankChip(p, period == i, { period = i }, Modifier.weight(if (i == 1) 1.2f else 1f)) } }
             BankSectionLabel("Format")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { formats.forEachIndexed { i, f -> BankChip(f, format == i, { format = i }) } }
         }
