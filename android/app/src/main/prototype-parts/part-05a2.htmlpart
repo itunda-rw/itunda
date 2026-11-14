@@ -1,0 +1,1250 @@
+.pcd .tabs2 button[aria-selected=true]{color:#fff;font-weight:800;border-bottom-color:#fff}
+.pcd .bd{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
+.pcd .cam{position:absolute;inset:0;background:#2A303B}
+.pcd .cam:after{content:"";position:absolute;left:0;right:0;bottom:0;height:42%;background:#17171C}
+.pcd .scn{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;padding-top:34px}
+.pcd .scn h2{margin:0;font-size:20px;font-weight:500;text-align:center;padding:0 24px}
+.pcd .sub{font-size:14px;color:#C5CCD6;margin-top:8px;min-height:20px;text-align:center;padding:0 24px}
+.pcd .fr{position:relative;width:262px;height:262px;margin-top:26px;background:rgba(255,255,255,.14)}
+.pcd .fr i{position:absolute;width:34px;height:34px;border:5px solid #8F89FF}
+.pcd .fr.ok i{border-color:#2DD08B}.pcd .fr.bad i{border-color:#FF6B5E;animation:pcs .35s}
+.pcd .fr:before,.pcd .fr:after{content:"";position:absolute;left:50%;top:50%;background:#8F89FF;transform:translate(-50%,-50%)}
+.pcd .fr:before{width:28px;height:2px}.pcd .fr:after{width:2px;height:28px}
+@keyframes pcs{0%,100%{transform:none}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.pcd .pills{display:flex;gap:8px;margin-top:22px}
+.pcd .pill{min-height:44px;padding:0 13px;border-radius:22px;border:0;background:#333D4B;color:#fff;font:inherit;font-size:15px;font-weight:600;display:inline-flex;align-items:center;gap:8px}
+.pcd .pill[aria-pressed=true]{background:#8F89FF;color:#17171C}
+.pcd .chips{position:absolute;left:0;right:0;bottom:16px;padding:0 16px;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+.pcd .chips::-webkit-scrollbar{display:none}
+.pcd .chips button{flex:0 0 auto;min-height:44px;padding:0 16px;border-radius:22px;border:0;background:#333D4B;color:#fff;font:inherit;font-size:14px;font-weight:600}
+.pcd .chl{position:absolute;left:20px;bottom:68px;font-size:12px;color:#8D97A6;font-weight:600}
+.pcd .cardbox{margin:20px 20px 0;border-radius:28px;background:#fff;color:#191F28;padding:22px 18px 18px;text-align:center}
+.pcd .cardbox .q{display:inline-block;padding:8px;border-radius:16px;background:#fff;line-height:0;border:1px solid #E5E8EB}
+.pcd .tm{margin-top:12px;font-size:14px;color:#6B7684}.pcd .tm b{color:#191F28;font-variant-numeric:tabular-nums}
+.pcd .src{margin-top:14px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:16px;font-weight:800}
+.pcd .src small{display:block;font-size:13px;font-weight:500;color:#6B7684}
+.pcd .lnk{background:none;border:0;color:#B3AEFF;font:inherit;font-size:14px;font-weight:600;min-height:44px}
+.pcd .tapw{flex:1;display:flex;align-items:center;justify-content:center;position:relative;min-height:0}
+.pcd .tapw .rg{position:absolute;border-radius:50%;background:#1B2B66}
+.pcd .tapw .r1{width:290px;height:290px;opacity:.55;animation:pcp 2.6s ease-in-out infinite}
+.pcd .tapw .r2{width:200px;height:200px;opacity:.8;animation:pcp 2.6s .3s ease-in-out infinite}
+.pcd .tapw .r3{width:104px;height:104px;border-radius:34px;background:#1F4BCC;display:flex;align-items:center;justify-content:center;opacity:1}
+@keyframes pcp{0%,100%{transform:scale(.94)}50%{transform:scale(1.04)}}
+@media(prefers-reduced-motion:reduce){.pcd .tapw .rg,.pcd .fr.bad i{animation:none}}
+.pcd .tapt{position:absolute;bottom:6px;left:0;right:0;text-align:center;font-size:14px;color:#C5CCD6;padding:0 24px}
+.pcd .pcar{position:relative;height:212px;flex:0 0 212px}
+.pcd .pctip{position:absolute;top:0;left:50%;transform:translateX(-50%);background:#2F80FF;color:#fff;font-size:14px;font-weight:700;padding:9px 16px;border-radius:18px;white-space:nowrap;max-width:92%;overflow:hidden;text-overflow:ellipsis}
+.pcd .pcrl{position:absolute;left:0;right:0;bottom:12px;height:150px;display:flex;align-items:flex-end;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:0 calc(50% - 56px);scrollbar-width:none}
+.pcd .pcrl::-webkit-scrollbar{display:none}
+.pcd .pcmc{flex:0 0 auto;scroll-snap-align:center;border:0;border-radius:14px;width:82px;height:120px;color:#191F28;font:inherit;font-size:13px;font-weight:800;line-height:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;padding:6px}
+.pcd .pcmc[aria-pressed=true]{width:112px;height:150px;font-size:15px}
+.pcd .pcmc.pay{background:#13D663}.pcd .pcmc.bank{background:#7472F4;color:#fff}.pcd .pcmc.cardm{background:#1B1F2A;color:#fff;border:1px solid #3A4352}.pcd .pcmc.add{background:#333D4B;color:#fff;font-size:34px;font-weight:400}
+.pcd .pcmc .bal{font-size:11px;font-weight:600;opacity:.8}
+.pcd .pcmc:focus-visible,.pcd .pill:focus-visible,.pcd .tabs2 button:focus-visible,.pcd .chips button:focus-visible{outline:3px solid #B3AEFF;outline-offset:2px}
+</style>
+<script>
+/* v713: Pay code. Before: the QR icon on Pay opened a bare camera screen; "My code" (for paying) did not exist, only "Receive money", and there was no way to pick what pays or to tap-to-pay. Now it is one screen with three tabs like the Naver Pay / Samsung Pay screens you sent: Scan (camera frame, flash, till number, photos, sample codes), My code (a QR that renews every 60 s with a countdown, and what pays: itunda Pay or itunda Bank), and Tap (ring animation, hold the phone to a terminal). Under My code and Tap there is a card carousel to pick the payment method (it sets the same "pay from" as the rest of Pay) with a one-line benefit bubble. Sending money still uses the old scanner. Sample data only; rw and fr copy is new and needs native review. */
+{
+const T3=window.T3,E=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+if(S.pcT===undefined)S.pcT=0;
+const qr=(seed,z)=>{const N=25,c=8;let s=seed;const rnd=()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296},g=[];
+ for(let y=0;y<N;y++){g[y]=[];for(let x=0;x<N;x++)g[y][x]=rnd()<.5}
+ const fin=(ox,oy)=>{for(let i=-1;i<8;i++)for(let j=-1;j<8;j++){const x=ox+i,y=oy+j;if(x>=0&&y>=0&&x<N&&y<N)g[y][x]=false}for(let y=0;y<7;y++)for(let x=0;x<7;x++)g[oy+y][ox+x]=x===0||y===0||x===6||y===6||(x>=2&&x<=4&&y>=2&&y<=4)};
+ fin(0,0);fin(N-7,0);fin(0,N-7);
+ for(let y=0;y<N;y++)for(let x=0;x<N;x++)if(Math.abs(x-12)<=4&&Math.abs(y-12)<=4)g[y][x]=false;
+ let d='';for(let y=0;y<N;y++)for(let x=0;x<N;x++)if(g[y][x])d+=`M${x*c} ${y*c}h${c}v${c}h-${c}z`;
+ return `<svg viewBox="0 0 ${N*c} ${N*c}" width="${z}" height="${z}" role="img" aria-label="${T3('Your payment code (sample)','Kode yawe yo kwishyura (icyitegererezo)','Votre code de paiement (exemple)')}"><rect width="${N*c}" height="${N*c}" fill="#fff"/><path d="${d}" fill="#111"/><circle cx="100" cy="100" r="30" fill="#fff"/><circle cx="100" cy="100" r="25" fill="#7472F4"/><text x="100" y="109" text-anchor="middle" font-size="26" font-weight="800" fill="#fff" font-family="sans-serif">i</text></svg>`};
+
+const svg=(p,z=22)=>`<svg width="${z}" height="${z}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+const BOLT=svg('<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>'),IMG=svg('<rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="M4 18l5-5 4 4 3-3 4 4"/>'),PEN=svg('<path d="M4 20l4-1 11-11a2.1 2.1 0 00-3-3L5 16z"/>'),CHV=svg('<path d="M6 9l6 6 6-6"/>',18);
+const GEAR='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M10 4.77L10.6 2.6L13.4 2.6L14 4.77A7.5 7.5 0 0 1 15.69 5.47L15.69 5.47L17.65 4.36L19.64 6.35L18.53 8.31A7.5 7.5 0 0 1 19.23 10L19.23 10L21.4 10.6L21.4 13.4L19.23 14A7.5 7.5 0 0 1 18.53 15.69L18.53 15.69L19.64 17.65L17.65 19.64L15.69 18.53A7.5 7.5 0 0 1 14 19.23L14 19.23L13.4 21.4L10.6 21.4L10 19.23A7.5 7.5 0 0 1 8.31 18.53L8.31 18.53L6.35 19.64L4.36 17.65L5.47 15.69A7.5 7.5 0 0 1 4.77 14L4.77 14L2.6 13.4L2.6 10.6L4.77 10A7.5 7.5 0 0 1 5.47 8.31L5.47 8.31L4.36 6.35L6.35 4.36L8.31 5.47A7.5 7.5 0 0 1 10 4.77Z"/></svg>';
+const bal=()=>S.psrc==='bank'?S.bank:S.pay,srcN=()=>S.psrc==='bank'?'itunda Bank':'itunda Pay Money';
+const TL={'123456':'Kigali Bakery','204518':'Nyamirambo Coffee House','731902':'Simba Supermarket'};
+const tabs=[T3('Scan','Sikana','Scanner'),T3('My code','Kode yanjye','Mon code'),T3('Tap','Gukoza','Sans contact')];
+const tipT=()=>S.psrc==='bank'?T3('Pay straight from your bank account','Ishyura ukoresheje konti ya banki','Payez depuis votre compte bancaire'):T3('Earn 3% back with itunda Pay Money','Ubone 3% ukoresheje itunda Pay Money','Gagnez 3 % avec itunda Pay Money');
+const carH=()=>`<div class="pcar"><div class="pctip" role="status">${tipT()}</div><div class="pcrl" id="pcrail" role="group" aria-label="${T3('Pay with','Ishyura ukoresheje','Payer avec')}">
+<button class="pcmc pay" aria-pressed="${S.psrc!=='bank'}" onclick="pcSrc('pay')"><b>itunda<br>Pay Money</b><span class="bal">${fmt(S.pay)}</span></button>
+<button class="pcmc bank" aria-pressed="${S.psrc==='bank'}" onclick="pcSrc('bank')"><b>itunda<br>Bank</b><span class="bal">${fmt(S.bank)}</span></button>
+<button class="pcmc cardm" aria-pressed="false" onclick="openCard()"><b>${S.card?'itunda card<br>··'+S.card.last:T3('Get the<br>itunda card','Fata ikarita<br>itunda','Obtenir la<br>carte itunda')}</b></button>
+<button class="pcmc add" aria-label="${T3('Add money','Ongeramo amafaranga','Ajouter de l’argent')}" onclick="sheetAdd()">+</button></div></div>`;
+const qrSeed=()=>Math.floor(Date.now()/60000)*7919+(S.psrc==='bank'?13:0);
+const codeCard=()=>`<div class="cardbox"><div class="q" id="pcdq">${qr(qrSeed(),216)}</div>
+<div class="tm" id="pcdt" role="timer">${T3('Renews in','Kongera mu','Renouvelé dans')} <b>0:${String(60-Math.floor(Date.now()/1000)%60).padStart(2,'0')}</b></div>
+<div class="src" ><span><small>${T3('Pays from','Yishyura ikoresheje','Payé depuis')}</small>${srcN()} · ${fmt(bal())} RWF</span></div></div>
+<div style="display:flex;justify-content:center;gap:4px;flex-wrap:wrap"><button class="lnk" onclick="ppGo('rcode')">${T3('Receive money instead','Akira amafaranga','Recevoir de l’argent')}</button><button class="lnk" onclick="pcMerch('123456')">${T3('Prototype: a shop scans this','Prototype: umucuruzi arayisikana','Prototype : un commerçant scanne')}</button></div>`;
+const scan=()=>`<div class="cam"></div><div class="scn"><h2 id="pcst">${T3('Scan a QR code to pay','Sikana kode ya QR wishyure','Scannez un code QR pour payer')}</h2><div class="sub" id="pcsh" role="status" aria-live="polite">${T3('Shops and friends both work.','Abacuruzi n’inshuti byose bikora.','Commerçants et amis fonctionnent.')}</div>
+<div class="fr" id="pcfr">${['top:0;left:0;border-right:0;border-bottom:0;border-radius:18px 0 0 0','top:0;right:0;border-left:0;border-bottom:0;border-radius:0 18px 0 0','bottom:0;left:0;border-right:0;border-top:0;border-radius:0 0 0 18px','bottom:0;right:0;border-left:0;border-top:0;border-radius:0 0 18px 0'].map(s=>`<i style="${s}"></i>`).join('')}</div>
+<div class="pills"><button class="pill" aria-pressed="${!!S.scFl}" onclick="pcFlash(this)">${BOLT}${T3('Flash','Itara','Flash')}</button><button class="pill" onclick="S.stack[S.stack.length-1]='paytill';render('fade-none')">${PEN}${T3('Till number','Nimero','N° de caisse')}</button><button class="pill" onclick="pcBad()">${IMG}${T3('Photos','Amafoto','Photos')}</button></div></div>
+<div class="chl">${T3('Try a sample code (prototype)','Gerageza kode y’icyitegererezo','Essayez un code d’exemple')}</div>
+<div class="chips"><button onclick="pcHit(()=>scPerson('0788 000 214'))">Amina K.</button>${Object.entries(TL).map(([k,n])=>`<button onclick="pcHit(()=>pcMerch('${k}'))">${E(n)}</button>`).join('')}<button onclick="pcBad()">${T3('Unreadable code','Kode itasomeka','Code illisible')}</button></div>`;
+const tap=()=>`<div class="tapw"><div class="rg r1"></div><div class="rg r2"></div><div class="rg r3"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M7 7a7 7 0 010 10M11 4.5a11 11 0 010 15M15 2a15 15 0 010 20"/></svg></div></div>
+<div style="padding:0 24px 8px;display:flex;justify-content:space-between;align-items:flex-end"><div><div style="font-size:14px;color:#C5CCD6">${srcN()}</div><div style="font-size:22px;font-weight:800">${fmt(bal())} RWF</div></div><button class="lnk" onclick="pcMerch('204518')">${T3('Prototype: tap a terminal','Prototype: koza ku cyuma','Prototype : approcher un terminal')}</button></div>
+<div style="padding:0 24px 8px;font-size:14px;color:#C5CCD6">${T3('Hold the back of your phone near the payment terminal.','Shyira inyuma ya telefoni hafi y’icyuma cyo kwishyura.','Approchez l’arrière du téléphone du terminal.')}</div>`;
+screens.pcode=()=>{const t=S.pcT;return `<div class="pcd"><div class="pch"><button class="ib" aria-label="${T3('Back','Subira inyuma','Retour')}" onclick="back()">${ic('back',24)}</button><button class="ib" aria-label="${T3('Pay settings','Igenamiterere ryo kwishyura','Réglages de paiement')}" onclick="ppGo('pset')">${GEAR}</button></div>
+<div class="tabs2" role="tablist">${tabs.map((n,i)=>`<button role="tab" aria-selected="${t===i}" onclick="pcTab(${i})">${n}</button>`).join('')}</div>
+<div class="bd" role="tabpanel">${t===0?scan():t===1?`<div style="flex:1;overflow-y:auto">${codeCard()}</div>${carH()}`:`${tap()}${carH()}`}</div></div>`};
+window.pcTab=i=>{S.pcT=i;render('fade-none')};
+window.pcSrc=k=>{S.psrc=k;render('fade-none');const r=document.getElementById('pcrail');if(r){const b=r.querySelector('[aria-pressed=true]');b&&b.scrollIntoView({inline:'center',block:'nearest'})}};
+window.pcSheet=()=>{const el=document.querySelector('.pcd .src');el&&el.scrollIntoView&&0;pcTab(S.pcT)};
+window.pcFlash=b=>{const on=b.getAttribute('aria-pressed')!=='true';S.scFl=on;b.setAttribute('aria-pressed',on);const c=document.querySelector('.pcd .cam');if(c)c.style.background=on?'#4A5160':'#2A303B'};
+window.pcMerch=k=>{S.scanFor='pay';S.pm={n:TL[k],sub:T3('Till','Nimero','Caisse')+' '+k,amt:'',g:'bag'};S.stack[S.stack.length-1]='payamt';render('push')};
+window.pcHit=fn=>{const f=document.getElementById('pcfr');if(!f||f.dataset.b)return;f.dataset.b=1;f.className='fr ok';document.getElementById('pcst').textContent=T3('Code found','Kode yabonetse','Code détecté');document.getElementById('pcsh').textContent='';try{navigator.vibrate&&navigator.vibrate(15)}catch(e){}setTimeout(()=>{if(S.stack[S.stack.length-1]==='pcode')fn()},550)};
+window.pcBad=()=>{const f=document.getElementById('pcfr');if(!f||f.dataset.b)return;f.dataset.b=1;f.className='fr bad';const t=document.getElementById('pcst'),h=document.getElementById('pcsh'),o=t.textContent,oh=h.textContent;t.textContent=T3('Can’t read this code','Kode ntisomwa','Code illisible');h.textContent=T3('This is not an itunda or shop code. Try again, or type the till number.','Iyi si kode ya itunda cyangwa y’umucuruzi. Ongera ugerageze, cyangwa wandike nimero.','Ce n’est pas un code itunda ou commerçant. Réessayez ou saisissez le numéro.');setTimeout(()=>{if(!document.getElementById('pcfr'))return;f.className='fr';delete f.dataset.b;t.textContent=o;h.textContent=oh},2200)};
+/* the code renews every 60 s: update the countdown, redraw the QR at 0 */
+setInterval(()=>{const t=document.getElementById('pcdt'),q=document.getElementById('pcdq');if(!t||!q)return;const s=60-Math.floor(Date.now()/1000)%60;t.querySelector('b').textContent='0:'+String(s).padStart(2,'0');if(s===60||q.dataset.k!==String(qrSeed())){q.innerHTML=qr(qrSeed(),216);q.dataset.k=qrSeed()}},1000);
+const _g=window.ppGo;window.ppGo=n=>{if(n==='paysc'&&S.scanFor!=='send'){S.scanFor='pay';S.pcT=0;S.stack.push('pcode');render('push');return}_g(n)};
+document.querySelectorAll('title').forEach(t=>t.textContent=t.textContent.replace('v712','v713'));
+}
+</script>
+<script>
+/* v714: Pay code, closer to the Naver Pay screens. (1) Tap tab: a "Top up" link beside the balance, like the "충전" link on the Samsung Pay tab. (2) My code with a 0 balance: instead of a QR that cannot pay, an empty state with "Add money" and a one-tap switch to the other source, like the "add a card" state. Sample data only; rw and fr copy needs native review. */
+{
+const T=window.T3,_pc=screens.pcode;
+screens.pcode=()=>{let h=_pc();const bal=S.psrc==='bank'?S.bank:S.pay,other=S.psrc==='bank'?'pay':'bank',oN=other==='bank'?'itunda Bank':'itunda Pay Money';
+ if(S.pcT===2)h=h.replace(/(<div style="font-size:22px;font-weight:800">[^<]*<\/div>)/,'$1<button class="lnk" style="padding:0;min-height:44px" onclick="sheetAdd()">'+T('Top up','Ongeramo','Recharger')+'</button>');
+ if(S.pcT===1&&bal<=0)h=h.replace(/<div class="cardbox">[\s\S]*?<\/span><\/div><\/div>/,'<div class="cardbox" style="padding:28px 18px 22px"><div style="font-size:20px;font-weight:800;line-height:28px">'+T('Add money to pay','Ongeramo amafaranga wishyure','Ajoutez de l’argent pour payer')+'</div><div style="font-size:14px;color:#6B7684;margin-top:6px">'+T('This source has no balance yet.','Nta mafaranga ahari.','Cette source n’a pas encore de solde.')+'</div><button class="btn" style="margin-top:20px" onclick="sheetAdd()">'+T('Add money','Ongeramo amafaranga','Ajouter de l’argent')+'</button><button class="btn sec2" style="margin-top:10px" onclick="pcSrc(\''+other+'\')">'+T('Pay with ','Ishyura ukoresheje ','Payer avec ')+oN+'</button></div>');
+ return h};
+document.querySelectorAll('title').forEach(t=>t.textContent=t.textContent.replace('v713','v714'));
+}
+</script>
+<script>
+/* v715: Top up is now a full screen, like the Toss Pay Money top-up screens you sent. Before: a small sheet with two mobile-money buttons that only worked from MTN or Airtel. Now: pick the source (itunda Bank, MTN MoMo, Airtel Money, each with its balance, tap the name to switch), see the amount as a big number, add it with +1,000 / +5,000 / +10,000 chips or type it on the keypad, then Confirm. The money really moves in the prototype: the source goes down, itunda Pay goes up, and a too-large amount is blocked with a message. Every "Add money" and "Top up" button on Pay opens it. Sample balances; rw and fr copy needs native review. */
+{
+const T=window.T3;
+S.tpSrc=S.tpSrc||'bank';S.tpAmt=S.tpAmt||'';S.tpBal=S.tpBal||{momo:85000,airtel:12000};
+const SRC=()=>[{k:'bank',n:'itunda Bank',sub:T('Your itunda account','Konti yawe ya itunda','Votre compte itunda'),b:S.bank},{k:'momo',n:'MTN MoMo',sub:'0788 000 214',b:S.tpBal.momo},{k:'airtel',n:'Airtel Money',sub:'0733 000 214',b:S.tpBal.airtel}];
+const cur=()=>SRC().find(x=>x.k===S.tpSrc)||SRC()[0];
+screens.ptop=()=>{const a=+S.tpAmt||0,s=cur(),bad=a>s.b,ks=['1','2','3','4','5','6','7','8','9','','0','⌫'];
+ return `${bar(T('Top up itunda Pay','Ongeramo muri itunda Pay','Recharger itunda Pay'))}<div class="pad" style="padding-top:8px"><button onclick="tpSheet()" style="display:flex;align-items:center;gap:6px;border:0;background:none;color:var(--tx);font:inherit;font-size:20px;font-weight:800;min-height:44px;padding:0">${s.n}<span aria-hidden="true" style="font-size:14px;color:var(--tt)">▾</span></button><div class="mu" style="font-size:14px">${s.sub} · ${T('Balance','Asigaye','Solde')} ${fmt(s.b)} RWF</div>
+<div style="margin-top:28px;font-size:34px;font-weight:800;letter-spacing:-.6px;color:${a?'var(--tx)':'var(--tt)'}" role="status" aria-live="polite">${fmt(a)} <span style="font-size:20px;color:var(--mu)">RWF</span></div>
+<div class="mu" style="font-size:14px;min-height:22px;margin-top:2px;color:${bad?'var(--er)':'var(--mu)'}">${bad?T('That is more than your balance in '+s.n+'.','Ni byinshi kuruta asigaye muri '+s.n+'.','C’est plus que votre solde '+s.n+'.'):a?'':T('How much would you like to add?','Ni angahe ushaka kongeramo?','Combien souhaitez-vous ajouter ?')}</div>
+<div class="req" style="margin-top:14px">${[1000,5000,10000].map(v=>`<button onclick="tpAdd(${v})">+${fmt(v)}</button>`).join('')}</div></div>
+<div class="pad" style="padding-top:20px"><button class="btn" ${!a||bad?'disabled':''} onclick="tpGo()">${a?T('Add ','Ongeramo ','Ajouter ')+fmt(a)+' RWF':T('Confirm','Emeza','Confirmer')}</button></div>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);padding:8px 24px 0">${ks.map(k=>k?`<button aria-label="${k==='⌫'?T('Delete last digit','Siba umubare wanyuma','Supprimer le dernier chiffre'):k}" onclick="tpKey('${k}')" style="height:56px;border:0;background:none;color:var(--tx);font:inherit;font-size:26px;font-weight:500">${k}</button>`:'<span></span>').join('')}</div>`};
+window.tpKey=k=>{let v=S.tpAmt;if(k==='⌫')v=v.slice(0,-1);else if(v.length<8&&!(v===''&&k==='0'))v+=k;S.tpAmt=v;render('fade-none')};
+window.tpAdd=n=>{S.tpAmt=String(Math.min(99999999,(+S.tpAmt||0)+n));render('fade-none')};
+window.tpSheet=()=>{$('#layer').innerHTML=`<div class="sheetbg" onclick="closeSheet()"></div><div class="sheet"><div class="h1" style="font-size:22px;line-height:30px;margin-bottom:8px">${T('Top up from','Ongeramo uvuye','Recharger depuis')}</div>${SRC().map(x=>`<div class="row tap" style="padding:14px 0" onclick="S.tpSrc='${x.k}';closeSheet();render('fade-none')"><div><b style="font-size:17px">${x.n}</b><div class="sm mu">${fmt(x.b)} RWF</div></div><div class="r" style="color:var(--lk)">${S.tpSrc===x.k?'✓':''}</div></div>`).join('')}</div>`};
+window.tpGo=()=>{const a=+S.tpAmt||0,s=cur();if(!a||a>s.b)return;if(s.k==='bank')S.bank-=a;else S.tpBal[s.k]-=a;S.pay+=a;S.tpAmt='';S.stack.pop();render('pop');toast(T('Added ','Hongeweho ','Ajouté ')+fmt(a)+' RWF → itunda Pay')};
+window.sheetAdd=()=>{S.tpAmt='';S.stack.push('ptop');render('push')};
+document.querySelectorAll('title').forEach(t=>t.textContent=t.textContent.replace('v714','v715'));
+}
+</script>
+<script>
+/* v716: Pay home gets a "This month" benefits card and a Coupon box, from the Toss Pay home and coupon screens you sent. The card shows cashback received, points and Pay Money, and coupons held; it opens the Coupon box. The box has an empty state with "Find a coupon" and a "+" to add one by code. Add by code: Register stays off until you type; WELCOME500 pays 500 RWF into itunda Pay at once, BAKERY10 adds a 10% Kigali Bakery coupon, a repeated code is refused, an unknown code gets a clear message. Sample data only; rw and fr copy needs native review. */
+{
+const T=window.T3;S.cpn=S.cpn||[];S.cpIn='';S.cpUsed=S.cpUsed||{};
+const CODES={WELCOME500:{pay:500,n:'Welcome gift'},BAKERY10:{n:'Kigali Bakery',d:'10% off your next QR payment'}};
+const _p=screens.pay;
+screens.pay=()=>{let h=_p();const card=`<div class="sec" style="padding-bottom:0"><div class="sech">${T('This month','Uku kwezi','Ce mois-ci')}</div>${row('gift',T('Cashback received','Amafaranga wagaruriwe','Cashback reçu'),T('Paid back on QR and card','Yagaruwe kuri QR n’ikarita','Remboursé sur QR et carte'),'1,200 RWF')}${row('star',T('Points · Pay Money','Amanota · Pay Money','Points · Pay Money'),'','6,400')}${row('tag',T('Coupon box','Amakuponi','Coupons'),S.cpn.length?S.cpn.length+' '+T('ready to use','yiteguye','prêts'):T('No coupons yet','Nta kuponi','Aucun coupon'),'','openCoupons()')}</div>`;
+ const re=/<div class="sec"[^>]*><div class="sech">More<\/div>/;return re.test(h)?h.replace(re,m=>card+m):h+card};
+window.openCoupons=()=>{S.stack.push('coupons');render('push')};
+screens.coupons=()=>`${bar(T('Coupon box','Amakuponi','Coupons'))}<div class="pad" style="padding-top:8px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:15px;font-weight:700">${T('Received','Yakiriwe','Reçus')} ${S.cpn.length}</div><button class="ib" aria-label="${T('Add a coupon by code','Ongeraho kuponi ukoresheje kode','Ajouter un coupon par code')}" onclick="S.cpIn='';S.stack.push('cpnadd');render('push')">${ic('plus',24)}</button></div>${S.cpn.length?`<div class="sec">${S.cpn.map(c=>row('tag',c.n,c.d)).join('')}</div>`:`<div style="display:flex;flex-direction:column;align-items:center;padding-top:clamp(40px,14vh,160px);text-align:center"><div class="g3">${gl('voucher',96)}</div><div class="h1" style="font-size:20px;line-height:28px;margin-top:20px">${T('You have no coupons','Nta kuponi ufite','Vous n’avez aucun coupon')}</div><div class="mu" style="font-size:15px;margin-top:6px">${T('Have a code? Add it to get started.','Ufite kode? Yongereho utangire.','Un code ? Ajoutez-le pour commencer.')}</div><button class="btn" style="width:auto;padding:0 28px;margin-top:20px" onclick="S.cpIn='';S.stack.push('cpnadd');render('push')">${T('Add a coupon','Ongeraho kuponi','Ajouter un coupon')}</button></div>`}`;
+screens.cpnadd=()=>`${bar(T('Add a coupon','Ongeraho kuponi','Ajouter un coupon'))}<div class="pad" style="padding-top:20px"><div class="lab" style="color:var(--lk)">${T('Coupon code','Kode ya kuponi','Code du coupon')}</div><input class="in" id="cpin" autocapitalize="characters" autocomplete="off" placeholder="${T('Enter your coupon code','Andika kode ya kuponi','Saisissez votre code')}" style="font-size:17px;height:52px" oninput="S.cpIn=this.value.trim().toUpperCase();document.getElementById('cpgo').disabled=!S.cpIn;document.getElementById('cper').textContent=''"><div id="cper" role="alert" style="color:var(--er);font-size:14px;min-height:20px;margin-top:8px"></div><ul class="mu" style="font-size:14px;line-height:22px;padding-left:18px;margin-top:16px"><li>${T('Coupons you add show up in your Coupon box.','Amakuponi wongeyeho agaragara mu kabati kawe.','Les coupons ajoutés apparaissent dans votre boîte.')}</li><li>${T('Money coupons are paid in right away.','Amakuponi y’amafaranga yishyurwa ako kanya.','Les coupons en argent sont crédités aussitôt.')}</li><li>${T('A coupon can only be added once, and cannot be cancelled.','Kuponi yongerwaho rimwe gusa.','Un coupon ne peut être ajouté qu’une fois.')}</li><li>${T('Coupons cannot be refunded for cash and expire.','Amakuponi ntasubizwa mu mafaranga kandi ararangira.','Les coupons ne sont pas remboursables et expirent.')}</li></ul></div><div class="cta"><button class="btn" id="cpgo" disabled onclick="cpReg()">${T('Register','Andika','Enregistrer')}</button></div>`;
+window.cpReg=()=>{const k=S.cpIn,c=CODES[k],e=document.getElementById('cper');if(!c){e.textContent=T('We can’t find that code. Check it and try again.','Ntitubonye iyo kode. Ongera ugerageze.','Code introuvable. Vérifiez et réessayez.');return}if(S.cpUsed[k]){e.textContent=T('You already added this coupon.','Wamaze kongeraho iyi kuponi.','Vous avez déjà ajouté ce coupon.');return}S.cpUsed[k]=1;if(c.pay){S.pay+=c.pay;toast(T('Added ','Hongeweho ','Ajouté ')+fmt(c.pay)+' RWF → itunda Pay')}else{S.cpn.push(c);toast(T('Coupon added','Kuponi yongeweho','Coupon ajouté'))}S.stack.pop();render('pop')};
+document.querySelectorAll('title').forEach(t=>t.textContent=t.textContent.replace('v715','v716'));
+}
+
+/* v717: Pay tab, arranged like the Toss Pay home. Before: the Toss-style top (map, earn card, How to pay online, Benefits, Get more benefits, History) was followed by the old Pay screen: a "Pay in store" code card and a "Wallet" card that repeated the payment method and the balance, and the v716 "This month" card (Cashback, Points, Coupon box) was stuck at the very bottom under FAQ, repeating "Benefits received" above. Points, Pay Money and Coupons showed up two or three times. Now one order, top to bottom, as in Toss Pay: header, map, earn card with the payment method, How to pay online, Benefits received (Points · Pay Money, Coupons received with its count, opens the Coupon box), Get more benefits, History, FAQ and Send feedback. The payment code lives behind the QR icon (v713), and the payment method rows open the Pay Money screen. Sample data only. */
+{
+const _p=screens.pay;
+screens.pay=function(){const h=_p.apply(this,arguments);if(typeof h!=='string')return h;
+ const d=document.createElement('div');d.innerHTML=h;
+ d.querySelectorAll('.pph,.leg704').forEach(e=>e.remove());
+ d.querySelectorAll('.sec').forEach(s=>{const c=s.querySelector('.sech');if(c&&/^(This month|Uku kwezi|Ce mois-ci)$/.test(c.textContent.trim()))s.remove()});
+ d.querySelectorAll('.mrow703,.pm704').forEach(e=>e.setAttribute('onclick',"ppGo('mpmy')"));
+ d.querySelectorAll('.z7rw[onclick*="pcoupons"]').forEach(r=>{const t=r.querySelector('.z7rt');if(t&&/Coupons received|Amakuponi|Coupons reçus/.test(t.textContent)){r.setAttribute('onclick','openCoupons()');if(!r.querySelector('.z7am'))t.insertAdjacentHTML('afterend','<span class="z7am" style="color:var(--tt)">'+(S.cpn||[]).length+'</span>')}});
+ return d.innerHTML};
+document.querySelectorAll('title').forEach(t=>t.textContent=t.textContent.replace('v716','v717'));
+}
+</script>
+<script>
+/* v718: Pay tab, two fixes. (1) v717 meant to remove the "Pay in store" barcode + QR card from the Pay tab, but that card is added to the page after the screen is drawn, so v717's clean-up never saw it and it still pushed everything down. It is now hidden for good (the payment code lives behind the QR icon, v713). (2) The Pay tab never showed the balance. Now a balance card sits right under the map, as on the Toss Pay home: "itunda Pay Money", the amount number-first with a grey RWF, and Send / Add money buttons (Add money opens the v715 top-up screen). Sample data only; rw and fr copy needs native review. */
+{
+const T=window.T3,_p=screens.pay;
+const st=document.createElement('style');st.textContent='.pay347 .pph{display:none!important}.pay347 .bal718{margin:16px 24px 0;padding:18px 20px 20px;border-radius:24px;background:var(--chip)}.bal718 .l{font-size:14px;color:var(--mu);font-weight:600}.bal718 .n{font-size:34px;font-weight:800;letter-spacing:-.6px;margin-top:4px;font-variant-numeric:tabular-nums}.bal718 .n span{font-size:20px;color:var(--mu);font-weight:700}.bal718 .row2{margin-top:16px;padding:0}.bal718 .sec2{background:var(--tint)!important;color:var(--tintfg)!important}';
+document.head.appendChild(st);
+screens.pay=function(){const h=_p.apply(this,arguments);if(typeof h!=='string'||h.includes('bal718'))return h;
+ return h};
+document.querySelectorAll('title').forEach(x=>x.textContent=x.textContent.replace('v717','v718'));
+}
+</script>
+<script>
+/* v720: the balance card from v718 (itunda Pay Money, amount, Send, Add money) is removed again; the Pay in store card stays hidden. */
+/* v719: Pay tab, coupons. Before: the "Coupons received" row on Pay opened an older, separate coupon screen (set up after the page draws, so v717's change never reached it), so the Coupon box from v716 with "Add a coupon" and WELCOME500 / BAKERY10 could not be reached from Pay, and the row showed no count. Now the row opens the v716 Coupon box and shows how many coupons you hold. Also the browser tab title now shows the real version (it was stuck at v713). Sample data only. */
+{
+const _go=window.ppGo;
+window.ppGo=function(n){if(n==='pcoupons'&&typeof openCoupons==='function')return openCoupons();return _go.apply(this,arguments)};
+const fix=()=>{document.querySelectorAll('#phone .z7rw').forEach(r=>{const t=r.querySelector('.z7rt');if(!t||!/Coupons received|Amakuponi|Coupons reçus/.test(t.textContent))return;if(r.getAttribute('onclick')!=='openCoupons()')r.setAttribute('onclick','openCoupons()');const n=String((S.cpn||[]).length);let a=r.querySelector('.z7am');if(!a){t.insertAdjacentHTML('afterend','<span class="z7am" style="color:var(--tt)"></span>');a=r.querySelector('.z7am')}if(a.textContent!==n)a.textContent=n})};
+const ph=document.getElementById('phone');if(ph){let q=0;new MutationObserver(()=>{if(q)return;q=1;requestAnimationFrame(()=>{q=0;fix()})}).observe(ph,{childList:true,subtree:true});fix()}
+document.title='itunda, clickable prototype v720';
+document.querySelectorAll('title').forEach(x=>x.textContent='itunda, clickable prototype v720');
+}
+</script>
+<script>
+/* v721: Pay Money, using your Toss Pay Money screens (detail with Move and Top up, the top-up amount screen, the Move amount screen). Before: (1) the payment-method rows on the Pay tab opened the Maps "MY" page (v717 pointed them at the wrong screen), so the Pay Money detail with Move, Top up and the ledger could not be reached from Pay. (2) Every "Add money" / "Top up" button opened the v715 screen, which moved the money but left no line in the ledger and ignored the daily limit, so a top-up never showed up as "time | MTN MoMo -> Pay" the way it does in Toss. Now the rows open the Pay Money detail, and Add money / Top up open the full Top up screen (source picker, +10,000 / +50,000 / +100,000 chips, "All" chip, daily limit, a ledger line after Confirm). Move to itunda Bank already worked and also writes a ledger line. Sample data only. */
+{
+const _go=window.ppGo;
+window.ppGo=function(n){if(n==='mpmy'&&typeof openPayDetail==='function')return openPayDetail();return _go.apply(this,arguments)};
+window.sheetAdd=function(){if(typeof openTopUp==='function')return openTopUp();return 0};
+document.title='itunda, clickable prototype v721';
+document.querySelectorAll('title').forEach(x=>x.textContent='itunda, clickable prototype v721');
+}
+</script>
+<style id="v722css">
+/* v722: itunda Bank account screen, matched to your Toss Bank account screen. Before: Fill and Send sat under the balance (v438), a "Free delivery" promo could show in the list, and the interest row read "Interest accrued through yesterday" with a bold number. Now: Fill and Send are fixed at the bottom like Toss (the list scrolls behind them), the promo is gone, and the interest row has a small line with the amount so far and a bold status line. */
+#phone .bkact{display:none!important}
+#phone:has(.bkact) .cta{display:flex!important}
+#phone .bdnew{display:none!important}
+#phone .screen:has(.bdband){padding-bottom:104px}
+#phone .top .hbk{gap:2px!important}
+#phone .top .hbk>svg:first-child{width:24px!important;height:24px!important}
+#phone .top .hbk>svg:first-child g{stroke:#8E919B!important}
+#phone .top .hbk>svg:last-child:not(:first-child){display:block!important;width:16px!important;height:16px!important;stroke:#8E919B!important;margin-left:-2px;position:relative;top:2px}
+#phone .top .hbk>b{font-size:17px!important;font-weight:600!important;letter-spacing:-.3px!important;margin:0!important;top:2px!important;color:#C9CBD2!important}
+/* v722b: Pay header, logo and "Pay" text a little smaller (logo 36 to 28px, text 26 to 21px) */
+#phone .tp704bar{font-size:21px!important;letter-spacing:-.4px!important}
+#phone .tp704bar img,#phone .tp704bar svg{width:28px!important;height:28px!important}
+/* v722c: Home on phones. (1) The invite banner was 455px tall, over half the screen, so the balances started below the middle. Now it is about 330px and the balance card starts higher. (2) The banner glow stuck out 39px on each side and let the page scroll sideways; the scroll area now clips sideways overflow. */
+#phone #sc{overflow-x:hidden!important}
+#sc .hero701{padding-bottom:96px}
+#sc .hero701 .it{font-size:20px!important;line-height:28px!important;margin-top:22px!important;letter-spacing:-.4px}
+#sc .hero701 .ia{font-size:52px!important;line-height:58px!important;margin-top:8px!important;letter-spacing:-1.6px}
+#sc .hero701 .ia small{font-size:22px!important;margin-left:4px}
+#sc .hero701 .ib2{margin-top:6px!important;padding:13px 12px!important;font-size:16px!important}
+@media (max-height:760px){#sc .hero701{padding-bottom:88px}#sc .hero701 .it{font-size:18px!important;line-height:26px!important;margin-top:14px!important}#sc .hero701 .ia{font-size:44px!important;line-height:50px!important}}
+@media (max-width:360px){#sc .hero701 .it{font-size:17px!important;line-height:24px!important}#sc .hero701 .ia{font-size:40px!important;line-height:46px!important}#sc .hc .ha{font-size:24px!important}}
+</style>
+<script>
+(function(){
+const L=(e,r,f)=>{const l=(typeof S!=='undefined'&&S.lang)||'en';return l==='rw'?r:l==='fr'?f:e};
+const _b=screens.bankd;
+screens.bankd=function(){
+ let h=_b.apply(this,arguments);
+ try{
+  const ir=S.pk.reduce((a,p)=>a+(p.ir||0),0);
+  h=h.replace('Interest accrued through yesterday',L('Interest so far '+fmt(ir)+' RWF','Inyungu zimaze kuboneka RWF '+fmt(ir),'Intérêts cumulés '+fmt(ir)+' RWF'))
+     .replace('<div class="pkpb">'+fmt(ir)+' RWF</div>','<div class="pkpb">'+L('Interest is added every day','Inyungu yongerwaho buri munsi','Intérêts versés chaque jour')+'</div>');
+ }catch(e){}
+ return h;
+};
+document.title='itunda, clickable prototype v722';
+document.querySelectorAll('title').forEach(x=>x.textContent='itunda, clickable prototype v722');
+})();
+</script>
+<style id="v723css">
+/* v723: Pay code, closer to the Naver Pay screens. Tap: a framed card with a gradient edge, rings with a live seconds countdown in the middle (like the "49" on Samsung Pay), source and balance bottom left, Top up bottom right; the hint sits under the frame. My code: the two links share one tidy row and the tip bubble now points at the selected card. Scan: the three buttons no longer touch the screen edges and the sample-code label shows. */
+.pcd .tp723{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;padding:14px 20px 0}
+.pcd .tpf{width:100%;flex:1;min-height:0;display:flex;flex-direction:column;border:2px solid transparent;border-radius:28px;background:linear-gradient(#17171C,#17171C) padding-box,linear-gradient(135deg,#2DD08B,#2F6BFF) border-box}
+.pcd .tpf .tapw{flex:1}
+.pcd .tpf .r1{width:244px;height:244px}.pcd .tpf .r2{width:172px;height:172px}.pcd .tpf .r3{width:92px;height:92px;border-radius:30px}
+.pcd .tpf .r3 b{font-size:32px;font-weight:800;font-variant-numeric:tabular-nums}
+.pcd .tpb{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:0 20px 18px}
+.pcd .tpb small{display:block;font-size:13px;color:#C5CCD6}.pcd .tpb strong{font-size:20px;font-weight:800;white-space:nowrap}
+.pcd .tph{font-size:14px;color:#C5CCD6;text-align:center;margin-top:12px;padding:0 12px}
+.pcd .tp723>.lnk{margin-top:2px}
+.pcd .cardbox+div{justify-content:space-between!important;flex-wrap:nowrap!important;padding:2px 14px 0}
+.pcd .cardbox+div .lnk{font-size:13px;padding:0 6px}
+.pcd .pctip{top:6px;overflow:visible;text-overflow:clip}
+.pcd .pctip:after{content:"";position:absolute;left:50%;bottom:-6px;margin-left:-6px;border:6px solid transparent;border-bottom:0;border-top-color:#2F80FF}
+.pcd .pills{gap:6px;margin-top:20px}.pcd .pill{padding:0 11px;gap:6px;font-size:14px}
+.pcd .chl{z-index:2;color:#AEB7C4}
+</style>
+<script>
+{
+const T=window.T3,_pc=screens.pcode;
+screens.pcode=function(){const h=_pc.apply(this,arguments);if(typeof h!=='string'||S.pcT!==2)return h;
+ const d=document.createElement('div');d.innerHTML=h;const w=d.querySelector('.tapw');if(!w)return h;
+ const a=w.nextElementSibling,b=a&&a.nextElementSibling,bk=S.psrc==='bank',n=60-Math.floor(Date.now()/1000)%60;
+ const nw=document.createElement('div');nw.className='tp723';
+ nw.innerHTML='<div class="tpf"><div class="tapw"><div class="rg r1"></div><div class="rg r2"></div><div class="rg r3"><b id="tp723n" role="timer" aria-label="'+T('Seconds left','Amasegonda asigaye','Secondes restantes')+'">'+n+'</b></div></div><div class="tpb"><div><small>'+(bk?'itunda Bank':'itunda Pay Money')+'</small><strong>'+fmt(bk?S.bank:S.pay)+' RWF</strong></div><button class="lnk" onclick="sheetAdd()">'+T('Top up','Ongeramo','Recharger')+'</button></div></div><div class="tph">'+T('Hold the back of your phone near the payment terminal.','Shyira inyuma ya telefoni hafi y’icyuma cyo kwishyura.','Approchez l’arrière du téléphone du terminal.')+'</div><button class="lnk" onclick="pcMerch(\'204518\')">'+T('Prototype: tap a terminal','Prototype: koza ku cyuma','Prototype : approcher un terminal')+'</button>';
+ w.replaceWith(nw);if(a)a.remove();if(b)b.remove();return d.innerHTML};
+setInterval(()=>{const e=document.getElementById('tp723n');if(e)e.textContent=60-Math.floor(Date.now()/1000)%60},1000);
+document.title=document.title.replace('v722','v723');
+document.querySelectorAll('title').forEach(x=>x.textContent=x.textContent.replace('v722','v723'));
+}
+</script>
+<script>
+/* v724: Pay code card rail, closer to the Naver Pay screens. Before: the selected card sat at the far left of the rail with nothing beside it, and the + tile was hidden at the far right. Now: the + tile sits on the left like the screenshots, the selected card is always centred with a neighbour on both sides, and swiping the rail switches what pays (Pay Money / Bank) with a light buzz. Tapping the card tile still opens the itunda card. */
+{
+const _pc=screens.pcode;let busy=0,tm;
+const ctr=sm=>{const r=document.getElementById('pcrail');if(!r)return;const b=r.querySelector('[aria-pressed=true]');if(!b)return;busy=1;r.style.scrollBehavior=sm?'smooth':'auto';r.scrollLeft=b.offsetLeft+b.offsetWidth/2-r.clientWidth/2;setTimeout(()=>{busy=0},sm?500:120)};
+screens.pcode=function(){let h=_pc.apply(this,arguments);if(typeof h!=='string'||h.indexOf('id="pcrail"')<0)return h;
+ const m=h.match(/<button class="pcmc add"[\s\S]*?<\/button>/);
+ if(m){h=h.replace(m[0],'').replace(/(<div class="pcrl"[^>]*>)/,'$1'+m[0])}
+ requestAnimationFrame(()=>requestAnimationFrame(()=>ctr(false)));return h};
+const pick=()=>{const r=document.getElementById('pcrail');if(!r||busy)return;const c=r.scrollLeft+r.clientWidth/2;let best=null,d=1e9;
+ r.querySelectorAll('.pcmc.pay,.pcmc.bank').forEach(b=>{const x=Math.abs(b.offsetLeft+b.offsetWidth/2-c);if(x<d){d=x;best=b}});
+ const k=best&&(best.classList.contains('bank')?'bank':'pay'),cur=S.psrc==='bank'?'bank':'pay';
+ if(best&&k!==cur&&d<best.offsetWidth*.75){try{navigator.vibrate&&navigator.vibrate(10)}catch(e){}pcSrc(k)}};
+document.addEventListener('scroll',e=>{if(!e.target||e.target.id!=='pcrail')return;clearTimeout(tm);tm=setTimeout(pick,150)},true);
+document.querySelectorAll('title').forEach(t=>t.textContent=t.textContent.replace('v723','v724'));
+}
+</script>
+<style id="glass-home-v725">
+/* v725: Home screen glass. Frosted cards over a soft colour field. CSS only, scoped to the Home tab (.h9) plus the shared tab bar. */
+:root{--gl-base:#F1F0FF;--gl-a:rgba(143,137,255,.46);--gl-b:rgba(108,214,196,.34);--gl-c:rgba(255,186,150,.34);
+--gl-fill:rgba(255,255,255,.62);--gl-fill2:rgba(255,255,255,.36);--gl-tile:rgba(255,255,255,.66);
+--gl-edge:rgba(255,255,255,.82);--gl-edge2:rgba(255,255,255,.5);--gl-line:rgba(25,31,40,.07);
+--gl-hi:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(255,255,255,.3);
+--gl-shadow:0 14px 32px -16px rgba(60,52,170,.34),0 2px 6px rgba(60,52,170,.05);
+--gl-blur:blur(24px) saturate(170%)}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--gl-base:#101013;--gl-a:rgba(112,102,255,.46);--gl-b:rgba(36,150,142,.30);--gl-c:rgba(190,84,110,.24);
+--gl-fill:rgba(34,34,46,.56);--gl-fill2:rgba(24,24,34,.38);--gl-tile:rgba(255,255,255,.09);
+--gl-edge:rgba(255,255,255,.17);--gl-edge2:rgba(255,255,255,.10);--gl-line:rgba(255,255,255,.08);
+--gl-hi:inset 0 1px 0 rgba(255,255,255,.16),inset 0 -1px 0 rgba(255,255,255,.03);
+--gl-shadow:0 18px 36px -16px rgba(0,0,0,.75),0 2px 6px rgba(0,0,0,.3)}}
+:root[data-theme=dark]{--gl-base:#101013;--gl-a:rgba(112,102,255,.46);--gl-b:rgba(36,150,142,.30);--gl-c:rgba(190,84,110,.24);
+--gl-fill:rgba(34,34,46,.56);--gl-fill2:rgba(24,24,34,.38);--gl-tile:rgba(255,255,255,.09);
+--gl-edge:rgba(255,255,255,.17);--gl-edge2:rgba(255,255,255,.10);--gl-line:rgba(255,255,255,.08);
+--gl-hi:inset 0 1px 0 rgba(255,255,255,.16),inset 0 -1px 0 rgba(255,255,255,.03);
+--gl-shadow:0 18px 36px -16px rgba(0,0,0,.75),0 2px 6px rgba(0,0,0,.3)}
+
+/* colour field: stays put while the cards scroll over it, which is what makes the blur visible */
+#phone .screen.h9{background:
+radial-gradient(75% 36% at 6% 3%,var(--gl-a),transparent 70%),
+radial-gradient(60% 32% at 104% 24%,var(--gl-b),transparent 72%),
+radial-gradient(72% 38% at -4% 64%,var(--gl-c),transparent 72%),
+radial-gradient(64% 34% at 102% 96%,var(--gl-a),transparent 72%),
+var(--gl-base)!important}
+
+/* glass cards */
+#phone .screen.h9 .hc,#phone .screen.h9 .sec{margin:10px 12px 0!important;padding-left:0;padding-right:0;border:1px solid var(--gl-edge)!important;border-radius:28px!important;
+background:linear-gradient(150deg,var(--gl-fill),var(--gl-fill2))!important;
+-webkit-backdrop-filter:var(--gl-blur);backdrop-filter:var(--gl-blur);box-shadow:var(--gl-hi),var(--gl-shadow)!important;overflow:hidden}
+#phone .screen.h9 .sec{padding:22px 20px 12px!important}
+#phone .screen.h9 .hc{padding:16px 0 8px!important}
+/* the balance card is the one thing allowed to glow */
+#phone .screen.h9 .top+.hc{background:radial-gradient(110% 90% at 0% 0%,color-mix(in srgb,var(--br) 30%,transparent),transparent 62%),linear-gradient(150deg,var(--gl-fill),var(--gl-fill2))!important}
+#phone .screen.h9 .hr{padding-left:20px!important;padding-right:20px!important}
+#phone .screen.h9 .hct{padding-left:20px!important;padding-right:20px!important}
+#phone .screen.h9 .hc .row{padding-left:20px!important;padding-right:20px!important}
+#phone .screen.h9 .hc .row .s{color:var(--mu)!important}
+#phone .screen.h9 .hc .hf{padding-left:20px!important;padding-right:20px!important}
+#phone .screen.h9 .hc .hf::before{left:20px;right:20px;background:var(--gl-line)}
+
+/* tiles and pills */
+#phone .screen.h9 .hi,#phone .screen.h9 .gi .ico{background:var(--gl-tile)!important;border:1px solid var(--gl-edge2);box-shadow:var(--gl-hi)}
+#phone .screen.h9 .hp{background:color-mix(in srgb,var(--br) 24%,transparent)!important;border:1px solid color-mix(in srgb,var(--br) 36%,transparent);box-shadow:inset 0 1px 0 rgba(255,255,255,.45)}
+#phone .screen.h9 .hp.pr{background:color-mix(in srgb,var(--br) 40%,transparent)!important}
+#phone .screen.h9 .hc.hpm{background:linear-gradient(135deg,color-mix(in srgb,var(--br) 42%,transparent),color-mix(in srgb,var(--br) 14%,transparent))!important}
+
+/* header: frosted, sticky, with a hairline once content slides under it */
+#phone .screen.h9 .top{padding-bottom:10px!important;background:color-mix(in srgb,var(--gl-base) 52%,transparent)!important;
+-webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);border-bottom:1px solid transparent;transition:border-color .2s,box-shadow .2s}
+#phone .screen.h9.sc9 .top{border-bottom-color:var(--gl-edge2);box-shadow:0 10px 24px -18px rgba(40,36,130,.45)!important}
+#phone .screen.h9 .hbk{padding:4px 12px 4px 6px;border-radius:999px;background:var(--gl-fill);border:1px solid var(--gl-edge);box-shadow:var(--gl-hi)}
+#phone .screen.h9 .top .ib{border-radius:22px;background:var(--gl-fill);border:1px solid var(--gl-edge);box-shadow:var(--gl-hi)}
+
+/* tab bar: same footprint, frosted */
+#phone .tabs{background:color-mix(in srgb,var(--bg) 58%,transparent)!important;-webkit-backdrop-filter:blur(24px) saturate(180%)!important;backdrop-filter:blur(24px) saturate(180%)!important;border-top:1px solid var(--gl-edge2)!important}
+
+/* fallbacks: no backdrop-filter, or the person asked for less transparency */
+@supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){#phone .screen.h9 .hc,#phone .screen.h9 .sec,#phone .screen.h9 .top,#phone .tabs{background:var(--bg)!important}}
+@media (prefers-reduced-transparency:reduce){#phone{--gl-fill:var(--bg);--gl-fill2:var(--bg);--gl-tile:var(--chip);--gl-blur:none}
+#phone .screen.h9 .top,#phone .tabs{background:var(--bg)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}}
+</style>
+<style id="glass-screens-v726">
+/* v726: glass beyond Home. Same tokens as v725. */
+:root{--gl-card:linear-gradient(150deg,var(--gl-fill),var(--gl-fill2))}
+
+/* colour field on every screen that has no background of its own */
+#phone .screen:not([style*=background]){background:
+radial-gradient(75% 34% at 6% 2%,var(--gl-a),transparent 70%),
+radial-gradient(60% 30% at 104% 30%,var(--gl-b),transparent 72%),
+radial-gradient(72% 36% at -4% 72%,var(--gl-c),transparent 72%),
+radial-gradient(64% 32% at 102% 98%,var(--gl-a),transparent 72%),
+var(--gl-base)!important}
+
+/* sticky headers: frosted */
+#phone .screen .bar,#phone .screen .ahead,#phone .screen:not(.h9) .top,#phone .xp .xh{
+background:color-mix(in srgb,var(--gl-base) 52%,transparent)!important;
+-webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%)}
+#phone .screen.sc9 .bar,#phone .screen.sc9 .ahead,#phone .screen.sc9:not(.h9) .top{box-shadow:0 10px 24px -18px rgba(40,36,130,.45),0 1px 0 var(--gl-edge2)!important}
+
+/* cards: Pay sections, Explore groups, pockets, grouped rows */
+#phone .screen:not(.h9)>.sec:not(.mini),#phone .xp .xc,#phone .screen:not(.h9) .pkc,#phone .glx,#phone .screen>div:not(.glx):has(>.ar){
+margin:10px 12px 0!important;border:1px solid var(--gl-edge)!important;border-radius:28px!important;background:var(--gl-card)!important;
+-webkit-backdrop-filter:var(--gl-blur);backdrop-filter:var(--gl-blur);box-shadow:var(--gl-hi),var(--gl-shadow)!important;overflow:hidden}
+#phone .screen:not(.h9)>.sec:not(.mini){padding:22px 20px 12px!important}
+#phone .xp .xc{padding:18px 8px 10px!important}
+#phone .xp .xc::before{display:none!important}
+#phone .glx{padding:6px 0}
+#phone .glx>.ar,#phone .screen>div:not(.glx)>.ar{padding-left:20px!important;padding-right:20px!important;position:relative}
+#phone .glx>.ar+.ar::before,#phone .screen>div:not(.glx)>.ar+.ar::before{content:"";position:absolute;top:0;left:20px;right:20px;height:1px;background:var(--gl-line)}
+#phone .screen>.agt{padding-left:28px}
+
+/* icon tiles */
+#phone .screen:not(.h9) .ar .g,#phone .screen:not(.h9) .ico:not(.check),#phone .xp .xc .ar .g{background:var(--gl-tile)!important;border:1px solid var(--gl-edge2);box-shadow:var(--gl-hi)}
+
+/* Explore: search field and shortcut row */
+#phone .xp .xs,#phone .asr{background:var(--gl-fill)!important;border:1px solid var(--gl-edge);box-shadow:var(--gl-hi);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+#phone .xp .xpills{margin:12px 12px 4px!important;padding:12px 8px 14px!important;border:1px solid var(--gl-edge);border-radius:24px;background:var(--gl-card);-webkit-backdrop-filter:var(--gl-blur);backdrop-filter:var(--gl-blur);box-shadow:var(--gl-hi),var(--gl-shadow)}
+
+/* secondary buttons and chips */
+#phone .btn.sec2{background:var(--gl-fill)!important;border:1px solid var(--gl-edge);box-shadow:var(--gl-hi);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+#phone .cch{background:var(--gl-fill);border:1px solid var(--gl-edge2);box-shadow:var(--gl-hi)}
+
+/* bottom action bar */
+#phone .cta{background:color-mix(in srgb,var(--gl-base) 58%,transparent)!important;-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);box-shadow:none!important;border-top:1px solid var(--gl-edge2)!important}
+#phone .cta input#msg{background:var(--gl-fill)!important;border:1px solid var(--gl-edge)!important}
+#phone .cta .ib[style*="var(--chip)"]{background:var(--gl-fill)!important;border:1px solid var(--gl-edge)}
+
+/* chat bubbles: received ones turn to glass, sent ones keep the brand colour */
+#phone .screen [style*="border-radius:18px 18px 18px 4px"]{background:var(--gl-fill)!important;border:1px solid var(--gl-edge);box-shadow:var(--gl-hi);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+#phone .screen [style*="border-radius:18px 18px 4px 18px"]{box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 8px 18px -10px color-mix(in srgb,var(--br) 80%,transparent)}
+
+/* sheets, scrim, toast */
+#phone .sheetbg{background:rgba(22,20,58,.34)!important;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+#phone .sheet{background:color-mix(in srgb,var(--bg) 76%,transparent)!important;-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border:1px solid var(--gl-edge);border-bottom:0;box-shadow:var(--gl-hi),0 -18px 40px -20px rgba(30,26,110,.4)}
+#phone .toast{background:color-mix(in srgb,var(--tx) 78%,transparent)!important;-webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%);border:1px solid rgba(255,255,255,.18)}
+
+/* fallbacks */
+@supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){#phone .sheet,#phone .cta,#phone .screen .bar,#phone .screen .ahead,#phone .screen:not(.h9) .top,#phone .xp .xh{background:var(--bg)!important}#phone .toast{background:var(--tx)!important}}
+@media (prefers-reduced-transparency:reduce){#phone .sheet,#phone .cta,#phone .screen .bar,#phone .screen .ahead,#phone .screen:not(.h9) .top,#phone .xp .xh{background:var(--bg)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}#phone .toast{background:var(--tx)!important}#phone .sheetbg{-webkit-backdrop-filter:none;backdrop-filter:none}}
+</style>
+<script>
+/* v726: group the flat row lists on You into glass cards. Moves existing nodes, so every onclick keeps working. */
+(function(){var v=document.getElementById('view');if(!v||!window.MutationObserver)return;
+function wrap(sc){if(!sc||sc.__gl)return;sc.__gl=1;
+if(!sc.querySelector(':scope>.ahead')||!sc.querySelector(':scope>.agt'))return;
+var grp=null;Array.prototype.slice.call(sc.children).forEach(function(el){
+if(el.classList.contains('ar')){if(!grp){grp=document.createElement('div');grp.className='glx';sc.insertBefore(grp,el)}grp.appendChild(el)}else grp=null})}
+function run(){wrap(v.querySelector(':scope>.screen'))}
+new MutationObserver(run).observe(v,{childList:true});run()})();
+</script>
+<style id="glass-controls-v727">
+/* v727: glass for controls. Keypad tray, input fields, chips, primary buttons, switches, segmented tabs, list cards, empty states. CSS only, same tokens as v725/v726. */
+
+/* fields: underline inputs become soft glass wells */
+#phone .screen .field{padding:12px 16px;border:1px solid var(--gl-edge);border-radius:20px;background:var(--gl-fill);box-shadow:var(--gl-hi);
+-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);transition:border-color .2s,box-shadow .2s}
+#phone .screen .field:focus-within{border-color:color-mix(in srgb,var(--br) 55%,transparent);box-shadow:var(--gl-hi),0 0 0 4px color-mix(in srgb,var(--br) 18%,transparent)}
+#phone .screen .field input{background:transparent}
+
+/* chips and pills */
+#phone .screen .chip,#phone .screen .chp{background:var(--gl-fill);border:1px solid var(--gl-edge2);box-shadow:var(--gl-hi);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+#phone .screen .chip[aria-pressed="true"],#phone .screen .chip.on,#phone .screen .chp.on{background:color-mix(in srgb,var(--br) 26%,transparent);border-color:color-mix(in srgb,var(--br) 42%,transparent)}
+
+/* primary button: brand colour with a light top edge and a coloured lift */
+#phone .btn:not(.sec2):not(:disabled){background-image:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,0) 55%);
+box-shadow:inset 0 1px 0 rgba(255,255,255,.42),0 12px 22px -12px color-mix(in srgb,var(--br) 85%,transparent)}
+#phone .btn:disabled{box-shadow:none}
+
+/* switches: glass track, light thumb */
+#phone .sw{box-shadow:inset 0 1px 2px rgba(20,20,60,.14),0 0 0 1px var(--gl-edge2)}
+#phone .sw i{box-shadow:0 2px 6px rgba(20,20,60,.28),inset 0 1px 0 #fff}
+
+/* segmented tabs */
+#phone .screen .seg{margin:10px 12px 0;padding:6px;gap:4px;border:1px solid var(--gl-edge);border-radius:999px;background:var(--gl-fill);box-shadow:var(--gl-hi);
+-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+#phone .screen .seg button{flex:1;padding:9px 12px;border:0!important;border-radius:999px}
+#phone .screen .seg button.on{background:var(--gl-tile);box-shadow:var(--gl-hi),0 4px 10px -6px rgba(40,36,130,.4)}
+
+/* generic cards and empty states */
+#phone .screen:not(.h9) .card,#phone .screen .emp{border:1px solid var(--gl-edge);border-radius:28px;background:var(--gl-card);
+-webkit-backdrop-filter:var(--gl-blur);backdrop-filter:var(--gl-blur);box-shadow:var(--gl-hi),var(--gl-shadow)}
+#phone .screen .emp{margin:16px 12px 0;padding:28px 20px}
+
+/* press feedback: a short glass shine instead of a plain fade */
+#phone .tap:active,#phone .row:active{background:var(--gl-fill2);border-radius:18px}
+
+/* fallbacks */
+@supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){#phone .screen .field,#phone .screen .seg,#phone .screen .chip,#phone .screen .chp,#phone .screen:not(.h9) .card,#phone .screen .emp{background:var(--bg)}}
+@media (prefers-reduced-transparency:reduce){#phone .screen .field,#phone .screen .seg,#phone .screen .chip,#phone .screen .chp,#phone .screen:not(.h9) .card,#phone .screen .emp{background:var(--bg);-webkit-backdrop-filter:none;backdrop-filter:none}}
+@media (prefers-reduced-motion:reduce){#phone .screen .field{transition:none}}
+</style>
+<style id="glass-maps-v728">
+/* v728: glass for Maps, Place and grouped info cards. CSS only, same tokens as v725 to v727. */
+
+/* map search pill and hint float over the map as glass */
+#phone .mps{background:var(--gl-fill)!important;border:1px solid var(--gl-edge);box-shadow:var(--gl-hi),var(--gl-shadow);
+-webkit-backdrop-filter:var(--gl-blur);backdrop-filter:var(--gl-blur)}
+#phone .mphint{background:var(--gl-fill2)!important;border:1px solid var(--gl-edge2);box-shadow:var(--gl-hi);
+-webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%)}
+
+/* place action row (Call, Save, Share, Directions): glass buttons, the primary one keeps the brand colour */
+#phone .acts.mp5>button:not(.p){background:var(--gl-fill)!important;border:1px solid var(--gl-edge);box-shadow:var(--gl-hi);
+-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+#phone .acts.mp5>button.p{background-image:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,0) 55%);
+box-shadow:inset 0 1px 0 rgba(255,255,255,.42),0 10px 20px -12px color-mix(in srgb,var(--br) 85%,transparent)}
+
+/* info cards: grouped rows and the map preview with its caption */
+#phone .cc95{margin:10px 12px 0;padding:6px 20px;border:1px solid var(--gl-edge);border-radius:28px;background:var(--gl-card)!important;
+-webkit-backdrop-filter:var(--gl-blur);backdrop-filter:var(--gl-blur);box-shadow:var(--gl-hi),var(--gl-shadow)}
+#phone .cc95 .r95+.r95{border-top:1px solid var(--gl-line)}
+#phone .map97{margin:12px 12px 0;border:1px solid var(--gl-edge);border-radius:28px;box-shadow:var(--gl-hi),var(--gl-shadow)}
+#phone .map97 .cap{background:var(--gl-fill)!important;border-top:1px solid var(--gl-edge2);
+-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+
+/* fallbacks */
+@supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){#phone .mps,#phone .mphint,#phone .acts.mp5>button:not(.p),#phone .cc95,#phone .map97 .cap{background:var(--bg)!important}}
+@media (prefers-reduced-transparency:reduce){#phone .mps,#phone .mphint,#phone .acts.mp5>button:not(.p),#phone .cc95,#phone .map97 .cap{background:var(--bg)!important;-webkit-backdrop-filter:none;backdrop-filter:none}}
+</style>
+<style id="glass-tint-v729">
+/* v729: background changed from colour blobs to a plain tint. One calm flat colour per theme, with a faint top wash so the frosted headers and cards still have something to blur. */
+:root{--gl-base:#EEF0F8}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--gl-base:#0E0F16}}
+:root[data-theme=dark]{--gl-base:#0E0F16}
+#phone .screen.h9,#phone .screen:not([style*=background]){background:
+linear-gradient(180deg,color-mix(in srgb,var(--br) 7%,transparent),transparent 220px),
+var(--gl-base)!important}
+</style>
+<style id="glass-place-v730">
+/* v730: glass for the Place page parts (action row, quick actions, stamp card, menu, assistant card, tags). CSS only, same tokens as v725 to v729. */
+
+/* action buttons: glass, the main one keeps the link colour with a light edge */
+#phone .pz-acts button:not(.main){background:var(--gl-fill)!important;border:1px solid var(--gl-edge)!important;box-shadow:var(--gl-hi);
+-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+#phone .pz-acts button.main{background-image:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,0) 55%);
+box-shadow:inset 0 1px 0 rgba(255,255,255,.42),0 10px 20px -12px color-mix(in srgb,var(--lk) 85%,transparent)}
+
+/* quick actions: one glass strip */
+#phone .pz-q{margin:14px 12px 4px;border:1px solid var(--gl-edge);border-radius:24px;background:var(--gl-card);overflow:hidden;
+-webkit-backdrop-filter:var(--gl-blur);backdrop-filter:var(--gl-blur);box-shadow:var(--gl-hi),var(--gl-shadow)}
+#phone .pz-q button:active{background:var(--gl-tile)}
+
+/* stamp card, assistant card, menu rows */
+#phone .pz-stamp{border:1px solid var(--gl-edge);background:var(--gl-card)!important;box-shadow:var(--gl-hi),var(--gl-shadow);
+-webkit-backdrop-filter:var(--gl-blur);backdrop-filter:var(--gl-blur);border-radius:22px;margin-left:12px;margin-right:12px}
+#phone .pz-ai{background:linear-gradient(150deg,color-mix(in srgb,var(--br) 22%,transparent),color-mix(in srgb,var(--br) 8%,transparent))!important;
+border:1px solid color-mix(in srgb,var(--br) 30%,var(--gl-edge))!important;border-radius:24px!important;box-shadow:var(--gl-hi);
+-webkit-backdrop-filter:var(--gl-blur);backdrop-filter:var(--gl-blur);margin-left:12px!important;margin-right:12px!important}
+#phone .pz-menu{margin:10px 12px 0;padding:4px 18px;border:1px solid var(--gl-edge);border-radius:28px;background:var(--gl-card);
+-webkit-backdrop-filter:var(--gl-blur);backdrop-filter:var(--gl-blur);box-shadow:var(--gl-hi),var(--gl-shadow)}
+#phone .pz-menu .r+.r{border-top:1px solid var(--gl-line)}
+#phone .pz-menu .r i{background:var(--gl-tile);border:1px solid var(--gl-edge2);box-shadow:var(--gl-hi)}
+#phone .pz-hub em{background:color-mix(in srgb,var(--br) 24%,transparent);border:1px solid color-mix(in srgb,var(--br) 34%,transparent)}
+#phone .pz-tags span{background:var(--gl-fill);border:1px solid var(--gl-edge2);box-shadow:var(--gl-hi)}
+
+/* fallbacks */
+@supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){#phone .pz-acts button:not(.main),#phone .pz-q,#phone .pz-stamp,#phone .pz-menu{background:var(--bg)!important}}
+@media (prefers-reduced-transparency:reduce){#phone .pz-acts button:not(.main),#phone .pz-q,#phone .pz-stamp,#phone .pz-menu,#phone .pz-ai{background:var(--bg)!important;-webkit-backdrop-filter:none;backdrop-filter:none}}
+</style>
+<style id="glass-directions-v731">
+/* v731: glass for Directions and navigation: mode chips, nearby place cards, turn banner and hint, bus badges. CSS only, same tokens as v725 to v730. */
+
+/* mode chips */
+#phone .dpc button{background:var(--gl-fill)!important;border:1px solid var(--gl-edge2)!important;box-shadow:var(--gl-hi);
+-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+#phone .dpc button.on{background:color-mix(in srgb,var(--br) 28%,transparent)!important;border-color:color-mix(in srgb,var(--br) 44%,transparent)!important}
+
+/* nearby place cards: each one a glass card instead of a row with a line */
+#phone .nvc{margin:10px 12px 0;padding:16px 18px 14px;border:1px solid var(--gl-edge);border-radius:28px;background:var(--gl-card);
+-webkit-backdrop-filter:var(--gl-blur);backdrop-filter:var(--gl-blur);box-shadow:var(--gl-hi),var(--gl-shadow)}
+#phone .nvc:active{background:var(--gl-tile)}
+
+/* turn banner: brand glass with a light top edge, hint under it as a frosted pill */
+#phone .nvt{background:linear-gradient(160deg,color-mix(in srgb,var(--lk) 88%,#fff 0%),color-mix(in srgb,var(--lk) 66%,transparent))!important;
+border:1px solid rgba(255,255,255,.28);border-radius:26px;box-shadow:inset 0 1px 0 rgba(255,255,255,.42),0 14px 26px -14px color-mix(in srgb,var(--lk) 80%,transparent);
+-webkit-backdrop-filter:var(--gl-blur);backdrop-filter:var(--gl-blur)}
+#phone .nvt2{background:var(--gl-fill)!important;border:1px solid var(--gl-edge2);border-radius:999px;box-shadow:var(--gl-hi);
+-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+
+/* bus line badges: lit top edge */
+#phone .pl5{box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 4px 10px -5px rgba(20,20,60,.4)}
+
+/* fallbacks */
+@supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){#phone .dpc button,#phone .nvc,#phone .nvt2{background:var(--bg)!important}}
+@media (prefers-reduced-transparency:reduce){#phone .dpc button,#phone .nvc,#phone .nvt2{background:var(--bg)!important;-webkit-backdrop-filter:none;backdrop-filter:none}#phone .nvt{-webkit-backdrop-filter:none;backdrop-filter:none}}
+</style>
+<style id="glass-pay-v732">
+/* v732: glass for the Pay flow (till number, amount, source switch, receipt). CSS only, same tokens as v725 to v731. */
+
+/* till number input: a glass well */
+#phone .in#tln{padding:16px 18px;border:1px solid var(--gl-edge);border-radius:22px;background:var(--gl-fill);box-shadow:var(--gl-hi);
+-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);text-align:center;letter-spacing:6px;font-size:26px;font-weight:800}
+#phone .in#tln:focus{outline:0;border-color:color-mix(in srgb,var(--br) 55%,transparent);box-shadow:var(--gl-hi),0 0 0 4px color-mix(in srgb,var(--br) 18%,transparent)}
+
+/* amount screen: source switch (itunda Pay / Bank) as a glass pair, merchant avatar with a lit edge */
+#phone .req button{background:var(--gl-fill)!important;border:1px solid var(--gl-edge2)!important;box-shadow:var(--gl-hi);
+-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+#phone .req button.on{background:color-mix(in srgb,var(--br) 28%,transparent)!important;border-color:color-mix(in srgb,var(--br) 44%,transparent)!important}
+#phone [style*="width:52px;height:52px;border-radius:26px"]{border:1px solid var(--gl-edge);box-shadow:var(--gl-hi),0 8px 16px -10px rgba(40,36,130,.35)}
+
+/* payment done: receipt card */
+#phone [style*="margin:44px 24px 0;padding:4px 20px"]{margin:36px 12px 0!important;padding:4px 20px!important;border:1px solid var(--gl-edge);border-radius:28px!important;
+background:var(--gl-card)!important;-webkit-backdrop-filter:var(--gl-blur);backdrop-filter:var(--gl-blur);box-shadow:var(--gl-hi),var(--gl-shadow)}
+#phone [style*="margin:36px 12px 0!important"]>div+div,#phone [style*="margin:44px 24px 0;padding:4px 20px"]>div+div{border-top:1px solid var(--gl-line)!important}
+
+/* fallbacks */
+@supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){#phone .in#tln,#phone .req button,#phone [style*="margin:44px 24px 0;padding:4px 20px"]{background:var(--bg)!important}}
+@media (prefers-reduced-transparency:reduce){#phone .in#tln,#phone .req button,#phone [style*="margin:44px 24px 0;padding:4px 20px"]{background:var(--bg)!important;-webkit-backdrop-filter:none;backdrop-filter:none}}
+</style>
+<style id="glass-wallet-v733">
+/* v733: glass for coupons and the QR scan screen. CSS only, same tokens as v725 to v732. */
+
+/* coupon tickets: tinted glass with a soft dashed edge, claim button with a light top edge */
+#phone .cpn{margin-left:12px!important;margin-right:12px!important;border:1px dashed color-mix(in srgb,var(--br) 55%,transparent)!important;border-radius:24px!important;
+background:linear-gradient(150deg,color-mix(in srgb,var(--br) 20%,transparent),color-mix(in srgb,var(--br) 7%,transparent))!important;
+box-shadow:var(--gl-hi);-webkit-backdrop-filter:var(--gl-blur);backdrop-filter:var(--gl-blur)}
+#phone .cpn button:not(.d){background-image:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,0) 55%);
+box-shadow:inset 0 1px 0 rgba(255,255,255,.42),0 8px 16px -10px color-mix(in srgb,var(--lk) 85%,transparent)}
+#phone .cpn button.d{background:var(--gl-fill);border:1px solid var(--gl-edge2)}
+
+/* coupon code input: glass well */
+#phone .in#cpin{padding:0 18px;border:1px solid var(--gl-edge);border-radius:22px;background:var(--gl-fill);box-shadow:var(--gl-hi);
+-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+#phone .in#cpin:focus{outline:0;border-color:color-mix(in srgb,var(--br) 55%,transparent);box-shadow:var(--gl-hi),0 0 0 4px color-mix(in srgb,var(--br) 18%,transparent)}
+
+/* QR: a frosted frame around the white code tile (the code itself stays white so it scans) */
+#phone .qr{border:1px solid var(--gl-edge);border-radius:30px;box-shadow:0 0 0 10px var(--gl-fill),var(--gl-hi),var(--gl-shadow)}
+
+/* scan sample chips */
+#phone .v8chip{background:var(--gl-fill)!important;border:1px solid var(--gl-edge2)!important;box-shadow:var(--gl-hi);
+-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+
+/* fallbacks */
+@supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){#phone .in#cpin,#phone .v8chip{background:var(--bg)!important}}
+@media (prefers-reduced-transparency:reduce){#phone .in#cpin,#phone .v8chip,#phone .cpn{-webkit-backdrop-filter:none;backdrop-filter:none}#phone .in#cpin,#phone .v8chip{background:var(--bg)!important}}
+</style>
+<style id="glass-balance-v734">
+/* v734: glass for the Pay home balance card. CSS only, same tokens as v725 to v733. */
+#phone .bal718{position:relative;margin:14px 12px 0!important;padding:20px 20px 18px!important;border:1px solid var(--gl-edge);border-radius:30px!important;overflow:hidden;
+background:linear-gradient(155deg,color-mix(in srgb,var(--br) 26%,transparent),color-mix(in srgb,var(--br) 8%,transparent) 62%),var(--gl-card)!important;
+-webkit-backdrop-filter:var(--gl-blur);backdrop-filter:var(--gl-blur);box-shadow:var(--gl-hi),var(--gl-shadow)}
+/* soft light across the top edge of the card */
+#phone .bal718::before{content:"";position:absolute;left:0;right:0;top:0;height:46%;pointer-events:none;
+background:linear-gradient(180deg,rgba(255,255,255,.30),rgba(255,255,255,0))}
+#phone .bal718>*{position:relative}
+#phone .bal718 .n{font-size:38px;letter-spacing:-1px}
+/* Send / Add money: glass pair, the primary one keeps the brand colour with a light edge */
+#phone .bal718 .sec2{background:var(--gl-fill)!important;color:var(--tx)!important;border:1px solid var(--gl-edge)!important;box-shadow:var(--gl-hi);
+-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+#phone .bal718 .btn:not(.sec2){background-image:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,0) 55%);
+box-shadow:inset 0 1px 0 rgba(255,255,255,.42),0 10px 20px -12px color-mix(in srgb,var(--br) 85%,transparent)}
+@supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){#phone .bal718{background:var(--chip)!important}}
+@media (prefers-reduced-transparency:reduce){#phone .bal718,#phone .bal718 .sec2{-webkit-backdrop-filter:none;backdrop-filter:none}#phone .bal718{background:var(--chip)!important}}
+</style>
+<style id="glass-polish-v735">
+/* v735: consistency pass. (1) Secondary text on glass is darker in light mode and lighter in dark mode, so it stays readable on frosted surfaces. (2) One focus ring for every glass control. CSS only. */
+#phone :is(.hc,.sec,.cc95,.nvc,.pz-menu,.pz-stamp,.pz-q,.pz-hub,.bal718,.keys,.field,.emp,.card,.cpn,.map97 .cap,.mps,.mphint,.nvt2){--tt:#5F6A78;--mu:#566170}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) #phone :is(.hc,.sec,.cc95,.nvc,.pz-menu,.pz-stamp,.pz-q,.pz-hub,.bal718,.keys,.field,.emp,.card,.cpn,.map97 .cap,.mps,.mphint,.nvt2){--tt:#A9B1BE;--mu:#B4BBC7}}
+:root[data-theme=dark] #phone :is(.hc,.sec,.cc95,.nvc,.pz-menu,.pz-stamp,.pz-q,.pz-hub,.bal718,.keys,.field,.emp,.card,.cpn,.map97 .cap,.mps,.mphint,.nvt2){--tt:#A9B1BE;--mu:#B4BBC7}
+
+/* keyboard focus: same ring on glass buttons, chips, rows and inputs */
+#phone :is(button,.tap,.row,.chip,.chp,.nvc,input):focus-visible{outline:2px solid var(--br);outline-offset:2px;border-radius:inherit}
+#phone .keys button:focus-visible{outline-offset:-3px}
+</style>
+<style id="glass-smoke-v736">
+/* v740: the page behind a modal stays visible, like Toss shopping. The scrim is a light smoke dim with no blur, so product images and content still read behind the sheet, and the sheet floats inset from the screen edges with fully rounded corners. */
+#phone .sheetbg{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+#phone .sheet{left:12px!important;right:12px!important;bottom:calc(12px + env(safe-area-inset-bottom,0px))!important;border-radius:32px!important}
+
+/* v741: announcement modals (sheets with the big animated glyph: done, reward, confirm) are edgeless like Toss. No card, no border, no corners: the content sits straight on the smoke, which is clear at the top and deep at the bottom, with the blur growing toward the bottom. */
+#phone .sheetbg.smk-full{-webkit-backdrop-filter:blur(14px)!important;backdrop-filter:blur(14px)!important;
+-webkit-mask-image:linear-gradient(180deg,transparent var(--sa,8%),#000 calc(var(--sa,8%) + 30%));mask-image:linear-gradient(180deg,transparent var(--sa,8%),#000 calc(var(--sa,8%) + 30%))}
+#phone .sheet{left:0!important;right:0!important;bottom:0!important;border-radius:0!important;border:0!important;background:transparent!important;
+box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+padding:24px 24px calc(24px + env(safe-area-inset-bottom,0px))!important;
+--tx:#F2F4F8;--mu:#B4BBC7;--tt:#A9B1BE;--chip:rgba(255,255,255,.12);--gl-fill:rgba(255,255,255,.12);--gl-edge:rgba(255,255,255,.18);--gl-edge2:rgba(255,255,255,.14);color:var(--tx)}
+#phone .sheet:has(.g3){text-align:center}
+#phone .sheet:has(.g3) .g3{margin-left:auto;margin-right:auto}
+@media (prefers-reduced-transparency:reduce){#phone .sheetbg.smk-full{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;-webkit-mask-image:none;mask-image:none}}
+</style>
+<script id="glass-smoke-v736-js">
+/* Earlier versions set the scrim colour inline with !important, which a stylesheet cannot override, so the smoke colour is applied the same way whenever a scrim appears. */
+try{(()=>{
+const SMOKE='linear-gradient(180deg,rgba(14,14,34,.30),rgba(14,14,34,.50))';
+const reduce=matchMedia('(prefers-reduced-transparency:reduce)');
+const smoke=(b,sh)=>{b.style.setProperty('--sa','0%');b.style.setProperty('background','rgba(0,0,0,.5)','important')};
+const paint=r=>{(r.querySelectorAll?r.querySelectorAll('.sheetbg'):[]).forEach(b=>{const sh=b.nextElementSibling;b.classList.add('smk-full');smoke(b,sh);requestAnimationFrame(()=>smoke(b,sh));if(sh&&window.ResizeObserver&&!sh.__smk){sh.__smk=1;new ResizeObserver(()=>smoke(b,sh)).observe(sh)}})};
+const root=document.getElementById('layer')||document.body;
+new MutationObserver(m=>{m.forEach(x=>x.addedNodes.forEach(n=>{if(n.nodeType===1){if(n.classList&&n.classList.contains('sheetbg'))paint({querySelectorAll:()=>[n]});else paint(n)}}))}).observe(root,{childList:true,subtree:true});
+paint(root);
+})()}catch(e){console.error('glass-smoke-v736',e)}
+</script>
+<style id="glass-smoke-bars-v738">
+/* v738: top bar and bottom bar get a light smoke tint. A cool blue-grey haze sits on the frosted bar and fades toward the content, and the blur is slightly deeper. Skipped when blur is unsupported or reduced transparency is on. */
+:root{--sm-a:rgba(44,42,96,.16);--sm-b:rgba(44,42,96,.05)}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--sm-a:rgba(0,0,14,.34);--sm-b:rgba(0,0,14,.12)}}
+:root[data-theme=dark]{--sm-a:rgba(0,0,14,.34);--sm-b:rgba(0,0,14,.12)}
+@supports ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
+@media not (prefers-reduced-transparency:reduce){
+#phone .screen.h9 .top,#phone .screen .bar,#phone .screen .ahead,#phone .screen:not(.h9) .top,#phone .xp .xh{
+background:linear-gradient(180deg,var(--sm-a),var(--sm-b)),color-mix(in srgb,var(--gl-base) 56%,transparent)!important;
+-webkit-backdrop-filter:blur(22px) saturate(150%)!important;backdrop-filter:blur(22px) saturate(150%)!important}
+#phone .tabs{background:linear-gradient(0deg,var(--sm-a),var(--sm-b)),color-mix(in srgb,var(--gl-base) 60%,transparent)!important;
+-webkit-backdrop-filter:blur(26px) saturate(150%)!important;backdrop-filter:blur(26px) saturate(150%)!important}
+}}
+</style>
+<style id="glass-smoke-cta-v739">
+/* v739: the bottom button bars (.cta, where the main button of most screens lives) get the same smoke tint as the tab bar, so every bottom bar matches. Same fallbacks as v738. */
+@supports ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
+@media not (prefers-reduced-transparency:reduce){
+#phone .cta{background:linear-gradient(0deg,var(--sm-a),var(--sm-b)),color-mix(in srgb,var(--gl-base) 60%,transparent)!important;
+-webkit-backdrop-filter:blur(26px) saturate(150%)!important;backdrop-filter:blur(26px) saturate(150%)!important}
+}}
+</style>
+<style id="glass-edgeless-bars-v743">
+/* v743: edgeless smoky bars. App bars (top) and bottom bars (tab bar and button bars) have no border, hairline or shadow. A smoke layer behind each bar is solid at the screen edge and fades out toward the content, with the blur fading the same way, so there is no visible edge where the bar ends. */
+#phone#phone :is(.top,.xp .xh,.tabs,.cta){background:transparent!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;isolation:isolate}
+#phone#phone :is(.top,.xp .xh,.tabs,.cta)::before{content:"";position:absolute;left:0;right:0;z-index:-1;pointer-events:none}
+#phone#phone :is(.top,.xp .xh)::before{top:0;bottom:-22px;
+background:linear-gradient(180deg,var(--sm-a),transparent 100%),linear-gradient(180deg,color-mix(in srgb,var(--gl-base) 92%,transparent),color-mix(in srgb,var(--gl-base) 60%,transparent) 58%,transparent);
+-webkit-backdrop-filter:blur(22px) saturate(150%);backdrop-filter:blur(22px) saturate(150%);
+-webkit-mask-image:linear-gradient(180deg,#000 55%,transparent);mask-image:linear-gradient(180deg,#000 55%,transparent)}
+#phone#phone :is(.tabs,.cta)::before{bottom:0;top:-24px;
+background:linear-gradient(0deg,var(--sm-a),transparent 100%),linear-gradient(0deg,color-mix(in srgb,var(--gl-base) 94%,transparent),color-mix(in srgb,var(--gl-base) 62%,transparent) 58%,transparent);
+-webkit-backdrop-filter:blur(26px) saturate(150%);backdrop-filter:blur(26px) saturate(150%);
+-webkit-mask-image:linear-gradient(0deg,#000 58%,transparent);mask-image:linear-gradient(0deg,#000 58%,transparent)}
+/* bars that are not positioned (bar, ahead): same smoke fade as a plain background, no edge */
+#phone#phone :is(.screen .bar,.screen .ahead){background:linear-gradient(180deg,color-mix(in srgb,var(--gl-base) 90%,transparent),color-mix(in srgb,var(--gl-base) 55%,transparent) 70%,transparent)!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+@supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){#phone#phone :is(.top,.xp .xh,.tabs,.cta)::before{-webkit-backdrop-filter:none;backdrop-filter:none}}
+@media (prefers-reduced-transparency:reduce){#phone#phone :is(.top,.xp .xh,.tabs,.cta)::before{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--bg);-webkit-mask-image:none;mask-image:none;bottom:0;top:0}#phone#phone :is(.screen .bar,.screen .ahead){background:var(--bg)!important}}
+</style>
+<style id="glass-edgeless-cta-v744">
+/* v744: fix for the button bars (.cta). An older rule (v245) gave .cta::before a fixed 20px height, which cut the v743 smoke layer down to a thin strip. The height is reset here and the smoke now reaches higher above the button, deeper and softer, with no edge at its top or at the screen edge. */
+#phone#phone .cta::before{height:auto!important;top:-44px!important;bottom:0!important;
+background:linear-gradient(0deg,var(--sm-a),transparent 100%),linear-gradient(0deg,color-mix(in srgb,var(--gl-base) 96%,transparent),color-mix(in srgb,var(--gl-base) 72%,transparent) 48%,color-mix(in srgb,var(--gl-base) 28%,transparent) 78%,transparent)!important;
+-webkit-backdrop-filter:blur(26px) saturate(150%)!important;backdrop-filter:blur(26px) saturate(150%)!important;
+-webkit-mask-image:linear-gradient(0deg,#000 50%,transparent)!important;mask-image:linear-gradient(0deg,#000 50%,transparent)!important}
+/* keypad screens: the button sits flush on the keys, so no smoke layer there */
+#phone#phone #view:has(.keys)>.cta::before{display:none!important}
+@supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){#phone#phone .cta::before{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}}
+@media (prefers-reduced-transparency:reduce){#phone#phone .cta::before{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:var(--bg)!important;-webkit-mask-image:none!important;mask-image:none!important;top:0!important}}
+</style>
+<style id="glass-dropdown-v745">
+/* v745: dropdowns. The native select list cannot be styled, so selects open this smoky menu instead: deep smoke with blur, no border, light text, soft rounded corners. */
+#phone .dd745{position:absolute;z-index:60;left:0;top:0;min-width:140px;max-height:260px;overflow:auto;padding:6px;border-radius:22px;
+background:linear-gradient(180deg,rgba(18,16,40,.86),rgba(14,12,32,.92));-webkit-backdrop-filter:blur(22px) saturate(150%);backdrop-filter:blur(22px) saturate(150%);
+box-shadow:0 18px 40px -16px rgba(8,6,24,.55);color:#F2F4F8;font-size:16px;scrollbar-width:none;animation:dd745in .16s ease-out both;transform-origin:top center}
+#phone .dd745::-webkit-scrollbar{display:none}
+#phone .dd745.up{transform-origin:bottom center}
+#phone .dd745 [role=option]{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;padding:0 14px;border-radius:16px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#phone .dd745 [role=option][aria-selected=true]{background:color-mix(in srgb,var(--br) 34%,transparent);font-weight:800}
+#phone .dd745 [role=option][aria-selected=true]::after{content:"";width:6px;height:11px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg) translate(-2px,-2px);flex:none}
+#phone .dd745 [role=option]:hover,#phone .dd745 [role=option].act{background:rgba(255,255,255,.12)}
+@keyframes dd745in{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
+@media (prefers-reduced-transparency:reduce){#phone .dd745{background:#14122A;-webkit-backdrop-filter:none;backdrop-filter:none}}
+@media (prefers-reduced-motion:reduce){#phone .dd745{animation:none}}
+
+/* select and time fields: same glass well as the other inputs, custom chevron since the native arrow is hidden */
+#phone .fsel{-webkit-appearance:none;appearance:none;height:48px;padding:0 40px 0 16px;border:1px solid var(--gl-edge)!important;border-radius:20px;background-color:var(--gl-fill)!important;
+background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none' stroke='%238A93A3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 6l4.5 4.5L12.5 6'/%3E%3C/svg%3E");
+background-repeat:no-repeat;background-position:right 14px center;box-shadow:var(--gl-hi);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+#phone .fsel[aria-expanded=true]{border-color:color-mix(in srgb,var(--br) 55%,transparent)!important;box-shadow:var(--gl-hi),0 0 0 4px color-mix(in srgb,var(--br) 18%,transparent)}
+#phone .lat input[type=time]{border:1px solid var(--gl-edge);border-radius:16px;background:var(--gl-fill);color:var(--tx);padding:8px 12px;box-shadow:var(--gl-hi);font:inherit;font-weight:700}
+@media (prefers-reduced-transparency:reduce){#phone .fsel{-webkit-backdrop-filter:none;backdrop-filter:none;background-color:var(--chip)!important}}
+</style>
+<script id="glass-dropdown-v745-js">
+try{(()=>{
+const ph=document.getElementById('phone');if(!ph)return;
+let menu=null,sel=null,idx=0,openedAt=0;
+const close=(focus)=>{if(!menu)return;menu.remove();if(sel){sel.setAttribute('aria-expanded','false');if(focus)sel.focus({preventScroll:true})}menu=null;sel=null};
+const choose=i=>{const s=sel,o=s&&s.options[i];if(!o||o.disabled)return;close(true);if(s.selectedIndex!==i){s.selectedIndex=i;s.dispatchEvent(new Event('input',{bubbles:true}));s.dispatchEvent(new Event('change',{bubbles:true}))}};
+const mark=()=>{[...menu.children].forEach((c,i)=>c.classList.toggle('act',i===idx));const a=menu.children[idx];if(a&&a.scrollIntoView)a.scrollIntoView({block:'nearest'})};
+const open=s=>{
+ close();sel=s;idx=Math.max(0,s.selectedIndex);
+ menu=document.createElement('div');menu.className='dd745';menu.setAttribute('role','listbox');
+ [...s.options].forEach((o,i)=>{const d=document.createElement('div');d.setAttribute('role','option');d.setAttribute('aria-selected',i===s.selectedIndex?'true':'false');if(o.disabled){d.style.opacity='.4';d.style.pointerEvents='none'}d.textContent=o.textContent;
+  d.addEventListener('mousedown',e=>{e.preventDefault();e.stopPropagation()});d.addEventListener('click',e=>{e.stopPropagation();choose(i)});menu.appendChild(d)});
+ ph.appendChild(menu);s.setAttribute('aria-expanded','true');openedAt=Date.now();try{s.focus({preventScroll:true})}catch(_){}
+ const pr=ph.getBoundingClientRect(),r=s.getBoundingClientRect(),mh=Math.min(260,menu.scrollHeight),below=pr.bottom-r.bottom-12,above=r.top-pr.top-12;
+ const up=below<mh&&above>below;menu.classList.toggle('up',up);
+ menu.style.width=r.width+'px';menu.style.left=(r.left-pr.left)+'px';
+ menu.style.top=(up?(r.top-pr.top-mh-6):(r.bottom-pr.top+6))+'px';
+ menu.style.maxHeight=Math.max(120,Math.min(260,up?above:below))+'px';mark()};
+ph.addEventListener('mousedown',e=>{const s=e.target.closest&&e.target.closest('select');if(!s||s.disabled||!ph.contains(s))return;e.preventDefault();if(menu&&sel===s){if(Date.now()-openedAt>500)close()}else open(s)},true);
+const tap=e=>{const s=e.target.closest&&e.target.closest('select');if(!s||s.disabled||!ph.contains(s))return;e.preventDefault();if(e.type==='touchend'){if(menu&&sel===s){if(Date.now()-openedAt>500)close()}else open(s)}else if(!(menu&&sel===s)&&Date.now()-openedAt>500)open(s)};
+ph.addEventListener('click',tap,true);ph.addEventListener('touchend',tap,{capture:true,passive:false});
+ph.addEventListener('keydown',e=>{
+ if(menu){if(e.key==='Escape'){e.preventDefault();close(true)}else if(e.key==='ArrowDown'){e.preventDefault();idx=Math.min(sel.options.length-1,idx+1);mark()}else if(e.key==='ArrowUp'){e.preventDefault();idx=Math.max(0,idx-1);mark()}else if(e.key==='Enter'||e.key===' '){e.preventDefault();choose(idx)}else if(e.key==='Tab')close();return}
+ const s=e.target.closest&&e.target.closest('select');if(s&&['ArrowDown','ArrowUp','Enter',' '].includes(e.key)){e.preventDefault();open(s)}},true);
+document.addEventListener('mousedown',e=>{if(menu&&!menu.contains(e.target)&&e.target!==sel)close()},true);
+ph.addEventListener('scroll',e=>{if(menu&&(e.target===menu||menu.contains(e.target)))return;close()},true);window.addEventListener('resize',()=>close());
+new MutationObserver(()=>{if(menu&&sel&&!sel.isConnected)close()}).observe(ph,{childList:true,subtree:true});
+})()}catch(e){console.error('glass-dropdown-v745',e)}
+</script>
+<style id="glass-smoke-pages-v747">
+/* v747: full-page sheets (the app turns pickers, lists and forms into pages that slide in). v742 made every sheet transparent, so these pages let the screen behind show through and the contents overlapped. They are now smoky pages: deep, almost opaque smoke with blur, no edges, light text. --bg is set to the smoke colour inside the page, so cards and bars in it that use --bg match instead of showing as light patches. */
+#phone#phone .sheet.v6pg{--bg:#101013;--lk:#A8A3FF;background:linear-gradient(180deg,rgba(22,20,48,.975),rgba(12,12,26,.99))!important;
+-webkit-backdrop-filter:blur(26px) saturate(140%)!important;backdrop-filter:blur(26px) saturate(140%)!important;border:0!important;border-radius:0!important;box-shadow:none!important}
+#phone#phone .sheet.v6pg .v6h{background:transparent!important;box-shadow:none!important;border:0!important}
+#phone#phone .sheet.v6pg .v6b{background:transparent}
+@media (prefers-reduced-transparency:reduce){#phone#phone .sheet.v6pg{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:#101013!important}}
+</style>
+<style id="glass-smoke-cards-v748">
+/* v748: smoky edgeless cards and CTAs. Every glass card, well, chip and tile reads its look from the --gl-* tokens, so changing the tokens changes them all: no stroke, no inner highlight, no drop shadow, and a cool smoke haze in place of white glass. Cards are told apart by tint and blur alone. */
+:root{--gl-fill:rgba(60,58,120,.10);--gl-fill2:rgba(60,58,120,.045);--gl-tile:rgba(60,58,120,.12);
+--gl-edge:transparent;--gl-edge2:transparent;--gl-line:rgba(25,31,40,.06);--gl-hi:0 0 0 0 transparent;--gl-shadow:0 0 0 0 transparent;
+--gl-card:linear-gradient(150deg,var(--gl-fill),var(--gl-fill2))}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--gl-fill:rgba(0,0,14,.40);--gl-fill2:rgba(0,0,14,.22);--gl-tile:rgba(255,255,255,.07);
+--gl-edge:transparent;--gl-edge2:transparent;--gl-line:rgba(255,255,255,.06);--gl-hi:0 0 0 0 transparent;--gl-shadow:0 0 0 0 transparent;
+--gl-card:linear-gradient(150deg,var(--gl-fill),var(--gl-fill2))}}
+:root[data-theme=dark]{--gl-fill:rgba(0,0,14,.40);--gl-fill2:rgba(0,0,14,.22);--gl-tile:rgba(255,255,255,.07);
+--gl-edge:transparent;--gl-edge2:transparent;--gl-line:rgba(255,255,255,.06);--gl-hi:0 0 0 0 transparent;--gl-shadow:0 0 0 0 transparent;
+--gl-card:linear-gradient(150deg,var(--gl-fill),var(--gl-fill2))}
+
+/* CTA buttons: no light top edge. Brand colour with only a soft bloom beneath. */
+#phone#phone :is(.btn:not(.sec2),.cpn button:not(.d),.acts.mp5>button.p,.pz-acts button.main,.bal718 .btn:not(.sec2)){background-image:none!important;
+box-shadow:0 14px 26px -16px color-mix(in srgb,var(--br) 60%,transparent)!important}
+#phone#phone :is(.btn:disabled,.btn.sec2){box-shadow:none!important}
+
+/* the few cards that drew their own edge */
+#phone#phone .cpn{border:0!important}
+#phone#phone .nvt{border:0!important;box-shadow:0 16px 28px -18px color-mix(in srgb,var(--lk) 55%,transparent)!important}
+#phone#phone .pl5{box-shadow:none}
+#phone#phone .bal718{border:0!important;box-shadow:none!important}
+#phone#phone .bal718::before{background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,0))}
+</style>
+<style id="glass-white-cards-v749">
+/* v749: cards and background switch roles. Before: smoky tinted cards on a pale field. Now: the field carries the colour (a soft lavender wash) and the cards are clean white, which reads as more premium. Same --gl-* tokens as v725-v748, so every card, well, chip and tile follows. Dark mode flips the same way: cards are a step lighter than the field instead of darker. */
+:root{--gl-base:#E4E5F3;--gl-a:rgba(143,137,255,.50);--gl-b:rgba(108,214,196,.30);--gl-c:rgba(255,186,150,.30);
+--gl-fill:#fff;--gl-fill2:#FDFDFF;--gl-tile:#F2F4F6;
+--gl-edge:transparent;--gl-edge2:transparent;--gl-line:rgba(25,31,40,.07);--gl-hi:0 0 0 0 transparent;
+--gl-shadow:0 12px 26px -16px rgba(60,52,170,.26),0 1px 3px rgba(60,52,170,.05);
+--gl-card:linear-gradient(150deg,var(--gl-fill),var(--gl-fill2))}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--gl-base:#101013;--gl-a:rgba(112,102,255,.34);--gl-b:rgba(36,150,142,.22);--gl-c:rgba(190,84,110,.18);
+--gl-fill:#202027;--gl-fill2:#191F28;--gl-tile:rgba(255,255,255,.07);--gl-line:rgba(255,255,255,.07);--gl-shadow:0 12px 26px -16px rgba(0,0,0,.7)}}
+:root[data-theme=dark]{--gl-base:#101013;--gl-a:rgba(112,102,255,.34);--gl-b:rgba(36,150,142,.22);--gl-c:rgba(190,84,110,.18);
+--gl-fill:#202027;--gl-fill2:#191F28;--gl-tile:rgba(255,255,255,.07);--gl-line:rgba(255,255,255,.07);--gl-shadow:0 12px 26px -16px rgba(0,0,0,.7)}
+/* white cards are solid, so blur adds nothing */
+#phone .screen.h9 .hc,#phone .screen.h9 .sec,#phone .screen:not(.h9)>.sec:not(.mini),#phone .xp .xc,#phone .screen:not(.h9) .pkc,#phone .glx,#phone .screen>div:not(.glx):has(>.ar){-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:var(--gl-shadow)!important}
+/* balance card keeps its brand glow, on white */
+#phone .screen.h9 .top+.hc{background:radial-gradient(110% 90% at 0% 0%,color-mix(in srgb,var(--br) 16%,transparent),transparent 62%),linear-gradient(150deg,var(--gl-fill),var(--gl-fill2))!important}
+/* controls sitting on the field are white too; controls inside a white card get a soft hairline so they still read */
+#phone .screen .field,#phone .fsel,#phone .xp .xs,#phone .asr{box-shadow:0 0 0 1px color-mix(in srgb,var(--tx) 7%,transparent)}
+#phone :is(.hc,.sec,.xc,.glx,.pkc) :is(.field,.fsel,.cch,.btn.sec2){background:var(--gl-tile)!important;box-shadow:none}
+/* fixes after the flip: header buttons over the hero stay translucent (white-on-white before), selected chips stay solid */
+#phone .screen.h9 .top .ib,#phone .screen.h9 .hbk{background:rgba(255,255,255,.22)!important;box-shadow:none}
+#phone .cch.on{background:var(--tx)!important;color:var(--bg)!important}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) #phone .screen.h9 .top .ib,:root:not([data-theme=light]) #phone .screen.h9 .hbk{background:rgba(255,255,255,.1)!important}}
+:root[data-theme=dark] #phone .screen.h9 .top .ib,:root[data-theme=dark] #phone .screen.h9 .hbk{background:rgba(255,255,255,.1)!important}
+</style>
+<style id="flat-white-v750">
+/* v750: Toss keeps flat screens plain white. Screens made of cards (Home, Pay, Explore, You) keep the tinted field with white cards; screens with no cards (Messages, keypads, forms, lists, details) are pure white with grey wells, no colour wash. The bars fade into white there too. */
+#phone#phone[data-flat]{--gl-base:var(--bg);--gl-fill:var(--chip);--gl-fill2:var(--chip);--gl-tile:var(--chip);--gl-shadow:0 0 0 0 transparent;--gl-line:var(--ln);--sm-a:transparent;--sm-b:transparent}
+#phone#phone[data-flat] #view>.screen{background:var(--bg)!important}
+#phone#phone[data-flat] :is(.field,.fsel,.xs,.asr){box-shadow:none!important}
+</style>
+<script id="flat-white-v750-js">
+/* flags the phone when the current screen has no cards, so the CSS above can keep it plain white (CSS cannot nest :has) */
+try{(()=>{const ph=document.getElementById('phone'),v=document.getElementById('view');if(!ph||!v)return;
+const card='.xp,.glx,.pkc,.pay347,.p712 .grp,.p712 .card,:scope>.sec:not(.mini),:scope>div>.ar';
+const run=()=>{const sc=v.querySelector(':scope>.screen:last-of-type')||v.querySelector(':scope>.screen');
+ const flat=!!sc&&!sc.classList.contains('h9')&&!sc.querySelector(card);ph.toggleAttribute('data-flat',flat)};
+new MutationObserver(run).observe(v,{childList:true,subtree:true});run()})()}catch(e){console.error('flat-white-v750',e)}
+</script>
+<style id="plain-bg-v751">
+/* v751: plain background. The colour wash is gone: card screens sit on one flat Toss-style grey (dark: near-black) with white cards, flat screens stay white. */
+:root{--gl-base:#F2F4F6;--gl-a:transparent;--gl-b:transparent;--gl-c:transparent;--gl-tile:#F2F4F6;--gl-shadow:0 0 0 0 transparent}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--gl-base:#101013;--gl-a:transparent;--gl-b:transparent;--gl-c:transparent;--gl-tile:rgba(255,255,255,.07)}}
+:root[data-theme=dark]{--gl-base:#101013;--gl-a:transparent;--gl-b:transparent;--gl-c:transparent;--gl-tile:rgba(255,255,255,.07)}
+#phone#phone[data-flat]{--gl-base:var(--bg);--gl-tile:var(--chip)}
+</style>
+<style id="modal-theme-v752">
+/* v752: modals follow the system theme. v741 to v747 forced every modal dark (light text on dark smoke, dark full-page sheets, dark dropdown). The smoke, text colours, full-page sheets and dropdowns now read these tokens: light mode gets a white haze with dark text and white pages, dark mode keeps the smoky look. */
+:root{--smk:255,255,255;--mo-tx:#191F28;--mo-mu:#566170;--mo-tt:#5F6A78;--mo-chip:#F2F4F6;--mo-edge:rgba(25,31,40,.08);--mo-pg:#fff;--mo-pgbg:#fff;--mo-lk:#5A51EC;
+--mo-dd:rgba(255,255,255,.97);--mo-ddtx:#191F28;--mo-ddhov:rgba(25,31,40,.06);--mo-ddck:#191F28;--mo-ddsh:0 18px 40px -16px rgba(30,26,110,.35)}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--smk:14,14,26;--mo-tx:#F2F4F8;--mo-mu:#B4BBC7;--mo-tt:#A9B1BE;--mo-chip:rgba(255,255,255,.12);--mo-edge:rgba(255,255,255,.14);
+--mo-pg:linear-gradient(180deg,rgba(22,20,48,.975),rgba(12,12,26,.99));--mo-pgbg:#101013;--mo-lk:#A8A3FF;
+--mo-dd:linear-gradient(180deg,rgba(18,16,40,.86),rgba(14,12,32,.92));--mo-ddtx:#F2F4F8;--mo-ddhov:rgba(255,255,255,.12);--mo-ddck:#fff;--mo-ddsh:0 18px 40px -16px rgba(8,6,24,.55)}}
+:root[data-theme=dark]{--smk:14,14,26;--mo-tx:#F2F4F8;--mo-mu:#B4BBC7;--mo-tt:#A9B1BE;--mo-chip:rgba(255,255,255,.12);--mo-edge:rgba(255,255,255,.14);
+--mo-pg:linear-gradient(180deg,rgba(22,20,48,.975),rgba(12,12,26,.99));--mo-pgbg:#101013;--mo-lk:#A8A3FF;
+--mo-dd:linear-gradient(180deg,rgba(18,16,40,.86),rgba(14,12,32,.92));--mo-ddtx:#F2F4F8;--mo-ddhov:rgba(255,255,255,.12);--mo-ddck:#fff;--mo-ddsh:0 18px 40px -16px rgba(8,6,24,.55)}
+#phone#phone .sheet{--tx:var(--mo-tx);--mu:var(--mo-mu);--tt:var(--mo-tt);--chip:var(--mo-chip);--gl-fill:var(--mo-chip);--gl-edge:var(--mo-edge);--gl-edge2:var(--mo-edge);color:var(--tx)}
+#phone#phone .sheet.v6pg{--bg:var(--mo-pgbg);--lk:var(--mo-lk);background:var(--mo-pg)!important}
+#phone .dd745{background:var(--mo-dd);color:var(--mo-ddtx);box-shadow:var(--mo-ddsh)}
+#phone .dd745 [role=option]:hover,#phone .dd745 [role=option].act{background:var(--mo-ddhov)}
+#phone .dd745 [role=option][aria-selected=true]::after{border-color:var(--mo-ddck)}
+@media (prefers-reduced-transparency:reduce){#phone#phone .sheet.v6pg{background:var(--mo-pgbg)!important}#phone .dd745{background:var(--mo-pgbg)}}
+</style>
+<style id="white-bars-v753">
+/* v753: bars are white like the cards. App bars and top bars (.top, .bar, .ahead, Explore header), the tab bar and the bottom button bars are solid card-white instead of a grey smoke fade; flat screens use the page white, dark mode uses the card surface. The Home hero header stays transparent over the banner until the page scrolls. */
+:root{--bar:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bar:#202027}}
+:root[data-theme=dark]{--bar:#202027}
+#phone#phone[data-flat]{--bar:var(--bg)}
+#phone#phone :is(.screen:not(.h9) .top,.xp .xh,.screen.h9.sc9 .top,.tabs,.cta)::before{background:var(--bar)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;-webkit-mask-image:none!important;mask-image:none!important;top:0!important;bottom:0!important}
+#phone#phone :is(.screen:not(.h9) .top,.xp .xh,.screen.h9.sc9 .top){background:var(--bar)!important}
+#phone#phone :is(.screen .bar,.screen .ahead){background:var(--bar)!important}
+#phone#phone #view:has(.keys)>.cta::before{display:none!important}
+</style>
+<style id="chip-brand-text-v754">
+/* v754: selected chips carry the itunda brand colour as text instead of white (white on the pale brand tint was unreadable). Applies to every chip that uses the brand tint when selected: goal chips in Savings, requirement chips, date pills, filter chips. */
+#phone#phone :is(.req button.on,.dpc button.on,.screen .chip[aria-pressed="true"],.screen .chip.on,.screen .chp.on){color:var(--tintfg)!important}
+</style>
+<style id="flat-cards-v755">
+/* v755: cards the way Toss draws them. One flat surface colour per theme (no diagonal gradient, no brand glow, no shadow), a clean 1px divider, a 24px radius, 14px side margins and tight Toss-like padding and row height. Background and card are one calibrated pair: grey #F2F4F6 / white in light, #101013 / #191F28 in dark. */
+:root{--gl-base:#F2F4F6;--gl-fill:#fff;--gl-fill2:#fff;--gl-card:#fff;--gl-shadow:0 0 0 0 transparent;--gl-line:#F0F2F4}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--gl-base:#101013;--gl-fill:#191F28;--gl-fill2:#191F28;--gl-card:#191F28;--gl-line:rgba(255,255,255,.06)}}
+:root[data-theme=dark]{--gl-base:#101013;--gl-fill:#191F28;--gl-fill2:#191F28;--gl-card:#191F28;--gl-line:rgba(255,255,255,.06)}
+#phone#phone[data-flat]{--gl-base:var(--bg)}
+#phone#phone[data-flat]{--gl-fill:var(--chip);--gl-fill2:var(--chip)}
+#phone#phone .screen.h9 .hc,#phone#phone .screen.h9 .sec,#phone#phone .screen:not(.h9)>.sec:not(.mini),#phone#phone .xp .xc,#phone#phone .screen:not(.h9) .pkc,#phone#phone .glx,#phone#phone .screen>div:not(.glx):has(>.ar){
+background:var(--gl-fill)!important;border:0!important;border-radius:24px!important;box-shadow:none!important;margin:10px 14px 0!important}
+#phone#phone .screen.h9 .top+.hc{background:var(--gl-fill)!important}
+#phone#phone .screen.h9 .hc{padding:14px 0 6px!important}
+#phone#phone .screen.h9 .sec,#phone#phone .screen:not(.h9)>.sec:not(.mini){padding:18px 20px 8px!important}
+#phone#phone .xp .xc{padding:16px 8px 6px!important}
+#phone#phone .glx{padding:4px 0!important}
+#phone#phone .xp .xpills{margin:12px 14px 4px!important;border:0;border-radius:24px;background:var(--gl-fill);box-shadow:none}
+#phone#phone .xp .xpills::after{display:none!important}
+/* roomier rows inside cards */
+#phone#phone :is(.hc,.sec,.xc,.glx) :is(.row,.ar){padding-top:8px!important;padding-bottom:8px!important}
+/* dividers: plain 1px, no fade */
+#phone#phone .hc .hf::before,#phone#phone .glx>.ar+.ar::before,#phone#phone .screen>div:not(.glx)>.ar+.ar::before{background:var(--gl-line)!important;height:1px}
+</style>
+<style id="pay-toss-details-v757">
+/* v757: Pay screen, detail pass against the Toss Pay screens. (1) App bar logo is bigger, like Toss. (2) The map pill follows the theme: white with dark text in light mode, card surface in dark mode (it was black in both). (3) The map fades into the page above the first card instead of ending in a hard edge. (4) Find stores loses its coloured glow. (5) The earnings label sits on a small tile like the other icons. (6) The selected account name is grey and regular, the way Toss shows "Toss Bank 1980", so the blue benefit line is the only accent. (7) Row titles are semibold instead of bold; the big values stay bold. (8) The divider above See more is inset 20px instead of edge to edge. (9) FAQ and Send feedback are quiet grey links. */
+:root{--pill-bg:#fff;--pill-tx:#191F28;--pill-sh:0 6px 18px rgba(25,31,40,.14)}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--pill-bg:#191F28;--pill-tx:#F9FAFB;--pill-sh:0 6px 18px rgba(0,0,0,.45)}}
+:root[data-theme=dark]{--pill-bg:#191F28;--pill-tx:#F9FAFB;--pill-sh:0 6px 18px rgba(0,0,0,.45)}
+#phone#phone .tp704bar{font-size:25px!important;gap:8px}
+#phone#phone .tp704bar img,#phone#phone .tp704bar svg{width:32px!important;height:32px!important}
+#phone#phone .z7mpill{background:var(--pill-bg)!important;color:var(--pill-tx)!important;box-shadow:var(--pill-sh)!important}
+#phone#phone .z7mp::after{content:"";position:absolute;left:0;right:0;bottom:0;height:84px;z-index:1;pointer-events:none;background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--gl-base) 88%,transparent))}
+#phone#phone .z7mp .z7mpill{z-index:2}
+#phone#phone .z7go{box-shadow:none!important}
+#phone#phone .z7e1 svg{box-sizing:content-box;width:16px;height:16px;padding:4px;border-radius:9px;background:var(--chip)}
+#phone#phone .pm704 .pn{color:var(--mu);font-weight:500}
+#phone#phone .card703 .z7rw .z7rt,#phone#phone .card703 .z7am b{font-weight:600}
+#phone#phone .sub703{font-weight:700}
+#phone#phone .z7ch{font-size:15px}
+#phone#phone .z7more{border-top:0!important;position:relative;color:var(--mu);font-size:16px;font-weight:500}
+#phone#phone .z7more::before{content:"";position:absolute;top:0;left:20px;right:20px;height:1px;background:var(--gl-line)}
+#phone#phone .link703{color:var(--mu);font-size:16px}
+</style>
+<style id="pay-toss-details2-v758">
+/* v758: Pay screen, second pass. Find stores is a 50px pill like Toss (was 56px), the Earning headline is a size larger, the pill floats a little higher above the first card, and the benefits heading has more air before its first row. */
+#phone#phone .z7go{height:50px;padding:0 22px;font-size:16px;border-radius:25px}
+#phone#phone .z7e2{font-size:28px;line-height:42px}
+#phone#phone .z7mp .z7mpill{bottom:74px}
+#phone#phone .sub703{padding-bottom:16px}
+</style>
+<style id="pay-pages-v759">
+/* v759: Pay sub-pages follow the card system. Settings-style pages (Pay settings and its siblings) drew their groups as grey boxes on a white page; the page is now the calm grey with white groups, like Home and Pay. Buttons lose the last of the coloured glow (Toss buttons are flat). */
+#phone#phone .p712 :is(.grp,.card){background:var(--gl-fill)!important}
+#phone#phone :is(.btn:not(.sec2),.z7go,.cpn button:not(.d),.acts.mp5>button.p,.pz-acts button.main,.bal718 .btn:not(.sec2),.nvt){box-shadow:none!important}
+#phone#phone .p712 .grp .r{position:relative}
+#phone#phone .p712 .grp .r+.r::before{content:"";position:absolute;top:0;left:20px;right:20px;height:1px;background:var(--gl-line)}
+</style>
+<style id="toss-cards-v764">
+/* v764: the Toss bend, done the way Toss does it. The card itself is one flat colour; the gradient lives only in the band under the divider line (the account row in the Pay card, the See more row, the Home footer links). That band starts clean at the divider and drifts toward a faint grey (light) or a lifted charcoal (dark) at the card's rounded bottom, which is what makes the card look folded without any noise in the content above. Replaces the whole-card gradient of v761 to v763. Dividers still fade at both ends. */
+:root{--bd-band:linear-gradient(168deg,rgba(25,31,40,0) 0%,rgba(25,31,40,.012) 38%,rgba(25,31,40,.05) 100%);--bd-fade:linear-gradient(90deg,transparent 2%,#E9ECF0 20%,#E9ECF0 80%,transparent 98%)}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bd-band:linear-gradient(168deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.015) 38%,rgba(255,255,255,.065) 100%);--bd-fade:linear-gradient(90deg,transparent 2%,rgba(255,255,255,.07) 20%,rgba(255,255,255,.07) 80%,transparent 98%)}}
+:root[data-theme=dark]{--bd-band:linear-gradient(168deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.015) 38%,rgba(255,255,255,.065) 100%);--bd-fade:linear-gradient(90deg,transparent 2%,rgba(255,255,255,.07) 20%,rgba(255,255,255,.07) 80%,transparent 98%)}
+/* cards are flat again */
+#phone#phone .screen.h9 .hc,#phone#phone .screen.h9 .sec,#phone#phone .screen:not(.h9)>.sec:not(.mini),#phone#phone .xp .xc,#phone#phone .screen:not(.h9) .pkc,#phone#phone .glx,#phone#phone .screen>div:not(.glx):has(>.ar),#phone#phone .card703,#phone#phone .p712 :is(.grp,.card),#phone#phone .xp .xpills{background-image:none!important;box-shadow:none!important}
+#phone#phone .card703{background-color:var(--gl-fill)!important}
+#phone#phone .card703 .z7rw:active{background:rgba(127,127,140,.10)}
+/* faded dividers */
+#phone#phone .hc .hf::before,#phone#phone .glx>.ar+.ar::before,#phone#phone .screen>div:not(.glx)>.ar+.ar::before,#phone#phone .p712 .grp .r+.r::before,#phone#phone .z7more::before{background:var(--bd-fade)!important}
+#phone#phone .pm704{border-top:1px solid transparent!important;border-image:var(--bd-fade) 1!important}
+/* the band under the divider */
+#phone#phone .card703.z7ov .pm704{margin:18px -20px -20px;padding:20px 20px 20px;border-radius:0 0 24px 24px;background-image:var(--bd-band)}
+#phone#phone .card703.z7ov .pm704::before{left:37px}
+#phone#phone .card703 .z7more{margin-bottom:-6px;padding-bottom:22px;border-radius:0 0 24px 24px;background-image:var(--bd-band)}
+#phone#phone .hc .hf{margin-bottom:-6px;padding-bottom:6px;border-radius:0 0 24px 24px;background-image:var(--bd-band)}
+</style>
+<style id="pay-fit-v762">
+/* v762: Pay home fit pass against the Toss screens, checked in a rendered copy. (1) The Earning headline was crowding Find stores against the card edge; it is 26px now so the button keeps the same 20px inset as the rest of the card. (2) The account row was drawn with 44px tiles, about a third bigger than Toss; the account tile is 36px, the benefit node is a 28px halo with a 10px dot, and the connector is redrawn between them. (3) Row titles and amounts are 16px so merchant names such as Kigali Bus Services and Points, Pay Money stay on one line; the side value is a quiet 14px. */
+#phone#phone .z7e2{font-size:26px;line-height:40px;letter-spacing:-.8px}
+#phone#phone .z7go{flex:none}
+#phone#phone .pm704{grid-template-columns:36px 1fr;column-gap:14px;row-gap:10px}
+#phone#phone .pm704::before{left:17px;top:56px;height:18px;width:2px}
+#phone#phone .pm704 .pi{width:36px;height:36px;border-radius:11px;border-width:1.5px}
+#phone#phone .pm704 .pi svg{width:18px;height:18px}
+#phone#phone .pm704 .pd{width:28px;height:28px;border-radius:14px;margin:0 auto}
+#phone#phone .pm704 .pd b{width:10px;height:10px;border-radius:5px}
+#phone#phone .card703 .z7rt{font-size:16px;line-height:23px}
+#phone#phone .card703 .z7am b{font-size:16px;line-height:23px}
+#phone#phone .card703 .z7am{font-size:14px}
+#phone#phone .card703 .z7rw>div:nth-child(2){min-width:0;flex:1}
+#phone#phone .card703 .z7rw:has(.z7am) .z7rt{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#phone#phone .card703 .z7rw:has(.z7am) .z7am b{font-size:15px}
+#phone#phone .card703 .z7rw:has(.z7am):not(:has(.z7am b)){gap:12px}
+#phone#phone .card703 .z7am:not(:has(b)){font-size:13px;letter-spacing:-.2px}
+#phone#phone .card703 .z7rw:has(.z7am):not(:has(.z7am b)) .z7rt{font-size:15px;letter-spacing:-.4px;white-space:normal;overflow:visible;text-overflow:clip;line-height:20px}
+</style>
+<style id="toss-type-v765">
+/* v765: Toss grey scale and rhythm, measured from the English Toss Pay screens. (1) Text now uses four greys the way Toss does instead of one: 4E5968 for actions (View more), 6B7684 for labels and subtitles, 8B95A1 for dates and totals, B0B8C1 for the chevron; dark mode has the same four steps in Toss's neutral charcoal greys. (2) Weights are lighter: labels 500, the account name 400, row titles 600, the headline 700. (3) Rhythm matches Toss: 12px between cards, 44px list rows with 30px tiles, a tighter Pay header (divider at 98px instead of 110px) and a roomier account row. */
+:root{--t2:#4E5968;--t3:#6B7684;--t4:#8B95A1;--chev:#B0B8C1;--tile-x:#F2F4F6}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--t2:#9EA4AE;--t3:#9EA4AE;--t4:#8B95A1;--chev:#4E5968;--tile-x:#2C2C35}}
+:root[data-theme=dark]{--t2:#9EA4AE;--t3:#9EA4AE;--t4:#8B95A1;--chev:#4E5968;--tile-x:#2C2C35}
+/* greys */
+#phone#phone :is(.z7e1,.pm704 .pn,.pm704 .ps2,.z7rs,.z7ch,.link703){color:var(--t3)!important}
+#phone#phone .z7e1{font-weight:500}
+#phone#phone .pm704 .pn{font-weight:400}
+#phone#phone .z7rw:has(.z7am) .z7rs,#phone#phone .card703 .z7am:not(:has(b)),#phone#phone .z7am{color:var(--t4)}
+#phone#phone .z7am b{color:var(--tx,inherit)}
+#phone#phone .z7am i{color:var(--lk)}
+#phone#phone .z7more{color:var(--t2)!important;font-weight:500}
+#phone#phone .link703{font-weight:400;font-size:17px}
+#phone#phone .sub703 svg{color:var(--chev)!important;opacity:1!important}
+#phone#phone .card703 .z7sq{background:var(--tile-x)!important}
+/* weights */
+#phone#phone .z7e2{font-weight:700}
+#phone#phone .sub703{font-weight:600}
+#phone#phone .onl703 .z7rt{font-size:17px;font-weight:600}
+#phone#phone .onl703 .z7rs{font-size:14px}
+/* rhythm */
+#phone#phone .card703{margin-left:15px;margin-right:15px;margin-bottom:12px}
+#phone#phone .card703.z7ov{padding-top:20px}
+#phone#phone .z7e2{line-height:34px;margin-top:2px}
+#phone#phone .card703.z7ov .pm704{margin-top:12px;padding-top:16px;padding-bottom:22px;row-gap:16px}
+#phone#phone .card703.z7ov .pm704::before{top:52px;height:24px}
+#phone#phone .sub703{padding-bottom:8px}
+#phone#phone .card703 .z7rw{min-height:44px;padding-top:6px;padding-bottom:6px}
+#phone#phone .card703 .z7sq{width:30px;height:30px;border-radius:9px}
+</style>
+<script id="glass-title-v746"></script><style id="toss766">
+/* v766: Toss-style home. Balances first, one quiet nudge card instead of the full-screen hero, neutral pills, Home settings pill. */
+#sc.h9 .top{padding:16px 20px 4px}
+#sc.h9 .hc{margin:10px 12px 0!important;border-radius:24px!important;box-shadow:none!important;padding-top:20px!important}
+#sc.h9 .hc.nud{padding:0!important;margin-top:6px!important}
+.nud .nb{display:flex;align-items:center;gap:14px;padding:18px 12px 18px 20px;cursor:pointer;width:100%;border:0;background:none;text-align:left;color:var(--tx)}
+.nud .ni{width:48px;height:48px;border-radius:24px;background:var(--lk);color:#fff;display:flex;align-items:center;justify-content:center;flex:none}
+.nud .ni svg{stroke:#fff}
+.nud .nt{flex:1;min-width:0}
+.nud .nt small{display:block;font-size:14px;line-height:20px;color:var(--mu);font-weight:500}
+.nud .nt b{display:block;font-size:20px;line-height:28px;letter-spacing:-.4px;color:var(--lk);font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nud .nx{width:44px;height:44px;border:0;background:none;color:var(--tt);display:flex;align-items:center;justify-content:center;border-radius:22px;flex:none}
+#sc.h9 .hc .hp{border:0!important;box-shadow:none!important}
+#sc.h9 .hc .hp.pr:not(:first-of-type){background:var(--chip)!important;color:var(--tx)!important}
+#sc.h9 .hc:not(.nud) .hr:first-of-type .hp.pr{background:var(--tint)!important;color:var(--tintfg)!important}
+
+/* solid canvas and cards: the glass skin was tuned for the dark hero, which is gone */
+#phone #sc.h9{background:#F2F4F6!important;background-image:none!important}
+#phone #sc.h9 :is(.hc,.top+.hc,.hc.hpm,.hc.nud){background:var(--bg)!important;background-image:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;box-shadow:none!important;border:0!important}
+#phone #sc.h9 .top{background:transparent!important}
+#phone #sc.h9 .top::before{display:none!important}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) #phone #sc.h9{background:#101013!important}}
+:root[data-theme=dark] #phone #sc.h9{background:#101013!important}
+#phone #sc.h9 .top .hbk,#phone #sc.h9 .top .hbk b{color:var(--tx)!important;opacity:1!important}
+#phone #sc.h9 .top .hbk svg{stroke:var(--tx)}
+#phone #sc.h9 .top .hbk{background:var(--bg)!important;border-radius:22px;padding:0 14px 0 10px;height:44px}
+#phone #sc.h9 .top .ib{background:var(--bg)!important;color:var(--tx)!important}
+#phone #sc.h9 .top .ib svg{stroke:var(--tx)}
+#phone #sc.h9 .hc .hr[onclick="openSpend()"]{padding-bottom:6px!important}
+.hset{display:flex;align-items:center;gap:8px;margin:28px auto 8px;height:48px;padding:0 20px;border:0;border-radius:24px;background:var(--bg);color:var(--mu);font-size:15px;font-weight:600}
+.hset svg{stroke:var(--mu)}
+.hsw{display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;padding:14px 0;min-height:56px;text-align:left;font-size:17px;font-weight:600;color:var(--tx)}
+.hsw span.l{flex:1}
+.hsw i{width:48px;height:28px;border-radius:14px;background:var(--ln);position:relative;flex:none;transition:background .2s}
+.hsw i::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:11px;background:#fff;transition:transform .2s cubic-bezier(.2,.8,.2,1);box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.hsw[aria-checked=true] i{background:var(--lk)}.hsw[aria-checked=true] i::after{transform:translateX(20px)}
+</style>
+<script>
+{const _h=screens.home;
+const TX={en:['Invite friends','Get 10,000 RWF','Home settings','Choose what shows on Home','Pockets','Around you','Recent activity','Done'],
+rw:['Tumira inshuti','Bona RWF 10,000','Igenamiterere ry’ahabanza','Hitamo ibigaragara ku Ahabanza','Pockets','Hafi yawe','Ibyakozwe vuba','Byakozwe'],
+fr:['Invitez des amis','Recevez 10 000 RWF','Réglages de l’accueil','Choisissez ce qui s’affiche','Pockets','Autour de vous','Activité récente','Terminé']};
+const L=()=>TX[S.lang]||TX.en;
+S.hh=S.hh||{};
+const KEYS=[['pk',4],['ar',5],['ra',6]];
+const kind=p=>/openPockets\(\)/.test(p)?'pk':/ez655h/.test(p)?'ar':(/openAct\(\)/.test(p)&&/actOpen\(/.test(p))?'ra':'';
+screens.home=function(){
+ const was=S.inv701;S.inv701=1;let h;try{h=_h.apply(this,arguments)}finally{S.inv701=was}
+ if(typeof h!=='string')return h;
+ const i=h.search(/<div class="hc[ "]/);if(i<0)return h;
+ const t=L();
+ const nud=was?'':`<div class="hc nud" style="display:flex;align-items:center"><button class="nb tap" onclick="openSvc('invite')" aria-label="${t[0]}, ${t[1]}"><span class="ni">${ic('gift',24)}</span><span class="nt"><small>${t[0]}</small><b>${t[1]}</b></span></button><button class="nx" aria-label="Dismiss" onclick="S.inv701=1;render('fade-none')">${ic('plus',22).replace('<svg','<svg style="transform:rotate(45deg)"')}</button></div>`;
+ const head=h.slice(0,i),parts=h.slice(i).split(/(?=<div class="hc[ "])/);
+ let tail='';const last=parts[parts.length-1],m=last.match(/<\/div>\s*$/);
+ const body=parts.filter(p=>!(S.hh[kind(p)])).join('');
+ const pill=`<div style="display:flex;justify-content:center"><button class="hset tap" onclick="homeSet()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>${t[2]}</button></div>`;
+ return head+nud+body+pill}
+window.homeSet=function(){const t=L();
+ const rows=KEYS.map(([k,n])=>`<button class="hsw tap" role="switch" aria-checked="${!S.hh[k]}" onclick="homeTog('${k}')"><span class="l">${t[n]}</span><i></i></button>`).join('');
+ $('#layer').innerHTML=`<div class="sheetbg" onclick="closeSheet()"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${t[2]}"><div class="h1" style="font-size:22px;line-height:30px;margin-top:4px">${t[3]}</div><div style="margin:8px 0 16px">${rows}</div><button class="btn" style="width:100%;height:56px;border:0;border-radius:18px;background:var(--lk);color:#fff;font-size:17px;font-weight:700" onclick="closeSheet()">${t[7]}</button></div>`};
+window.homeTog=function(k){S.hh[k]=!S.hh[k];const sc=document.getElementById('sc'),y=sc?sc.scrollTop:0;render('fade-none');homeSet();const s2=document.getElementById('sc');if(s2)s2.scrollTop=y}
+}
+/* v768: Home settings rebuilt to match Toss: Hide amount page, Recommended / Select manually (drag to reorder), Save */
+{const lg=(e,r,f)=>S.lang==='rw'?r:S.lang==='fr'?f:e;
+const ACC={bank:{n:'itunda Bank',s:'Main account',v:()=>S.bank,u:24},pay:{n:'itunda Pay',s:'Wallet',v:()=>S.pay,u:14},sch:{n:'School fees',s:'Pocket',v:()=>120000,u:9},emg:{n:'Emergency fund',s:'Pocket',v:()=>50000,u:6},sv:{n:'31-day savings',s:'Day 11',v:()=>17000,u:5},gs:{n:'Group savings',s:'Ikimina',v:()=>10000,u:1}};
+S.hh=S.hh||{};
+const A=()=>S.hh.acc||(S.hh.acc={shown:['bank','pay','sch','emg'],other:['sv','gs']});
+const money=n=>fmt(n)+' RWF';
+const rec=()=>Object.keys(ACC).sort((a,b)=>ACC[b].u-ACC[a].u).slice(0,5);
+const apply=()=>{const sc=document.getElementById('sc');if(!sc)return;const sh=new Set(A().shown),hd=S.hh.hide||{};
+ const sel={bank:'.hr[onclick*="openBank"]',pay:`.hr[onclick*="openPayDetail"],.hr[onclick*="tab('pay')"]`,sch:`.hr[onclick*="'sch'"]`,emg:`.hr[onclick*="'emg'"]`,sp:'.hr[onclick*="openSpend"]'};
+ for(const k in sel)sc.querySelectorAll(sel[k]).forEach(e=>{if(k!=='sp')e.style.display=sh.has(k)?'':'none';e.querySelectorAll('.ha,.ha2').forEach(x=>x.classList.toggle('amt',!!hd[k]))});
+ const pr=sc.querySelector(`.hr[onclick*="'sch'"]`),pc=pr&&pr.closest('.hc');if(pc)pc.style.display=(sh.has('sch')||sh.has('emg'))?'':'none'};
+{const _r=window.render;window.render=render=function(){const r=_r.apply(this,arguments);try{apply()}catch(e){}return r}}
+const st=document.createElement('style');st.textContent=`
+.amt{filter:blur(7px);user-select:none}
+.hsp{position:absolute;inset:0;z-index:30;background:var(--bg);color:var(--tx);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);animation:fadebg .2s}
+.hsp .hb{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 12px 0 10px;flex:none}
+.hsp .ib2{width:44px;height:44px;border:0;background:none;color:var(--tx);display:flex;align-items:center;justify-content:center;flex:none}
+.hsp .hl{border:0;background:none;color:var(--tx);font-size:16px;font-weight:500;height:44px;padding:0 6px}
+.hsp h2{margin:18px 24px 0;font-size:25px;line-height:36px;letter-spacing:-.6px;font-weight:700}
+.hsp .seg{display:flex;margin:24px 24px 14px;padding:4px;border-radius:14px;background:var(--chip);flex:none}
+.hsp .seg button{flex:1;height:42px;border:0;border-radius:11px;background:none;color:var(--mu);font-size:16px;font-weight:500}
+.hsp .seg button[aria-selected=true]{background:var(--bg);color:var(--tx);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.hsp .bd{flex:1;overflow:auto;padding:0 24px 16px}
+.hsp .lb{font-size:14px;color:var(--mu);margin:16px 0 6px}
+.hsp .sh{font-size:19px;font-weight:600;margin:34px 0 14px;letter-spacing:-.3px}
+.hsp .ar{display:flex;align-items:center;gap:14px;padding:9px 0;background:var(--bg)}
+.hsp .ar.drag{position:relative;z-index:5;box-shadow:0 6px 18px rgba(0,0,0,.18);border-radius:12px;opacity:.97}
+.hsp .ai{width:42px;height:42px;border-radius:13px;background:var(--tint);color:var(--tintfg);display:flex;align-items:center;justify-content:center;flex:none}
+.hsp .at{flex:1;min-width:0}.hsp .at b{display:block;font-size:20px;line-height:26px;font-weight:700;letter-spacing:-.4px}
+.hsp .at small{display:block;font-size:14px;line-height:20px;color:var(--mu)}
+.hsp .hd{width:44px;height:44px;border:0;background:none;color:var(--tt);display:flex;align-items:center;justify-content:center;touch-action:none;flex:none;margin-right:-8px}
+.hsp .dvd{height:1px;background:var(--ln);margin:12px 0}
+.hsp .grp{min-height:12px}
+.hsp .hbtn{height:44px;padding:0 20px;border:0;border-radius:12px;background:var(--chip);color:var(--tx);font-size:16px;font-weight:500;flex:none}
+.hsp .note{font-size:15px;color:var(--mu);text-align:center;margin:28px 0 0;line-height:24px}.hsp .note a{color:var(--lk)}
+.hsp .ft{padding:12px 24px calc(20px + env(safe-area-inset-bottom,0px));flex:none}
+.hsp .sv{width:100%;height:56px;border:0;border-radius:18px;background:var(--lk);color:#fff;font-size:17px;font-weight:700}`;document.head.appendChild(st);
+const sv=(d,w=2.2)=>`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+const ico=k=>k==='bank'?knot(24):ic('coin',22);
+const V={view:'acc',tab:'rec'};
+const row=(k,h)=>{const a=ACC[k];return `<div class="ar" data-k="${k}"><div class="ai">${ico(k)}</div><div class="at"><b>${money(a.v())}</b><small>${a.n} · ${a.s}</small></div>${h?`<button class="hd" aria-label="Reorder ${a.n}">${sv('M5 8h14M5 12h14M5 16h14',2)}</button>`:''}</div>`};
+const draw=()=>{const lay=document.getElementById('layer');if(!lay)return;let top,body='',ft='';
+ if(V.view==='hide'){const hd=S.hh.hide||{};
+  const hr=(k,i,n,s,v)=>`<div class="ar"><div class="ai">${i}</div><div class="at"><b>${hd[k]?'• • • •':money(v)}</b><small>${n}${s?' · '+s:''}</small></div><button class="hbtn" onclick="hsHide('${k}')">${hd[k]?lg('Show','Erekana','Afficher'):lg('Hide','Hisha','Masquer')}</button></div>`;
+  top=`<h2 style="margin-top:34px">${lg('Hide amount','Hisha amafaranga','Masquer le montant')}</h2>`;
+  body=`<div class="sh">${lg('Accounts shown on Home','Konti ziri ku Ahabanza','Comptes affichés sur l’accueil')}</div>${A().shown.map(k=>hr(k,ico(k),ACC[k].n,ACC[k].s,ACC[k].v())).join('')}<div class="sh">${lg('Spending','Ikoreshwa ry’amafaranga','Dépenses')}</div>${hr('sp',ic('coin',22),lg('Spending in October','Ikoreshwa muri Ukwakira','Dépenses d’octobre'),'',312000)}`}
+ else{top=`<h2>${lg('You can change which accounts appear on Home or hide them','Hitamo konti zigaragara ku Ahabanza cyangwazihishe','Choisissez les comptes affichés sur l’accueil ou masquez-les')}</h2><div class="seg" role="tablist"><button role="tab" aria-selected="${V.tab==='rec'}" onclick="hsTab('rec')">${lg('Recommended','Byatoranyijwe','Recommandé')}</button><button role="tab" aria-selected="${V.tab==='man'}" onclick="hsTab('man')">${lg('Select manually','Hitamo wenyine','Manuel')}</button></div>`;
+  if(V.tab==='rec'){body=rec().map(k=>row(k,0)).join('')+`<div class="note">${lg('Showing <a>Frequently checked or used accounts</a><br>from the past 30 days.','Biri kwerekana <a>konti zikoreshwa cyane</a><br>mu minsi 30 ishize.','Affichage des <a>comptes les plus utilisés</a><br>au cours des 30 derniers jours.')}</div>`;ft=`<div class="ft"><button class="sv" onclick="hsSave()">${lg('Save','Bika','Enregistrer')}</button></div>`}
+  else{const a=A();body=`<div class="lb">${lg('Accounts shown on Home','Konti ziri ku Ahabanza','Comptes affichés sur l’accueil')}</div><div class="grp" id="gA">${a.shown.map(k=>row(k,1)).join('')}</div><div class="dvd"></div><div class="lb">${lg('Other accounts','Izindi konti','Autres comptes')}</div><div class="grp" id="gB">${a.other.map(k=>row(k,1)).join('')}</div>`}}
+ lay.innerHTML=`<div class="hsp" role="dialog" aria-modal="true"><div class="hb"><button class="ib2" aria-label="Back" onclick="hsBack()">${sv('M19 12H5M11 5l-7 7 7 7',2.2)}</button>${V.view==='acc'?`<button class="hl" onclick="hsView('hide')">${lg('Hide amount','Hisha amafaranga','Masquer le montant')}</button>`:''}</div>${top}<div class="bd">${body}</div>${ft}</div>`;
+ if(V.view==='acc'&&V.tab==='man')bind(lay)};
+const bind=lay=>{const gA=lay.querySelector('#gA'),gB=lay.querySelector('#gB'),dv=lay.querySelector('.dvd');
+ lay.querySelectorAll('.hd').forEach(h=>h.addEventListener('pointerdown',e=>{e.preventDefault();const r=h.closest('.ar'),g0=r.getBoundingClientRect(),grab=e.clientY-g0.top;r.classList.add('drag');h.setPointerCapture(e.pointerId);
+  const put=y=>{r.style.transform='none';const n=r.getBoundingClientRect().top;r.style.transform=`translateY(${y-grab-n}px)`};
+  const mv=ev=>{const y=ev.clientY,g=y<dv.getBoundingClientRect().top?gA:gB;let ref=null;for(const s of g.querySelectorAll('.ar')){if(s===r)continue;const b=s.getBoundingClientRect();if(y<b.top+b.height/2){ref=s;break}}
+   if(r.parentNode!==g||r.nextElementSibling!==ref)g.insertBefore(r,ref);put(y)};
+  const up=()=>{h.removeEventListener('pointermove',mv);h.removeEventListener('pointerup',up);h.removeEventListener('pointercancel',up);r.classList.remove('drag');r.style.transform='';
+   S.hh.acc={shown:[...gA.querySelectorAll('.ar')].map(x=>x.dataset.k),other:[...gB.querySelectorAll('.ar')].map(x=>x.dataset.k)}};
+  h.addEventListener('pointermove',mv);h.addEventListener('pointerup',up);h.addEventListener('pointercancel',up)}))};
+const close=()=>{closeSheet();render('fade-none')};
+window.homeSet=()=>{V.view='acc';V.tab='rec';draw()};
+window.hsTab=t=>{V.tab=t;draw()};
+window.hsView=v=>{V.view=v;draw()};
+window.hsBack=()=>{if(V.view==='hide'){V.view='acc';draw()}else close()};
+window.hsHide=k=>{S.hh.hide=S.hh.hide||{};S.hh.hide[k]=!S.hh.hide[k];draw()};
+window.hsSave=()=>{const r=rec();S.hh.acc={shown:r,other:Object.keys(ACC).filter(k=>!r.includes(k))};close();toast(lg('Saved','Byabitswe','Enregistré'))};
+}
+
+/* v769: Loans. Before: "Get a loan" opened straight into a three-step form, so you could not see your limit, your rate or the other loans first, and after borrowing your loan was hard to find. Now (English): Loans has two tabs, like Toss. "Find loan" leads with what matters (lowest rate, likely approval, your limit) and one button, "Check your loan limit", which starts the same three steps as before; below it are all five loans in one flat list (personal, harvest advance, VUP microloan, student loan, moto-taxi ownership), your credit score, and the short print. "My loan" shows your active loan (unchanged page) or, with no loan, says so and points to Find loan, Credit score and your limit. Backing out of the steps returns to Find loan; borrowing lands you on My loan. One thick band, no cards. Approval chance is sample data. fr/rw keep the old page. */
+(function(){
+const base=screens.loan;
+S.lt=S.lt||'find';S.lgo=0;
+const P=()=>LPS['Get a loan'];
+const lim=()=>{const a=P().a,sc=score(),f=sc>=700?1:sc>=600?.5:.25;return Math.max(Math.min(...a),Math.floor(Math.max(...a)*f/1000)*1000)};
+const appr=()=>{const sc=score();return sc>=700?88:sc>=600?72:45};
+const hdr=()=>`<div class="bar" style="position:relative;justify-content:center"><button class="ib" aria-label="Back" onclick="back()" style="position:absolute;left:12px">${ic('back',24)}</button><div role="tablist" style="display:flex;padding:4px;border-radius:999px;background:var(--chip);gap:2px">${[['my','My loan'],['find','Find loan']].map(([k,n])=>{const on=S.lt===k;return `<button role="tab" aria-selected="${on}" onclick="lhTab('${k}')" style="min-width:108px;height:44px;padding:0 18px;border:0;border-radius:999px;font:inherit;font-size:16px;font-weight:700;background:${on?'var(--bg)':'transparent'};color:${on?'var(--tx)':'var(--mu)'};${on?'box-shadow:0 1px 4px rgba(0,0,0,.14)':''}">${n}</button>`}).join('')}</div></div>`;
+const tile=(bg,inner)=>`<span style="width:30px;height:30px;border-radius:8px;background:${bg};display:flex;align-items:center;justify-content:center;flex:none;color:#fff;font-weight:800;font-size:17px">${inner}</span>`;
+const svg=d=>`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const IC={b:tile('var(--lk)','B'),m:tile('#0A9F6B',svg('<rect x="6" y="4" width="12" height="16" rx="1.5"/><path d="M10 9h.01M14 9h.01M10 13h.01M14 13h.01"/>')),r:tile('#12A39A',svg('<path d="M4 11a8 8 0 0 1 14-4l2 2M20 13a8 8 0 0 1-14 4l-2-2M20 4v5h-5M4 20v-5h5"/>')),o:tile('#3B82F6',svg('<rect x="4" y="6" width="16" height="12" rx="2"/><path d="M9 12h6"/>')),e:'<span style="width:30px;font-size:26px;line-height:30px;text-align:center;flex:none">🎉</span>'};
+const X=k=>(S.lx||{})[k];
+const big=(k,ico,t,on,open)=>`<div class="tap" role="button" ${open!=null?`aria-expanded="${!!open}"`:''} onclick="${on}" style="display:flex;align-items:center;gap:18px;padding:0 24px;min-height:74px;cursor:pointer">${ico}<span style="flex:1;font-size:20px;font-weight:600;letter-spacing:-.3px">${t}</span><span style="color:var(--tt);display:flex;transform:rotate(${open==null?0:open?-90:90}deg);transition:transform .2s">${ic('chev',18,'var(--tt)')}</span></div>`;
+const sub=(t,s,on)=>`<div class="tap" onclick="${on}" style="display:flex;align-items:center;gap:12px;padding:12px 24px 12px 72px;cursor:pointer"><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:600">${t}</div><div class="sm mu" style="margin-top:2px">${s}</div></div>${ic('chev',16,'var(--tt)')}</div>`;
+const grp=(k,ico,t,kids)=>{const o=!!X(k);return big(k,ico,t,`lhX('${k}')`,o)+(o?`<div style="padding-bottom:8px">${kids}</div>`:'')};
+const bolt=`<svg width="86" height="86" viewBox="0 0 86 86" aria-hidden="true"><defs><linearGradient id="lhg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4F8CFF"/><stop offset=".55" stop-color="#7B5CF5"/><stop offset="1" stop-color="#A58BFF"/></linearGradient></defs><path d="M43 4c22 0 39 14 39 33 0 20-18 45-39 45S4 57 4 37C4 18 21 4 43 4z" fill="url(#lhg)"/><path d="M49 18 27 47h14l-4 21 22-31H45z" fill="#fff"/></svg>`;
+const find=()=>{const sc=score(),L=lim(),r=+(P().r*100).toFixed(2),has=!!S.loan,go=has?"lhTab('my')":'lhStart()';
+return `<div class="pad" style="padding-top:24px"><div class="h1">Check your loan rate and limit in 1 minute</div></div>
+<div style="display:flex;gap:20px;padding:28px 24px 0"><div style="border-left:2px solid var(--ln);padding-left:12px;flex:1.1"><div class="sm mu" style="line-height:22px">Estimated minimum interest rate</div><div style="font-size:24px;line-height:32px;font-weight:600;margin-top:4px">${r}% a month</div></div><div style="border-left:2px solid var(--ln);padding-left:12px;flex:1"><div class="sm mu" style="line-height:22px">Approval rate</div><div style="font-size:24px;line-height:32px;font-weight:600;margin-top:4px">${appr()}%</div></div></div>
+<div style="display:flex;justify-content:center;padding:32px 0 28px">${bolt}</div>
+<div style="padding:0 24px"><button class="btn" onclick="${go}">${has?'See your loan':'Check your loan rate'}</button></div>
+<div style="height:14px;background:var(--chip);margin-top:28px"></div>
+<div style="padding-top:8px">${big('b',IC.b,'itunda Bank loans',go)}
+${grp('m',IC.m,'Mortgage loan',sub('Mortgage estimate','Monthly payment for a home',"soon()"))}
+${grp('r',IC.r,'Refinance',sub('Move a loan to itunda','See if you pay less each month',"soon()"))}
+${grp('o',IC.o,'Manage other loans',sub('Harvest advance','Coffee cooperative input financing',"openSvc('harvest')")+sub('VUP microloan','2% a year · means-tested',"openSvc('vup')")+sub('Student loan','BRD · 11% undergraduate, 12% postgraduate',"openSvc('student')")+sub('Moto-Taxi ownership','Save 30% down, then a loan',"openSvc('moto')"))}
+${grp('e',IC.e,'Events',sub('Lower rate for 3 months','Sample event for this prototype',"soon()"))}</div>
+<div class="tap" onclick="soon()" style="margin:16px 16px 0;padding:22px 24px;border-radius:24px;background:var(--chip);cursor:pointer"><div class="mu" style="font-size:17px">Exclusively at itunda</div><div style="display:flex;align-items:center;gap:12px;margin-top:6px"><div style="flex:1;font-size:20px;font-weight:600;line-height:30px">Exclusive · See preferential rate</div><span style="display:flex;align-items:center"><i style="width:34px;height:34px;border-radius:17px;background:#2563EB;border:2px solid var(--chip)"></i><i style="width:34px;height:34px;border-radius:17px;background:#F5B301;margin-left:-10px;border:2px solid var(--chip)"></i><b style="min-width:34px;height:34px;border-radius:17px;background:var(--ln);margin-left:-10px;border:2px solid var(--chip);font-size:13px;display:flex;align-items:center;justify-content:center;padding:0 4px">+21</b></span>${ic('chev',16,'var(--tt)')}</div></div>
+<div style="background:var(--chip);margin-top:40px;padding:32px 24px 48px;font-size:14px;line-height:22px;color:var(--mu)"><div>• Approval rates by credit score are sample data for this prototype, based on statistics from partner lenders.</div><div>• The rate and limit shown are estimates. Your real result can differ when the lender reviews your income, work and account history.</div><div>• Loans come from itunda's partner lenders only, not every lender.</div><div>• Using a loan can lower your credit score. Missing payments can hurt you.</div><div>• You have the right to a clear explanation. Read the terms before you sign.</div><div>• itunda Bank is not a licensed bank. No real loan is made in this prototype.</div></div>`};
+const doc=`<svg width="52" height="60" viewBox="0 0 52 60" aria-hidden="true"><path d="M4 4h44v36L36 56H4z" fill="var(--ln)"/><path d="M36 56V42a2 2 0 0 1 2-2h10z" fill="var(--tt)" opacity=".5"/></svg>`;
+const my=()=>{if(S.loan){const d=document.createElement('div');d.innerHTML=base();return [...d.children].slice(1).map(e=>e.outerHTML).join('')}
+const rw=(ic2,t,on)=>`<div class="tap" onclick="${on}" style="display:flex;align-items:center;gap:18px;padding:0 24px;min-height:62px;cursor:pointer"><span style="width:44px;height:44px;border-radius:12px;background:var(--chip);display:flex;align-items:center;justify-content:center;flex:none;color:var(--lk)">${ic2}</span><span style="font-size:20px;font-weight:600;letter-spacing:-.3px">${t}</span></div>`;
+const up='<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16a8 8 0 1 1 16 0M12 15V8M9 11l3-3 3 3"/></svg>',us='<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="10" r="3"/><path d="M6.5 18c1.5-3 9.5-3 11 0"/></svg>';
+return `<div style="text-align:center;padding:96px 24px 0"><div style="display:flex;justify-content:center">${doc}</div><div style="font-size:24px;line-height:32px;font-weight:700;margin-top:22px">No loans</div><div class="mu" style="font-size:20px;line-height:28px;margin-top:8px">Add loan to check rate</div><button class="btn" style="width:auto;min-width:112px;margin-top:24px;padding-left:32px;padding-right:32px" onclick="lhStart()">Add</button></div>
+<div style="height:14px;background:var(--chip);margin-top:72px"></div>
+<div style="padding-top:12px">${rw(up,'Credit Score Booster',"openScore()")}${rw(us,'View limit for your score',"lhStart()")}</div>`};
+screens.loan=()=>{
+ if(S.lang!=='en'||!S.lp||S.lp.n!=='Get a loan')return base();
+ if(S.lgo&&!S.loan)return base();
+ return hdr()+(S.lt==='my'?my():find())};
+window.lhX=k=>{S.lx=S.lx||{};S.lx[k]=!S.lx[k];render('fade-none')};
+window.lhTab=k=>{S.lt=k;render('fade-none')};
+window.lhStart=()=>{if(S.loan){lhTab('my');return}S.lp={n:'Get a loan',...P()};S.la=S.lp.a[1];S.lm=S.lp.t[1];S.lst=0;S.lgo=1;render('fade-none')};
+const _bk=window.back;
+window.back=function(){if(S.stack[S.stack.length-1]==='loan'&&S.lang==='en'&&S.lgo&&!(S.lst|0)){S.lgo=0;S.lt='find';render('fade-none');return}return _bk.apply(this,arguments)};
+const _ld=loanDo;
+loanDo=function(){S.lgo=0;S.lt='my';return _ld.apply(this,arguments)};
+})();
+document.title=document.title.replace(/v\d+/,'v769');
+
+</script>
+<style id="real-cards-v770">
+/* v770: Pay code card rail, real cards. Before: flat coloured tiles with a label. Now every method is drawn like a physical card in portrait (1.586 ratio, like the Naver Pay / Samsung Pay rail): EMV chip, contactless mark, gloss, edge light, name set along the card, last four digits, brand mark. Pay Money is green, Bank indigo, the itunda card black (dimmed with "Frozen" when frozen), Transit orange over navy. Sizes use container units so selected and neighbour cards keep the same proportions. */
+.pcd .pcar{height:228px;flex:0 0 228px}
+.pcd .pcrl{height:174px;bottom:10px;gap:12px;padding:0 calc(50% - 50px)}
+.pcd .pcmc.rcard{position:relative;display:block;container-type:inline-size;width:80px;height:127px;padding:0;border:0;border-radius:11px;overflow:hidden;text-align:left;color:var(--cf,#fff);
+box-shadow:0 8px 16px -6px rgba(0,0,0,.65),0 1px 0 rgba(255,255,255,.18) inset,0 0 0 1px rgba(255,255,255,.1) inset;opacity:.94}
+.pcd .pcmc.rcard[aria-pressed=true]{width:100px;height:159px;opacity:1;animation:crpop .22s ease-out;box-shadow:0 14px 24px -8px rgba(0,0,0,.75),0 1px 0 rgba(255,255,255,.3) inset,0 0 0 1px rgba(255,255,255,.16) inset}
+@keyframes crpop{from{transform:translateY(6px) scale(.96)}to{transform:none}}
+.pcd .pcmc.rcard::before{content:"";position:absolute;inset:0;background:linear-gradient(125deg,rgba(255,255,255,.34) 0,rgba(255,255,255,.06) 34%,rgba(255,255,255,0) 52%,rgba(0,0,0,.2) 100%);pointer-events:none}
+.pcd .pcmc.rcard::after{content:"";position:absolute;left:-30%;top:-10%;width:60%;height:130%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.16),transparent);transform:rotate(18deg);pointer-events:none}
+.pcd .pcmc.rcard.pay{--cf:#04260F;background:linear-gradient(158deg,#3DF58A 0,#12D25B 48%,#06A845 100%)}
+.pcd .pcmc.rcard.bank{--cf:#fff;background:linear-gradient(158deg,#A9A5FF 0,#7472F4 46%,#4B43C9 100%)}
+.pcd .pcmc.rcard.cardm{--cf:#E9EDF4;background:linear-gradient(158deg,#3A404D 0,#171A21 50%,#07080B 100%)}
+.pcd .pcmc.rcard.transit{--cf:#fff;background:radial-gradient(circle at 50% 112%,#1CB6FF 0 27%,transparent 28%),linear-gradient(#FF6B1F 0 33%,#0A0F45 33%)}
+.pcd .pcmc.rcard.frozen{filter:grayscale(.85) brightness(.8)}
+.pcd .pcmc.rcard .rch{position:absolute;left:13cqw;top:15cqw;width:25cqw;height:19cqw;border-radius:3.5cqw;background:linear-gradient(135deg,#F7E3A0,#C9A24B 55%,#F1D688);box-shadow:inset 0 0 0 .6cqw rgba(90,60,0,.35)}
+.pcd .pcmc.rcard .rch::before{content:"";position:absolute;inset:0;border-radius:inherit;background:
+linear-gradient(rgba(90,60,0,.38),rgba(90,60,0,.38)) 0 50%/100% .7cqw no-repeat,
+linear-gradient(rgba(90,60,0,.38),rgba(90,60,0,.38)) 36% 0/.7cqw 100% no-repeat,
+linear-gradient(rgba(90,60,0,.38),rgba(90,60,0,.38)) 64% 0/.7cqw 100% no-repeat}
+.pcd .pcmc.rcard.pay .rch{display:none}
+.pcd .pcmc.rcard .rnf{position:absolute;right:11cqw;top:14cqw;width:13cqw;height:13cqw;transform:rotate(90deg);opacity:.9}
+.pcd .pcmc.rcard .rnf svg{width:100%;height:100%;display:block}
+.pcd .pcmc.rcard .rkn{position:absolute;left:13cqw;bottom:25cqw;line-height:0}
+.pcd .pcmc.rcard .rkn svg{width:17cqw;height:17cqw;display:block}
+.pcd .pcmc.rcard.pay .rkn{bottom:auto;top:15cqw}.pcd .pcmc.rcard.pay .rkn svg{width:26cqw;height:26cqw}
+.pcd .pcmc.rcard .rno{position:absolute;left:13cqw;bottom:11cqw;font-size:8cqw;line-height:1;font-weight:700;letter-spacing:.4cqw;font-variant-numeric:tabular-nums;opacity:.92;white-space:nowrap}
+.pcd .pcmc.rcard .rnm{position:absolute;right:11cqw;top:34cqw;writing-mode:vertical-rl;font-size:9cqw;line-height:1.15;font-weight:800;letter-spacing:.2cqw;white-space:nowrap}
+.pcd .pcmc.rcard .rnm small{font-weight:500;opacity:.8;font-size:.86em;margin-top:1.5cqw}
+.pcd .pcmc.rcard.transit .rnm{top:auto;bottom:11cqw;right:auto;left:0;width:100%;writing-mode:horizontal-tb;text-align:center;font-size:10cqw}
+.pcd .pcmc.rcard.transit .rch{top:11cqw}
+.pcd .pcmc.rcard.transit .rkn,.pcd .pcmc.rcard.transit .rno,.pcd .pcmc.rcard.transit .rnf{display:none}
+.pcd .pcmc.rcard .rfz{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;font-size:11cqw;font-weight:800;letter-spacing:.4cqw;text-transform:uppercase;background:rgba(0,0,0,.55);padding:2.5cqw 0}
+.pcd .pcmc.add{display:flex;align-items:center;justify-content:center;width:80px;height:127px;border-radius:11px;background:#232B38;border:1.5px dashed #4A5568;color:#C5CCD6;font-size:34px;font-weight:300;padding:0}
+.pcd .pcmc.add:active,.pcd .pcmc.rcard:active{transform:scale(.97)}
+@media(prefers-reduced-motion:reduce){.pcd .pcmc.rcard[aria-pressed=true]{animation:none}}
+</style>
+
+<script id="real-cards-v770-js">
+/* v770: swaps the flat tiles for card artwork. The buttons keep their classes (pay, bank, cardm, add) and onclick, so swiping to switch what pays, the + tile and "open the itunda card" all work as before; a Transit card is new and opens Transit. */
+try{(function(){
+const _pc=screens.pcode,T=window.T3;
+const NFC='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M7 7.5c2 2.7 2 6.3 0 9"/><path d="M11 5c3.2 4 3.2 10 0 14"/><path d="M15 2.5c4.4 5.4 4.4 13.6 0 19"/></svg>';
+const E=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const mark=c=>{try{return knot(60,c)}catch(e){return ''}};
+function art(k,attrs,aria){
+ const fz=k==='cardm'&&S.card&&S.card.frozen;
+ const logo=k==='pay'?'#04260F':'#fff';
+ const nm={pay:'itunda<small> Pay</small>',bank:'itunda<small> Bank</small>',cardm:'itunda<small> card</small>',transit:'itunda<small> Transit</small>'}[k];
+ const no={pay:'•• 0214',bank:'•• 1980',cardm:S.card?'•• '+E(S.card.last):'•• ••••'}[k]||'';
+ const get=k==='cardm'&&!S.card?'<span class="rfz" style="background:rgba(116,114,244,.85)">'+E(T('Get card','Fata ikarita','Obtenir'))+'</span>':'';
+ return `<button class="pcmc rcard ${k}${fz?' frozen':''}" ${attrs} aria-label="${E(aria)}"><span class="rch"></span><span class="rkn">${mark(logo)}</span><span class="rno">${no}</span><span class="rnm">${nm}</span><span class="rnf">${NFC}</span>${fz?'<span class="rfz">'+E(T('Frozen','Yafunzwe','Gelée'))+'</span>':''}${get}</button>`}
+screens.pcode=function(){
+ let h=_pc.apply(this,arguments);
+ if(typeof h!=='string'||h.indexOf('id="pcrail"')<0)return h;
+ h=h.replace(/<button class="pcmc (pay|bank|cardm)"([^>]*)>[\s\S]*?<\/button>/g,(m,k,a)=>{
+  const aria={pay:'itunda Pay Money, '+fmt(S.pay)+' RWF',bank:'itunda Bank, '+fmt(S.bank)+' RWF',cardm:S.card?'itunda card':T('Get the itunda card','Fata ikarita itunda','Obtenir la carte itunda')}[k];
+  return art(k,a,aria)});
+ /* Transit card, after the itunda card */
+ h=h.replace(/(<button class="pcmc rcard cardm[\s\S]*?<\/button>)/,'$1'+art('transit','aria-pressed="false" onclick="openTransit()"',T('itunda Transit, tap to pay your bus fare','itunda Transit','itunda Transit')));
+ return h};
+})()}catch(e){console.error('real-cards-v770',e)}
+document.title=document.title.replace(/v\d+/,'v772');
+</script>
+
+<style id="home-toss-v773">
+/* v773: Home, closer to Toss. Before: row titles in Around you / Recent activity were grey (the card's muted colour leaked into them), the Send / Add / Top up buttons were three different lavender tints, section titles sat 50px below the card edge, "Kigali Bus Services" wrapped to two lines and squeezed the amount, and the Home settings pill was bold white on grey. Now: row titles are the main text colour with grey subtitles; every Home action button is the same neutral chip (like Toss Send / Get points / History); section titles sit about 22px from the card edge; row text stays on one line with an ellipsis and the amount never wraps; Home settings is a quiet grey pill with medium-weight text. */
+#phone#phone #sc.h9 .hc .hp,#phone#phone #sc.h9 .hc .hr .hp.pr,#phone#phone #sc.h9 .hc:not(.nud) .hr:first-of-type .hp.pr{background:var(--chip)!important;color:var(--tx)!important;border-radius:12px!important;height:40px!important;min-width:64px;padding:0 16px!important;font-size:15px!important;font-weight:600!important}
+#phone#phone #sc.h9 .hc .hct{padding-top:2px!important;padding-bottom:4px!important}
+#phone#phone #sc.h9 .hc .row .t{color:var(--tx)!important;font-weight:600}
+#phone#phone #sc.h9 .hc .row .s{color:var(--mu)!important}
+#phone#phone #sc.h9 .hc .row>div:nth-child(2){flex:1;min-width:0}
+#phone#phone #sc.h9 .hc .row .t,#phone#phone #sc.h9 .hc .row .s{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#phone#phone #sc.h9 .hc .row .r{flex:none;white-space:nowrap}
+#phone#phone .hset{background:rgba(110,120,140,.14);color:var(--mu);font-weight:500;font-size:16px;margin-top:24px}
+</style>
+<script>document.title=document.title.replace(/v\d+/,'v773');</script>
+<style id="home-pay-v774">
+/* v774: Home takes two things from the Pay screen. (1) Pay's "Benefits received in October" summary becomes a slim Home row: a star tile, "6,400 RWF in benefits", and the same grey View chip as the other Home actions; it sits above Pockets and opens Pay. (2) Pay's History puts the amount on top with a violet "9 RWF earned" line under it and no chevron; Recent activity now reads the same way, so the paid row shows what the payment earned. The 6,400 and 9 are the same sample numbers Pay already shows. */
