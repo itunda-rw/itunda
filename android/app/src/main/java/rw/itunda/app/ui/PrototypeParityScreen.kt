@@ -14,7 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 
-/** Renders the canonical v434 HTML prototype after the native session/auth gate. */
+/** Renders the canonical v1038 HTML prototype after the native session/auth gate. */
 @Composable
 fun PrototypeParityScreen(modifier: Modifier = Modifier) {
     AndroidView(
@@ -47,16 +47,16 @@ fun PrototypeParityScreen(modifier: Modifier = Modifier) {
                                   S.tab = 'home';
                                   render('fade-none');
                                 }
-                                const root = document.body;
-                                if (!root || !root.innerHTML.trim()) throw new Error('v434 document rendered no content');
+                                const root = document.querySelector('#phone #view');
+                                if (!root || !root.innerHTML.trim()) throw new Error('v1038 consumer app did not render #phone #view');
                                 return JSON.stringify({status:'rendered', title:document.title, viewport:innerWidth+'x'+innerHeight});
                               } catch (e) {
-                                console.error('Itunda v434 startup failed', e && e.stack || e);
+                                console.error('Itunda v1038 startup failed', e && e.stack || e);
                                 return 'startup failed: ' + String(e);
                               }
                             })();
                             """.trimIndent(),
-                        ) { result -> Log.i("ItundaPrototype", "v434 startup verification: $result") }
+                        ) { result -> Log.i("ItundaPrototype", "v1038 startup verification: $result") }
                     }
 
                     override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
@@ -71,7 +71,7 @@ fun PrototypeParityScreen(modifier: Modifier = Modifier) {
                         }
                     }
                 }
-                loadUrl("file:///android_asset/itunda__clickable_prototype_v434.html")
+                loadUrl("file:///android_asset/itunda_clickable_prototype_v1038.html")
             }
         },
         update = {},
