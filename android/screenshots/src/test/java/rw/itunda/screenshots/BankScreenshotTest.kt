@@ -100,4 +100,5 @@ class BankScreenshotTest {
     @Test fun subStatement() = sub(BankSub.STATEMENT, "statement")
     @Test fun subPockets() = sub(BankSub.POCKETS, "pockets")
     @Test fun subManage() = sub(BankSub.MANAGE, "manage")
+    @Test fun subLimits() = sub(BankSub.LIMITS, "limits")
 }
