@@ -17,12 +17,13 @@ import rw.itunda.core.network.NetworkClient
 /** Stateful Pay tab for the prototype layout: real payment code + real PAY account, nothing invented. */
 @Composable
 fun ProtoPayTab(
-    onOpenPay: () -> Unit,
+    onFindStores: () -> Unit,
     onSettings: () -> Unit,
     onChangeFunding: () -> Unit,
     onReceive: () -> Unit,
     scanContent: @Composable () -> Unit,
 ) {
+    var showHub by remember { mutableStateOf(false) }
     var mode by remember { mutableStateOf(ProtoPayMode.SCAN) }
     var code by remember { mutableStateOf<String?>(null) }
     var expiresAt by remember { mutableStateOf(0L) }
@@ -50,11 +51,15 @@ fun ProtoPayTab(
             delay(1000)
         }
     }
+    if (showHub) {
+        PayHub(onBack = { showHub = false }, onFindStores = onFindStores)
+        return
+    }
     ProtoPayContent(
         mode = mode, onMode = { mode = it }, qrContent = code, secondsLeft = secondsLeft,
         fundingName = "itunda Pay Money",
         fundingBalance = balance?.let { String.format(java.util.Locale.US, "%,.0f", it) } ?: "—",
-        onOpenPay = onOpenPay, onSettings = onSettings, onChangeFunding = onChangeFunding, onReceive = onReceive,
+        onOpenPay = { showHub = true }, onSettings = onSettings, onChangeFunding = onChangeFunding, onReceive = onReceive,
         scanContent = { Column(Modifier.verticalScroll(rememberScrollState())) { scanContent() } },
     )
 }

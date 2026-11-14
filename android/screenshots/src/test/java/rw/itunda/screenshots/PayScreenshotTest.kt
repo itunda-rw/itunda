@@ -10,6 +10,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import rw.itunda.core.designsystem.theme.IdsTheme
+import rw.itunda.feature.pay.impl.PayHub
 import rw.itunda.feature.pay.impl.ProtoPayContent
 import rw.itunda.feature.pay.impl.ProtoPayMode
 
@@ -35,4 +36,9 @@ class PayScreenshotTest {
     @Test fun tapDark() = render(true, "pay-tap-dark", ProtoPayMode.TAP)
     // Scan hosts the real camera (CameraX, not available on the JVM); only the dark chrome is checked here.
     @Test fun scanDark() = render(false, "pay-scan-dark", ProtoPayMode.SCAN)
+
+    @Test fun hubLight() {
+        rule.setContent { IdsTheme(darkTheme = false) { PayHub(onBack = {}, onFindStores = {}) } }
+        rule.onRoot().captureRoboImage("build/screenshots/pay-hub-light.png")
+    }
 }
