@@ -376,7 +376,12 @@ val assembleConsumerPrototypeAsset = tasks.register("assembleConsumerPrototypeAs
         val output = consumerPrototypeAsset.get().asFile
         output.parentFile.mkdirs()
         output.outputStream().buffered().use { stream ->
-            parts.forEach { part -> part.inputStream().buffered().use { it.copyTo(stream) } }
+            parts.forEach { part ->
+                part.inputStream().buffered().use { it.copyTo(stream) }
+                // Each uploaded source part omits its final line feed; restore it so
+                // the assembled asset is byte-for-byte identical to the prototype.
+                stream.write('\n'.code)
+            }
         }
         val html = output.readText()
         check(html.contains("<!doctype html>", ignoreCase = true)) { "Consumer prototype HTML doctype is missing" }
