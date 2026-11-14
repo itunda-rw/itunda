@@ -20,6 +20,8 @@ import rw.itunda.core.network.MoneyActionResult
 import rw.itunda.feature.banking.impl.BankHubEntryPoint
 import rw.itunda.feature.banking.impl.Grow31IntroContent
 import rw.itunda.feature.credit.impl.LoansFindHero
+import rw.itunda.feature.banking.impl.BankSub
+import rw.itunda.feature.banking.impl.BankSubOverlay
 import rw.itunda.feature.credit.impl.CreditScoreBody
 import rw.itunda.feature.credit.impl.demoScoreFactors
 import rw.itunda.feature.wealth.impl.InvestIndexHeader
@@ -85,4 +87,16 @@ class BankScreenshotTest {
         }
         rule.onRoot().captureRoboImage("build/screenshots/score-light.png")
     }
+
+    private fun sub(sub: BankSub, name: String) {
+        rule.setContent { IdsTheme(darkTheme = false) { BankSubOverlay(sub, onClose = {}, onOpen = {}) } }
+        rule.onRoot().captureRoboImage("build/screenshots/bank-$name.png")
+    }
+
+    @Test fun subAccount() = sub(BankSub.ACCOUNT, "account")
+    @Test fun subDeposit() = sub(BankSub.DEPOSIT, "deposit")
+    @Test fun subSend() = sub(BankSub.SEND, "send")
+    @Test fun subMove() = sub(BankSub.MOVE, "move")
+    @Test fun subStatement() = sub(BankSub.STATEMENT, "statement")
+    @Test fun subPockets() = sub(BankSub.POCKETS, "pockets")
 }

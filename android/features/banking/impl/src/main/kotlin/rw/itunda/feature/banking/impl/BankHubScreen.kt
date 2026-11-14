@@ -211,12 +211,14 @@ fun BankHubEntryPoint(
         }
     }
 
+    var bankSub by remember { mutableStateOf<BankSub?>(null) }
+    Box(Modifier.fillMaxSize()) {
     Column(modifier = Modifier.fillMaxSize()) {
         if (primaryAccount != null) {
             BankHubHeader(
                 title = stringResource(R.string.bank_title), accountNumber = primaryAccount.accountNumber,
                 balance = rememberCountUp(primaryAccount.balance), currency = primaryAccount.currency,
-                onBack = onBack, onOpenAccountDetail = onOpenAccountDetail, onDeposit = onOpenPay, onSend = onOpenPay,
+                onBack = onBack, onOpenAccountDetail = { bankSub = BankSub.ACCOUNT }, onDeposit = { bankSub = BankSub.DEPOSIT }, onSend = { bankSub = BankSub.SEND },
             )
         } else {
             Row(modifier = Modifier.fillMaxWidth().padding(20.dp)) { BackTopBar(title = stringResource(R.string.bank_title), onBack = onBack) }
@@ -246,6 +248,7 @@ fun BankHubEntryPoint(
                     }
                 }
             }
+            item { BankPocketsRow(count = 3) { bankSub = BankSub.POCKETS } }
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpenAutoTransfers).padding(vertical = 10.dp),
@@ -478,5 +481,7 @@ fun BankHubEntryPoint(
                 onCreated = { showNewGoalDialog = false },
             )
         }
+    }
+    BankSubOverlay(bankSub, onClose = { bankSub = null }, onOpen = { bankSub = it })
     }
 }
