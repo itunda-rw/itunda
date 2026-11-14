@@ -74,7 +74,7 @@ fun RideProtoPicker(pickup: String, dropoff: String, onPlace: (name: String, lat
                     .pressScaleClickable { option = i }.padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.surface), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)).background(if (i == option) Ids.colors.surface else Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
                     Text(o.emoji, fontSize = 24.sp)
                 }
                 Column(Modifier.weight(1f).padding(start = 14.dp)) {
