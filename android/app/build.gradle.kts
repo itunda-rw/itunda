@@ -357,3 +357,32 @@ dependencies {
     androidTestImplementation(libs.espresso.core)
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
+
+
+// Consumer-only prototype parity asset (v1038). The canonical HTML is kept in
+// ordered source parts to stay below GitHub's per-file upload limit. Assemble it
+// unchanged into Android's generated assets before any variant is built.
+val consumerPrototypeParts = fileTree("src/main/prototype-parts") {
+    include("part-*.htmlpart")
+}
+val consumerPrototypeAssetDir = layout.buildDirectory.dir("generated/consumerPrototypeAssets")
+val consumerPrototypeAsset = consumerPrototypeAssetDir.map { it.file("itunda_clickable_prototype_v1038.html") }
+val assembleConsumerPrototypeAsset = tasks.register("assembleConsumerPrototypeAsset") {
+    inputs.files(consumerPrototypeParts)
+    outputs.file(consumerPrototypeAsset)
+    doLast {
+        val parts = consumerPrototypeParts.files.sortedBy { it.name }
+        check(parts.size == 6) { "Expected 6 ordered consumer prototype v1038 source parts, found ${parts.size}" }
+        val output = consumerPrototypeAsset.get().asFile
+        output.parentFile.mkdirs()
+        output.outputStream().buffered().use { stream ->
+            parts.forEach { part -> part.inputStream().buffered().use { it.copyTo(stream) } }
+        }
+        val html = output.readText()
+        check(html.contains("<!doctype html>", ignoreCase = true)) { "Consumer prototype HTML doctype is missing" }
+        check(html.contains("v1038: pull threshold")) { "Consumer prototype v1038 final marker is missing" }
+        check(html.contains("function render(mode='fade')")) { "Consumer prototype render entry point is missing" }
+    }
+}
+android.sourceSets.getByName("main").assets.srcDir(consumerPrototypeAssetDir)
+tasks.named("preBuild").configure { dependsOn(assembleConsumerPrototypeAsset) }
