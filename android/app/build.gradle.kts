@@ -386,3 +386,10 @@ val assembleConsumerPrototypeAsset = tasks.register("assembleConsumerPrototypeAs
 }
 android.sourceSets.getByName("main").assets.srcDir(consumerPrototypeAssetDir)
 tasks.named("preBuild").configure { dependsOn(assembleConsumerPrototypeAsset) }
+// Asset merge tasks can be scheduled alongside preBuild; make the generated source
+// an explicit prerequisite so clean parallel builds cannot race the assembler.
+tasks.configureEach {
+    if (name.startsWith("merge") && name.endsWith("Assets")) {
+        dependsOn(assembleConsumerPrototypeAsset)
+    }
+}
