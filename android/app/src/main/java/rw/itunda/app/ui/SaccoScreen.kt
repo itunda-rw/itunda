@@ -148,6 +148,7 @@ fun SaccoScreen(onBack: () -> Unit) {
                 // The backend counts shares in RWF, so a "share" here is SHARE_PRICE RWF.
                 val held = sharesHeld ?: BigDecimal.ZERO
                 val count = held.divide(BigDecimal(SHARE_PRICE), 0, java.math.RoundingMode.DOWN)
+                if (count.signum() == 0) { SaccoIntro(formatMoney(SHARE_PRICE.toBigDecimal())); return@item }
                 Column(Modifier.padding(top = 16.dp)) {
                     Text("Your shares", color = Ids.colors.textTertiary, fontSize = 14.sp)
                     Row(verticalAlignment = Alignment.Bottom) {
