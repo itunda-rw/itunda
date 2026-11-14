@@ -1,0 +1,1000 @@
+#phone .ez-cp button{flex:none;border:0;font:inherit;font-size:14px;font-weight:800;height:40px;padding:0 16px;border-radius:20px;background:var(--on);color:var(--bg)}
+#phone .ez-cp button:disabled{background:var(--bg);color:var(--mu)}
+#phone .ez-cp.ap{outline:2px solid var(--br);outline-offset:-2px}
+#phone .ez-cp .rm{background:none;color:var(--mu);height:auto;padding:0;font-size:13px;font-weight:700;display:block;margin-top:4px;text-decoration:underline}
+#phone .ez-cd{display:flex;gap:8px;margin-top:22px}
+#phone .ez-cd input{flex:1;min-width:0;height:48px;border-radius:14px;border:0;background:var(--chip);padding:0 14px;font:inherit;font-size:15px;color:var(--tx);text-transform:uppercase;outline:none}
+#phone .ez-cd button{flex:none;border:0;height:48px;padding:0 18px;border-radius:14px;background:var(--on);color:var(--bg);font:inherit;font-weight:800}
+#phone .ez-cer{color:#D92D20;font-size:13px;font-weight:700;margin-top:8px;min-height:18px}
+#phone .ez-perk{display:flex;align-items:center;gap:12px;padding:9px 0;font-size:16px;font-weight:700}
+#phone .ez-perk i{flex:none;width:28px;height:28px;border-radius:14px;background:var(--tint);color:var(--tintfg);display:flex;align-items:center;justify-content:center}
+</style>
+<script>
+/* v645: see the v645 style block. Uses e2Promo for applying, so the saved code works at checkout as before. */
+try{(()=>{
+const lay=document.getElementById('layer');if(!lay)return;
+const T=(e,f,r)=>({en:e,fr:f,rw:r}[S.lang]||e);
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const CK='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>';
+window.ezUse=c=>{closeSheet();e2Promo(c);window.e2Rr&&window.e2Rr()};
+window.ezRm=()=>{S.epromo=null;closeSheet();window.e2Rr&&window.e2Rr();toast(T('Coupon removed','Coupon retiré','Kuponi yakuweho'))};
+window.ezCode=()=>{const i=document.getElementById('ezcode'),c=(i&&i.value||'').trim().toUpperCase(),er=document.getElementById('ezcer');
+ const ok=c==='FREEDEL'||c==='EATS20';
+ if(!c){if(er)er.textContent=T('Enter a code first.','Saisissez d’abord un code.','Banza wandike kode.');return}
+ if(!ok){if(er)er.textContent=T('Code not valid. Try EATS20.','Code invalide. Essayez EATS20.','Kode ntiyemewe. Gerageza EATS20.');return}
+ if(c==='FREEDEL'&&S.pickup){if(er)er.textContent=T('Free delivery only applies to delivery orders.','La livraison gratuite ne s’applique qu’aux livraisons.','Kugezwaho ku buntu bireba gutwarwa gusa.');return}
+ ezUse(c)};
+const coupons=()=>[
+ {c:'FREEDEL',bg:'#FFE08A',v:T('Free','Gratuit','Ku buntu'),t:T('Free delivery','Livraison gratuite','Kugezwaho ku buntu'),s:T('First order · delivery only','1re commande · livraison seulement','Itegeko rya mbere · gutwarwa gusa'),off:!!S.pickup},
+ {c:'EATS20',bg:'#CFE8FF',v:'-20%',t:T('20% off your meal','20 % de réduction','Igabanywa rya 20%'),s:T('Up to 2,000 RWF off','Jusqu’à 2 000 RWF','Kugeza 2,000 RWF')}];
+const fix=()=>{
+ const sh=lay.querySelector('.sheet.v6pg');if(!sh||sh.classList.contains('ez-cs'))return;
+ const b=sh.querySelector('.v6b');if(!b)return;
+ const h=b.querySelector('.h1'),tx=h?h.textContent.trim():'';
+ if(b.querySelector('[onclick*="e2Promo"]')&&/coupon/i.test(tx)){
+  b.innerHTML='<div class="h1" style="font-size:22px;line-height:30px">'+esc(h.textContent)+'</div>'+coupons().map(x=>{const ap=S.epromo===x.c;
+   return '<div class="ez-cp'+(ap?' ap':'')+'"><i style="background:'+x.bg+'">'+x.v+'</i><div class="t"><b>'+x.t+'</b><small>'+x.s+' · '+x.c+'</small>'+(ap?'<button class="rm" onclick="ezRm()">'+T('Remove','Retirer','Kuramo')+'</button>':'')+'</div>'+
+   (ap?'<button disabled>'+T('Applied','Appliqué','Byakoreshejwe')+' ✓</button>':x.off?'<button disabled>'+T('Delivery only','Livraison','Gutwarwa')+'</button>':'<button onclick="ezUse(\''+x.c+'\')">'+T('Use','Utiliser','Koresha')+'</button>')+'</div>'}).join('')+
+   '<div class="ez-cd"><input id="ezcode" placeholder="'+T('Enter a code','Saisir un code','Andika kode')+'" aria-label="'+T('Promo code','Code promo','Kode')+'" autocapitalize="characters" onkeydown="if(event.key===\'Enter\')ezCode()"><button onclick="ezCode()">'+T('Apply','Appliquer','Emeza')+'</button></div><div class="ez-cer" id="ezcer" role="status"></div>';
+  sh.classList.add('ez-cs');return}
+ if(b.querySelector('[onclick^="clubGo"]')||sh.querySelector('[onclick^="clubGo"]')){
+  b.querySelectorAll('.row').forEach(r=>{const t=r.querySelector('.t');if(!t)return;const d=document.createElement('div');d.className='ez-perk';d.innerHTML='<i>'+CK+'</i><span>'+esc(t.textContent)+'</span>';r.replaceWith(d)});
+  sh.classList.add('ez-cs')}
+};
+new MutationObserver(()=>{try{fix()}catch(e){}}).observe(lay,{childList:true,subtree:true});
+})()}catch(x){console.error('eats-v645',x)}
+document.title=document.title.replace(/v\d+/,'v645');
+</script>
+<style id="ez646">
+/* v646: Eats borrows from Shop. Ranked "Popular this week" rail (like Best sellers) and reviews with Helpful votes, a sort, and the dish ordered (like product reviews). Plain text, no new boxes or lines. */
+#phone .ez-rk{position:relative;flex:none;width:132px}
+#phone .ez-rk>b{position:absolute;left:10px;top:4px;z-index:2;font-size:26px;line-height:30px;font-style:italic;font-weight:800;color:var(--tx);text-shadow:0 0 6px var(--bg),0 0 2px var(--bg)}
+#phone .ez-rv-s{display:flex;gap:18px;padding:14px 24px 0}
+#phone .ez-rv-s button{border:0;background:none!important;font:inherit;font-size:15px;font-weight:700;color:var(--mu);min-height:44px;padding:0}
+#phone .ez-rv-s button.on{color:var(--tx);font-weight:800}
+#phone .ez-rv2{padding:16px 24px 0}
+#phone .ez-rv2 .ez-rh{display:flex;justify-content:space-between;align-items:baseline}
+#phone .ez-rv2 .ez-ro{font-size:13px;color:var(--mu);font-weight:600;margin-top:2px}
+#phone .ez-rv2 .ez-rx{font-size:15px;line-height:22px;margin-top:6px;font-weight:400}
+#phone .ez-rv2 button.ez-hp{border:0;background:none!important;box-shadow:none;font:inherit;font-size:14px;font-weight:700;color:var(--mu);min-height:44px;padding:0;border-radius:0;width:auto}
+#phone .ez-rv2 button.ez-hp.on{color:var(--tintfg)}
+</style>
+<script>
+try{(()=>{
+if(typeof screens==='undefined'||typeof REST==='undefined'||!screens.erest)return;
+const T=(e,f,r)=>({en:e,fr:f,rw:r}[S.lang]||e);
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+S.ervH=S.ervH||{};S.ervS=S.ervS||'new';
+const keep=fn=>{const sc=document.getElementById('sc'),t=sc?sc.scrollTop:0;fn();render('fade-none');const z=document.getElementById('sc');if(z)z.scrollTop=t};
+window.ezRvS=k=>keep(()=>{S.ervS=k});
+window.ezRvH=k=>keep(()=>{S.ervH[k]=!S.ervH[k]});
+const RV=/<div class="e2-rv"><div style="display:flex;justify-content:space-between"><b>([^<]*)<\/b><span class="sm mu">([^<]*)<\/span><\/div><div style="font-weight:800;font-size:14px;margin:2px 0;color:#F5A524">(★*)<span[^>]*>(★*)<\/span><\/div><div style="font-size:15px;line-height:21px">([^<]*)<\/div><\/div>/g;
+const _e=screens.erest;
+screens.erest=function(){const h=_e.apply(this,arguments);try{
+ if(S.etab!=='reviews'||h.includes('ez-rv2'))return h;
+ const r=REST[S.er];if(!r)return h;
+ const dishes=r.items.filter(x=>x[4]!=='addon');
+ const L=[];let first=-1;
+ h.replace(RV,(m,n,d,s1,s2,t,off)=>{if(first<0)first=off;L.push({n,d,s:s1.length,t,k:S.er+'-'+L.length,h:(n.length*3+s1.length*2)%9+1,dish:dishes.length?dishes[(n.length+L.length*2)%dishes.length][0]:''});return m});
+ if(!L.length)return h;
+ const hc=v=>v.h+(S.ervH[v.k]?1:0);
+ const rows=S.ervS==='help'?[...L].sort((a,b)=>hc(b)-hc(a)):L;
+ const bar=`<div class="ez-rv-s" role="group" aria-label="${T('Sort reviews','Trier les avis','Tondeka ibitekerezo')}"><button class="${S.ervS==='help'?'':'on'}" aria-pressed="${S.ervS!=='help'}" onclick="ezRvS('new')">${T('Latest','Récents','Bishya')}</button><button class="${S.ervS==='help'?'on':''}" aria-pressed="${S.ervS==='help'}" onclick="ezRvS('help')">${T('Most helpful','Plus utiles','Bifasha cyane')}</button></div>`;
+ const html=bar+rows.map(v=>`<div class="ez-rv2"><div class="ez-rh"><b>${esc(v.n)}</b><span class="sm mu">${esc(v.d)}</span></div><div style="font-weight:800;font-size:14px;margin:2px 0;color:#F5A524">${'★'.repeat(v.s)}<span style="color:var(--ln)">${'★'.repeat(5-v.s)}</span></div>${v.dish?`<div class="ez-ro">${T('Ordered','A commandé','Yatumije')} ${esc(v.dish)}</div>`:''}<div class="ez-rx">${esc(v.t)}</div><button class="ez-hp ${S.ervH[v.k]?'on':''}" aria-pressed="${!!S.ervH[v.k]}" onclick="ezRvH('${v.k}')">${T('Helpful','Utile','Bifasha')} · ${hc(v)}</button></div>`).join('');
+ let o=h.replace(RV,'');
+ return o.slice(0,first)+html+o.slice(first);
+}catch(e){console.error('ez646 reviews',e);return h}};
+const _s=screens.shop;
+screens.shop=function(){const h=_s.apply(this,arguments);try{
+ if(S.shopTab!=='eats'||h.includes('ez-rk'))return h;
+ const mark='<div class="ez-h" id="e2all">',at=h.indexOf(mark);
+ if(at<0||(S.e2cat&&S.e2cat!=='All')||S.e2q||(S.e2flt&&(S.e2flt.open||S.e2flt.fav)))return h;
+ const top=REST.map((r,i)=>[r,i]).filter(x=>!x[0].closed).sort((a,b)=>b[0].r*b[0].rc-a[0].r*a[0].rc).slice(0,5);
+ const eta=r=>(S.pickup?Math.max(10,r.tm-10):r.tm)+' min';
+ const rail=`<div class="ez-h"><b>${T('Popular this week','Populaires cette semaine','Bikunzwe muri iki cyumweru')}</b></div><div class="ez-rail">${top.map(([r,i],n)=>`<div class="ez-rk"><b aria-hidden="true">${n+1}</b><button class="ez-c tap" style="width:132px" onclick="openERest(${i})" aria-label="${n+1}. ${esc(r.n)}"><div class="ez-cv" style="background:${r.bg}">${gl(r.g,60)}</div><div class="ez-n">${esc(r.n)}</div><div class="ez-m"><b>${r.r.toFixed(1)}</b> (${r.rc}) · ${eta(r)}</div></button></div>`).join('')}</div>`;
+ return h.slice(0,at)+rail+h.slice(at);
+}catch(e){console.error('ez646 rail',e);return h}};
+})()}catch(x){console.error('eats-v646',x)}
+document.title=document.title.replace(/v\d+/,'v646');
+</script>
+<script id="ez646b">
+try{(()=>{
+if(typeof screens==='undefined'||!screens.echeck||typeof REST==='undefined')return;
+const T=(e,f,r)=>({en:e,fr:f,rw:r}[S.lang]||e);
+S.shpts=S.shpts==null?453:S.shpts;
+const earn=()=>Math.round((eSub()||0)*.01);
+const _c=screens.echeck;
+screens.echeck=function(){const h=_c.apply(this,arguments);try{
+ const r=REST[S.er];if(!r||h.includes('ez-pt'))return h;
+ const e=earn(),club=!S.pickup&&r.fee>0&&!S.club;
+ const l=(t,a)=>`<div class="ez-pt" style="padding:10px 0 0;font-size:14px;font-weight:600;color:var(--mu)">${a?`<button onclick="${a}" style="border:0;background:none;padding:0;min-height:44px;font:inherit;font-weight:700;color:var(--tintfg);text-align:left">${t}</button>`:t}</div>`;
+ const add=(club?l(T('Join Eats Club to get free delivery on every order','Rejoignez Eats Club : livraison gratuite','Injira muri Eats Club ugezwaho ku buntu'),'clubSheet()'):'')+(e?l(T('You earn '+e+' points with this order','Vous gagnez '+e+' points','Uzabona amanota '+e)):'');
+ let i=h.indexOf('Pay with');if(i>0)i=h.lastIndexOf('<div',i);if(i<0)i=h.lastIndexOf('<div class="cta"');
+ return i<0?h+add:h.slice(0,i)+add+h.slice(i);
+}catch(x){console.error('ez646b',x);return h}};
+const _d=window.eDone;
+if(_d)window.eDone=function(){const n=S.orders.length,e=earn();const o=_d.apply(this,arguments);try{if(S.orders.length>n&&S.orders[0].k==='Eats order'&&e){S.shpts+=e;S.orders[0].earn=e}}catch(x){}return o};
+})()}catch(x){console.error('eats-v646b',x)}
+</script>
+<script id="ez646c">
+try{(()=>{
+if(typeof screens==='undefined'||typeof REST==='undefined'||!window.openERest)return;
+const T=(e,f,r)=>({en:e,fr:f,rw:r}[S.lang]||e);
+const esc=x=>String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+S.erec=S.erec||[];
+const _o=window.openERest;
+window.openERest=function(i){try{S.erec=[i].concat(S.erec.filter(x=>x!==i)).slice(0,6)}catch(e){}return _o.apply(this,arguments)};
+window.ezRecClear=()=>{S.erec=[];render('fade-none')};
+const _s=screens.shop;
+screens.shop=function(){const h=_s.apply(this,arguments);try{
+ if(S.shopTab!=='eats'||h.includes('ez-rec')||!S.erec.length)return h;
+ const at=h.indexOf('<div class="ez-h" id="e2all">');
+ if(at<0||(S.e2cat&&S.e2cat!=='All')||S.e2q||(S.e2flt&&(S.e2flt.open||S.e2flt.fav)))return h;
+ const L=S.erec.filter(i=>REST[i]);if(!L.length)return h;
+ const rail=`<div class="ez-h ez-rec"><b>${T('Recently viewed','Vus récemment','Wabonye vuba')}</b><button onclick="ezRecClear()" style="border:0;background:none;font:inherit;font-size:13px;font-weight:600;color:var(--mu);min-height:44px;padding:0">${T('Clear','Effacer','Siba')}</button></div><div class="ez-rail">${L.map(i=>{const r=REST[i];return `<button class="ez-c tap" style="width:132px" onclick="openERest(${i})" aria-label="${esc(r.n)}"><div class="ez-cv" style="background:${r.bg}">${gl(r.g,60)}</div><div class="ez-n">${esc(r.n)}</div></button>`}).join('')}</div>`;
+ return h.slice(0,at)+rail+h.slice(at);
+}catch(e){console.error('ez646c',e);return h}};
+})()}catch(x){console.error('eats-v646c',x)}
+</script>
+<script id="ez646d">
+try{(()=>{
+if(typeof screens==='undefined'||!screens.echeck||typeof REST==='undefined'||!window.eAdd)return;
+const T=(e,f,r)=>({en:e,fr:f,rw:r}[S.lang]||e);
+const esc=x=>String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const SIDE=/Drinks|Sides|Bites|Coffee|Tea|Juices|Smoothies|Chips/;
+window.ezCartAdd=k=>{const sc=document.getElementById('sc'),t=sc?sc.scrollTop:0;eAdd(k);render('fade-none');const z=document.getElementById('sc');if(z)z.scrollTop=t};
+const _c=screens.echeck;
+screens.echeck=function(){const h=_c.apply(this,arguments);try{
+ const r=REST[S.er];if(!r||h.includes('ez-sg'))return h;
+ let L=r.items.map((it,k)=>[it,k]).filter(([it,k])=>it[4]!=='addon'&&!(S.ecart[k]>0));
+ const pref=L.filter(([it])=>SIDE.test(it[5]||''));
+ L=(pref.length>=2?pref:L).sort((a,b)=>a[0][2]-b[0][2]).slice(0,5);
+ if(L.length<2)return h;
+ let i=h.indexOf('Delivery time');if(i>0)i=h.lastIndexOf('<div',i);if(i<0)return h;
+ const row=`<div class="ez-sg"><div class="ez-h" style="padding:20px 0 10px"><b style="font-size:17px">${T('Add a side or drink','Ajouter un accompagnement','Ongeraho ikindi')}</b></div><div class="ez-rail">${L.map(([it,k])=>`<div style="flex:none;width:112px"><div class="ez-cv" style="background:${r.bg};aspect-ratio:1/1;position:relative">${gl(it[3],44)}<button aria-label="${T('Add','Ajouter','Ongeraho')} ${esc(it[0])}" onclick="ezCartAdd(${k})" style="position:absolute;right:6px;bottom:6px;width:36px;height:36px;border-radius:18px;border:0;background:var(--bg);color:var(--tx);font-size:22px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0">+</button></div><div class="ez-n" style="font-size:14px">${esc(it[0])}</div><div class="ez-m">${fmt(it[2])} RWF</div></div>`).join('')}</div></div>`;
+ return h.slice(0,i)+row+h.slice(i);
+}catch(x){console.error('ez646d',x);return h}};
+})()}catch(x){console.error('eats-v646d',x)}
+</script>
+<script id="ez646e">
+try{(()=>{
+if(typeof screens==='undefined'||!screens.eorders||typeof REST==='undefined')return;
+const T=(e,f,r)=>({en:e,fr:f,rw:r}[S.lang]||e);
+const esc=x=>String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const _o=screens.eorders;
+screens.eorders=function(){const h=_o.apply(this,arguments);try{
+ if(h.includes('ez-or'))return h;
+ const L=S.orders.filter(o=>o.k==='Eats order'&&o.items);if(!L.length)return h;
+ const lk=(t,a,p)=>`<button onclick="${a}" style="border:0;background:none!important;box-shadow:none;font:inherit;font-size:15px;font-weight:700;min-height:44px;height:auto;width:auto;flex:none;white-space:nowrap;padding:0 14px 0 0;color:${p?'var(--tintfg)':'var(--mu)'}">${t}</button>`;
+ const rows=L.map((o,n)=>{const r=REST[o.r]||{n:'',bg:'var(--chip)',g:'bag',items:[]};const done=/Delivered|Picked up/.test(o.s||'');
+  const names=(o.items||[]).map(x=>{const it=r.items[x.k];return it?x.q+' × '+it[0]:''}).filter(Boolean).join(', ');
+  return `<div class="ez-or" style="display:flex;gap:14px;padding:18px 24px 0;box-sizing:border-box;width:100%"><div style="flex:none;width:56px;height:56px;border-radius:18px;background:${r.bg};display:flex;align-items:center;justify-content:center">${gl(r.g,34)}</div><div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:16px">${esc(r.n)}</b><b style="font-size:16px;white-space:nowrap">${fmt(o.t)} RWF</b></div><div style="font-size:14px;font-weight:800;margin-top:2px;color:${done?'var(--mu)':'var(--tintfg)'}">${esc(o.s||'')}</div><div class="sm mu" style="margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(names)}</div><div style="display:flex;flex-wrap:wrap;margin-top:4px">${done?lk(T('Reorder','Recommander','Subiramo'),`eReorder(${n})`,1):lk(T('Track','Suivre','Kurikirana'),"S.stack=['shop','etrack'];render('push')",1)}${done?'':lk(T('Reorder','Recommander','Subiramo'),`eReorder(${n})`)}${lk(T('Receipt','Reçu','Inyemezabwishyu'),`eRcpt(${n})`)}${lk(T('Help','Aide','Ubufasha'),`eHelp(${n})`)}</div></div></div>`}).join('');
+ const pts=`<div style="padding:12px 24px 0;font-size:15px;color:var(--mu);font-weight:600">${T('Points','Points','Amanota')} <b style="color:var(--tx)">${S.shpts||0}</b></div>`;
+ return `<div class="bar"><button class="ib" aria-label="${T('Back','Retour','Subira inyuma')}" onclick="back()" data-h44="1">${ic('back',24)}</button><b>${T('Orders','Commandes','Ibyatumijwe')}</b></div>${pts}${rows}<div style="height:40px"></div>`;
+}catch(x){console.error('ez646e',x);return h}};
+})()}catch(x){console.error('eats-v646e',x)}
+</script>
+<script id="ez646f">
+try{(()=>{
+if(typeof screens==='undefined'||typeof REST==='undefined'||!window.ezSearch)return;
+const T=(e,f,r)=>({en:e,fr:f,rw:r}[S.lang]||e);
+const esc=x=>String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const dishes=()=>{const q=(S.e2q||'').trim();if(!q)return '';const m=[];
+ REST.forEach((r,i)=>{if(r.closed)return;r.items.forEach((it,k)=>{if(it[4]!=='addon'&&(it[0]+' '+(it[1]||'')).toLowerCase().includes(q))m.push([it,r,i,k])})});
+ if(!m.length)return '';
+ return `<div class="ez-h"><b>${T('Dishes','Plats','Ibiryo')}</b><span>${m.length}</span></div>`+m.slice(0,S.ezAll?40:6).map(([it,r,i,k])=>`<button class="tap" onclick="ezDish(${i},${k})" style="display:flex;align-items:center;gap:14px;width:100%;border:0;background:none!important;padding:8px 24px;font:inherit;color:var(--tx);text-align:left;min-height:44px"><span style="flex:none;width:48px;height:48px;border-radius:16px;background:${r.bg};display:flex;align-items:center;justify-content:center">${gl(it[3],30)}</span><span style="flex:1;min-width:0"><b style="display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(it[0])}</b><span class="sm mu" style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.n)} · ${r.tm} min</span></span><b style="font-size:15px;white-space:nowrap">${fmt(it[2])} RWF</b></button>`).join('')+(!S.ezAll&&m.length>6?`<button onclick="ezMore()" style="border:0;background:none!important;padding:0 24px;min-height:44px;font:inherit;font-size:15px;font-weight:700;color:var(--tintfg)">${T('See all','Tout voir','Reba byose')} ${m.length}</button>`:'')};
+window.ezMore=()=>{S.ezAll=1;fill()};
+window.ezDish=(i,k)=>{openERest(i);setTimeout(()=>{try{eItem(k)}catch(e){}},400)};
+const fill=()=>{const e=document.getElementById('ezdl');if(e)e.innerHTML=dishes()};
+const _q=window.ezSearch;
+window.ezSearch=function(){S.ezAll=0;const r=_q.apply(this,arguments);fill();return r};
+const _s=screens.shop;
+screens.shop=function(){const h=_s.apply(this,arguments);try{
+ if(S.shopTab!=='eats'||h.includes('id="ezdl"'))return h;
+ const mark='<div class="ez-h" id="e2all">',at=h.indexOf(mark);if(at<0)return h;
+ return h.slice(0,at)+`<div id="ezdl">${dishes()}</div>`+h.slice(at);
+}catch(e){console.error('ez646f',e);return h}};
+})()}catch(x){console.error('eats-v646f',x)}
+</script>
+<script id="ez646g">
+try{(()=>{
+if(typeof screens==='undefined'||!screens.erest||typeof REST==='undefined')return;
+const T=(e,f,r)=>({en:e,fr:f,rw:r}[S.lang]||e);
+const hm=m=>{const d=new Date(Date.now()+m*6e4);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
+const _e=screens.erest;
+screens.erest=function(){const h=_e.apply(this,arguments);try{
+ const r=REST[S.er];if(!r||r.closed||h.includes('ez-arr'))return h;
+ const m=String(r.t||'').match(/(\d+)\D+(\d+)/);if(!m)return h;
+ const sub=S.pickup?10:0,a=+m[1]-sub,b=+m[2]-sub;
+ const line=`<div class="ez-arr" style="font-size:14px;font-weight:700;color:var(--tintfg);margin-top:2px">${S.pickup?T('Ready by','Prêt vers','Bizaba byiteguye saa'):T('Arrives by','Arrive vers','Bizahagera saa')} ${hm(a)}–${hm(b)}</div>`;
+ return h.replace(/(<div class="ez-meta">[\s\S]*?<\/div>)/,'$1'+line);
+}catch(x){console.error('ez646g',x);return h}};
+})()}catch(x){console.error('eats-v646g',x)}
+</script>
+<script id="ez646h">
+try{(()=>{
+if(typeof screens==='undefined'||!screens.etrack||typeof REST==='undefined')return;
+const T=(e,f,r)=>({en:e,fr:f,rw:r}[S.lang]||e);
+const esc=x=>String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const hm=t=>{const d=new Date(t);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
+const _t=screens.etrack;
+screens.etrack=function(){const h=_t.apply(this,arguments);try{
+ const o=S.orders.find(x=>x.k==='Eats order'&&x.items);if(!o||h.includes('ez-ts'))return h;
+ const r=REST[o.r];if(!r)return h;
+ o.eta=o.eta||Date.now()+(S.pickup?Math.max(10,r.tm-10):r.tm)*6e4;
+ const row=(a,b,bold)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:${bold?'16px':'15px'};${bold?'font-weight:800':'color:var(--mu)'}"><span>${a}</span><span style="white-space:nowrap${bold?'':';color:var(--tx);font-weight:600'}">${b}</span></div>`;
+ const dishes=o.items.map(x=>{const it=r.items[x.k];return it?row(esc(x.q+' × '+it[0]),fmt(it[2]*x.q)+' RWF'):''}).join('');
+ const sn=o.snap||{};
+ const sum=`<div class="ez-ts" style="padding:22px 24px 0"><div style="font-size:15px;font-weight:800;color:var(--tintfg)">${o.pickup?T('Ready by','Prêt vers','Bizaba byiteguye saa'):T('Arrives by','Arrive vers','Bizahagera saa')} ${hm(o.eta)}</div><div style="padding-top:10px">${dishes}${sn.fee?row(T('Delivery','Livraison','Kugezwaho'),fmt(sn.fee)+' RWF'):''}${sn.disc?row(T('Discount','Remise','Igabanywa'),'−'+fmt(sn.disc)+' RWF'):''}${row(T('Total','Total','Yose hamwe'),fmt(o.t)+' RWF',1)}${o.addr&&!o.pickup?row(T('Delivered to','Livré à','Bizagezwa kuri'),esc(o.addr)):''}<div style="font-size:13px;color:var(--mu);padding-top:4px">${esc(o.id||'')}</div></div></div>`;
+ const i=h.indexOf('Cancel order');if(i<0)return h+sum;
+ const j=h.lastIndexOf('<',h.lastIndexOf('<button',i));
+ return h.slice(0,j)+sum+h.slice(j);
+}catch(x){console.error('ez646h',x);return h}};
+const _d=window.eDone;
+if(_d)window.eDone=function(){const r=_d.apply(this,arguments);try{setTimeout(()=>{if(S.stack[S.stack.length-1]==='etrack'&&!document.querySelector('.ez-ts')&&!S.trk)draw('fade-none','etrack')},0)}catch(e){}return r};
+})()}catch(x){console.error('eats-v646h',x)}
+</script>
+<style id="q647">
+/* v647: itunda Place, Directions, Picker and Business borrow Shop's quiet look. One job per screen: flat rows with no boxes inside boxes, text tabs and tinted chips instead of black pills, one primary button, and the rarely used extras fold behind a single "More" row. Same handlers as before. */
+#phone .nvc{position:relative;display:block;padding:14px 24px;margin:0;border:0;background:none;min-height:100px}
+#phone .nvc .ph{position:absolute;right:24px;top:14px;width:76px;height:76px;display:block;margin:0}
+#phone .nvc .ph>div{display:none}
+#phone .nvc .ph>div:first-child{display:flex;width:76px;height:76px;border-radius:22px;align-items:center;justify-content:center;font-size:34px}
+#phone .nvc .bt{display:none}
+#phone .nvc .n,#phone .nvc .r,#phone .nvc .s{padding-right:92px}
+#phone .nvc .n{font-size:17px;font-weight:800}#phone .nvc .n small{display:block;margin:0;font-size:13px}
+#phone .mt2{font-size:19px;font-weight:800;letter-spacing:-.4px}
+#phone .plc button,#phone .nvf button,#phone .chp button{border:0!important;box-shadow:none!important;background:var(--chip)!important;color:var(--mu)!important;font-weight:700}
+#phone .plc button.on,#phone .nvf button[aria-pressed=true],#phone .nvf button.on{background:var(--tint)!important;color:var(--tintfg)!important}
+/* place sheet */
+#phone .sh2 .hrt{position:static!important;width:auto!important;height:auto!important;min-height:44px;display:block!important;margin:2px 20px 0!important;text-align:left;white-space:normal;line-height:20px}
+#phone .nm-p button{border:0!important;box-shadow:none!important;background:var(--chip)!important;color:var(--tx)!important;font-weight:700;border-radius:20px}
+#phone .nm-p button.m{background:var(--br)!important;color:var(--on)!important;font-weight:800}
+#phone .sh2>.own{margin:14px 20px 0;padding:0!important;border:0!important;background:none!important;border-radius:0;font-size:15px;line-height:22px}
+#phone .sh2>.own small{display:block;color:var(--mu);font-size:13px;font-weight:600}
+#phone .sh2>.cpn{margin:12px 20px 0;padding:0!important;border:0!important;background:none!important;border-radius:0;display:flex;align-items:center;justify-content:space-between;gap:12px;font-weight:800;color:var(--tintfg)}
+#phone .sh2>.cpn small{display:block;color:var(--mu);font-weight:600}
+#phone .sh2>.cpn button{border:0;background:var(--tint)!important;color:var(--tintfg)!important;font-weight:800;border-radius:18px;padding:0 16px;min-height:44px}
+#phone .sh2>.oah{margin:6px 20px 0}
+#phone .sh2>.oah button{border:0!important;background:none!important;padding:0!important;min-height:44px;font:inherit;font-weight:700;color:var(--tintfg)!important}
+#phone .mo{margin:6px 20px 0}
+#phone .mo>div:not(.mos){background:none!important;border:0!important;border-radius:0!important;padding:0!important;margin:18px 0 0!important;box-shadow:none!important}
+#phone .mo>div>b:first-child{display:block;font-size:15px;font-weight:800;margin-bottom:6px}
+#phone .mo .pz-x{display:flex;gap:8px;margin:14px 0 0!important}
+#phone .mo .pz-x button{border:0;background:var(--chip);color:var(--tx);font:inherit;font-weight:700;border-radius:20px;padding:0 16px;min-height:44px}
+/* route screen */
+#phone .rst{align-items:center}
+#phone .rst .dpp{flex:none;padding:0;margin:0 8px 0 0}
+#phone .rst .dpp button{border:0;background:var(--chip);color:var(--tx);font:inherit;font-size:14px;font-weight:700;border-radius:18px;padding:0 14px;min-height:44px;white-space:nowrap}
+#phone .rst button{border:0!important;box-shadow:none!important;background:none!important;color:var(--mu)!important;font-weight:700}
+#phone .rst button.on{background:var(--chip)!important;color:var(--tx)!important;font-weight:800}
+#phone .rsh .stp .gof{display:none}
+#phone .rsh .rtm{margin:8px 20px 0}
+#phone .rsh .rtm>button.q647m{width:100%;min-height:44px;border:0;background:none;padding:0;display:flex;align-items:center;justify-content:space-between;font:inherit;font-size:15px;font-weight:700;color:var(--tx);text-align:left}
+#phone .rsh .rtm>button.q647m:after{content:"⌄";color:var(--tt)}
+#phone .rsh .rtm>button.q647m[aria-expanded=true]:after{content:"⌃"}
+#phone .rsh .rtm>div{background:none!important;border:0!important;border-radius:0!important;padding:0!important;margin:14px 0 0!important}
+#phone .rsh .pax b{white-space:nowrap}#phone:has(.pz-bar) .pz-bar{display:none}#phone .nv-cp,#phone .pz-stamp{background:none!important;padding:0!important;border-radius:0!important;margin-top:8px}#phone .nv-cp button,#phone .pz-stamp button{background:var(--tint)!important;color:var(--tintfg)!important;border:0}#phone .nv-sec{border-top:0!important}#phone .rsh .rcd .rtag{position:static!important;display:inline-block;margin:0 0 6px;font-size:12px}#phone .cmp{font-size:13px;font-weight:600;color:var(--mu)!important}
+/* directions hub */
+#phone .icx>button.q647i{width:100%;min-height:56px;border:0;background:none;padding:0 24px;display:flex;align-items:center;justify-content:space-between;font:inherit;font-size:16px;font-weight:700;color:var(--tx);text-align:left}
+#phone .icx>button.q647i:after{content:"⌄";color:var(--tt)}
+#phone .icx>button.q647i[aria-expanded=true]:after{content:"⌃"}
+</style>
+<script id="q647js">
+try{(()=>{
+if(typeof screens==='undefined'||typeof S==='undefined')return;
+const M=S.mp||{},T=(e,f,r)=>({en:e,fr:f,rw:r}[S.lang]||e);
+const keep=fn=>{const sc=document.getElementById('sc'),t=sc?sc.scrollTop:0;fn();render('fade-none');const z=document.getElementById('sc');if(z)z.scrollTop=t};
+const dom=h=>{const d=document.createElement('div');d.innerHTML=h;return d};
+/* Place: the first screen keeps the name, hours, actions, owner note, coupon and tabs; the long tail folds into "More about this place" */
+const FOLD='tps,nws,als,brk,qth,acc,lng,nbs,hwf,pav,myp,vst,prc,gfr,stb,rvt,kwd,mem,oma,se,nb'.split(',').map(c=>':scope > .'+c).join(',');
+if(screens.place){const _p=screens.place;
+screens.place=function(){const h=String(_p.apply(this,arguments));try{
+ if(S.mp.exp||h.indexOf('class="nm-p"')<0||h.indexOf('pz-x')>=0)return h;
+ const R=dom(h),sh=R.querySelector('.sh2');if(!sh)return h;
+ let mo=sh.querySelector(':scope > .mo');
+ const nodes=[...sh.querySelectorAll(FOLD)].filter(n=>n.textContent.trim()||n.querySelector('button,input,label'));
+ const extra=[...sh.querySelectorAll('.nm-p > button')].filter(b=>/mpDepart|mpsv/.test(b.getAttribute('onclick')||''));
+ sh.querySelectorAll(FOLD).forEach(n=>{if(!nodes.includes(n))n.remove()});
+ if(!nodes.length&&!extra.length&&!mo)return h;
+ if(!mo){mo=document.createElement('div');mo.className='mo';mo.innerHTML='<button class="mos" aria-expanded="'+!!S.mp.mpMore+'" onclick="mpMoreTg()">'+T('More about this place','Plus d’infos','Ibindi ku hantu')+'</button>';
+  const at=sh.querySelector(':scope > .nm-tb')||sh.querySelector(':scope > .nm-ph');at?sh.insertBefore(mo,at):sh.appendChild(mo)}
+ if(S.mp.mpMore){
+  if(extra.length){const x=document.createElement('div');x.className='pz-x';extra.forEach(b=>{b.classList.remove('hit44a');x.appendChild(b)});mo.appendChild(x)}
+  nodes.forEach(n=>mo.appendChild(n))}
+ else{nodes.forEach(n=>n.remove());extra.forEach(b=>b.remove())}
+ return R.innerHTML}catch(e){console.error('q647 place',e);return h}}}
+/* Directions route: depart time joins the sort row; alerts, passengers, calendar, read aloud and the like fold into one "More options" row */
+S.q647rt=!!S.q647rt;
+window.q647Rt=()=>keep(()=>{S.q647rt=!S.q647rt});
+if(screens.route){const _r=screens.route;
+screens.route=function(){const h=String(_r.apply(this,arguments));try{
+ if(h.indexOf('class="rsh"')<0||h.indexOf('q647m')>=0)return h;
+ const R=dom(h),rsh=R.querySelector('.rsh'),dpp=R.querySelector('.dpp'),rst=R.querySelector('.rst');
+ if(dpp&&rst&&rst.contains(dpp)===false){rst.insertBefore(dpp,rst.firstChild)}
+ R.querySelectorAll('.rcd').forEach(c=>{const t=c.querySelectorAll('.rtag');for(let i=0;i<t.length-1;i++)t[i].remove()});
+ const L=[...rsh.querySelectorAll(':scope > .goa,:scope > .baa,:scope > .lat,:scope > .oma,:scope > .pax,:scope > .cal,:scope > .rda,:scope > .svr')];
+ if(L.length){const w=document.createElement('div');w.className='rtm';
+  w.innerHTML='<button class="q647m" aria-expanded="'+S.q647rt+'" onclick="q647Rt()">'+T('More options','Plus d’options','Ibindi')+'</button>';
+  L[0].parentNode.insertBefore(w,L[0]);L.forEach(n=>{if(S.q647rt)w.appendChild(n);else n.remove()})}
+ return R.innerHTML}catch(e){console.error('q647 route',e);return h}}}
+/* Directions hub: the intercity list is one row that opens on tap */
+S.q647ic=!!S.q647ic;
+window.q647Ic=()=>keep(()=>{S.q647ic=!S.q647ic});
+if(screens.dirhub){const _d=screens.dirhub;
+screens.dirhub=function(){const h=String(_d.apply(this,arguments));try{
+ if(h.indexOf('class="icx"')<0||h.indexOf('q647i')>=0)return h;
+ const R=dom(h),x=R.querySelector('.icx'),hd=x&&x.querySelector('.dvh');if(!hd)return h;
+ const b=document.createElement('button');b.className='q647i';b.setAttribute('aria-expanded',S.q647ic);b.setAttribute('onclick','q647Ic()');b.textContent=hd.textContent;
+ hd.replaceWith(b);if(!S.q647ic)[...x.children].forEach(c=>{if(c!==b)c.remove()});
+ return R.innerHTML}catch(e){console.error('q647 dirhub',e);return h}}}
+})()}catch(x){console.error('q647',x)}
+document.title=document.title.replace(/v\d+/,'v654');
+</script>
+<style id="ez649s">
+/* v649: Eats. "Arrives by" on the restaurant page lines up with the text above it; the side-and-drink rail in the cart lines up with its title and has room before Delivery time; the tracking page gets its order summary back and a delivery code. */
+#phone .ez-arr{padding:0 24px;margin-top:4px!important}
+#phone .ez-sg{padding-bottom:20px}
+#phone .ez-sg .ez-rail{padding-left:0}
+#phone .ez-dc{padding:20px 24px 0}
+#phone .ez-dc .ez-dn{font-size:30px;line-height:36px;font-weight:800;letter-spacing:8px;margin-top:2px}
+</style>
+<script id="ez649">
+try{(()=>{
+if(typeof screens==='undefined'||!screens.etrack)return;
+const T=(e,f,r)=>({en:e,fr:f,rw:r}[S.lang]||e);
+const _t9=screens.etrack;
+/* Why the summary was missing: v646 put it inside #etx, and #etx is rewritten twice a second by the live tracker, so the dishes, total and "Arrives by" vanished half a second after the page opened. It now sits above #etx, where the tracker does not touch it. */
+screens.etrack=function(){const h=_t9.apply(this,arguments);try{
+ const a=h.indexOf('<div class="ez-ts"'),x=h.indexOf('id="etx"');
+ if(a<0||x<0)return h;
+ const c=h.indexOf('Cancel order',a);
+ let sum='',rest=h;
+ if(c>0&&a>x){const end=h.lastIndexOf('<button',c);sum=h.slice(a,end);rest=h.slice(0,a)+h.slice(end)}
+ else if(a<x){return h}
+ else return h;
+ const o=S.orders.find(y=>y.k==='Eats order'&&y.items);
+ const live=o&&!o.pickup&&!/Delivered|Picked up|Cancelled/.test(o.s||'')&&!S.ecancel;
+ const code=live?`<div class="ez-dc"><div class="sm mu" style="font-size:13px">${T('Delivery code','Code de livraison','Kode yo kugezwaho')}</div><div class="ez-dn">4821</div><div class="sm mu" style="margin-top:2px;font-size:13px">${T('Tell your rider this code at the door. Not before.','Donnez ce code au livreur à la porte. Pas avant.','Gira umushoferi iyi kode ku muryango. Si mbere.')}</div></div>`:'';
+ const k=rest.lastIndexOf('<div',rest.indexOf('id="etx"'));
+ return rest.slice(0,k)+code+sum+rest.slice(k);
+}catch(e){console.error('ez649',e);return h}};
+})()}catch(x){console.error('eats-v649',x)}
+</script>
+<script id="ez650">
+try{(()=>{
+if(typeof screens==='undefined'||!screens.eorders)return;
+const T=(e,f,r)=>({en:e,fr:f,rw:r}[S.lang]||e);
+const hm=t=>{const d=new Date(t);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
+const _o9=screens.eorders;
+/* v650: an order still on its way shows when it arrives (or is ready) and the delivery code, right in the Orders list. */
+screens.eorders=function(){const h=_o9.apply(this,arguments);try{
+ if(h.includes('ez-ol'))return h;
+ const L=S.orders.filter(o=>o.k==='Eats order'&&o.items);if(!L.length)return h;
+ const seg=h.split('<div class="ez-or"');if(seg.length<2)return h;
+ for(let n=1;n<seg.length;n++){const o=L[n-1];if(!o||!o.eta||/Delivered|Picked up|Cancelled/.test(o.s||''))continue;
+  const m=seg[n].indexOf('margin-top:2px;color:');if(m<0)continue;
+  const e=seg[n].indexOf('</div>',m);if(e<0)continue;
+  const line=`<div class="ez-ol sm mu" style="margin-top:2px">${o.pickup?T('Ready by','Prêt vers','Bizaba byiteguye saa'):T('Arrives by','Arrive vers','Bizahagera saa')} ${hm(o.eta)}${o.pickup?'':' · '+T('Code','Code','Kode')+' 4821'}</div>`;
+  seg[n]=seg[n].slice(0,e+6)+line+seg[n].slice(e+6)}
+ return seg.join('<div class="ez-or"');
+}catch(e){console.error('ez650',e);return h}};
+})()}catch(x){console.error('eats-v650',x)}
+</script>
+
+
+
+<script id="ez654">
+try{(()=>{
+if(typeof screens==='undefined'||!screens.route||typeof M==='undefined')return;
+/* v654 Directions: "Leave now" strip under the travel modes with the arrival time, and a leave-later picker (in 15 min, 30 min, 1 hour) that moves the arrival time. */
+const T=(e,f,r)=>({en:e,fr:f,rw:r}[S.lang]||e);
+const hm=ms=>{const d=new Date(ms);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
+const OFF=[[0,'Leave now','Partir maintenant','Genda ubu'],[15,'In 15 min','Dans 15 min','Mu minota 15'],[30,'In 30 min','Dans 30 min','Mu minota 30'],[60,'In 1 hour','Dans 1 h','Mu isaha 1']];
+window.rdep=k=>{M.dep=k;render('fade-none')};
+const _r=screens.route;
+screens.route=()=>{let h=_r();try{
+ const o=OPT[M.mode],cur=o[Math.min(M.opt,o.length-1)],off=OFF[M.dep||0],now=Date.now();
+ const go=now+off[0]*60000,arr=go+cur[1]*60000;
+ const chips=OFF.map((x,i)=>`<button class="${(M.dep||0)===i?'on':''}" onclick="rdep(${i})" style="flex:none;height:34px;padding:0 14px;border-radius:17px;border:0;font-size:13px;font-weight:700;background:${(M.dep||0)===i?'var(--tx)':'var(--chip)'};color:${(M.dep||0)===i?'var(--bg)':'var(--tx)'}">${T(x[1],x[2],x[3])}</button>`).join('');
+ const strip=`<div style="padding:12px 24px 0"><div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:16px;font-weight:800">${T('Arrive','Kugerayo','Arrivée')} ${hm(arr)}</div><div class="sm mu">${T('Leave','Genda','Départ')} ${hm(go)} · ${cur[1]} min</div></div><div style="display:flex;gap:8px;overflow-x:auto;margin-top:10px;scrollbar-width:none">${chips}</div></div>`;
+ const m=h.indexOf('<div class="modes">');if(m<0)return h;
+ const e=h.indexOf('</button></div>',m);if(e<0)return h;
+ const at=e+'</button></div>'.length;
+ return h.slice(0,at)+strip+h.slice(at)
+}catch(x){console.error('ez654',x);return h}};
+})()}catch(x){console.error('dir-v654',x)}
+</script>
+<style id="ez655s">
+/* v655: Eats header and cards no longer cut names; Directions and Places show real travel times; Home gets one quiet "Around you" block. */
+#phone .ez-ad{font-size:15px}
+#phone .ez-ad span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#phone .ez-promo b{font-size:15px;line-height:20px;display:block}
+#phone .ez-promo small{font-size:12px;line-height:16px;display:block;margin-top:2px}
+#phone .ez-rail .ez-n{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-overflow:clip;line-height:19px;min-height:38px}
+#phone .nvc .ez655w{font-size:13px;font-weight:600;color:var(--mu);margin-top:3px}
+
+#phone .chp.ez655n{flex-wrap:nowrap!important;gap:6px!important;overflow-x:auto;scrollbar-width:none}#phone .chp.ez655n button{padding:0 10px!important;font-size:14px!important;flex:none}#phone .chp button .ez655c{font-weight:600;color:var(--mu);margin-left:3px;font-size:12px}
+#phone .ez655h .row .s{color:var(--mu)}
+</style>
+<script id="ez655">
+try{(()=>{
+if(typeof screens==='undefined'||typeof S==='undefined')return;
+const T=(e,f,r)=>({en:e,fr:f,rw:r}[S.lang]||e);
+const dom=h=>{const d=document.createElement('div');d.innerHTML=h;return d};
+/* shared travel-time model: same pace as the route screen (bus 305 about 35 min for 10.6 km, car about 17 min) */
+const MIN={bus:k=>Math.round(8+k*2.5),car:k=>Math.round(3+k*1.4),walk:k=>Math.max(1,Math.round(k*12)),bike:k=>Math.max(2,Math.round(k*4.5))};
+const MODE_EN={bus:['by bus','en bus','muri bisi'],car:['by car','en voiture','mu modoka'],walk:['walk','à pied','n’amaguru'],bike:['by bike','à vélo','ku igare']};
+const KM={'Nyamirambo Coffee House':10.6,'KG 7 Ave 22, Kacyiru':6.2,'Kimironko Market':0.9,'Kigali Heights Dental':6.8,'Kigali Heights, KG 7 Ave':6.8,'Home':6.2,'Work':6.8};
+const mode=()=>((S.dh&&S.dh.mode)||'bus');
+const eta=(k,m)=>{m=m||mode();return (MIN[m]||MIN.bus)(k)};
+const fmtMin=n=>n>=60?Math.floor(n/60)+' h'+(n%60?' '+String(n%60).padStart(2,'0'):''):n+' min';
+
+/* Directions hub: recent routes and Home / Work show the time for the mode you picked */
+if(screens.dirhub){const _d=screens.dirhub;
+screens.dirhub=function(){const h=String(_d.apply(this,arguments));try{
+ if(h.indexOf('Recent routes')<0||h.indexOf('ez655')>=0)return h;
+ const R=dom(h),m=mode();
+ R.querySelectorAll('.pl.tap').forEach(r=>{
+  const b=r.querySelector('b');if(!b||r.closest('.icx'))return;
+  const nm=b.textContent.trim(),k=KM[nm];if(!k)return;
+  const t=fmtMin(eta(k,m));
+  let wrap=b.parentElement&&b.parentElement!==r?b.parentElement:null,sub=wrap&&wrap.querySelector('span');
+  const old=((sub||r.querySelector('span')||{}).textContent||'').trim();
+  const date=old.split(' · ').pop();
+  if(!wrap){
+   const sp=r.querySelector('span');
+   wrap=document.createElement('div');wrap.style.cssText='flex:1;min-width:0';
+   b.setAttribute('style','display:block;font-size:17px;font-weight:600');
+   sub=document.createElement('span');sub.setAttribute('style','font-size:14px;color:var(--tt)');
+   r.insertBefore(wrap,b);wrap.appendChild(b);wrap.appendChild(sub);if(sp)sp.remove()}
+  sub.textContent=k+' km · '+t+' · '+date;sub.classList.add('ez655t')});
+ R.querySelectorAll('.chp button').forEach(bt=>{
+  const oc=bt.getAttribute('onclick')||'';
+  const key=/'Home'/.test(oc)?'Home':/'Work'/.test(oc)?'Work':'';
+  if(!key||bt.querySelector('.ez655c'))return;bt.parentElement.classList.add('ez655n');
+  const s=document.createElement('span');s.className='ez655c';s.textContent='· '+fmtMin(eta(KM[key],m));bt.appendChild(s)});
+ return R.innerHTML}catch(e){console.error('ez655 dirhub',e);return h}}}
+
+/* Eats home: the address shows the neighbourhood without a cut-off, and the promo sub-line fits on one line */
+if(screens.shop){const _s=screens.shop;
+screens.shop=function(){let h=String(_s.apply(this,arguments));try{
+ if(S.shopTab==='eats'){
+  h=h.replace('<span>Kimironko, KG 11 Ave</span>','<span>Kimironko</span>').replace('<small>Code FREEDEL, applied at checkout</small>','<small>Code FREEDEL, auto-applied</small>')}
+ return h}catch(e){return h}}}
+
+/* Places hub: each card says how long it takes to get there (walk when close, drive when not) */
+if(screens.placehub){const _p=screens.placehub;
+screens.placehub=function(){const h=String(_p.apply(this,arguments));try{
+ if(h.indexOf('class="nvc"')<0||h.indexOf('ez655w')>=0)return h;
+ const R=dom(h);
+ R.querySelectorAll('.nvc .s .mu').forEach(s=>{
+  const m=s.textContent.match(/([\d.]+)\s*km/);if(!m)return;
+  const k=parseFloat(m[1]);
+  const w=k<=1.5?'🚶 '+T(fmtMin(eta(k,'walk'))+' walk',fmtMin(eta(k,'walk'))+' à pied',fmtMin(eta(k,'walk'))+' n’amaguru'):'🚗 '+T(fmtMin(eta(k,'car'))+' drive',fmtMin(eta(k,'car'))+' en voiture',fmtMin(eta(k,'car'))+' mu modoka');
+  const row=s.parentElement;if(row)row.insertAdjacentHTML('afterend','<div class="ez655w">'+w+'</div>')});
+ return R.innerHTML}catch(e){console.error('ez655 placehub',e);return h}}}
+
+/* Home: one quiet block that links the three places-and-trips areas, with real numbers */
+const _h=screens.home;
+if(_h){screens.home=function(){const h=String(_h.apply(this,arguments));try{
+ if(h.indexOf('ez655h')>=0)return h;
+ const k='<div class="hc"><div class="hct"><span>Recent activity';
+ const i=h.indexOf(k);if(i<0)return h;
+ const rw=(ico,t,s,on)=>typeof row==='function'?row(ico,t,s,'',on):'';
+ const blk='<div class="hc ez655h"><div class="hct"><span>'+T('Around you','Autour de vous','Hafi yawe')+'</span></div>'
+  +rw('market',T('Kigali Roast','Kigali Roast','Kigali Roast'),T('Cafe · open till 20:00 · 3 min walk','Café · ouvert jusqu’à 20:00 · 3 min à pied','Cafe · ifunguye kugeza 20:00 · iminota 3 n’amaguru'),'openPlaces()')
+  +rw('restaurant',T('Eats','Repas','Ibiryo'),T('Free delivery on your first order','Livraison offerte sur votre première commande','Kugezwaho ku buntu ku itegeko rya mbere'),"openShop('eats')")
+  +rw('moto',T('Home','Domicile','Mu rugo'),T('About '+fmtMin(eta(KM.Home,'bus'))+' by bus · leave now','Environ '+fmtMin(eta(KM.Home,'bus'))+' en bus · partir maintenant','Hafi y’iminota '+eta(KM.Home,'bus')+' muri bisi · genda ubu'),"openDirections()")
+  +'</div>';
+ return h.slice(0,i)+blk+h.slice(i)}catch(e){console.error('ez655 home',e);return h}}}
+
+})()}catch(x){console.error('v655',x)}
+document.title=document.title.replace(/v\d+/,'v655');
+</script>
+<script id="ez656">
+try{(()=>{
+if(typeof screens==='undefined'||typeof S==='undefined'||!S.mp)return;
+/* v656: Places and Directions, consistency pass. (1) Places hub: the picture tile on each card is the place's own emoji (Sweet Tooth Cakes showed a coffee cup, Fresh Press a stew pot). (2) Directions: a place within 1.5 km opens on Walk instead of Bus, unless you chose a mode in the Directions hub or on the route screen. (3) Recent routes in the Directions hub show the place's own emoji instead of the same target icon. Also in the v499 route builder (edited in place above): a walk, bike or car trip whose start and end sit next to the same road node now goes straight there instead of via that node, so a 0.2 km walk reads about 3 min on the route screen, like the "2 min walk" on the Places card, not 10 min. (v654's leave-later strip never ran because it tested a global M that does not exist; the Depart picker from v501 does that job, so it stays off.) */
+const M=S.mp,P=()=>window.POI||[];
+const dom=h=>{const d=document.createElement('div');d.innerHTML=h;return d};
+const kmOf=p=>p?parseFloat(p.d)||0:0;
+
+/* 1. Places hub: own emoji first */
+if(screens.placehub){const _h=screens.placehub;
+screens.placehub=function(){const h=String(_h.apply(this,arguments));try{
+ if(h.indexOf('class="nvc"')<0)return h;
+ const R=dom(h);
+ R.querySelectorAll('.nvc').forEach(c=>{
+  const id=((c.getAttribute('onclick')||'').match(/'([^']+)'/)||[])[1],p=P().find(x=>x.id===id),t=c.querySelector('.ph div');
+  if(p&&p.e&&t)t.textContent=p.e});
+ return R.innerHTML}catch(e){console.error('ez656 placehub',e);return h}}}
+
+/* 2. Directions: short trips start on Walk */
+if(typeof window.mpSet==='function'){const _s=window.mpSet;window.mpSet=(k,v)=>{if(k==='mode')M.mchosen=true;return _s(k,v)}}
+const prep=id=>{try{
+ const p=P().find(x=>x.id===id),k=kmOf(p);
+ if(!p||!k||M.mchosen)return;
+ M.mode=(S.dh&&S.dh.mode)||(k<=1.5?'walk':'bus')}catch(e){console.error('ez656 prep',e)}};
+['mpDir','mpArriveAt'].forEach(n=>{const f=window[n];if(typeof f!=='function')return;
+ window[n]=function(id){prep(id);return f.apply(this,arguments)}});
+{const _b=window.back;if(typeof _b==='function')window.back=function(){try{if(S.stack&&S.stack[S.stack.length-1]==='route')M.mchosen=false}catch(e){}return _b.apply(this,arguments)}}
+
+/* 3. Directions hub: recent routes show the place's own emoji */
+if(screens.dirhub){const _d=screens.dirhub;
+screens.dirhub=function(){const h=String(_d.apply(this,arguments));try{
+ if(h.indexOf('Recent routes')<0)return h;
+ const R=dom(h);
+ R.querySelectorAll('.pl.tap').forEach(r=>{
+  const ic=r.querySelector(':scope>i'),id=((r.getAttribute('onclick')||'').match(/dhGo\('([^']+)'/)||[])[1];if(!ic||!id)return;
+  const p=P().find(x=>x.id===id);
+  if(p&&p.e){ic.textContent=p.e;ic.style.fontSize='22px'}});
+ return R.innerHTML}catch(e){console.error('ez656 dirhub',e);return h}}}
+})()}catch(x){console.error('v656',x)}
+/* v657: map pins sit where the distance label says. Every place's "x.x km" label (and the route screen built on it) disagreed with its pin on the real map: Kimironko Brochette said 6.3 km but its pin sat on top of you. Each pin keeps its direction from you and moves to label / 1.25 km straight-line; delivery places that had no pin get one. */
+try{(()=>{
+if(!window.POI)return;
+const YOU=[-1.9488,30.127],r=Math.PI/180,kx=111.32*Math.cos(YOU[0]*r);
+window.POI.forEach(p=>{if(p.__p657)return;p.__p657=1;
+ const k=(parseFloat(p.d)||0)/1.25;if(!k)return;
+ let dy=0,dx=0;
+ if(Array.isArray(p.ll)){dy=(p.ll[0]-YOU[0])*111.32;dx=(p.ll[1]-YOU[1])*kx}
+ let m=Math.hypot(dx,dy);
+ if(m<.05){const h=String(p.id).split('').reduce((s,c)=>(s*31+c.charCodeAt(0))>>>0,7),b=(h%360)*r;dx=Math.sin(b);dy=Math.cos(b);m=1}
+ p.ll=[YOU[0]+dy/m*k/111.32,YOU[1]+dx/m*k/kx]});
+})()}catch(x){console.error('v657',x)}
+/* v657: one travel-time model. Place page ("🚌 35 min" was scraped from an old fixed header) and Places cards (own pace) now use the same road-network routes as the Directions screen, so a place shows the same minutes everywhere. */
+try{(()=>{
+if(typeof screens==='undefined'||typeof window.__rt!=='function')return;
+const T=(e,f,r)=>({en:e,fr:f,rw:r}[S.lang]||e);
+const P=()=>window.POI||[];
+const secs=(m,p)=>{try{const me=window.__ep('My location'),r=window.__rt(m,me,window.__ep(p.n))[0];return r&&r.secs}catch(e){return 0}};
+const mn=s=>Math.max(1,Math.round(s/60)),fm=n=>n>=60?Math.floor(n/60)+' h '+(n%60)+' min':n+' min';
+const _pl=screens.place;
+if(_pl)screens.place=function(){const h=String(_pl.apply(this,arguments));try{
+ const p=P().find(x=>x.n===PL.n);if(!p||p.c==='bus'||h.indexOf('\u{1F68C} ')<0)return h;
+ const s=secs('bus',p);if(!s)return h;
+ return h.replace(/(<span class="mu">[^<]*?)\u{1F68C} [^<]*?(<\/span>)/u,'$1\u{1F68C} '+fm(mn(s))+'$2')}catch(e){console.error('v657 place',e);return h}};
+const _hb=screens.placehub;
+if(_hb)screens.placehub=function(){const h=String(_hb.apply(this,arguments));try{
+ if(h.indexOf('ez655w')<0)return h;
+ const d=document.createElement('div');d.innerHTML=h;
+ d.querySelectorAll('.nvc').forEach(c=>{
+  const id=((c.getAttribute('onclick')||'').match(/'([^']+)'/)||[])[1],p=P().find(x=>x.id===id),w=c.querySelector('.ez655w');if(!p||!w)return;
+  const k=parseFloat(p.d)||0,m=k<=1.5?'walk':'car',s=secs(m,p);if(!s)return;
+  const t=fm(mn(s));
+  w.textContent=m==='walk'?'\u{1F6B6} '+T(t+' walk',t+' à pied',t+' n’amaguru'):'\u{1F697} '+T(t+' drive',t+' en voiture',t+' mu modoka')});
+ return d.innerHTML}catch(e){console.error('v657 hub',e);return h}};
+})()}catch(x){console.error('v657b',x)}
+document.title=document.title.replace(/v\d+/,'v657');
+</script>
+<style id="ez658s">
+/* v658: itunda 증권, after Toss 증권 */
+#phone .ez-rk{width:16px;flex:none;font-size:15px;font-weight:800;color:var(--lk);text-align:left}
+#phone .stk svg{width:44px;flex:none}
+#phone .ez-sn{margin:22px 24px 0;padding:16px 18px;border-radius:20px;background:var(--chip)}
+#phone .ez-sn .a{font-size:13px;color:var(--mu);font-weight:600}
+#phone .ez-sn .b{display:flex;align-items:baseline;gap:10px;margin-top:4px}
+#phone .ez-sn .b b{font-size:24px;font-weight:800;letter-spacing:-.5px}
+#phone .ez-pp{margin:26px 0 0}
+#phone .ez-pp h3{margin:0 24px 6px;font-size:18px;font-weight:800}
+#phone .ez-pp .stk{padding-left:24px;padding-right:24px}
+#phone .ez-bx{margin:26px 24px 0}
+#phone .ez-bx h3{margin:0 0 12px;font-size:18px;font-weight:800}
+#phone .ez-rg{position:relative;height:6px;border-radius:3px;background:var(--chip);margin:10px 0 6px}
+#phone .ez-rg i{position:absolute;top:-5px;width:4px;height:16px;border-radius:2px;background:var(--tx);margin-left:-2px}
+#phone .ez-rl{display:flex;justify-content:space-between;font-size:13px;color:var(--mu)}
+#phone .ez-rl b{color:var(--tx)}
+#phone .ez-ob{margin-top:8px;border-radius:16px;overflow:hidden;background:var(--chip)}
+#phone .ez-ob div{position:relative;display:flex;justify-content:space-between;align-items:center;height:36px;padding:0 14px;font-size:14px;font-weight:700}
+#phone .ez-ob div s{position:absolute;top:0;bottom:0;text-decoration:none;opacity:.16}
+#phone .ez-ob div.a s{right:0;background:var(--er)}#phone .ez-ob div.b s{left:0;background:var(--ok)}
+#phone .ez-ob div span{position:relative}
+#phone .ez-ob div.a .p{color:var(--er)}#phone .ez-ob div.b .p{color:var(--ok)}
+#phone .ez-ob .cur{background:var(--bg);border:2px solid var(--tx);border-radius:10px;margin:2px 0}
+#phone .ez-br{display:flex;height:10px;border-radius:5px;overflow:hidden;margin-top:10px}
+#phone .ez-br i{display:block}
+#phone .ez-hd{margin:22px 24px 0;padding:16px 18px;border-radius:20px;background:var(--tint)}
+#phone .ez-hd .k{font-size:13px;color:var(--tintfg);font-weight:700}
+#phone .ez-hd .v{font-size:22px;font-weight:800;margin-top:2px}
+#phone .ez-hd .r{display:flex;justify-content:space-between;font-size:14px;margin-top:8px}
+</style>
+<script id="ez658">
+try{(()=>{
+if(typeof screens==='undefined'||typeof STK==='undefined'||!S.inv)return;
+/* v658: itunda 증권, after Toss 증권. Market list: rank numbers, and each chart is coloured by today's move (it was coloured by the month, so +2.1% showed a red line). Stock page: opens on 1D like Toss so the headline move matches the list; 52-week range bar, an order book (5 sell and 5 buy prices with sizes), a buyers-vs-sellers bar and Sell beside Buy when you hold it. Portfolio: with nothing held, a market snapshot (RSE All Share Index) and "Popular today". Sample data, like the rest of Invest. */
+const I=S.inv,T=(e,f)=>({en:e,fr:f||e,rw:e}[S.lang]||e);
+const nf=n=>Math.round(n).toLocaleString('en-US');
+const hash=s=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0};
+const rng=seed=>{let a=seed>>>0;return()=>{a=(a+0x6D2B79F5)|0;let z=Math.imul(a^(a>>>15),1|a);z=(z+Math.imul(z^(z>>>7),61|z))^z;return((z^(z>>>14))>>>0)/4294967296}};
+const st=tk=>STK.find(x=>x[0]===tk);
+const dom=h=>{const d=document.createElement('div');d.innerHTML=h;return d};
+const tkOf=e=>((e.getAttribute('onclick')||'').match(/openStock\('([^']+)'/)||[])[1];
+const dayPct=tk=>{const s=st(tk),o=I.open&&I.open[tk];return o?(s[2]-o)/o*100:s[3]};
+const sgn=n=>(n>=0?'+':'−')+Math.abs(n).toFixed(1)+'%';
+
+/* opens on 1D */
+if(typeof window.openStock==='function'){const _o=window.openStock;window.openStock=function(tk){I.rng='1D';return _o.apply(this,arguments)}}
+
+/* market list */
+const rank=h=>{const R=dom(h);const rows=[...R.querySelectorAll('.stk')];if(!rows.length)return h;
+ rows.forEach((r,i)=>{const tk=tkOf(r);if(!tk||!st(tk))return;
+  if(!r.querySelector('.ez-rk')){const k=document.createElement('div');k.className='ez-rk';k.textContent=i+1;r.insertBefore(k,r.firstChild)}
+  const p=r.querySelector('svg path');if(p)p.setAttribute('stroke',dayPct(tk)>=0?'var(--ok)':'var(--er)')});
+ return R.innerHTML};
+
+/* portfolio, nothing held: snapshot + popular today */
+const snap=()=>{const avg=STK.reduce((a,s)=>a+dayPct(s[0]),0)/STK.length,idx=168.42*(1+avg/100),up=avg>=0;
+ return `<div class="ez-sn"><div class="a">${T('RSE All Share Index','Indice RSE All Share')}</div><div class="b"><b>${idx.toFixed(2)}</b><span class="sm ${up?'up':'dn'}" style="font-weight:700">${up?'▲':'▼'} ${sgn(avg)} ${T('today','aujourd’hui')}</span></div></div>`};
+const popular=()=>{const top=STK.slice().sort((a,b)=>(hash(b[0])%97)-(hash(a[0])%97)).slice(0,3);
+ return `<div class="ez-pp"><h3>${T('Popular today','Populaires aujourd’hui')}</h3>${top.map(s=>{const c=dayPct(s[0]);return `<div class="stk" onclick="openStock('${s[0]}')" tabindex="0" role="button"><div class="tk" style="font-size:13px">${s[0]}</div><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:16px">${s[1]}</div><div class="sm mu">${T('Bought by ','Acheté par ')}${40+hash(s[0]+'p')%160} ${T('people today','personnes aujourd’hui')}</div></div><div style="text-align:right;min-width:68px"><div style="font-weight:800">${nf(s[2])}</div><div class="sm ${c>=0?'up':'dn'}" style="font-weight:700">${sgn(c)}</div></div></div>`}).join('')}</div>`};
+
+const _iv=screens.invest;
+if(_iv)screens.invest=function(){let h=String(_iv.apply(this,arguments));try{
+ if(I.tab==='mkt'&&h.indexOf('class="stk"')>=0&&h.indexOf('ez-rk')<0)return rank(h);
+ if(I.tab==='port'&&h.indexOf('Start investing')>=0&&h.indexOf('ez-sn')<0){
+  const i=h.indexOf('Start investing'),j=h.lastIndexOf('<div',h.lastIndexOf('<svg',i));
+  /* put the snapshot right after the Cash block, i.e. before the empty-state illustration */
+  const R=dom(h),box=[...R.querySelectorAll('.pad')].find(e=>/Start investing/.test(e.textContent)&&e.querySelector('svg')&&!e.querySelector('.row'));
+  if(box){box.insertAdjacentHTML('beforebegin',snap());
+   box.insertAdjacentHTML('afterend',popular());
+   return R.innerHTML}}
+ return h}catch(e){console.error('ez658 invest',e);return h}};
+
+/* stock page */
+const _sk=screens.stock;
+if(_sk)screens.stock=function(){let h=String(_sk.apply(this,arguments));try{
+ const tk=I.sk,s=st(tk);if(!s||h.indexOf('ez-bx')>=0)return h;
+ const R=dom(h),p=s[2],g=rng(hash(tk+'ob')),tick=Math.max(1,Math.round(p*.005));
+ /* 52-week range */
+ const kv=l=>{const e=[...R.querySelectorAll('*')].find(x=>x.children.length===0&&x.textContent.trim()===l);const n=e&&e.nextElementSibling;return n?parseFloat(n.textContent.replace(/[^\d.]/g,'')):null};
+ let hi=kv('52-week high'),lo=kv('52-week low');if(!hi||!lo){hi=Math.round(p*1.1);lo=Math.round(p*.8)}
+ const pos=Math.max(0,Math.min(100,(p-lo)/((hi-lo)||1)*100));
+ /* order book */
+ const asks=[5,4,3,2,1].map(i=>[p+tick*i,Math.round(200+g()*3800)]),bids=[1,2,3,4,5].map(i=>[p-tick*i,Math.round(200+g()*3800)]);
+ const mx=Math.max(...asks.map(x=>x[1]),...bids.map(x=>x[1]));
+ const row=(c,[pr,q])=>`<div class="${c}"><s style="width:${Math.round(q/mx*70)}%"></s><span>${nf(q)}</span><span class="p">${nf(pr)}</span></div>`;
+ const ob=asks.map(a=>row('a',a)).join('')+`<div class="cur"><span class="mu" style="font-weight:600">${T('Now','Maintenant')}</span><span>${nf(p)} RWF</span></div>`+bids.map(a=>row('b',a)).join('');
+ /* buyers vs sellers */
+ const by=Math.max(30,Math.min(72,Math.round(50+dayPct(tk)*6+(hash(tk+'bs')%11)-5)));
+ const blk=`<div class="ez-bx"><h3>${T('52-week range','Fourchette 52 semaines')}</h3><div class="ez-rg"><i style="left:${pos}%"></i></div><div class="ez-rl"><span>${T('Low','Bas')} <b>${nf(lo)}</b></span><span>${T('High','Haut')} <b>${nf(hi)}</b></span></div></div>
+<div class="ez-bx"><h3>${T('Order book','Carnet d’ordres')}</h3><div class="sm mu">${T('Shares waiting to be sold (top) and bought (bottom)','Actions à vendre (haut) et à acheter (bas)')}</div><div class="ez-ob">${ob}</div></div>
+<div class="ez-bx"><h3>${T('Buyers and sellers today','Acheteurs et vendeurs aujourd’hui')}</h3><div class="ez-br"><i style="width:${by}%;background:var(--ok)"></i><i style="width:${100-by}%;background:var(--er)"></i></div><div class="ez-rl" style="margin-top:6px"><span>${T('Buying','Achats')} <b>${by}%</b></span><span>${T('Selling','Ventes')} <b>${100-by}%</b></span></div></div>`;
+ const hd=S.hold&&S.hold[tk]&&S.hold[tk].q>0?(()=>{const q=S.hold[tk].q,av=S.hold[tk].avg,v=q*p,pl=(p-av)*q,pc=(p/av-1)*100;
+  return `<div class="ez-hd"><div class="k">${T('Your shares','Vos actions')}</div><div class="v">${nf(v)} RWF</div><div class="r"><span class="mu">${q} ${T('shares','actions')} · ${T('avg','moy.')} ${nf(av)}</span><b class="${pl>=0?'up':'dn'}">${pl>=0?'+':'−'}${nf(Math.abs(pl))} (${sgn(pc)})</b></div></div>`})():'';
+ const k=[...R.querySelectorAll('.agt')].find(e=>/^Key stats/.test(e.textContent.trim()));
+ const anchor=k&&k.closest('.pad,.sec,div')||k;
+ if(k){const host=k.parentElement;(host&&host.children.length>1&&host!==R.querySelector('.screen')?k:k).insertAdjacentHTML('beforebegin',blk)}
+ else return h;
+ const cta=R.querySelector('.cta');
+ if(cta&&S.hold&&S.hold[tk]&&S.hold[tk].q>0&&!/'sell'/.test(cta.innerHTML)){
+  cta.insertAdjacentHTML('beforeend',`<button class="btn sec2" style="flex:1;height:52px;font-size:16px;border-radius:16px" onclick="invTrade('${tk}','sell')" data-h44="1">${T('Sell','Vendre')}</button>`)}
+ return R.innerHTML}catch(e){console.error('ez658 stock',e);return h}};
+})()}catch(x){console.error('v658',x)}
+document.title=document.title.replace(/v\d+/,'v658');
+</script>
+<style id="ez659s">
+#phone .ez-nw{padding:14px 0;border-top:1px solid var(--ln)}
+#phone .ez-nw:first-of-type{border-top:0}
+#phone .ez-nw b{display:block;font-size:16px;line-height:22px;font-weight:700}
+#phone .ez-nw small{display:block;margin-top:4px;font-size:13px;color:var(--mu)}
+#phone .ez-av{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;margin:10px -24px 0;padding:0 24px}
+#phone .ez-av::-webkit-scrollbar{display:none}
+#phone .ez-av div{flex:none;min-width:128px;padding:12px 14px;border-radius:16px;background:var(--chip);cursor:pointer}
+#phone .ez-av b{display:block;font-size:14px}#phone .ez-av span{display:block;font-size:13px;color:var(--mu);margin-top:2px}#phone .ez-av em{display:block;font-style:normal;font-size:14px;font-weight:800;margin-top:6px}
+</style>
+<script id="ez659">
+try{(()=>{
+if(typeof screens==='undefined'||typeof STK==='undefined'||!S.inv)return;
+/* v659: itunda 증권, round 2. Market: Rising and Falling join Top movers / Dividend yield / Name as ranking chips, the rank numbers renumber, and rank numbers and day colours also survive a search (they were lost when the list redrew). Stock page: the top bar shows the company name and the line under the price says "BK · Banking" (Toss puts the name in the header); a News block (three sample headlines) before About; "Investors also viewed" chips that open the other stock. Sample data. */
+const I=S.inv,T=(e,f)=>({en:e,fr:f||e,rw:e}[S.lang]||e);
+const hash=s=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0};
+const st=tk=>STK.find(x=>x[0]===tk);
+const dom=h=>{const d=document.createElement('div');d.innerHTML=h;return d};
+const tkOf=e=>((e.getAttribute('onclick')||'').match(/openStock\('([^']+)'/)||[])[1];
+const dayPct=tk=>{const s=st(tk),o=I.open&&I.open[tk];return o?(s[2]-o)/o*100:s[3]};
+const sgn=n=>(n>=0?'+':'−')+Math.abs(n).toFixed(1)+'%';
+const nf=n=>Math.round(n).toLocaleString('en-US');
+
+/* order + numbering + colours on any element that holds .stk rows */
+const tidy=root=>{
+ let rows=[...root.querySelectorAll('.stk')].filter(r=>tkOf(r)&&st(tkOf(r)));if(!rows.length)return;
+ if(I.rk&&I.sort==='mov'){const par=rows[0].parentElement;rows.sort((a,b)=>I.rk==='up'?dayPct(tkOf(b))-dayPct(tkOf(a)):dayPct(tkOf(a))-dayPct(tkOf(b))).forEach(r=>par.appendChild(r));rows=[...par.querySelectorAll('.stk')]}
+ rows.forEach((r,i)=>{let k=r.querySelector('.ez-rk');if(!k){k=document.createElement('div');k.className='ez-rk';r.insertBefore(k,r.firstChild)}k.textContent=i+1;
+  const p=r.querySelector('svg path');if(p)p.setAttribute('stroke',dayPct(tkOf(r))>=0?'var(--ok)':'var(--er)')})};
+
+window.invRk=k=>{I.rk=I.rk===k?null:k;I.sort='mov';render('fade-none')};
+{const _s=window.invSort;if(typeof _s==='function')window.invSort=k=>{I.rk=null;return _s(k)}}
+{const _q=window.invSearch;if(typeof _q==='function')window.invSearch=function(v){const r=_q.apply(this,arguments);try{const e=document.getElementById('ilist');if(e)tidy(e)}catch(x){}return r}}
+
+const _iv=screens.invest;
+if(_iv)screens.invest=function(){let h=String(_iv.apply(this,arguments));try{
+ if(I.tab!=='mkt'||h.indexOf('class="stk"')<0)return h;
+ const R=dom(h),b=[...R.querySelectorAll('button')].find(x=>/^Top movers/.test(x.textContent.trim()));
+ if(b&&!R.querySelector('.ez-rkc')){
+  const mk=(k,l)=>{const n=b.cloneNode(true);n.textContent=l;n.className=b.className.replace(/\bon\b/g,'').trim()+' ez-rkc';n.setAttribute('onclick',"invRk('"+k+"')");n.removeAttribute('data-h44');if(I.rk===k&&I.sort==='mov')n.classList.add('on');return n};
+  if(I.rk&&I.sort==='mov')b.classList.remove('on');
+  b.after(mk('up',T('Rising','En hausse')),mk('dn',T('Falling','En baisse')));
+  b.nextSibling&&0}
+ tidy(R);
+ return R.innerHTML}catch(e){console.error('ez659 invest',e);return h}};
+
+const _sk=screens.stock;
+if(_sk)screens.stock=function(){let h=String(_sk.apply(this,arguments));try{
+ const tk=I.sk,s=st(tk);if(!s||h.indexOf('ez-nw')>=0)return h;
+ const R=dom(h);
+ const sec=(()=>{const e=[...R.querySelectorAll('*')].find(x=>x.children.length===0&&x.textContent.trim()==='Sector');return e&&e.nextElementSibling?e.nextElementSibling.textContent.trim():''})();
+ const bar=R.querySelector('.bar b');if(bar&&bar.textContent.trim()===tk)bar.textContent=s[1];
+ const sub=[...R.querySelectorAll('.pad .sm.mu')].find(x=>x.textContent.trim()===s[1]);if(sub)sub.textContent=tk+' · RSE'+(sec?' · '+sec:'');
+ const hh=hash(tk+'news'),pc=(2+hh%9),T3=[
+  [s[1]+T(' reports '+pc+'% higher half-year profit',' annonce un bénéfice semestriel en hausse de '+pc+' %'),'2 '+T('h ago','h')],
+  [T('Analysts keep a steady view on '+s[1]+' ahead of the dividend date','Les analystes restent stables sur '+s[1]+' avant le dividende'),T('Yesterday','Hier')],
+  [T('Trading volume in '+tk+' is above its 30-day average','Le volume de '+tk+' dépasse sa moyenne sur 30 jours'),'2 '+T('days ago','j')]];
+ const o=hh%3,ord=[T3[o],T3[(o+1)%3],T3[(o+2)%3]];
+ const others=STK.filter(x=>x[0]!==tk).sort((a,b)=>hash(tk+a[0])-hash(tk+b[0])).slice(0,4);
+ const news=`<div class="pad" style="padding-top:26px"><h3 style="margin:0 0 4px;font-size:18px;font-weight:800">${T('News','Actualités')}</h3>${ord.map(n=>`<div class="ez-nw"><b>${n[0]}</b><small>${T('Market news (sample)','Actualités (exemple)')} · ${n[1]}</small></div>`).join('')}</div>
+<div class="pad" style="padding-top:22px"><h3 style="margin:0;font-size:18px;font-weight:800">${T('Investors also viewed','Consultés aussi')}</h3><div class="ez-av">${others.map(x=>{const c=dayPct(x[0]);return `<div onclick="openStock('${x[0]}')" role="button" tabindex="0"><b>${x[1]}</b><span>${x[0]}</span><em class="${c>=0?'up':'dn'}">${nf(x[2])} · ${sgn(c)}</em></div>`}).join('')}</div></div>`;
+ const ab=[...R.querySelectorAll('.agt')].find(e=>e.textContent.trim()==='About');
+ if(!ab)return R.innerHTML;
+ (ab.closest('.pad')||ab).insertAdjacentHTML('beforebegin',news);
+ return R.innerHTML}catch(e){console.error('ez659 stock',e);return h}};
+})()}catch(x){console.error('v659',x)}
+document.title=document.title.replace(/v\d+/,'v659');
+</script>
+<style id="ez660s">
+#phone .ez-my{margin:18px 0 0}
+#phone .ez-my h3{margin:0 24px 8px;font-size:18px;font-weight:800}
+#phone .ez-mys{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;padding:0 24px}
+#phone .ez-mys::-webkit-scrollbar{display:none}
+#phone .ez-mys div{flex:none;min-width:132px;padding:12px 14px;border-radius:16px;background:var(--chip);cursor:pointer}
+#phone .ez-mys b{display:block;font-size:14px}#phone .ez-mys span{display:block;font-size:12px;color:var(--mu);margin-top:2px}#phone .ez-mys em{display:block;font-style:normal;font-size:14px;font-weight:800;margin-top:6px}
+#phone .ez-my .hint{margin:0 24px;font-size:13px;color:var(--mu)}
+.ez-mx{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+.ez-mx button{height:34px;padding:0 14px;border:0;border-radius:17px;background:var(--chip);color:var(--tx);font:inherit;font-size:13px;font-weight:700}
+.ez-mx button.on{background:var(--tx);color:var(--bg)}
+.ez-mx small{flex-basis:100%;font-size:13px;color:var(--mu)}
+</style>
+<script id="ez660">
+try{(()=>{
+if(typeof screens==='undefined'||typeof STK==='undefined'||!S.inv)return;
+/* v660: itunda 증권, round 3. Market > Stocks: a "My stocks" strip at the top (your holdings and starred stocks with today's move; with none it says how to add one). Order sheet: 25% / 50% / Max chips that size the order from your itunda Bank balance (fee included), and a line "You can buy up to N shares" (or "You hold N shares" when selling). Sample data. */
+const I=S.inv,T=(e,f)=>({en:e,fr:f||e,rw:e}[S.lang]||e);
+const st=tk=>STK.find(x=>x[0]===tk);
+const dom=h=>{const d=document.createElement('div');d.innerHTML=h;return d};
+const dayPct=tk=>{const s=st(tk),o=I.open&&I.open[tk];return o?(s[2]-o)/o*100:s[3]};
+const sgn=n=>(n>=0?'+':'−')+Math.abs(n).toFixed(1)+'%';
+const nf=n=>Math.round(n).toLocaleString('en-US');
+const fee=v=>Math.max(100,Math.round(v*.004));
+
+const _iv=screens.invest;
+if(_iv)screens.invest=function(){let h=String(_iv.apply(this,arguments));try{
+ if(I.tab!=='mkt'||(I.mk&&I.mk!=='stocks')||h.indexOf('ez-my')>=0)return h;
+ const R=dom(h),leaf=[...R.querySelectorAll('*')].find(x=>x.children.length===0&&/^Market today/.test(x.textContent.trim()));
+ if(!leaf)return h;
+ const mine=[...new Set(Object.keys(S.hold||{}).filter(k=>S.hold[k]&&S.hold[k].q>0&&st(k)).concat(Object.keys(I.watch||{}).filter(k=>I.watch[k]&&st(k))))];
+ const body=mine.length?`<div class="ez-mys">${mine.map(k=>{const s=st(k),c=dayPct(k),h2=S.hold&&S.hold[k]&&S.hold[k].q>0;return `<div onclick="openStock('${k}')" role="button" tabindex="0"><b>${s[1]}</b><span>${h2?S.hold[k].q+' '+T('shares','actions'):T('Following','Suivi')}</span><em class="${c>=0?'up':'dn'}">${nf(s[2])} · ${sgn(c)}</em></div>`}).join('')}</div>`:`<div class="hint">${T('Tap ☆ on a stock to follow it here.','Touchez ☆ sur une action pour la suivre ici.')}</div>`;
+ const blk=`<div class="ez-my"><h3>${T('My stocks','Mes actions')}</h3>${body}</div>`;
+ (leaf.closest('.pad')||leaf.parentElement.parentElement).insertAdjacentHTML('beforebegin',blk);
+ return R.innerHTML}catch(e){console.error('ez660 invest',e);return h}};
+
+/* order sheet: size chips */
+const maxQ=p=>{let q=Math.floor(S.bank/(p*1.004));while(q>0&&q*p+fee(q*p)>S.bank)q--;return Math.max(0,q)};
+const enhance=()=>{try{
+ const lay=document.getElementById('layer');if(!lay)return;
+ const inp=lay.querySelector('#trq');if(!inp||lay.querySelector('.ez-mx'))return;
+ const T0=I.tr;if(!T0)return;
+ const buy=T0.side==='buy',p=(T0.type==='limit'&&T0.lim)?T0.lim:st(T0.tk)[2];
+ const hold=(S.hold[T0.tk]&&S.hold[T0.tk].q)||0;
+ const cap=buy?maxQ(p):hold;
+ const row=[...lay.querySelectorAll('.req')].filter(r=>r.querySelector('button[onclick^="invQset"]')).pop();if(!row)return;
+ const chips=[[.25,'25%'],[.5,'50%'],[1,'Max']].map(([f,l])=>{const n=Math.max(cap?1:0,Math.floor(cap*f));return `<button class="${T0.q===n&&n>0?'on':''}" ${cap?'':'disabled'} onclick="invQset(${n})">${l}</button>`}).join('');
+ row.insertAdjacentHTML('afterend',`<div class="ez-mx">${chips}<small>${buy?T('You can buy up to ','Vous pouvez acheter jusqu’à ')+nf(cap)+T(' shares with your itunda Bank balance',' actions avec votre solde itunda Bank'):T('You hold ','Vous détenez ')+nf(cap)+T(' shares',' actions')}</small></div>`)}catch(e){console.error('ez660 sheet',e)}};
+const lay=document.getElementById('layer');
+if(lay)new MutationObserver(()=>{if(!lay.querySelector('.ez-mx'))enhance()}).observe(lay,{childList:true,subtree:true});
+})()}catch(x){console.error('v660',x)}
+document.title=document.title.replace(/v\d+/,'v660');
+</script>
+<style id="ez661s">
+.ez-am{margin-top:12px}
+.ez-am .t{font-size:13px;color:var(--mu);font-weight:600;margin-bottom:6px}
+.ez-am .r{display:flex;gap:8px;flex-wrap:wrap}
+.ez-am button{height:34px;padding:0 14px;border:0;border-radius:17px;background:var(--tint);color:var(--tintfg);font:inherit;font-size:13px;font-weight:700}
+.ez-am small{display:block;margin-top:8px;font-size:13px;color:var(--mu)}
+#phone .ez-pd{margin:22px 24px 0;padding:14px 18px;border-radius:20px;background:var(--chip)}
+#phone .ez-pd .k{font-size:13px;color:var(--mu);font-weight:700}
+#phone .ez-pd .l{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;font-size:15px}
+#phone .ez-pd .l button{border:0;background:none;color:var(--lk);font:inherit;font-weight:700;font-size:14px}
+</style>
+<script id="ez661">
+try{(()=>{
+if(typeof screens==='undefined'||typeof STK==='undefined'||!S.inv)return;
+/* v661: itunda 증권, round 4. Order sheet (buying): "By amount" chips (10K, 50K, 100K, 500K RWF) that pick the most shares that fit the amount with the fee, and say what it buys ("50,000 RWF buys 118 shares, 380 RWF left"). Stock page: when you have a limit order waiting on this stock, a "Waiting orders" card shows it with a Cancel link. Sample data. */
+const I=S.inv,T=(e,f)=>({en:e,fr:f||e,rw:e}[S.lang]||e);
+const st=tk=>STK.find(x=>x[0]===tk);
+const dom=h=>{const d=document.createElement('div');d.innerHTML=h;return d};
+const nf=n=>Math.round(n).toLocaleString('en-US');
+const fee=v=>Math.max(100,Math.round(v*.004));
+const fit=(amt,p)=>{let q=Math.floor(amt/(p*1.004));while(q>0&&q*p+fee(q*p)>amt)q--;return Math.max(0,q)};
+window.ezAmt=a=>{const t=I.tr;if(!t)return;const p=(t.type==='limit'&&t.lim)?t.lim:st(t.tk)[2],q=fit(a,p);if(!q){toast(T('That is less than one share','Moins d’une action'));return}
+ I.ezA=a;window.invQset(q)};
+const enhance=()=>{try{
+ const lay=document.getElementById('layer');if(!lay||lay.querySelector('.ez-am'))return;
+ const t=I.tr;if(!t||t.side!=='buy')return;const inp=lay.querySelector('#trq');if(!inp)return;
+ const mx=lay.querySelector('.ez-mx');const at=mx||[...lay.querySelectorAll('.req')].filter(r=>r.querySelector('button[onclick^="invQset"]')).pop();if(!at)return;
+ const p=(t.type==='limit'&&t.lim)?t.lim:st(t.tk)[2];
+ const note=(()=>{const a=I.ezA;if(!a)return '';const q=fit(a,p);if(!q||t.q!==q)return '';const left=a-(q*p+fee(q*p));return nf(a)+' RWF '+T('buys ','achète ')+q+T(' shares, ',' actions, ')+nf(left)+' RWF '+T('left',' restants')})();
+ at.insertAdjacentHTML('afterend',`<div class="ez-am"><div class="t">${T('Or buy by amount','Ou acheter par montant')}</div><div class="r">${[10000,50000,100000,500000].map(a=>`<button onclick="ezAmt(${a})">${nf(a/1000)}K</button>`).join('')}</div>${note?`<small>${note}</small>`:''}</div>`)}catch(e){console.error('ez661 sheet',e)}};
+const lay=document.getElementById('layer');
+if(lay)new MutationObserver(()=>{if(!lay.querySelector('.ez-am'))enhance()}).observe(lay,{childList:true,subtree:true});
+/* a new order sheet starts without a remembered amount */
+{const _t=window.invTrade;if(typeof _t==='function')window.invTrade=function(){I.ezA=0;return _t.apply(this,arguments)}}
+
+const _sk=screens.stock;
+if(_sk)screens.stock=function(){let h=String(_sk.apply(this,arguments));try{
+ const tk=I.sk,o=(I.orders||[]).filter(x=>x.tk===tk);if(!o.length||h.indexOf('ez-pd')>=0)return h;
+ const R=dom(h),at=R.querySelector('.ez-bx')||[...R.querySelectorAll('.agt')].find(e=>/^Key stats/.test(e.textContent.trim()));if(!at)return h;
+ const blk=`<div class="ez-pd"><div class="k">${T('Waiting orders','Ordres en attente')}</div>${o.map(x=>`<div class="l"><span>${x.side==='buy'?T('Buy','Achat'):T('Sell','Vente')} ${x.q} ${T('at','à')} ${nf(x.lim)} RWF</span><button onclick="invCancel(${x.id})">${T('Cancel','Annuler')}</button></div>`).join('')}</div>`;
+ at.insertAdjacentHTML('beforebegin',blk);return R.innerHTML}catch(e){console.error('ez661 stock',e);return h}};
+})()}catch(x){console.error('v661',x)}
+document.title=document.title.replace(/v\d+/,'v688');
+</script>
+<style id="ez662s">
+#phone .ez-td{display:flex;align-items:baseline;gap:8px;margin-top:6px;font-size:14px}
+#phone .ez-td span{color:var(--mu);font-weight:600}
+#phone .ez-td b{font-weight:800}
+#phone .ez-vt{margin:22px 24px 0;padding:18px;border-radius:20px;background:var(--chip)}
+#phone .ez-vt h3{margin:0;font-size:18px;font-weight:800}
+#phone .ez-vt p{margin:4px 0 0;font-size:13px;color:var(--mu)}
+#phone .ez-vt .bt{display:flex;gap:10px;margin-top:14px}
+#phone .ez-vt button{flex:1;height:48px;border:0;border-radius:14px;background:var(--bg);color:var(--tx);font:inherit;font-size:15px;font-weight:800}
+#phone .ez-vt .rs{display:flex;height:10px;border-radius:5px;overflow:hidden;margin-top:14px}
+#phone .ez-vt .rs i{display:block}
+#phone .ez-vt .rl{display:flex;justify-content:space-between;font-size:13px;color:var(--mu);margin-top:6px}
+#phone .ez-vt .rl b{color:var(--tx)}
+#phone .ez-vt .me{margin-top:10px;font-size:13px;font-weight:700;color:var(--lk)}
+</style>
+<script id="ez662">
+try{(()=>{
+if(typeof screens==='undefined'||typeof STK==='undefined'||!S.inv)return;
+/* v662: itunda 증권, round 5. Portfolio: a "Today" line under the invested value (how much your shares moved today, in RWF and %), like Toss's daily gain. Stock page: a "Will it rise today?" card with Rise / Fall buttons; after you vote it shows the sample crowd split and your pick, and a tap on the same card keeps the vote (one vote per stock). Sample data. */
+const I=S.inv,T=(e,f)=>({en:e,fr:f||e,rw:e}[S.lang]||e);
+const hash=s=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0};
+const st=tk=>STK.find(x=>x[0]===tk);
+const dom=h=>{const d=document.createElement('div');d.innerHTML=h;return d};
+const nf=n=>Math.round(n).toLocaleString('en-US');
+const sgn=n=>(n>=0?'+':'−')+Math.abs(n).toFixed(1)+'%';
+I.vt=I.vt||{};
+window.ezVote=(tk,d)=>{if(I.vt[tk])return;I.vt[tk]=d;render('fade-none')};
+
+const _iv=screens.invest;
+if(_iv)screens.invest=function(){let h=String(_iv.apply(this,arguments));try{
+ if(I.tab!=='port'||h.indexOf('ez-td')>=0)return h;
+ const ks=Object.keys(S.hold||{}).filter(k=>S.hold[k]&&S.hold[k].q>0&&st(k));if(!ks.length)return h;
+ let now=0,was=0;ks.forEach(k=>{const q=S.hold[k].q,p=st(k)[2],o=(I.open&&I.open[k])||p;now+=q*p;was+=q*o});
+ const d=now-was,pc=was?d/was*100:0;
+ const R=dom(h),leaf=[...R.querySelectorAll('*')].find(x=>x.children.length===0&&/since you bought|kuva waguze|depuis l’achat/.test(x.textContent));
+ if(!leaf)return h;
+ const el=leaf.closest('.sm')||leaf;
+ el.insertAdjacentHTML('afterend',`<div class="ez-td"><span>${T('Today','Aujourd’hui')}</span><b class="${d>=0?'up':'dn'}">${d>=0?'+':'−'}${nf(Math.abs(d))} RWF (${sgn(pc)})</b></div>`);
+ return R.innerHTML}catch(e){console.error('ez662 invest',e);return h}};
+
+const _sk=screens.stock;
+if(_sk)screens.stock=function(){let h=String(_sk.apply(this,arguments));try{
+ const tk=I.sk,s=st(tk);if(!s||h.indexOf('ez-vt')>=0)return h;
+ const R=dom(h),v=I.vt[tk],base=38+hash(tk+'vt')%30,n=420+hash(tk+'vn')%900;
+ let up=base,tot=n;if(v){tot+=1;up=Math.round(((base/100*n)+(v==='up'?1:0))/tot*100)}
+ const body=v?`<div class="rs"><i style="width:${up}%;background:var(--ok)"></i><i style="width:${100-up}%;background:var(--er)"></i></div><div class="rl"><span>${T('Rise','Hausse')} <b>${up}%</b></span><span>${nf(tot)} ${T('votes','votes')}</span><span>${T('Fall','Baisse')} <b>${100-up}%</b></span></div><div class="me">${T('You picked ','Votre choix : ')}${v==='up'?T('Rise','Hausse'):T('Fall','Baisse')}</div>`
+  :`<div class="bt"><button onclick="ezVote('${tk}','up')" style="color:var(--ok)">${T('Rise','Hausse')} ▲</button><button onclick="ezVote('${tk}','dn')" style="color:var(--er)">${T('Fall','Baisse')} ▼</button></div>`;
+ const blk=`<div class="ez-vt"><h3>${T('Will it rise today?','Va-t-elle monter aujourd’hui ?')}</h3><p>${T('Vote to see what other investors think (sample votes)','Votez pour voir l’avis des autres investisseurs (votes d’exemple)')}</p>${body}</div>`;
+ const at=R.querySelector('.ez-bx')||[...R.querySelectorAll('.agt')].find(e=>/^Key stats/.test(e.textContent.trim()));
+ if(!at)return h;
+ at.insertAdjacentHTML('beforebegin',blk);return R.innerHTML}catch(e){console.error('ez662 stock',e);return h}};
+})()}catch(x){console.error('v662',x)}
+document.title=document.title.replace(/v\d+/,'v662');
+</script>
+<style id="ez663s">
+#phone .ez-mt{margin:22px 24px 0}
+#phone .ez-mt h3{margin:0 0 4px;font-size:18px;font-weight:800}
+#phone .ez-mt .g{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+#phone .ez-mt .g div{padding:14px 16px;border-radius:16px;background:var(--chip)}
+#phone .ez-mt .g span{display:block;font-size:13px;color:var(--mu);font-weight:600}
+#phone .ez-mt .g b{display:block;font-size:20px;font-weight:800;margin-top:4px;letter-spacing:-.3px}
+#phone .ez-mt .g em{display:block;font-style:normal;font-size:12px;color:var(--mu);margin-top:2px}
+</style>
+<script id="ez663">
+try{(()=>{
+if(typeof screens==='undefined'||typeof STK==='undefined'||!S.inv)return;
+/* v663: itunda 증권, round 6. Stock page: an "Investment metrics" block (P/E, P/B, ROE, dividend yield) as four tiles, each with a one-line plain meaning ("Price vs yearly profit"), like Toss's 투자 지표. Sample numbers, steady per stock. */
+const I=S.inv,T=(e,f)=>({en:e,fr:f||e,rw:e}[S.lang]||e);
+const hash=s=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0};
+const st=tk=>STK.find(x=>x[0]===tk);
+const dom=h=>{const d=document.createElement('div');d.innerHTML=h;return d};
+const _sk=screens.stock;
+if(_sk)screens.stock=function(){let h=String(_sk.apply(this,arguments));try{
+ const tk=I.sk,s=st(tk);if(!s||h.indexOf('ez-mt')>=0)return h;
+ const g=k=>hash(tk+k),pe=(6+g('pe')%140/10).toFixed(1),pb=(0.6+g('pb')%25/10).toFixed(1),roe=(7+g('roe')%160/10).toFixed(1),dy=(2+g('dy')%70/10).toFixed(1);
+ const t=[[T('P/E','PER'),pe+'x',T('Price vs yearly profit','Cours vs bénéfice annuel')],[T('P/B','PBR'),pb+'x',T('Price vs company assets','Cours vs actifs')],[T('ROE','ROE'),roe+'%',T('Profit made from owners’ money','Profit sur fonds propres')],[T('Dividend yield','Rendement'),dy+'%',T('Yearly dividend vs price','Dividende annuel vs cours')]];
+ const blk=`<div class="ez-mt"><h3>${T('Investment metrics','Indicateurs')}</h3><div class="sm mu">${T('Sample numbers','Chiffres d’exemple')}</div><div class="g">${t.map(x=>`<div><span>${x[0]}</span><b>${x[1]}</b><em>${x[2]}</em></div>`).join('')}</div></div>`;
+ const R=dom(h),at=R.querySelector('.ez-vt')||R.querySelector('.ez-bx');if(!at)return h;
+ at.insertAdjacentHTML('beforebegin',blk);return R.innerHTML}catch(e){console.error('ez663 stock',e);return h}};
+})()}catch(x){console.error('v663',x)}
+document.title=document.title.replace(/v\d+/,'v663');
+</script>
+<style id="ez664s">
+#phone .ez-dv{margin:22px 24px 0;padding:18px;border-radius:20px;background:var(--chip)}
+#phone .ez-dv h3{margin:0;font-size:18px;font-weight:800}
+#phone .ez-dv .r{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:15px}
+#phone .ez-dv .r span{color:var(--mu)}
+#phone .ez-dv .r b{font-weight:800}
+#phone .ez-dv .pay{margin-top:14px;padding:12px 14px;border-radius:14px;background:var(--bg);font-size:14px;line-height:20px}
+#phone .ez-dv .pay b{color:var(--ok)}
+</style>
+<script id="ez664">
+try{(()=>{
+if(typeof screens==='undefined'||typeof STK==='undefined'||!S.inv)return;
+/* v664: itunda 증권, round 7. Stock page: a "Dividend" card (next pay date, amount per share, how often) and, if you hold the stock, what you would receive ("You'd get about N RWF for your Q shares"), like Toss's 배당 info. Sample numbers, steady per stock. */
+const I=S.inv,T=(e,f)=>({en:e,fr:f||e,rw:e}[S.lang]||e);
+const hash=s=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0};
+const st=tk=>STK.find(x=>x[0]===tk);
+const dom=h=>{const d=document.createElement('div');d.innerHTML=h;return d};
+const nf=n=>Math.round(n).toLocaleString('en-US');
+const _sk=screens.stock;
+if(_sk)screens.stock=function(){let h=String(_sk.apply(this,arguments));try{
+ const tk=I.sk,s=st(tk);if(!s||h.indexOf('ez-dv')>=0)return h;
+ const g=hash(tk+'dvd'),per=Math.max(1,Math.round(s[2]*(0.012+g%20/1000))),d=new Date(Date.now()+(20+g%60)*864e5),
+  ds=d.toLocaleDateString(S.lang==='fr'?'fr-FR':'en-GB',{day:'numeric',month:'short',year:'numeric'}),fq=[T('Twice a year','Deux fois par an'),T('Once a year','Une fois par an')][g%2];
+ const q=S.hold&&S.hold[tk]&&S.hold[tk].q>0?S.hold[tk].q:0;
+ const blk=`<div class="ez-dv"><h3>${T('Dividend','Dividende')}</h3><div class="r"><span>${T('Next payment','Prochain versement')}</span><b>${ds}</b></div><div class="r"><span>${T('Per share','Par action')}</span><b>${nf(per)} RWF</b></div><div class="r"><span>${T('How often','Fréquence')}</span><b>${fq}</b></div>${q?`<div class="pay">${T('You would get about ','Vous recevriez environ ')}<b>${nf(per*q)} RWF</b>${T(' for your ',' pour vos ')}${q}${T(' shares.',' actions.')}</div>`:''}<div class="sm mu" style="margin-top:10px">${T('Sample numbers','Chiffres d’exemple')}</div></div>`;
+ const R=dom(h),at=R.querySelector('.ez-vt');if(!at)return h;
+ at.insertAdjacentHTML('beforebegin',blk);return R.innerHTML}catch(e){console.error('ez664 stock',e);return h}};
+})()}catch(x){console.error('v664',x)}
+document.title=document.title.replace(/v\d+/,'v664');
+</script>
+<style id="ez665s">
+.ez-cs{margin-top:14px;padding:4px 16px;border-radius:16px;background:var(--chip)}
+.ez-cs div{display:flex;justify-content:space-between;align-items:center;min-height:38px;font-size:14px}
+.ez-cs div span{color:var(--mu)}
+.ez-cs div b{font-weight:700}
+.ez-cs div.t{border-top:1px solid var(--ln);min-height:46px;font-size:15px}
+.ez-cs div.t span{color:var(--tx);font-weight:700}
+.ez-cs div.t b{font-weight:800;font-size:16px}
+</style>
+<script id="ez665">
+try{(()=>{
+if(typeof screens==='undefined'||typeof STK==='undefined'||!S.inv)return;
+/* v665: itunda 증권, round 8. After searching Toss 증권: its pitch is low, clearly stated costs, so the order sheet now shows the cost before you confirm: shares x price, the fee, and a total line ("You pay" when buying, "You receive" when selling). It updates as the share count changes. Sample fee, same 0.4% as the rest of Invest. */
+const I=S.inv,T=(e,f)=>({en:e,fr:f||e,rw:e}[S.lang]||e);
+const st=tk=>STK.find(x=>x[0]===tk);
+const nf=n=>Math.round(n).toLocaleString('en-US');
+const fee=v=>Math.max(100,Math.round(v*.004));
+const enhance=()=>{try{
+ const lay=document.getElementById('layer');if(!lay||lay.querySelector('.ez-cs'))return;
+ const t=I.tr;if(!t||!lay.querySelector('#trq'))return;
+ const at=lay.querySelector('.ez-am')||lay.querySelector('.ez-mx');if(!at)return;
+ const q=Math.max(0,Number(t.q)||0),p=(t.type==='limit'&&t.lim)?t.lim:st(t.tk)[2],v=q*p,f=q?fee(v):0,buy=t.side==='buy';
+ at.insertAdjacentHTML('afterend',`<div class="ez-cs"><div><span>${q} ${q===1?T('share','action'):T('shares','actions')} × ${nf(p)}</span><b>${nf(v)} RWF</b></div><div><span>${T('Fee (0.4%, min 100)','Frais (0,4 %, min 100)')}</span><b>${nf(f)} RWF</b></div><div class="t"><span>${buy?T('You pay','Vous payez'):T('You receive','Vous recevez')}</span><b>${nf(buy?v+f:Math.max(0,v-f))} RWF</b></div></div>`)}catch(e){console.error('ez665 sheet',e)}};
+const lay=document.getElementById('layer');
+if(lay)new MutationObserver(()=>{if(!lay.querySelector('.ez-cs'))enhance()}).observe(lay,{childList:true,subtree:true});
+})()}catch(x){console.error('v665',x)}
+document.title=document.title.replace(/v\d+/,'v665');
+</script>
+<style id="ez666s">
+#phone .ez-fn{margin:22px 24px 0}
+#phone .ez-fn h3{margin:0;font-size:18px;font-weight:800}
+#phone .ez-fn .tg{display:flex;gap:8px;margin-top:12px}
+#phone .ez-fn .tg button{height:34px;padding:0 14px;border:0;border-radius:17px;background:var(--chip);color:var(--tx);font:inherit;font-size:13px;font-weight:700}
+#phone .ez-fn .tg button.on{background:var(--tx);color:var(--bg)}
+#phone .ez-fn .bars{display:flex;align-items:flex-end;gap:10px;height:132px;margin-top:16px}
+#phone .ez-fn .bars div{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%}
+#phone .ez-fn .bars i{display:block;width:100%;border-radius:8px 8px 4px 4px;background:var(--chip)}
+#phone .ez-fn .bars div.cur i{background:var(--lk)}
+#phone .ez-fn .bars em{font-style:normal;font-size:12px;font-weight:700;margin-bottom:4px}
+#phone .ez-fn .yr{display:flex;gap:10px;margin-top:6px}
+#phone .ez-fn .yr span{flex:1;text-align:center;font-size:12px;color:var(--mu)}
+#phone .ez-fn .sum{margin-top:12px;font-size:14px}
+</style>
+<script id="ez666">
+try{(()=>{
+if(typeof screens==='undefined'||typeof STK==='undefined'||!S.inv)return;
+/* v666: itunda 증권, round 9. From the Toss 증권 research (financials shown as simple 5-year bars; the amount you are short is worked out for you). Stock page: a "Financials" block with a Revenue / Operating profit switch and five yearly bars, the latest one highlighted, plus a plain line on how it moved vs last year. Order sheet: when a buy costs more than your itunda Bank balance, the cost summary adds "You need N RWF more in itunda Bank". Sample numbers. */
+const I=S.inv,T=(e,f)=>({en:e,fr:f||e,rw:e}[S.lang]||e);

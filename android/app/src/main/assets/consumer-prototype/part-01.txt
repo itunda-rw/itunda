@@ -1,0 +1,1000 @@
+<!doctype html>
+<html lang="en">
+<head><link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii00NSAtNDAgOTAgOTAiPjxkZWZzPjxtYXNrIGlkPSJtIiBtYXNrVW5pdHM9InVzZXJTcGFjZU9uVXNlIiB4PSItNDUiIHk9Ii01MCIgd2lkdGg9IjkwIiBoZWlnaHQ9IjkwIj48cmVjdCB4PSItNDUiIHk9Ii01MCIgd2lkdGg9IjkwIiBoZWlnaHQ9IjkwIiBmaWxsPSIjZmZmIi8+PGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjE3IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik0yLjUgLTkuOUMzLjAgLTkuOSA0LjMgLTkuNyA1LjIgLTkuNkM2LjEgLTkuNSA3LjAgLTkuMyA3LjkgLTkuMUM4LjggLTguOSA5LjcgLTguNyAxMC41IC04LjRDMTEuMyAtOC4xIDEyLjIgLTcuOCAxMy4wIC03LjVDMTMuOCAtNy4yIDE0LjYgLTYuOCAxNS4zIC02LjRDMTYuMSAtNi4wIDE2LjggLTUuNiAxNy41IC01LjJDMTguMiAtNC44IDE4LjkgLTQuMyAxOS41IC0zLjhDMjAuMiAtMy4zIDIxLjAgLTIuNiAyMS4zIC0yLjMiLz48cGF0aCBkPSJNLTkuOCAyLjhDLTEwLjAgMi40IC0xMC42IDEuMSAtMTAuOSAwLjNDLTExLjMgLTAuNiAtMTEuNiAtMS40IC0xMS44IC0yLjNDLTEyLjEgLTMuMiAtMTIuMyAtNC4wIC0xMi41IC00LjlDLTEyLjcgLTUuOCAtMTIuOSAtNi42IC0xMy4wIC03LjVDLTEzLjEgLTguMyAtMTMuMiAtOS4yIC0xMy4yIC0xMC4wQy0xMy4zIC0xMC45IC0xMy4zIC0xMS43IC0xMy4zIC0xMi42Qy0xMy4yIC0xMy40IC0xMy4yIC0xNC4yIC0xMy4xIC0xNS4wQy0xMy4wIC0xNS44IC0xMi43IC0xNi45IC0xMi43IC0xNy4zIi8+PHBhdGggZD0iTTcuMyA3LjFDNy4xIDcuNSA2LjMgOC42IDUuNyA5LjNDNS4xIDEwLjEgNC41IDEwLjcgMy45IDExLjRDMy4zIDEyLjEgMi43IDEyLjcgMi4wIDEzLjNDMS40IDEzLjkgMC43IDE0LjUgMC4wIDE1LjBDLTAuNyAxNS41IC0xLjQgMTYuMCAtMi4xIDE2LjVDLTIuOCAxNi45IC0zLjUgMTcuNCAtNC4zIDE3LjhDLTUuMCAxOC4xIC01LjcgMTguNSAtNi41IDE4LjhDLTcuMiAxOS4xIC04LjMgMTkuNSAtOC43IDE5LjYiLz48L2c+PC9tYXNrPjwvZGVmcz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgwIDUpIiBmaWxsPSJub25lIiBzdHJva2U9IiM4Rjg5RkYiIHN0cm9rZS13aWR0aD0iMTIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTAuMCAtMTAuMEMyLjIgLTEwLjAgNC40IC05LjggNi41IC05LjRDOC42IC05LjAgMTAuNyAtOC40IDEyLjYgLTcuN0MxNC41IC02LjkgMTYuMyAtNi4wIDE4LjAgLTQuOUMxOS42IC0zLjggMjEuMSAtMi42IDIyLjMgLTEuM0MyMy42IC0wLjEgMjQuNiAxLjQgMjUuNCAyLjhDMjYuMiA0LjIgMjYuOCA1LjcgMjcuMSA3LjFDMjcuNCA4LjUgMjcuNCA5LjkgMjcuMyAxMS4zQzI3LjEgMTIuNiAyNi42IDEzLjkgMjYuMCAxNS4wQzI1LjMgMTYuMSAyNC40IDE3LjIgMjMuNCAxOC4wQzIyLjMgMTguOCAyMS4wIDE5LjUgMTkuNyAxOS45QzE4LjMgMjAuNCAxNi43IDIwLjYgMTUuMSAyMC42QzEzLjUgMjAuNiAxMS43IDIwLjQgMTAuMCAyMC4wQzguMyAxOS42IDYuNSAxOC45IDQuNyAxOC4wQzMuMCAxNy4xIDEuMyAxNi4wIC0wLjMgMTQuN0MtMS45IDEzLjQgLTMuNSAxMS45IC00LjkgMTAuM0MtNi4zIDguNyAtNy42IDYuOSAtOC43IDUuMEMtOS43IDMuMSAtMTAuNyAxLjEgLTExLjQgLTAuOUMtMTIuMSAtMi45IC0xMi42IC01LjAgLTEyLjkgLTcuMUMtMTMuMiAtOS4xIC0xMy4zIC0xMS4yIC0xMy4yIC0xMy4xQy0xMy4xIC0xNS4wIC0xMi44IC0xNi45IC0xMi4zIC0xOC43Qy0xMS44IC0yMC40IC0xMS4xIC0yMi4wIC0xMC4zIC0yMy40Qy05LjUgLTI0LjggLTguNSAtMjYuMCAtNy40IC0yNy4wQy02LjMgLTI4LjAgLTUuMSAtMjguNyAtMy45IC0yOS4yQy0yLjYgLTI5LjcgLTEuMyAtMzAuMCAwIC0zMC4wQzEuMyAtMzAuMCAyLjYgLTI5LjcgMy45IC0yOS4yQzUuMSAtMjguNyA2LjMgLTI4LjAgNy40IC0yNy4wQzguNSAtMjYuMCA5LjUgLTI0LjggMTAuMyAtMjMuNEMxMS4xIC0yMi4wIDExLjggLTIwLjQgMTIuMyAtMTguN0MxMi44IC0xNi45IDEzLjEgLTE1LjAgMTMuMiAtMTMuMUMxMy4zIC0xMS4yIDEzLjIgLTkuMSAxMi45IC03LjFDMTIuNiAtNS4wIDEyLjEgLTIuOSAxMS40IC0wLjlDMTAuNyAxLjEgOS43IDMuMSA4LjcgNS4wQzcuNiA2LjkgNi4zIDguNyA0LjkgMTAuM0MzLjUgMTEuOSAxLjkgMTMuNCAwLjMgMTQuN0MtMS4zIDE2LjAgLTMuMCAxNy4xIC00LjcgMTguMEMtNi41IDE4LjkgLTguMyAxOS42IC0xMC4wIDIwLjBDLTExLjcgMjAuNCAtMTMuNSAyMC42IC0xNS4xIDIwLjZDLTE2LjcgMjAuNiAtMTguMyAyMC40IC0xOS43IDE5LjlDLTIxLjAgMTkuNSAtMjIuMyAxOC44IC0yMy40IDE4LjBDLTI0LjQgMTcuMiAtMjUuMyAxNi4xIC0yNi4wIDE1LjBDLTI2LjYgMTMuOSAtMjcuMSAxMi42IC0yNy4zIDExLjNDLTI3LjQgOS45IC0yNy40IDguNSAtMjcuMSA3LjFDLTI2LjggNS43IC0yNi4yIDQuMiAtMjUuNCAyLjhDLTI0LjYgMS40IC0yMy42IC0wLjEgLTIyLjMgLTEuM0MtMjEuMSAtMi42IC0xOS42IC0zLjggLTE4LjAgLTQuOUMtMTYuMyAtNi4wIC0xNC41IC02LjkgLTEyLjYgLTcuN0MtMTAuNyAtOC40IC04LjYgLTkuMCAtNi41IC05LjRDLTQuNCAtOS44IC0yLjIgLTEwLjAgMCAtMTAuMFoiIG1hc2s9InVybCgjbSkiLz48cGF0aCBkPSJNMi41IC05LjlDMy4wIC05LjkgNC4zIC05LjcgNS4yIC05LjZDNi4xIC05LjUgNy4wIC05LjMgNy45IC05LjFDOC44IC04LjkgOS43IC04LjcgMTAuNSAtOC40QzExLjMgLTguMSAxMi4yIC03LjggMTMuMCAtNy41QzEzLjggLTcuMiAxNC42IC02LjggMTUuMyAtNi40QzE2LjEgLTYuMCAxNi44IC01LjYgMTcuNSAtNS4yQzE4LjIgLTQuOCAxOC45IC00LjMgMTkuNSAtMy44QzIwLjIgLTMuMyAyMS4wIC0yLjYgMjEuMyAtMi4zIi8+PHBhdGggZD0iTS05LjggMi44Qy0xMC4wIDIuNCAtMTAuNiAxLjEgLTEwLjkgMC4zQy0xMS4zIC0wLjYgLTExLjYgLTEuNCAtMTEuOCAtMi4zQy0xMi4xIC0zLjIgLTEyLjMgLTQuMCAtMTIuNSAtNC45Qy0xMi43IC01LjggLTEyLjkgLTYuNiAtMTMuMCAtNy41Qy0xMy4xIC04LjMgLTEzLjIgLTkuMiAtMTMuMiAtMTAuMEMtMTMuMyAtMTAuOSAtMTMuMyAtMTEuNyAtMTMuMyAtMTIuNkMtMTMuMiAtMTMuNCAtMTMuMiAtMTQuMiAtMTMuMSAtMTUuMEMtMTMuMCAtMTUuOCAtMTIuNyAtMTYuOSAtMTIuNyAtMTcuMyIvPjxwYXRoIGQ9Ik03LjMgNy4xQzcuMSA3LjUgNi4zIDguNiA1LjcgOS4zQzUuMSAxMC4xIDQuNSAxMC43IDMuOSAxMS40QzMuMyAxMi4xIDIuNyAxMi43IDIuMCAxMy4zQzEuNCAxMy45IDAuNyAxNC41IDAuMCAxNS4wQy0wLjcgMTUuNSAtMS40IDE2LjAgLTIuMSAxNi41Qy0yLjggMTYuOSAtMy41IDE3LjQgLTQuMyAxNy44Qy01LjAgMTguMSAtNS43IDE4LjUgLTYuNSAxOC44Qy03LjIgMTkuMSAtOC4zIDE5LjUgLTguNyAxOS42Ii8+PC9nPjwvc3ZnPg==">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>itunda, clickable prototype v1020</title>
+<meta name="description" content="Clickable prototype of the itunda super app: pay, bank, invest, shop, eat and more. Sample data only.">
+<meta name="theme-color" content="#8F89FF">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fff;--tx:#191F28;--mu:#6B7684;--tt:#8B95A1;--ln:#E5E8EB;--chip:#F2F4F6;--tint:#EEEDFF;--tintfg:#5B54D6;--lk:#6960F9;--ok:#0A8F5B;--er:#C4281B;--br:#8F89FF;--on:#17171C;--page:#F2F4F6}
+@media (prefers-color-scheme:dark){:root{--bg:#17171C;--tx:#F9FAFB;--mu:#9EA4AE;--tt:#8B95A1;--ln:#3A3A44;--chip:#2C2C35;--tint:#2A2850;--tintfg:#B3AEFF;--lk:#8F89FF;--page:#101013}}
+:root[data-theme=light]{--bg:#fff;--tx:#191F28;--mu:#6B7684;--tt:#8B95A1;--ln:#E5E8EB;--chip:#F2F4F6;--tint:#EEEDFF;--tintfg:#5B54D6;--lk:#6960F9;--page:#F2F4F6}
+:root[data-theme=dark]{--bg:#17171C;--tx:#F9FAFB;--mu:#9EA4AE;--tt:#8B95A1;--ln:#3A3A44;--chip:#2C2C35;--tint:#2A2850;--tintfg:#B3AEFF;--lk:#8F89FF;--page:#101013}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{background:var(--page);display:flex;align-items:center;justify-content:center;font-family:'Pretendard','Plus Jakarta Sans',system-ui,sans-serif;color:var(--tx)}
+#phone{position:relative;width:390px;height:844px;max-height:100dvh;background:var(--bg);border-radius:36px;overflow:hidden;box-shadow:none;border:1px solid var(--ln)}
+@media (max-width:430px){#phone{width:100vw;height:100dvh;border-radius:0;box-shadow:none}}
+.screen{position:absolute;inset:0;overflow-y:auto;background:var(--bg);padding-bottom:96px;scrollbar-width:none}
+.screen::-webkit-scrollbar{display:none}
+.push{animation:push .32s cubic-bezier(.2,.8,.2,1)}.pop{animation:fade .22s ease-out}.fade{animation:fade .24s ease-out}
+@keyframes push{from{transform:translateX(28px);opacity:0}to{transform:none;opacity:1}}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+button{font:inherit;color:inherit;cursor:pointer;transition:transform .12s ease,opacity .2s}
+button:active,.tap:active{transform:scale(.97)}
+.pad{padding:0 24px}
+.h1{font-size:28px;font-weight:800;letter-spacing:-.5px;line-height:36px}
+.big{font-size:40px;font-weight:800;letter-spacing:-1.2px}
+.mu{color:var(--mu)}.sm{font-size:13px}
+.sec{padding:32px 24px 0}.sech{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;font-size:18px;font-weight:800}
+.sech a{font-size:14px;color:var(--lk);font-weight:700}
+.row{display:flex;align-items:center;gap:14px;padding:11px 0;cursor:pointer}
+.row .t{font-size:16px;font-weight:700}.row .s{font-size:13px;color:var(--mu);margin-top:2px;line-height:18px}.row .r{margin-left:auto;font-size:14px;font-weight:700;color:var(--mu);display:flex;gap:4px;align-items:center}
+.ico{width:44px;height:44px;border-radius:22px;background:var(--chip);color:var(--tx);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.grid{display:grid;gap:18px 0}.g4{grid-template-columns:repeat(4,1fr)}.g5{grid-template-columns:repeat(5,1fr)}
+.gi{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12px;font-weight:700;cursor:pointer;text-align:center}
+.gi .ico{width:60px;height:60px;border-radius:22px}
+.g3{animation:pop .55s var(--sp-soft)}
+.btn{height:56px;width:100%;border:0;border-radius:18px;background:var(--br);color:var(--on);font-weight:800;font-size:17px}
+.btn.sec2{background:var(--chip);color:var(--tx)}.btn:disabled{opacity:.35}
+.row2{display:flex;gap:12px}.row2 .btn{height:52px;font-size:16px;border-radius:16px}
+.cta{z-index:4;position:absolute;left:0;right:0;bottom:0;padding:12px 24px 24px;background:var(--bg);border-top:0}
+.tabs{position:absolute;left:0;right:0;bottom:0;height:80px;background:var(--bg);border-top:0;display:flex;padding:0 8px;z-index:5}
+.tabs button{flex:1;border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:12px;font-weight:500;color:var(--tt)}
+.tabs button.on{color:var(--tx);font-weight:800}
+.bar{display:flex;align-items:center;gap:4px;padding:16px 12px 0}.bar b{font-size:18px;font-weight:800}
+.ib{width:44px;height:44px;border:0;background:none;display:flex;align-items:center;justify-content:center}
+.top{display:flex;align-items:center;justify-content:space-between;padding:20px 24px 0}
+.chip{display:inline-flex;align-items:center;height:36px;padding:0 16px;border-radius:18px;background:var(--chip);font-weight:800;font-size:14px;border:0}
+.field{margin:24px 24px 0;padding-bottom:10px;border-bottom:2px solid var(--tx)}
+.keys{display:grid;grid-template-columns:repeat(3,1fr);padding:0 24px}.keys button{height:60px;border:0;background:none;font-size:26px;font-weight:700}
+.sheetbg{position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:20;animation:fadebg .2s}.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--bg);border-radius:28px 28px 0 0;padding:28px 24px 28px;z-index:21;animation:up .3s cubic-bezier(.2,.8,.2,1)}
+@keyframes up{from{transform:translateY(100%)}to{transform:none}}@keyframes fadebg{from{opacity:0}to{opacity:1}}
+.toast{position:absolute;left:24px;right:24px;bottom:100px;background:var(--tx);color:var(--bg);padding:14px 18px;border-radius:16px;font-size:14px;font-weight:700;z-index:30;animation:fade .2s}
+.warn{margin:20px 24px 0;padding-top:16px;border-top:0;display:flex;gap:12px;animation:fade .25s}
+.check{width:104px;height:104px;border-radius:52px;background:var(--br);display:flex;align-items:center;justify-content:center;animation:pop .45s var(--sp-soft)}
+@keyframes pop{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
+.check path{stroke-dasharray:30;stroke-dashoffset:30;animation:draw .4s .25s ease-out forwards}@keyframes draw{to{stroke-dashoffset:0}}
+.splash{display:flex;align-items:center;justify-content:center;background:var(--bg)}.splash svg{animation:pop .7s var(--sp-soft)}
+.dot{width:8px;height:8px;border-radius:4px;background:var(--ok)}
+@keyframes dotin{from{transform:scale(.2);opacity:0}to{transform:none;opacity:1}}
+.fine{font-size:12px;line-height:17px;color:var(--tt)}
+.sw{width:48px;height:28px;border-radius:14px;background:var(--ln);position:relative;transition:background .22s;flex-shrink:0;cursor:pointer}.sw i{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:11px;background:#fff;transition:transform .24s var(--sp-soft);box-shadow:none}.sw.on{background:var(--br)}.sw.on i{transform:translateX(20px)}
+.cv{transition:filter .35s,transform .35s}.cv.frozen{filter:grayscale(1) brightness(.92);transform:scale(.98)}.lk{opacity:0;transition:opacity .25s;position:absolute;inset:0;display:flex;align-items:center;justify-content:center}.cv.frozen .lk{opacity:1}
+.snap{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:0 24px;scrollbar-width:none}.snap::-webkit-scrollbar{display:none}.snap>div{scroll-snap-align:center;flex:0 0 100%}
+.bn{height:156px;border-radius:24px;padding:20px;display:flex;justify-content:space-between;align-items:center;color:#191F28}
+.dots{display:flex;gap:6px;justify-content:center;padding-top:10px}.dots i{width:6px;height:6px;border-radius:3px;background:var(--ln);transition:all .2s}.dots i.on{width:16px;background:var(--tx)}
+.misrow{display:flex;gap:10px}.mis{flex:1;border:0;background:var(--chip);border-radius:20px;padding:14px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--tx)}.mis b{font-size:13px;color:var(--lk)}.mis:disabled{opacity:.45}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:0 24px;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}.cch{flex-shrink:0;height:36px;padding:0 16px;border-radius:18px;border:0;background:var(--chip);font-weight:700;font-size:14px;color:var(--tx)}.cch.on{background:var(--tx);color:var(--bg)}
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:20px 14px;padding:0 24px}
+.pc{cursor:pointer}.pim{position:relative;aspect-ratio:1/1;border-radius:20px;background:var(--chip);display:flex;align-items:center;justify-content:center}
+.hrt{position:absolute;top:6px;right:6px;width:36px;height:36px;border:0;background:none;display:flex;align-items:center;justify-content:center}
+.dbadge{position:absolute;left:8px;bottom:8px;background:#D92D20;color:#fff;font-size:11px;font-weight:800;padding:3px 8px;border-radius:10px}
+.pn{font-size:14px;font-weight:700;margin-top:10px;line-height:19px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.pm{font-size:12px;color:var(--mu);margin-top:2px}.pp{font-size:16px;margin-top:6px}.po{font-size:12px;color:var(--tt);text-decoration:line-through}.pc2{font-size:12px;color:var(--lk);font-weight:700;margin-top:4px}.ps{font-size:12px;color:var(--er);font-weight:700;margin-top:2px}
+.fab{position:absolute;left:0;right:0;bottom:28px;display:flex;justify-content:center;z-index:6;pointer-events:none}.fab button{pointer-events:auto;width:auto;height:48px;padding:0 22px;border-radius:24px;box-shadow:none}
+.seg{display:flex;gap:22px;padding:18px 24px 0;font-size:17px;font-weight:800}.seg button{border:0;background:none;padding:0 0 8px;color:var(--tt);font-weight:800;font-size:17px}.seg button.on{color:var(--tx);border-bottom:2px solid var(--tx)}
+.bub{margin:12px 24px 0;padding:12px 14px;border-radius:14px;background:var(--tx);color:var(--bg);font-size:14px;font-weight:700;display:flex;justify-content:space-between;align-items:center;gap:10px;animation:fade .25s}.bub button{border:0;background:var(--br);color:var(--on);font-weight:800;border-radius:10px;height:32px;padding:0 14px}
+.ecat{flex:0 0 68px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;font-weight:700;border:0;background:none;color:var(--tx)}.ecat i{width:60px;height:60px;border-radius:30px;background:var(--chip);display:flex;align-items:center;justify-content:center;font-style:normal;transition:box-shadow .2s}.ecat.on i{box-shadow:0 0 0 2px var(--br)}
+.rcard{padding:0 24px 24px;cursor:pointer}.rimg{height:168px;border-radius:24px;display:flex;align-items:center;justify-content:center;position:relative}.rtag{position:absolute;left:12px;top:12px;background:var(--tx);color:var(--bg);font-size:12px;font-weight:800;padding:5px 10px;border-radius:12px}
+.tl{display:flex;align-items:center;gap:14px;padding:9px 0;color:var(--tt);font-weight:700;font-size:15px}.tl i{width:22px;height:22px;border-radius:11px;background:var(--ln);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .3s}.tl.on{color:var(--tx)}.tl.on i,.tl.done i{background:var(--br)}.tl.done{color:var(--tx)}
+.req.gchips{flex-wrap:nowrap;gap:6px;overflow-x:auto;scrollbar-width:none}.req.gchips::-webkit-scrollbar{display:none}.req.gchips button{flex:1 0 auto;padding:0 8px;font-size:13px;white-space:nowrap}.mgp label.lab{display:block}.mgp .mgsum{display:flex;align-items:center;gap:14px;margin:16px 0 4px}.mgp .mgsum .pkico{flex:none}.mgp .mgsum b{display:block;font-size:17px;line-height:22px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mgp .mgsum span{font-size:14px;color:var(--mu)}.mgp .mgf{position:relative}.mgp .mgf .in{padding-right:48px}.mgp .mgf i{position:absolute;right:0;top:0;height:52px;line-height:52px;font-style:normal;font-size:14px;font-weight:700;color:var(--mu)}.mgp .mge{min-height:20px;margin-top:6px;font-size:13px;line-height:18px;font-weight:600;color:var(--er)}.mgp .mgn{min-height:19px;margin-top:8px;font-size:13px;font-weight:600;color:var(--mu)}.mgp .mgb{height:6px;border-radius:3px;background:var(--ln);overflow:hidden;margin-top:12px}.mgp .mgb i{display:block;height:100%;border-radius:3px;background:var(--br);transition:width .3s}.mgp .pkauto{margin-top:12px;gap:6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.mgp .pkauto::-webkit-scrollbar{display:none}.mgp .pkauto button{flex:1 0 auto;padding:0 10px;font-size:13px;white-space:nowrap}.mgp .mgd{display:block;margin:8px auto 0;border:0;background:none;height:44px;padding:0 16px;font-size:15px;font-weight:700;color:var(--er)}.mgp .mgk{margin-top:16px;padding:14px 16px;border-radius:16px;background:var(--chip);font-size:14px;line-height:20px;color:var(--mu)}.mgp .mgk button{border:0;background:none;padding:0;font:inherit;font-weight:800;color:var(--tx);text-decoration:underline}.btn.mgdel{background:var(--er);color:#fff}.cdch{display:flex;gap:6px;margin-top:14px}.cdch button{flex:1;min-width:0;height:40px;border-radius:20px;border:0;background:var(--chip);font-weight:700;font-size:14px;color:var(--tx)}.cdch button.on{background:var(--tx);color:var(--bg)}.cdbar{height:6px;border-radius:3px;background:var(--ln);overflow:hidden;margin-top:12px}.cdbar i{display:block;height:100%;border-radius:3px;background:var(--br);transition:width .3s}.cdoff{opacity:.45;pointer-events:none}.cdcap{margin:12px 24px 0;text-align:center;font-size:13px;color:var(--mu)}.cdh{font-size:18px;font-weight:800}.cdf{cursor:pointer}.cdf:focus-visible{outline:2px solid var(--tx);outline-offset:3px}.fxc{display:flex;gap:8px;padding:16px 24px 0}.fxc button{height:40px;padding:0 16px;border-radius:20px;border:0;background:var(--chip);font-weight:700;font-size:15px;color:var(--tx)}.fxc button.on{background:var(--tx);color:var(--bg)}.fxa{margin:16px 24px 0;padding:16px 18px;border-radius:20px;background:var(--chip)}.fxa .in{border-bottom:0;height:44px;font-size:28px;letter-spacing:-.5px}.fxa .fxr{display:flex;align-items:center;gap:8px}.fxa .fxr b{flex:none;font-size:18px;color:var(--mu)}.fxg{margin:10px 24px 0;padding:16px 18px;border-radius:20px;background:var(--tint);color:var(--tintfg)}.fxg b{display:block;font-size:30px;letter-spacing:-.6px;margin-top:2px}.fxe{min-height:20px;margin:8px 24px 0;font-size:13px;line-height:18px;font-weight:600;color:var(--er)}.fxw{display:flex;align-items:center;gap:12px;padding:12px 24px;width:100%;border:0;background:none;font:inherit;color:var(--tx);text-align:left}.fxw .fxf{width:44px;height:44px;border-radius:22px;background:var(--chip);display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}.fxw .nm{flex:1;min-width:0}.fxw .nm b{display:block;font-size:16px}.fxw .nm span{font-size:13px;color:var(--mu)}.fxw .am{text-align:right}.fxw .am b{display:block;font-size:16px}.fxw .am span{font-size:13px;color:var(--mu)}.req.lim4{flex-wrap:nowrap}.req.lim4 button{flex:1;min-width:0;padding:0 2px;font-size:13px;white-space:nowrap}.req{display:flex;gap:8px;flex-wrap:wrap}.req button{height:38px;padding:0 14px;border-radius:19px;border:0;background:var(--chip);font-weight:700;font-size:14px;color:var(--tx)}.req button.on{background:var(--tx);color:var(--bg)}
+.mi{display:flex;gap:14px;padding:14px 0;border-bottom:0}.mi .th{position:relative;width:84px;height:84px;border-radius:18px;background:var(--chip);display:flex;align-items:center;justify-content:center;flex-shrink:0}.mi .plus{position:absolute;right:-6px;bottom:-6px;min-width:34px;height:34px;border-radius:17px;border:0;background:var(--br);color:var(--on);font-weight:800;font-size:15px;box-shadow:none}
+.ahead{padding:20px 24px 0;display:flex;align-items:center;justify-content:space-between}
+.asr{margin:14px 24px 0;height:46px;border-radius:14px;background:var(--chip);display:flex;align-items:center;gap:10px;padding:0 14px;color:var(--mu)}.asr input{border:0;background:none;outline:0;flex:1;font:inherit;font-size:15px;color:var(--tx)}
+.agt{font-size:14px;font-weight:700;color:var(--mu);padding:30px 24px 4px}
+.ar{display:flex;align-items:center;gap:14px;padding:11px 24px;cursor:pointer}.ar .t{font-size:16px;font-weight:700}.ar .s{font-size:13px;color:var(--mu);margin-top:2px;line-height:18px}.ar .g{width:34px;display:flex;justify-content:center;flex-shrink:0}
+.ag{display:grid;grid-template-columns:repeat(4,1fr);gap:16px 4px;padding:6px 24px 0}.ag .gi .ico{width:60px;height:60px;border-radius:22px}
+.dots6{display:flex;gap:14px;justify-content:center;padding:30px 0 6px}.dots6 i{width:16px;height:16px;border-radius:8px;background:var(--ln);transition:background .15s,transform .15s}.dots6 i.on{background:var(--br);transform:scale(1.18)}
+.cb{width:26px;height:26px;border-radius:13px;border:2px solid var(--ln);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;background:none;padding:0}.cb.on{background:var(--br);border-color:var(--br)}
+.in{width:100%;height:52px;border:0;border-bottom:2px solid var(--ln);background:none;font:inherit;font-size:20px;font-weight:700;color:var(--tx);outline:0;padding:0;border-radius:0}.in:focus{border-color:var(--tx)}.lab{font-size:13px;color:var(--mu);margin-top:24px}
+.big,.h1,.pp,.row .r,.row b,.ar b,#amt,#bal{font-variant-numeric:tabular-nums}
+.sheet::before{content:'';display:block;width:36px;height:4px;border-radius:2px;background:var(--ln);margin:-14px auto 18px}
+.row.tap,.ar.tap{border-radius:16px;transition:background .15s,transform .12s}.row.tap:active,.ar.tap:active{background:var(--chip);transform:none}
+.qa button{animation:fade .25s both}
+.cf{position:absolute;top:34%;left:50%;width:8px;height:12px;border-radius:2px;z-index:40;pointer-events:none;animation:cf 1.5s cubic-bezier(.15,.8,.3,1) forwards}@keyframes cf{from{transform:translate(0,0) rotate(0);opacity:1}70%{opacity:1}to{transform:translate(var(--x),var(--y)) rotate(var(--r));opacity:0}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;transition:none!important}}
+.sheet [role=button]{outline-offset:2px}[role=button]:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--lk);outline-offset:2px;border-radius:12px}
+/* v9: Toss-inspired polish, itunda identity kept */
+.tabs{background:var(--bg);-webkit-backdrop-filter:none;backdrop-filter:none;border-top:0}
+.cta{border-top:0;padding-top:16px;background:var(--bg)}
+.btn.sec2{background:var(--tint);color:var(--tintfg)}
+.btn:not(:disabled):active{filter:brightness(.94)}
+.eye{border:0;background:none;padding:0 0 0 6px;vertical-align:-5px;color:var(--tt);display:inline-flex}
+#bal,.bv{transition:filter .25s}.eye{display:none!important}
+.screen.h9{background:color-mix(in srgb,var(--tx) 5%,var(--bg))}.h9 .sec{margin:12px 16px 0;padding:22px 12px 8px;background:var(--bg);border-radius:24px}
+.h9 .pad:has(>[onclick="open31()"]){padding:12px 16px 0}.h9 .pad:has(>[onclick="open31()"])>.tap{box-shadow:0 1px 0 color-mix(in srgb,var(--tintfg) 12%,transparent)}
+.screen .bar,.screen .ahead,.screen:not(.h9) .top{position:sticky;top:0;z-index:3;background:var(--bg);transition:box-shadow .2s}.screen .bar{padding-bottom:6px}.screen .ahead{padding-bottom:6px}.sc9 .bar,.sc9 .ahead,.sc9:not(.h9) .top{box-shadow:0 1px 0 var(--ln)}
+#prog{position:absolute;left:0;right:0;top:0;height:3px;z-index:50;transition:opacity .2s;pointer-events:none}#prog i{display:block;height:100%;background:var(--br);border-radius:0 3px 3px 0;transition:width .4s cubic-bezier(.2,.8,.2,1)}
+/* v11: focus, contrast, motion, safe areas */
+:focus-visible{outline:2px solid var(--lk);outline-offset:2px;border-radius:8px}
+[role=button]:focus-visible{outline-offset:-2px}
+.req button:disabled{opacity:.35}
+:root[data-theme=light]{--tt:#6B7684}
+@media (prefers-color-scheme:light){:root:not([data-theme=dark]){--tt:#6B7684}}
+.cta{padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
+.tabs{height:calc(80px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+.hdc{display:flex;gap:12px;padding:12px 24px;cursor:pointer;align-items:flex-start}.hdc .th{width:76px;height:76px;border-radius:18px;background:var(--chip);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.hdc .t{font-size:16px;font-weight:700;line-height:21px}.hdc .s{font-size:13px;color:var(--mu);margin-top:2px}.hdc .pr{font-size:16px;font-weight:800;margin-top:6px}
+.post{padding:16px 24px;border-bottom:0}.post .who{display:flex;align-items:center;gap:10px;font-weight:700}.post p{margin:10px 0 12px;font-size:15px;line-height:22px}.post .act{display:flex;gap:18px;font-size:13px;color:var(--mu);font-weight:700}.post .act button{border:0;background:none;color:inherit;padding:0;display:flex;align-items:center;gap:6px;font:inherit}
+.stk{display:flex;align-items:center;gap:12px;padding:12px 24px;cursor:pointer}.stk .tk{width:44px;height:44px;border-radius:12px;background:var(--chip);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px}.up{color:var(--ok)}.dn{color:var(--er)}
+
+/* v32.1: keypad flows with the content instead of being pinned, so it can never cover the form on short screens */
+.screen .keys{position:static!important;margin-top:auto;padding-top:12px;padding-bottom:4px}
+.screen:has(.keys){display:flex;flex-direction:column}
+.screen:has(.keys)>*{flex-shrink:0}
+@media (max-height:760px){.keys button{height:52px;font-size:24px}.screen .h1{font-size:25px;line-height:31px}.ahead{padding-top:12px}.screen .field{margin-top:14px}.dots6{padding-top:18px}}
+@media (max-height:640px){.keys button{height:44px;font-size:22px}.screen .h1{font-size:23px;line-height:29px}.cta .btn{height:50px}.cta{padding-top:8px;padding-bottom:16px}.screen{padding-bottom:84px}}
+
+/* v32.2: result screens (sent, order placed, welcome) scale to the screen height */
+@media (max-height:640px){.g3 svg[width="132"]{width:92px;height:92px}.screen [style*="margin:44px 24px 0"]{margin-top:18px!important}}
+.agh{display:flex;width:100%;align-items:center;justify-content:space-between;border:0;background:none;padding:18px 24px 10px;font-size:17px;font-weight:800;text-align:left}.agh svg{transition:transform .2s}.agh[aria-expanded=true] svg{transform:rotate(90deg)}.agh:focus-visible{outline:2px solid var(--lk);outline-offset:-2px}
+
+/* v46: Explore follows the Toss All tab, name and links on top, pill shortcuts, recent services, grouped cards with keyword hints */
+.screen:has(.xp){background:color-mix(in srgb,var(--tx) 5%,var(--bg));padding-bottom:104px}
+.xh{position:sticky;top:0;z-index:3;background:color-mix(in srgb,var(--tx) 5%,var(--bg));padding:20px 24px 0;display:flex;align-items:center;justify-content:space-between}
+.xn{font-size:20px;font-weight:800;letter-spacing:-.4px}.xl{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--mu)}.xl button{border:0;background:none;padding:6px 0;color:var(--mu);font-size:14px;font-weight:600}.xl i{width:1px;height:12px;background:var(--ln)}
+.xp .xs{margin:14px 16px 0;background:var(--bg)}
+.xpills{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:14px 16px 4px}.xpills::-webkit-scrollbar{display:none}
+.xpills button{flex:0 0 auto;height:44px;border:0;border-radius:22px;background:var(--bg);display:flex;align-items:center;gap:8px;padding:0 16px 0 12px;font-size:15px;font-weight:700}
+.xc{margin:12px 16px 0;padding:20px 8px 10px;background:var(--bg);border-radius:24px}
+.xt{padding:0 12px 8px;font-size:15px;font-weight:700;color:var(--mu)}
+.xc .ar{padding:9px 12px;gap:14px}.xc .ar .g{width:40px;height:40px;border-radius:14px;background:var(--chip);align-items:center}
+.xc .ar .t{font-size:17px;font-weight:600;flex:0 0 auto}.xc .ar .s{margin:0 0 0 auto;font-size:13px;color:var(--tt);text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.xr{display:grid;grid-template-columns:repeat(4,1fr);gap:12px 4px;padding:4px 0 8px}.xr .gi{font-weight:600;font-size:12px;color:var(--mu)}.xr .gi .ico{width:56px;height:56px;border-radius:20px}
+.xc .ar:focus-visible{outline:2px solid var(--lk);outline-offset:-2px}
+
+/* v47: Home follows the Toss home, one idea per card, pill actions on the right, quiet footer links */
+.hbk{border:0;background:none;display:flex;align-items:center;gap:8px;padding:0}.hbk b{font-size:20px;letter-spacing:-.5px}
+.hc{margin:12px 16px 0;background:var(--bg);border-radius:24px;padding:8px 0;overflow:hidden}
+.hr{display:flex;align-items:center;gap:14px;padding:14px 20px;cursor:pointer}
+.hi{width:44px;height:44px;border-radius:14px;background:var(--chip);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.hm{flex:1;min-width:0}.ha{font-size:24px;font-weight:800;letter-spacing:-.6px;font-variant-numeric:tabular-nums}.ha2{font-size:17px;font-weight:700}
+.hp{border:0;height:40px;padding:0 16px;border-radius:12px;background:var(--chip);font-size:14px;font-weight:700;flex-shrink:0}.hp.pr{background:var(--tint);color:var(--tintfg)}
+.hf{display:flex;align-items:center;border-top:0;padding:0 8px 0 12px;margin-top:6px}.hf button{border:0;background:none;padding:14px 10px;font-size:15px;font-weight:600;color:var(--mu)}.hf i{width:1px;height:12px;background:var(--ln)}.hf .hs{margin-left:auto}
+.hct{display:flex;justify-content:space-between;align-items:baseline;padding:14px 20px 0;font-size:17px;font-weight:800}.hct a{font-size:14px;font-weight:600;color:var(--tt);cursor:pointer}
+.hc .row{padding:12px 20px}.hc .row .t{font-weight:600}.hc .row .s{color:var(--tt)}
+.hbd{height:32px;padding:0 12px;border-radius:16px;background:var(--tint);color:var(--tintfg);font-size:13px;font-weight:800;display:flex;align-items:center}
+.hpm{position:relative;background:var(--tint);padding:20px 56px 20px 20px}.hpm .hpt{font-size:17px;font-weight:800;line-height:23px}.hpm .hx{position:absolute;right:8px;top:8px;width:44px;height:44px;border:0;background:none;color:var(--tintfg);display:flex;align-items:center;justify-content:center}
+.hc button:focus-visible,.hr:focus-visible{outline:2px solid var(--lk);outline-offset:-2px}
+
+/* v48: Pockets, follows the Toss storage pockets: list with total, detail with hero + interest row + dated history, fill / take-out screen with from-to header */
+.pkt{position:sticky;top:0;z-index:3;display:flex;align-items:center;justify-content:space-between;padding:16px 12px 0 12px;background:var(--chip)}
+.pkm{border:0;background:none;height:44px;padding:0 12px;font-size:16px;font-weight:700;color:var(--tx)}
+.pkh{background:var(--chip);padding:4px 24px 28px}
+.pkico{width:64px;height:64px;border-radius:32px;background:var(--tint);color:var(--tintfg);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pkh .pkico{margin-top:8px}
+.pkn{margin-top:18px;font-size:15px;font-weight:600;color:var(--mu)}
+.pkb{margin-top:4px;font-size:34px;font-weight:800;letter-spacing:-.8px;font-variant-numeric:tabular-nums}
+.pkbar{height:8px;border-radius:4px;background:var(--ln);overflow:hidden;margin-top:18px}.pkbar i{display:block;height:100%;border-radius:4px;background:var(--br);transition:width .4s cubic-bezier(.2,.8,.2,1)}
+.pks{margin-top:8px;font-size:13px;font-weight:600;color:var(--mu)}
+.pkrow{display:flex;align-items:center;gap:16px;padding:12px 24px;cursor:pointer;border-radius:16px;transition:background .15s}
+.pkrow:active{background:var(--chip)}
+.pkpn{font-size:14px;color:var(--mu);font-weight:600}.pkpb{font-size:20px;font-weight:800;margin-top:2px;letter-spacing:-.3px;font-variant-numeric:tabular-nums}
+.pkrow .pkch{margin-left:auto;display:flex}
+.pkdiv{height:1px;background:var(--ln);margin:6px 24px 0}
+.pkf{display:flex;align-items:center;gap:4px;border:0;background:none;padding:18px 24px 0;font-size:17px;font-weight:800;color:var(--tx)}
+.pkf svg{transform:rotate(90deg)}
+.pkg{padding:22px 24px 4px;font-size:14px;font-weight:600;color:var(--mu)}
+.pkr{display:flex;align-items:center;gap:14px;padding:12px 24px}
+.pkr .pkico{width:48px;height:48px;border-radius:24px;background:var(--chip);color:var(--mu)}
+.pkr.pin .pkico{background:var(--tint);color:var(--tintfg)}
+.pkl .t{font-size:16px;font-weight:700}.pkl .s{font-size:13px;color:var(--mu);margin-top:2px}
+.pkv{margin-left:auto;text-align:right;font-variant-numeric:tabular-nums}.pkv b{display:block;font-size:16px;font-weight:700}.pkv span{display:block;font-size:13px;color:var(--mu);margin-top:2px}
+.pkr.pin .pkv b{color:var(--lk)}
+.pkempty{padding:36px 24px;text-align:center;color:var(--mu);font-size:15px;line-height:22px}
+.pkTot{margin-top:4px;font-size:34px;font-weight:800;letter-spacing:-.8px;font-variant-numeric:tabular-nums}
+.pkchips{display:flex;flex-wrap:wrap;gap:10px;padding:18px 24px 0}
+.pkchips .chip{height:44px;padding:0 18px 0 12px;gap:6px;font-size:15px}
+.pkopt{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;background:none;height:56px;font-size:17px;font-weight:700;color:var(--tx);text-align:left;padding:0}
+.pkopt.on{color:var(--lk)}
+/* fill / take out */
+.mvh{--mr:96px;display:flex;gap:16px;padding:8px 24px 0}
+.mvt{flex:1;min-width:0}
+.mvl{height:var(--mr);display:flex;flex-direction:column;justify-content:center;min-width:0}
+.mvx{font-size:22px;font-weight:800;letter-spacing:-.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mvs{font-size:14px;color:var(--mu);margin-top:4px;font-weight:500}
+.mvi{display:flex;flex-direction:column;align-items:center;padding-top:calc((var(--mr) - 52px)/2)}
+.mvi .pkico{width:52px;height:52px;border-radius:26px}
+.mvc{width:3px;height:calc(var(--mr) - 52px);background:var(--ln);border-radius:2px}.mvc.pin{background:var(--br)}
+.mva{padding:28px 24px 0;font-size:32px;font-weight:800;letter-spacing:-.6px;line-height:40px;min-height:68px;color:var(--tt);font-variant-numeric:tabular-nums}
+.mva.on{color:var(--tx)}.mva.bad{color:var(--er)}
+.mvu{font-size:20px;font-weight:700}
+.mvm{padding:6px 24px 0;font-size:14px;color:var(--mu);min-height:24px}.mvm.bad{color:var(--er)}
+.mvq{display:flex;gap:10px;justify-content:center;padding:0 24px;margin-top:auto}
+.mvq .chip{height:44px;padding:0 22px;font-size:15px}
+.screen .keys.mvk{margin-top:12px}.keys.mvk button{font-weight:500}
+@media (max-height:760px){.mvh{--mr:80px}.mva{padding-top:16px;min-height:56px;font-size:28px}}
+@media (max-height:640px){.mvh{--mr:68px}.mvx{font-size:19px}.mva{padding-top:8px;min-height:48px;font-size:26px}}
+
+/* v49: Pockets on Home, auto-fill per pocket */
+.pkc{margin:12px 16px 0;background:var(--bg);border-radius:24px;padding:8px 0;overflow:hidden}
+.pkauto{display:flex;gap:8px;flex-wrap:wrap}
+.pkauto button{height:40px;padding:0 16px;border-radius:20px;border:0;background:var(--chip);font-weight:700;font-size:14px;color:var(--tx)}
+.pkauto button.on{background:var(--tx);color:var(--bg)}
+.pknext{margin-top:16px;padding:12px 16px;border-radius:16px;background:var(--tint);color:var(--tintfg);font-size:14px;font-weight:700}
+
+/* v50: Bank account detail, follows the Toss account screen: card + manage on top, balance, interest row, filter + search, dated ledger with balance after, Fill / Send */
+.bdt{display:flex;align-items:center;gap:2px;padding:16px 12px 0 12px}
+.bdt .bb{margin-left:auto;display:flex;align-items:center;gap:6px;border:0;background:none;height:44px;padding:0 10px;font-size:16px;font-weight:700;color:var(--mu)}
+.bdn{display:inline-block;margin:28px 24px 0;font-size:15px;color:var(--mu);text-decoration:underline;text-underline-offset:3px;border:0;background:none;padding:0;font-weight:500}
+.bdb{padding:6px 24px 0;font-size:40px;font-weight:800;letter-spacing:-1.2px;font-variant-numeric:tabular-nums}
+.bdband{height:8px;background:color-mix(in srgb,var(--tx) 2.5%,var(--bg));margin-top:14px}
+.bdf{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 0 24px}
+.bdf .pkf{padding:0}
+.bds{width:44px;height:44px;border-radius:22px;border:1px solid var(--ln);background:none;color:var(--tx);display:flex;align-items:center;justify-content:center}
+.bdnew .pkg{padding-top:18px}
+.bdr{display:flex;align-items:center;gap:14px;padding:12px 24px;cursor:pointer}
+.bdr:active{background:var(--chip)}
+.bdr .ico{width:52px;height:52px;border-radius:26px}
+.bdr.pin .ico{background:var(--tint)}
+.bdr .t{font-size:17px;font-weight:700}.bdr .s{font-size:13px;color:var(--mu);margin-top:2px}
+.bdr .pkv b{font-size:17px}
+.bdr.pin .pkv b{color:var(--lk)}
+.pkv{flex-shrink:0}.pkv b{white-space:nowrap}.bdr .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* v51: pocket detail and fill / take-out tuned against the Toss screens (sizes in dp at 390 wide) */
+.pkh{padding:12px 24px 40px}
+.pkh .pkico{width:76px!important;height:76px!important;border-radius:38px!important;margin-top:6px}
+.pkh .pkico svg{width:40px;height:40px}
+.pkn{margin-top:28px;font-size:15px}
+.pkb{margin-top:6px;font-size:36px}
+.pkh ~ .pkrow{padding:20px 24px 14px}
+.pkh ~ .pkrow .pkico{width:40px!important;height:40px!important;border-radius:20px!important}
+.pkh ~ .pkrow .pkico svg{width:20px;height:20px}
+.pkdiv{margin:6px 0 0 24px}
+.pkf{padding-top:20px}
+.pkg{padding:26px 24px 6px}
+.pkr{padding:14px 24px;gap:14px}
+.pkr .pkico{width:40px;height:40px;border-radius:20px;background:color-mix(in srgb,var(--tx) 55%,var(--bg));color:#fff}
+.pkr.pin .pkico{background:var(--lk)}
+.pkcoin{width:24px;height:24px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center}
+.pkl .t{font-size:17px;font-weight:600}.pkv b{font-weight:600}
+.mvh{--mr:68px;padding-top:12px}
+.mvx{font-size:19px}
+.mvi{padding-top:calc((var(--mr) - 38px)/2)}
+.mvi .pkico{width:38px;height:38px;border-radius:19px}
+.mvi .pkico svg{width:20px;height:20px}
+.mvc{height:calc(var(--mr) - 38px)}
+.mva{font-size:26px;padding-top:36px;min-height:96px}
+.mva.on{font-size:40px;letter-spacing:-1px}.mvu{font-size:22px}
+.mvq .chip{height:38px;padding:0 4px;font-size:15px;flex:1;justify-content:center;white-space:nowrap}.mvq .chip:disabled{opacity:.35}.mvw{font-size:20px;font-weight:600;letter-spacing:0;color:var(--mu)}
+.mvn{display:block;width:100%;height:54px;border:0;border-radius:0;background:var(--br);color:var(--on);font-weight:800;font-size:17px;margin-top:16px;flex-shrink:0}
+.mvn:disabled{background:color-mix(in srgb,var(--br) 30%,var(--bg));color:color-mix(in srgb,var(--on) 40%,var(--bg))}
+.screen:has(.mvk){padding-bottom:calc(8px + env(safe-area-inset-bottom,0px))}
+.screen .keys.mvk{margin-top:4px;padding-top:6px}
+.keys.mvk button{font-weight:400;font-size:26px}
+@media (max-height:760px){.mva{padding-top:18px;min-height:64px}.mva.on{font-size:34px}.mvn{height:50px;margin-top:10px}.mvh{--mr:60px}}
+@media (max-height:640px){.mva{padding-top:8px;min-height:48px}.mva.on{font-size:30px}.mvh{--mr:52px}}
+</style>
+<style id="v116flat">/* v116: flat design pass: no shadows, gradients, glows or backdrop blur; solid fills and 1px lines only */#phone,#phone *{text-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}#phone .sheet{border-top:0}#phone .btn:active,#phone .tap:active{opacity:.7;transform:none}#phone .post{border-bottom:0}</style>
+<style id="v123">
+/* v123: Bank detail top bar fits 390px (3 actions), route mode chips scroll inside their own strip */
+.bdt{gap:0}.bdt .bb{flex:0 0 auto;padding:0 7px;gap:4px;font-size:15px;white-space:nowrap}.bdt .bb+.bb{margin-left:0}
+.modes{overflow-x:auto;scrollbar-width:none;max-width:100%}.modes::-webkit-scrollbar{display:none}.modes>*{flex:0 0 auto}
+</style>
+<style id="v124">
+/* v124: long Explore rows shrink instead of pushing the screen sideways; small controls get a 44px touch area without changing how they look */
+.xc .ar .t{flex:0 1 auto;min-width:0;line-height:22px}.xc .ar .s{flex:0 100 auto}
+.hit44a::after,.hit44b::before{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
+</style>
+<style id="v125">
+/* v125: one hide-balance eye for all home balances (was two with separate state), amounts on the home cards scale to fit (container query) in every language, long action labels wrap instead of squeezing the amount */
+.hr .hm{container-type:inline-size;overflow:hidden}.ha{white-space:nowrap;font-size:max(16px,min(24px,15.5cqw))}.ha .cu{font-size:.67em;font-weight:700;letter-spacing:0;color:var(--mu)}.hr .hp{padding:0 12px;max-width:112px;font-size:13px;line-height:15px}
+</style>
+<style id="v126">
+/* v126: flat pages. No gray backdrop, no rounded white cards: every section sits on the page itself, full width, separated by a 1px line */
+.screen.h9,.screen:has(.xp),.xh{background:var(--bg)}
+.h9 .sec,.hc,.pkc,.xc{margin:0;border-radius:0;background:none;border-top:0}
+.h9 .sec{padding:28px 24px 12px}
+.hc,.pkc{padding:8px 0 4px}
+.hr{padding:14px 24px}.hf{padding:0 16px 0 14px}.hct{padding:14px 24px 0}.hc .row,.h9 .hc .row{padding:12px 24px}.hf{border-top:0;margin-top:0}.top+.hc{border-top:0}
+.hc .row .r{white-space:nowrap;flex-shrink:0}.hc .row>div:nth-child(2){min-width:0}.hc .row .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hc:first-child,.pkc:first-child,.xc:first-child{border-top:0}
+.xp .xs{margin:0}.xc{padding:24px 12px 12px}
+.pad:has(>[onclick="open31()"]){padding:0 24px}
+/* Pay: hero, payment code and shortcut tiles sit on the page */
+.screen div[style*="background:var(--tint);border-radius:28px"]{background:none!important;border-radius:0!important;margin:0 -24px;padding:20px 16px 20px!important;border-bottom:0}
+.screen div.tap[style*="background:var(--chip);border-radius:24px"]{background:none!important;border-radius:0!important;margin:0 -24px;padding:18px 24px 18px 14px!important;border-bottom:0}
+.ppg button{background:none!important;border-radius:0!important}
+/* v127: every inline tinted summary block (Bank totals, plan, etc.) becomes a flat band between two lines; amounts in rows never wrap */
+#phone .screen div[style*="background:var(--chip);border-radius:"],#phone .screen div[style*="background:var(--tint);border-radius:"]{background:none!important;border-radius:0!important;margin-left:-24px!important;margin-right:-24px!important;padding-left:24px!important;padding-right:24px!important;border-top:0;border-bottom:0}
+.screen .row .r{white-space:nowrap;flex-shrink:0}
+/* v128: match the Bank detail screen. No 1px lines between sections: one 10px full-width tint band, like under the account header there */
+.h9 .sec,.hc,.pkc,.xc{border-top:8px solid color-mix(in srgb,var(--tx) 2.5%,var(--bg))}
+.top+.hc,.hc:first-child,.pkc:first-child,.xc:first-child{border-top:0}
+#phone .screen div[style*="background:var(--chip);border-radius:"],#phone .screen div[style*="background:var(--tint);border-radius:"]{border-top:8px solid color-mix(in srgb,var(--tx) 2.5%,var(--bg));border-bottom:0}
+.screen div[style*="background:var(--tint);border-radius:28px"],.screen div.tap[style*="background:var(--chip);border-radius:24px"]{border-top:0!important;border-bottom:8px solid color-mix(in srgb,var(--tx) 2.5%,var(--bg))!important}
+#phone .screen div[style*="background:var(--tint);border-radius:28px"]{padding-left:16px!important;padding-right:16px!important}
+#phone .screen div.tap[style*="background:var(--chip);border-radius:24px"]{padding-left:14px!important}
+/* v129: two levels. Main sections: 10px band. Small sections inside a main section: 1px line */
+.hc .hr+.hr,.hc .hf{border-top:0}
+.hc .hf{margin-top:6px}
+.agt~.agt{border-top:0;margin-top:8px;padding-top:24px}
+.ppg~.sec{border-top:8px solid color-mix(in srgb,var(--tx) 2.5%,var(--bg));margin-top:0}
+.ppg~.chips+.sec:has(+.chips){border-top:0}
+.ppg~.chips{padding-bottom:20px}
+/* v130: lines follow the situation. Items in a list get an inset line (aligned to the 24px text edge); sub-sections with their own heading keep a full-width line */
+.hc .hr+.hr,.hc .hf{border-top:0;position:relative}
+.hc .hr+.hr::before,.hc .hf::before{content:"";position:absolute;top:0;left:24px;right:24px;height:1px;background:var(--ln);pointer-events:none}
+/* v131: bands are rare. One band per screen at most, where the page really changes topic (Home: accounts vs the rest, Pay: balance vs the rest). Everything else is a 1px line, so the page reads as one connected surface */
+.h9 .sec,.hc,.pkc,.xc{border-top:0}
+.top+.hc,.hc:first-child,.pkc:first-child,.xc:first-child{border-top:0}
+.top+.hc+.hc{border-top:8px solid color-mix(in srgb,var(--tx) 2.5%,var(--bg))}
+.ppg~.sec{border-top:0}
+#phone .screen div[style*="background:var(--chip);border-radius:"],#phone .screen div[style*="background:var(--tint);border-radius:"]{border-top:0}
+.screen div.tap[style*="background:var(--chip);border-radius:24px"]{border-bottom:0!important}
+/* v132: spacing first. Almost no lines and one band per screen: sections are told apart by space and their heading, like the Bank detail screen */
+.hc .hr+.hr::before,.hc .hf::before{display:none}
+.h9 .sec,.hc,.pkc,.xc,.ppg~.sec,.agt~.agt{border-top:0}
+.top+.hc+.hc{border-top:8px solid color-mix(in srgb,var(--tx) 2.5%,var(--bg))}
+.hc{padding:20px 0 8px}.top+.hc{padding-top:8px}.top+.hc+.hc{padding-top:20px}
+.hc .hf{margin-top:0}
+.agt~.agt{padding-top:28px}
+.ppg~.sec{padding-top:28px}
+#phone .screen div[style*="background:var(--chip);border-radius:"],#phone .screen div[style*="background:var(--tint);border-radius:"]{border-top:0;padding-top:20px!important}
+.screen div.tap[style*="background:var(--chip);border-radius:24px"]{border-bottom:0!important}
+/* v133: lines only where they do a job. The Bills / Card / Savings shortcut row gets its line back (inset, like Toss); everything else stays space-led */
+.hc .hf{margin-top:8px;padding-top:2px}
+.hc .hf::before{display:block}
+</style>
+<style id="v134">
+/* v134: Explore groups are told apart by an inset 1px line, no category headings */
+.xc.xg{padding:8px 12px;position:relative}
+.xc.xg+.xc.xg::before,.xc:not(.xg)+.xc.xg::before{content:"";position:absolute;top:0;left:24px;right:24px;height:1px;background:var(--ln)}
+.xc.xg+.xc.xg,.xc:not(.xg)+.xc.xg{padding-top:12px}
+</style>
+<style id="v135">
+/* v135: Explore shortcuts fit in one row (4 equal columns, icon over label); Verify no longer hidden off-screen */
+.xpills{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;overflow:visible;padding:12px 12px 4px}
+.xpills button{flex:none;height:auto;min-width:0;flex-direction:column;justify-content:center;gap:6px;padding:10px 0 8px;border-radius:16px;font-size:13px;line-height:18px;white-space:nowrap}
+</style>
+<style id="v137">
+/* v137: Explore groups are separated by a full-width tinted band divider, not lines */
+.xc.xg+.xc.xg::before,.xc:not(.xg)+.xc.xg::before{left:0;right:0;top:0;height:8px;background:var(--chip)}
+.xc.xg+.xc.xg,.xc:not(.xg)+.xc.xg{padding-top:24px}
+.xpills{margin-top:8px;padding-bottom:16px;position:relative}
+.xpills::after{content:"";position:absolute;left:0;right:0;bottom:-8px;height:8px;background:var(--chip)}
+.xp #abody{padding-top:8px}
+</style>
+<style id="v138">
+/* v138: sticky Explore header gets breathing room so scrolled rows are cleanly cut off below it */
+.xh{padding-bottom:12px}
+.xp .xs{margin-top:0}
+</style>
+<style id="v139">
+/* v139: Map search bar stays on one line (shorter English hint, ellipsis for longer languages) */
+.mvs>span[onclick]{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+<style id="v405">
+/* v405: odometer wheels. Each digit is a clipped window onto a strip of digits; the strip is moved with WAAPI. */
+.od-c{display:inline-block;position:relative;height:1.2em;line-height:1.2em;overflow:hidden;vertical-align:top;-webkit-mask-image:linear-gradient(#0000 0,#000 18%,#000 82%,#0000 100%);mask-image:linear-gradient(#0000 0,#000 18%,#000 82%,#0000 100%)}
+.od-s{will-change:transform}.od-m{display:block}
+.od-s i{display:block;font-style:normal;height:1.2em;line-height:1.2em}
+.od-p{display:inline-block;height:1.2em;line-height:1.2em;vertical-align:top}
+#bal,.bv{display:inline-block;vertical-align:baseline;white-space:nowrap}
+</style>
+<style id="v140">
+/* v140: Toss-style feel: springy press feedback, staggered list entrance, amount "tick" */
+:root{--spring:cubic-bezier(.34,1.56,.64,1)}
+.btn,.cch,.hp,.ib,.mm-act,.xpills button,.nav button,button.tap{transition:transform .22s var(--spring),background .2s,opacity .2s}
+.btn:active:not(:disabled),.cch:active,.hp:active,.mm-act:active,.xpills button:active{transform:scale(.96)}
+.ib:active{transform:scale(.88)}
+.row.tap,.ar.tap,.pkrow,.hr.tap,.xc .tap{transition:background .15s,transform .22s var(--spring)}
+.row.tap:active,.ar.tap:active,.pkrow:active,.hr.tap:active{transform:scale(.985)}
+.keys button{transition:transform .18s var(--spring),background .15s;border-radius:50%}
+.keys button:active{transform:scale(.86);background:var(--chip)}
+.screen.push .row,.screen.push .pkrow,.screen.push .xc>*,.screen.push .sec>*{animation:v140in .42s var(--spring) both}
+.screen.push :is(.row,.pkrow,.xc>*,.sec>*):nth-child(2){animation-delay:.04s}
+.screen.push :is(.row,.pkrow,.xc>*,.sec>*):nth-child(3){animation-delay:.08s}
+.screen.push :is(.row,.pkrow,.xc>*,.sec>*):nth-child(4){animation-delay:.12s}
+.screen.push :is(.row,.pkrow,.xc>*,.sec>*):nth-child(5){animation-delay:.16s}
+.screen.push :is(.row,.pkrow,.xc>*,.sec>*):nth-child(n+6){animation-delay:.2s}
+@keyframes v140in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.v140tick{animation:v140tick .18s var(--spring)}
+@keyframes v140tick{from{transform:scale(.94)}to{transform:none}}
+</style>
+<style id="v141">
+/* v141: fewer competing buttons (one blue action on Home), no duplicate Activity button, CTA pops when it becomes ready */
+.hc ~ .hc .hp.pr{background:var(--chip);color:var(--tx)}
+.hr[onclick="openSpend()"] .hp{display:none}
+.hr[onclick="openSpend()"]::after{content:"";width:8px;height:8px;border-right:2px solid var(--tt);border-top:2px solid var(--tt);transform:rotate(45deg);margin-right:6px;flex:none;opacity:.6}
+.btn:not(:disabled):not(.off){animation:v141cta .38s var(--spring)}
+@keyframes v141cta{0%{transform:scale(.97)}60%{transform:scale(1.015)}100%{transform:none}}
+.v141hide{display:none!important}
+</style>
+<style id="v142">
+/* v142: Pay and Bank lose repeated shortcuts; sheets can be dragged down */
+.ppg button[onclick="ppGo('paysc')"],.ppg button[onclick="openAct()"]{display:none!important}
+.pad.tap[onclick="openBankDetail()"]>div:last-child{display:none!important}
+.sec .row[onclick="bkStmt()"]{display:none!important}
+.sheet:not([style*="overflow"]){touch-action:none}
+.sheet.v142d{transition:none}
+.sheet.v142r{transition:transform .32s var(--spring)}
+.sheetbg{transition:opacity .2s}
+</style>
+<style id="v143">
+/* v143: You tab folds long sections (tap a heading to open); Messages search is real */
+.agt[data-v143="1"]{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;transition:transform .22s var(--spring)}
+.agt[data-v143="1"]:active{transform:scale(.985)}
+.agt[data-v143="1"] .v143s{margin-left:auto;font-weight:700;color:var(--tt);font-size:14px}
+.agt[data-v143="1"] .v143c{width:8px;height:8px;border-right:2px solid var(--tt);border-bottom:2px solid var(--tt);transform:rotate(45deg);transition:transform .3s var(--spring);flex:none;margin:-3px 4px 0 0}
+.agt[data-v143="1"][aria-expanded="true"] .v143c{transform:rotate(-135deg);margin-top:3px}
+.v143b{display:grid;grid-template-rows:0fr;transition:grid-template-rows .32s cubic-bezier(.2,.8,.2,1)}
+.v143b.on{grid-template-rows:1fr}
+.v143b>div{overflow:hidden;min-height:0}
+.v143q{display:grid;grid-template-rows:0fr;transition:grid-template-rows .28s cubic-bezier(.2,.8,.2,1)}
+.v143q.on{grid-template-rows:1fr}
+.v143q>div{overflow:hidden;min-height:0;padding:0 16px}
+.v143q input{width:100%;box-sizing:border-box;height:44px;border:0;border-radius:14px;background:var(--chip);color:var(--tx);padding:0 14px;font:inherit;font-size:16px;margin:4px 0 8px;outline:none}
+.v143n{padding:28px 24px;text-align:center;color:var(--tt);font-size:15px}
+</style>
+<style id="v144">
+/* v144: tab bars are no longer squashed by the transit-bar rule (Shop/Eats, Spend, Invest); Shop filters share one row; long Explore group folds */
+.seg:has(>button){height:auto;overflow:visible;border-radius:0;margin:0;background:none}
+.v144row{display:flex;align-items:center;gap:0}
+.v144row>#shfl{flex:none;padding-right:0}
+.v144row>#shsort{flex:1;min-width:0}
+.v144m{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 24px;font-weight:800;font-size:15px;color:var(--tt);cursor:pointer;transition:transform .22s var(--spring)}
+.v144m:active{transform:scale(.97)}
+.v144m i{width:8px;height:8px;border-right:2px solid var(--tt);border-bottom:2px solid var(--tt);transform:rotate(45deg);margin-top:-4px;transition:transform .3s var(--spring)}
+.v144m[aria-expanded="true"] i{transform:rotate(-135deg);margin-top:4px}
+.v144x{animation:v140in .36s var(--spring) both}
+</style>
+<style id="v145">
+/* v145: Community header is shorter (search folds behind an icon, sort shares the area row); hearts pop when tapped */
+.v145row{display:flex;align-items:center}
+.v145row>#cmtl{flex:none}
+.v145row>#cmar{flex:1;min-width:0}
+.bar .v145s{margin-left:auto}
+.btn.sec2[onclick="postSheet()"]{font-size:15px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v145pop svg{animation:v145pop .46s var(--spring)}
+@keyframes v145pop{0%{transform:scale(1)}35%{transform:scale(1.22)}100%{transform:scale(1)}}
+</style>
+<style id="v146">
+/* v146: Eats shows the delivery address once; Invest hides empty stats until there is something invested */
+.bub+.pad.tap[onclick="eAddr()"]{display:none!important}
+.bub{margin-bottom:6px}
+</style>
+<style id="v147">
+/* v147: Marketplace, Jobs and Property search folds behind an icon (sort moves up beside it) */
+.bar .v147sort{height:36px!important;padding:0 12px!important;font-size:14px;white-space:nowrap}
+</style>
+<style id="v245css">.cta{border-top:0!important}.cta::before{content:"";position:absolute;left:0;right:0;top:-20px;height:20px;background:linear-gradient(to bottom,transparent,var(--bg));pointer-events:none}</style>
+<style id="v372css">/* v372: small phones (320 to 360px wide): promo cards grow with their text, tab labels and button labels never break mid-word, reward tiles fit long French words */
+@media (max-width:360px){#phone .bn{height:auto;min-height:156px}#phone .mtabs{overflow-x:auto;scrollbar-width:none;gap:18px}#phone .mtabs::-webkit-scrollbar{display:none}#phone .mtabs button{white-space:nowrap;flex:none}#phone .mis{padding:14px 4px;font-size:12px!important;overflow-wrap:normal;word-break:normal;hyphens:manual}#phone .cta .btn{white-space:nowrap;padding-left:12px!important;padding-right:12px!important}#phone .cta>span:first-child b{font-size:17px!important}#phone .cta[data-v360]{padding-left:14px!important;padding-right:14px!important;gap:4px}#phone .cta[data-v360]>span:first-child{flex:0 0 auto!important;min-width:0!important}#phone .cta[data-v360] .btn{font-size:15px!important;padding-left:10px!important;padding-right:10px!important;min-width:0!important;flex:0 0 auto!important}#phone .cta{gap:8px}}
+@media (max-width:360px){#phone .cta .btn[onclick="bkReview()"]{font-size:15px!important;padding-left:8px!important;padding-right:8px!important}}
+@media (max-width:340px){#phone .cta .btn[onclick="bkReview()"]{font-size:14px!important}}
+@media (max-width:340px){#phone .cta[data-v360] .btn{font-size:14px!important;padding-left:8px!important;padding-right:8px!important}#phone .cta>span:first-child b{font-size:16px!important}}
+</style>
+<style id="v386">
+/* v386: Toss amount screen. No title or step strip (just the back arrow), connector line back between the two icons (the map's .mvc rule was leaking in), fixed-size chips, light big keys without a press circle. */
+.screen:has(.mvh) .v176,.screen:has(.mvh) .bar>b{display:none!important}
+#phone .screen .mvh .mvi{position:static;display:flex;flex-direction:column;align-items:center}
+#phone .screen .mvh .mvi .mvc{position:static;left:auto;right:auto;top:auto;z-index:auto;width:3px;height:calc(var(--mr) - 38px);margin:0;padding:0;border-radius:2px;background:var(--ln);display:block}
+#phone .screen .mvh .mvi .mvc.pin{background:linear-gradient(var(--ln),var(--br))}
+#phone .screen .mvh{gap:12px;padding-top:4px}
+#phone .screen .mva{padding-top:40px}
+#phone .screen .mvq{gap:12px;justify-content:center}
+#phone .screen .mvq .chip{flex:0 0 auto;min-width:88px;height:40px;padding:0 12px;font-size:15px;font-weight:700}
+#phone .screen .mvn{margin-top:12px;height:52px}
+#phone .screen .keys.mvk{padding-top:2px}
+#phone .screen .keys.mvk button{height:clamp(46px,6.9dvh,60px)!important;font-size:30px;font-weight:400;border-radius:0;background:none;transition:opacity .1s}
+#phone .screen .keys.mvk button:active{background:none;transform:none;opacity:.45}
+</style>
+<style id="v387">
+/* v387: Toss calm pass. Same screens, quieter: one weight step lighter (800 to 700, titles 600), a clear type scale (26 / 20 / 17 / 15 / 13), more air between sections and less inside rows, small action buttons are soft tints instead of gray pills with bold text, icon tiles are soft and a little smaller, secondary text is lighter, tab bar is thinner. The fill / take-out screen (v386) is left as it is. */
+:root{--ln:#EEF0F3;--tt:#8B95A1}
+:root[data-theme=dark]{--ln:#3A3A44}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--ln:#3A3A44}}
+/* type scale */
+#phone .h1{font-size:26px;line-height:34px;font-weight:700;letter-spacing:-.6px}
+#phone .big{font-weight:700;letter-spacing:-1px}
+#phone .sech{font-size:20px;font-weight:700;letter-spacing:-.4px;margin-bottom:6px}
+#phone .sech a{font-size:14px;font-weight:500;color:var(--tt)}
+#phone .row .t,#phone .ar .t,#phone .hdc .t,#phone .pkl .t{font-size:17px;font-weight:600;letter-spacing:-.2px;line-height:24px}
+#phone .row .s,#phone .ar .s,#phone .hdc .s,#phone .pkl .s,#phone .pkv span{font-size:14px;line-height:20px;color:var(--tt);font-weight:400}
+#phone .row .r{font-size:15px;font-weight:600;color:var(--mu)}
+#phone .pkv b,#phone .hdc .pr{font-weight:600}
+#phone .bar b{font-size:18px;font-weight:700}
+#phone .agt{font-size:14px;font-weight:500;color:var(--tt);padding-top:36px}
+#phone .lab{font-size:14px;font-weight:500}
+/* spacing */
+#phone .sec{padding-top:40px}
+#phone .row{padding:12px 0}
+#phone .hr{padding:16px 24px}
+#phone .hc .row,#phone .h9 .hc .row{padding:14px 24px}
+#phone .pkr{padding:14px 24px}
+#phone .ar{padding:12px 24px}
+#phone .hc{padding-top:24px}
+#phone .grid{gap:24px 0}
+#phone .ag{gap:24px 4px}
+/* quieter surfaces: soft icon tiles, no heavy gray */
+#phone .ico,#phone .hi{background:var(--chip)}
+#phone .hi{width:40px;height:40px;border-radius:14px}
+#phone .gi{font-size:13px;font-weight:600;gap:10px}
+#phone .gi .ico{width:56px;height:56px;border-radius:20px}
+/* small action buttons (Pay, Fill, Send, Add money): soft tint, brand text, medium weight */
+#phone .hr .chip,#phone .pkr .chip,#phone .hc .chip,#phone .row .chip{background:var(--tint);color:var(--tintfg);font-weight:600;font-size:14px;height:34px;padding:0 14px}
+#phone .chip,#phone .cch{font-weight:600}
+#phone .cch{font-size:15px}
+/* big buttons: a bit calmer */
+#phone .btn{font-weight:700;font-size:17px;border-radius:16px;height:54px}
+#phone .row2 .btn{font-weight:700;height:52px}
+#phone .btn.sec2{font-weight:600}
+/* tabs: thinner labels */
+#phone .tabs button{font-size:11px;font-weight:500;gap:3px;color:var(--tt)}
+#phone .tabs button.on{font-weight:700}
+/* segment and filter rows */
+#phone .seg{gap:20px;font-size:17px}#phone .seg button{font-weight:600;font-size:17px}#phone .seg button.on{border-bottom-width:2px}
+/* sheets */
+#phone .sheet{padding-top:32px;border-radius:24px 24px 0 0}
+#phone .toast{font-weight:600;border-radius:16px}
+/* fine print and helper text */
+#phone .fine{font-size:13px;line-height:19px}
+#phone .mi .t,#phone .pn{font-weight:600}
+#phone .pp{font-weight:700}
+
+/* the real home / pay classes */
+#phone .ha{font-weight:700!important}
+#phone .ha .cu{font-weight:600!important}
+#phone .ha2{font-size:17px!important;font-weight:600!important;letter-spacing:-.2px}
+#phone .pkpn{font-size:14px!important;font-weight:400!important;color:var(--tt)!important}
+#phone .hp{background:var(--tint)!important;color:var(--tintfg)!important;font-size:14px!important;font-weight:600!important}
+#phone .hf,#phone .hf button,#phone .hs{font-size:15px!important;font-weight:600!important;color:var(--mu)}
+#phone .hct{padding-top:32px!important}
+#phone .hct>span:first-child{font-size:20px!important;font-weight:700!important;letter-spacing:-.4px}
+#phone .hct a,#phone .sech a{font-size:14px!important;font-weight:500!important;color:var(--tt)!important}
+#phone .v174h{font-size:20px!important;font-weight:700!important;letter-spacing:-.4px;padding-top:36px!important;margin-bottom:4px!important}
+#phone .screen .s{font-size:14px!important;line-height:20px;color:var(--tt)}
+#phone .screen .t{font-weight:600}
+#phone .screen .sm{font-size:14px}
+#phone .screen [style*="font-weight:800"]{font-weight:700!important}
+#phone .screen [style*="font-weight:700"]:not(button):not(.chip){font-weight:600!important}
+#phone .top b{font-size:22px;font-weight:700}
+#phone .big{font-size:36px}
+#phone .gi span,#phone .ecat{font-weight:600!important}
+
+/* Send amount screen, same calm layout as the fill / take-out screen: left aligned, one line of context, light big keys */
+#phone .screen:has(#amt) .pad{padding-top:12px!important}
+#phone .screen:has(#amt) .pad+div{text-align:left!important;padding-top:24px!important}
+#phone .screen:has(#amt) .pad+div>div:first-child{font-size:44px!important;font-weight:700!important;letter-spacing:-1.2px!important;line-height:52px}
+#phone .screen:has(#amt) .pad+div>div:first-child>span:last-child{font-size:20px!important;font-weight:600;color:var(--mu)}
+#phone .screen:has(#amt) #w9,#phone .screen:has(#amt) #wd,#phone .screen:has(#amt) #msg,#phone .screen:has(#amt) [onclick="bkLim()"]{text-align:left!important;margin-top:8px!important;font-size:14px}
+#phone .screen:has(#amt) #msg{color:var(--tt)}
+#phone .screen:has(#amt) [data-v345]{display:none!important}
+#phone .screen:has(#amt) .pad+div>div[style*="justify-content:center"]{justify-content:flex-start!important;margin-top:20px!important;gap:10px!important}
+#phone .screen:has(#amt) .chip{height:40px;padding:0 16px;font-size:15px;font-weight:600}
+#phone .screen:has(#amt) .keys button{font-size:30px;font-weight:400}
+#phone .screen:has(#amt) .keys button:active{transform:none;opacity:.45}
+#phone .mvx{font-weight:700}
+
+/* pocket detail: flat white header, calmer numbers and rows */
+#phone .pkt,#phone .pkh{background:var(--bg)!important}
+#phone .pkn{font-size:15px!important;font-weight:500!important;color:var(--tt)!important}
+#phone .pkb{font-size:34px!important;font-weight:700!important;letter-spacing:-.9px}
+#phone .pkrow .pkpn{font-size:14px!important;font-weight:400!important;color:var(--tt)!important}
+#phone .pkrow .pkpb{font-size:17px!important;font-weight:600!important}
+#phone .pkg{font-size:13px!important;font-weight:500!important;color:var(--tt)!important}
+#phone .pkf{font-size:15px!important;font-weight:600!important}
+#phone .pkdiv{opacity:.6}
+#phone .pkm{font-size:15px;font-weight:500;color:var(--mu)}
+/* inputs: lighter weight, softer placeholder */
+#phone .in{font-size:22px;font-weight:600}
+#phone .in::placeholder,#phone input::placeholder{color:var(--tt);font-weight:500;opacity:.8}
+#phone .asr{background:var(--chip);border-radius:14px}
+/* section labels and list headings read as one level */
+#phone .agt{padding-top:32px}
+#phone .mu.sm,#phone .mu{font-weight:400}
+</style>
+<style id="v388">
+/* v388: Toss calm pass 2. Home quick links (Bills / Card / Savings / All) lose the bold weight and the tiny divider bars: lighter, evenly spaced, "All" in the accent colour. */
+#phone .hc .hf,#phone .hf{padding:0 24px!important;margin-top:4px;gap:4px}
+#phone .hf i{display:none}
+#phone .hf button{padding:14px 12px 14px 0!important;font-size:15px!important;font-weight:500!important;color:var(--mu)!important;min-height:44px}
+#phone .hf .hs{margin-left:auto;padding:0}
+#phone .hf .hs button{padding-right:0!important;color:var(--lk)!important;font-weight:600!important}
+/* v388b: Toss amount screens, everywhere. Number keys are light and big (not bold) on every keypad, quick-amount chips are medium weight, and Top up shows three chips in one row (+20,000 / +100,000 / All) instead of five in two rows. The daily-limit line is secondary text. */
+#phone .keys button{font-weight:400;font-size:30px}
+#phone .screen div:has(> .chip:nth-child(5)) .chip:is(:nth-child(2),:nth-child(4)){display:none}
+#phone .screen div:has(> .chip:nth-child(5)) .chip{font-weight:500;font-size:15px;height:40px;padding:0 16px}
+</style>
+
+<style id="v389">
+/* v389: Top up / Move amount screen laid out like the Toss Bank transfer screen (390x845 frame): header, two From/To rows, 34px amount, plain-words line, full-bleed Next bar (53px) and a light 4x3 keypad (62.5px rows). */
+#phone .screen:has(#pub){padding-bottom:0;overflow:hidden}
+#phone .puh{padding:max(16px,calc(39px - env(safe-area-inset-top,0px))) 12px 0 18px;gap:0}
+#phone .puh .ib{margin-left:-8px;width:40px}
+#phone .puh b{margin-left:20px;font-size:17px;font-weight:600;letter-spacing:-.2px}
+#phone .purs{position:relative;padding:20px 24px 0}
+#phone .pur{margin-bottom:31px;min-height:59px}
+#phone .pur:last-child{margin-bottom:0}
+#phone .put{display:flex;align-items:center;gap:6px;height:30px;font-size:22px;line-height:30px;letter-spacing:-.5px;min-width:0}
+#phone .pul{font-weight:400;color:var(--mu);flex:none}
+#phone .pun1{font-weight:700;color:var(--tx);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#phone .pus{margin-top:9px;font-size:15px;line-height:20px;color:var(--tt)}
+#phone .pus span{color:var(--mu);margin-left:4px}
+#phone .pusw{position:absolute;right:24px;top:calc(50% + 10px);transform:translateY(-50%);width:36px;height:36px;border-radius:18px;border:0;background:var(--chip);color:var(--tintfg);display:flex;align-items:center;justify-content:center}
+#phone #pub{padding:0 24px;position:static}
+#phone .pua{margin-top:30px;font-size:34px;line-height:44px;font-weight:700;letter-spacing:-.8px;color:var(--tx);font-variant-numeric:tabular-nums}
+#phone .pua b{font-weight:700}
+#phone .pph{color:var(--tt);font-weight:700;font-size:26px;white-space:nowrap;letter-spacing:-.4px}
+#phone .puw{margin-top:5px;font-size:15px;line-height:22px;min-height:22px;color:var(--tt)}
+#phone .pun{margin-top:10px;font-size:14px;line-height:20px;min-height:20px;color:var(--mu)}
+#phone .pun.er{color:var(--er)}
+#phone .puc{position:absolute;left:0;right:0;bottom:361px;padding:0 24px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+#phone .puc::-webkit-scrollbar{display:none}
+#phone .puc .chip{flex:none;height:34px;padding:0 12px;font-size:14px;font-weight:600;border-radius:17px}
+#phone .puk{position:absolute!important;left:0;right:0;bottom:46px;height:250px;padding:0 12px!important;grid-template-rows:repeat(4,1fr)}
+#phone .puk button{height:auto!important;font-size:28px;font-weight:300;color:var(--tx);display:flex;align-items:center;justify-content:center;letter-spacing:0}
+#phone .pucta{position:absolute!important;left:0;right:0;bottom:296px!important;padding:0!important;background:transparent!important}
+#phone .pucta::before{display:none!important}
+#phone .pucta .btn{height:53px!important;border-radius:0!important;font-size:17px!important;font-weight:700!important;margin:0!important}
+</style>
+<style id="v390">
+/* v390: Top up / Move amount screen, quieter, closer to the reference screenshot. Before: a title, two From/To rows, a swap button, a words line, a daily-limit line, an "after" line and a chip row with All/Last all competed for attention above a 4x3 keypad with a 00 key. Now: back arrow only, ONE source line (icon, "From name", chevron, small balance under it), ONE headline that holds the amount ("Top up 10,000 RWF?"), three add-chips right under it, notes only when something is wrong, full-bleed bar, and a keypad with no 00 key (blank, 0, delete). */
+#phone .puh b,#phone .pusw,#phone .puw{display:none}
+#phone .puh{padding-bottom:0}
+#phone .pus1{padding:28px 24px 0}
+#phone .pusr{display:flex;align-items:center;gap:14px;min-width:0}
+#phone .pusr .t{display:flex;align-items:center;gap:6px;min-width:0;font-size:24px;line-height:32px;letter-spacing:-.5px}
+#phone .pusr .t i{font-style:normal;color:var(--mu);font-weight:400;flex:none}
+#phone .pusr .t b{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#phone .pusb{margin:4px 0 0 58px;font-size:15px;line-height:20px;color:var(--tt)}
+#phone #pub{padding:0 24px}
+#phone .pua{margin-top:40px;font-size:26px;line-height:36px;font-weight:700;letter-spacing:-.6px;color:var(--tx);font-variant-numeric:tabular-nums}
+#phone .pua i{font-style:normal;font-weight:400;color:var(--mu)}
+#phone .pun{margin-top:8px;min-height:0;font-size:14px;line-height:20px}
+#phone .puc{position:static;left:auto;right:auto;bottom:auto;padding:0;margin-top:18px;gap:8px;overflow:visible}
+#phone .puc .chip{height:36px;padding:0 14px;border-radius:12px;font-size:15px;font-weight:500;background:var(--chip);color:var(--tx)}
+#phone .puk button{font-weight:300;font-size:28px;color:var(--tx)}
+#phone .puk span{pointer-events:none}
+</style>
+<style id="v391">
+/* v391: itunda Pay detail, quieter, closer to the Toss Pay Money screen. Before: Code AND Top-up account in the top bar, a "Spent this month" card between the buttons and the ledger, and a running balance under every amount. Now: back arrow, Code as an icon, one text link; small label, 36px balance, two 54px buttons; month and switch; ledger lines show title, "time | from -> to" and ONE signed amount. */
+#phone .bdt .bq{padding:0 8px;color:var(--mu)}
+#phone .bdt .bb:not(.bq){font-size:15px;font-weight:500;color:var(--mu)}
+#phone .pdl1{padding:44px 24px 0;font-size:15px;line-height:20px;color:var(--mu)}
+#phone .bdb{padding:6px 24px 0;font-size:36px;line-height:46px;font-weight:700;letter-spacing:-.8px}
+#phone .pdbt{padding-top:24px;gap:10px}
+#phone .pdbt .btn{height:54px;border-radius:18px;font-size:17px;font-weight:600}
+#phone .bdband{margin-top:28px}
+#phone .bdf{padding-top:24px}
+#phone .bdf .pkf{font-size:20px;font-weight:700}
+#phone .pkg{font-size:15px;font-weight:400;color:var(--mu);padding-top:28px}
+#phone .bdr .t{font-size:17px;font-weight:700}
+#phone .bdr .s{font-size:15px;color:var(--mu)}
+#phone .bdr .pkv b{font-size:17px;font-weight:700}
+</style>
+<style id="v392">
+/* v392: Top up / Move, second pass against the screenshot. (1) The disabled bar ("Enter an amount", "Amount too high") was dark text on a dark bar; it is now a readable grey bar with grey text. (2) Source icon is a rounded square like the reference. (3) Sizes up one step: source name 26px, headline 28px, chips 16px at 40px high. (4) Arrow-style back button. (5) The headline keeps its two-line height so the chips never jump when a long amount wraps. */
+#phone .pucta .btn:disabled{background:var(--chip)!important;color:var(--mu)!important;opacity:1!important}
+#phone .pusr>span:first-child{border-radius:14px!important}
+#phone .pusr .t{font-size:26px;line-height:34px}
+#phone .pusb{margin-top:2px}
+#phone .pua{margin-top:44px;font-size:28px;line-height:38px;min-height:38px}
+#phone .puc{margin-top:20px;gap:10px}
+#phone .puc .chip{height:40px;padding:0 16px;font-size:16px;border-radius:12px}
+#phone .puh .ib{width:44px}
+</style>
+<style id="v393">
+/* v393: Top up / Move, third pass against the two new screenshots. (1) With nothing typed the headline is "How much to top up?" with the key words bold and the rest light, and the only chip is "All 842,300" (the reference's "전액 1만원"); the three add chips appear once a number is typed, and a step that would go over the limit is dimmed instead of letting you into the error. (2) The disabled bar keeps the brand colour (soft tint, tinted label) instead of turning grey, like the reference. (3) Keys dim when pressed instead of shrinking. (4) Holding the delete key clears the amount. */
+#phone .pua i b{font-weight:700;color:var(--tx)}
+#phone .puc .chip:disabled{opacity:.4;cursor:default;transform:none}
+#phone .pucta .btn:disabled{background:var(--tint)!important;color:var(--tintfg)!important;opacity:1!important}
+#phone .puk button{-webkit-user-select:none;user-select:none;touch-action:manipulation}
+#phone .puk button:active{transform:none;opacity:.4}
+</style>
+<style id="v394">
+/* v394: itunda Pay detail, against the Toss Pay Money screenshot. (1) The unit stops competing with the number: 36px balance, "RWF" 22px and grey. (2) Ledger lines lose the repeated "RWF" (the balance already says it), so names such as "Kigali Bus Services" are not cut off. (3) Tighter, even rhythm: 44px icons, 10px line padding, day labels 14px light grey with 20px above, instead of 26px gaps that made each line look like its own block. (4) Line text one step quieter: name 16/600, time 14 grey, amount 16/700. (5) Month is the clear title of the list (20px bold), the Payments only label is regular weight. */
+#phone .pdl1{padding-top:36px}
+#phone .bdb{padding-top:4px;font-size:36px;line-height:46px}
+#phone .bdb small{font-size:22px;line-height:1;font-weight:600;color:var(--mu);letter-spacing:-.3px;margin-left:6px}
+#phone .pdbt{padding-top:20px}
+#phone .pdbt .btn{border-radius:18px}.row .s{font-size:13px;line-height:18px}.row .t{font-size:16px}.tabs::before{content:none}
+#phone .bdband{margin-top:24px;height:10px}
+#phone .bdf{padding-top:20px;padding-bottom:2px}
+#phone .bdf .pkf{font-size:20px!important;font-weight:700!important}
+#phone .bdf button[role=switch]{font-size:14px!important;font-weight:500!important}
+#phone #pdl .pkg{padding:22px 24px 4px;font-size:14px;font-weight:500;color:var(--tt)}
+#phone #pdl .bdr{padding:10px 24px;gap:14px}
+#phone #pdl .bdr .ico{width:44px;height:44px;border-radius:22px}
+#phone #pdl .bdr .t{font-size:16px;font-weight:600}
+#phone #pdl .bdr .s{font-size:14px;margin-top:1px;color:var(--tt)}
+#phone #pdl .bdr .pkv b{font-size:16px;font-weight:700}
+</style>
+<style id="v395">
+/* v395: Home, same unit rule as the Pay detail. Before: the balances at the top had a quiet "RWF" but "312,000 RWF" (spent) and the pocket amounts kept the unit at full size and weight, so the same kind of number read three different ways. Now every amount on Home is number first, unit smaller and grey. Also the gap between the cards is about 18px tighter, so Bills / Card / Savings read as part of the balances and the page shows one more pocket line before the fold. */
+#phone .ha2 .cu{font-size:.82em;font-weight:600;color:var(--mu);margin-left:2px}
+#phone .screen .hc{padding-bottom:8px!important}
+#phone .screen .hc+.hc{padding-top:6px!important}
+#phone .screen .hc .hf{padding-bottom:0}
+/* v395b: Activity and Pockets, same unit rule. The search box and chips sat on a 16px edge while the title and the lines sit on 24px; the unit "RWF" was as loud as the number on every line, and the gap under the chips was uneven. Now one 24px edge, number 16/700 with a small grey unit, the list sits 12px under the chips, and the Pockets total and pocket balances use the same number-first unit. */
+#phone .screen .asr{margin-left:24px!important;margin-right:24px!important}
+#phone .chips{padding-left:24px!important;padding-right:24px!important}
+#phone .row .r .cu,#phone .pkpb .cu{font-size:.8em;font-weight:600;color:var(--mu);margin-left:2px}
+#phone .pkTot .cu{font-size:.55em;font-weight:600;color:var(--mu);margin-left:6px;letter-spacing:-.2px}
+#phone .row .r{font-weight:700;color:var(--tx)}
+#phone .chips+.sec{padding-top:12px!important}
+/* v395c: Pocket detail, same rhythm as the Pay detail ledger (v394). Before: the balance unit was as loud as the number, every ledger line repeated "RWF" twice (amount and running balance), the coin icon was a heavy dark disc, and day labels floated 30px from their lines. Now: number-first balance, one signed amount per line, 44px icons, 14px light day labels, 10px line padding. */
+#phone .pkb .cu{font-size:.55em;font-weight:600;color:var(--mu);margin-left:6px;letter-spacing:-.2px}
+#phone .pkr{padding-top:10px!important;padding-bottom:10px!important;gap:14px}
+#phone .pkr .pkico{width:44px!important;height:44px!important;border-radius:22px!important}
+#phone .pkr .t{font-size:16px;font-weight:600}
+#phone .pkr .s{font-size:14px;color:var(--tt);margin-top:1px}
+#phone .pkr .pkv b{font-size:16px;font-weight:700}
+#phone .pkr .pkv span{display:none!important}
+#phone .pkg{padding-top:22px!important;padding-bottom:4px!important;font-size:14px;font-weight:500;color:var(--tt)}
+#phone .pkr .pkico,#phone .pkr.pin .pkico{background:var(--tint)!important;color:var(--tintfg)!important}
+#phone .pkr .pkcoin{background:var(--bg)}
+/* v395d: Explore rows. The group cards had 12px side padding on top of the rows' own 24px, so the icons started at 36px while the group titles started at 24px. Now titles, icons and chips share one 24px edge, and icons are the same 44px circles as every other list. */
+#phone .screen .xc.xg{padding-left:0!important;padding-right:0!important}
+#phone .screen .xc .xgh{padding-left:24px!important;padding-right:24px!important}
+#phone .screen .xc .ar{padding:10px 24px!important;column-gap:14px!important;row-gap:0!important}
+#phone .screen .xc .ar .g{width:44px!important;height:44px!important;border-radius:22px!important}
+/* v395e: You and Messages. The section titles on You (Partner earnings, My favorites...) had 72px of space above them (40px margin on top of 32px padding), so each group floated apart from its own rows; now 44px. The Messages search box sat on a 16px edge while everything else is on 24px; it now matches Activity. */
+#phone .screen .agt{margin-top:12px!important;padding-top:32px!important}
+#phone .screen .msr,#phone .screen .mps,#phone .screen .v143q input[type=search]:not(.hs13){margin-left:8px!important;margin-right:8px!important;width:calc(100% - 16px)!important}
+</style>
+<style id="toss-polish">/* Toss home: grey canvas, white rounded cards */
+.screen.h9{background:#F2F4F6}.screen.h9 .hc{margin:8px 12px 0!important;box-shadow:none;background:var(--bg)!important;border-radius:24px}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .screen.h9{background:#101013}}
+:root[data-theme=dark] .screen.h9{background:#101013}
+.screen.h9 .hct{font-size:18px;font-weight:800;letter-spacing:-.4px}
+
+/* Toss-style polish layer: numbers, press feedback, focus, motion */
+body{font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+button,[role=button],a{transition:transform .12s ease,background-color .15s ease,opacity .15s ease}
+button:active:not(:disabled),[role=button]:active{transform:scale(.97)}
+:focus-visible{outline:2px solid var(--lk);outline-offset:2px;border-radius:10px}
+nav button:active{transform:scale(.92)}
+::selection{background:var(--tint)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+<style id="v872toss">
+/* v872: Toss-style pass. Calm grey canvas, white cards, one bold accent, big numbers, fast tactile taps. */
+:root{--t-ease:cubic-bezier(.2,.8,.2,1)}
+@media (prefers-color-scheme:light){:root:not([data-theme=dark]){--tx:#191F28;--mu:#6B7684;--tt:#6B7684;--ln:#F2F4F6;--chip:#F2F4F6;--page:#E8EBEF;--tbg:#F2F4F6}}
+:root[data-theme=light]{--tx:#191F28;--mu:#6B7684;--tt:#6B7684;--ln:#F2F4F6;--chip:#F2F4F6;--page:#E8EBEF;--tbg:#F2F4F6}
+:root{--tbg:color-mix(in srgb,var(--tx) 5%,var(--bg))}
+body{letter-spacing:-.2px;-webkit-font-smoothing:antialiased}
+/* canvas + cards */
+#phone#phone .screen.h9,#phone#phone .screen:has(.xp){background:var(--tbg)}
+#phone#phone .hc{margin:12px 16px 0!important;border-radius:20px!important;background:var(--bg)!important;box-shadow:none!important}
+#phone#phone .h9 .sec{border-radius:20px;margin:12px 16px 0}
+/* hero number */
+#phone#phone .t848 .l{font-size:15px;font-weight:600;color:var(--mu);letter-spacing:-.2px}
+#phone#phone .t848 .n{font-size:40px;line-height:48px;font-weight:800;letter-spacing:-1.4px}
+#phone#phone .t848 .n span{font-size:18px;font-weight:700;color:var(--mu);margin-left:4px;letter-spacing:-.3px}
+#phone#phone .hr .ha{font-size:20px!important;letter-spacing:-.5px}
+/* action pills: tinted, soft, Toss-like */
+#phone#phone#phone #sc.h9 .hc .hr .hp.pr,#phone#phone .hr .hp{height:36px!important;border-radius:12px!important;font-size:14px!important;font-weight:700!important;background:var(--tint)!important;color:var(--tintfg)!important}
+/* section titles */
+.sech,.agt{letter-spacing:-.4px}
+.sech{font-size:19px}
+/* rows: calmer press state */
+.row.tap:active,.ar.tap:active,.hr.tap:active{background:color-mix(in srgb,var(--tx) 5%,transparent);border-radius:14px}
+.tap:active,button:active{transition:transform .1s var(--t-ease)}
+/* primary button */
+.btn{height:56px;border-radius:16px;font-size:17px;font-weight:700;letter-spacing:-.3px}
+.btn.sec2{background:var(--tint);color:var(--tintfg)}
+.row2 .btn{border-radius:14px}
+/* sticky bottom CTA with soft fade like Toss */
+.cta{padding:16px 20px calc(20px + env(safe-area-inset-bottom,0px))}
+/* tab bar: quiet, 11px labels */
+.tabs{border-top:1px solid var(--ln)}
+.tabs button{font-size:11px;font-weight:600;gap:3px;color:var(--tt)}
+.tabs button.on{color:var(--tx);font-weight:700}
+/* titles */
+.h1{font-size:26px;line-height:35px;font-weight:800;letter-spacing:-.8px}
+/* inputs */
+.in{font-size:22px;font-weight:700}
+.in:focus,.field:focus-within{border-color:var(--br)}
+.field{border-bottom-color:var(--ln)}
+.field:focus-within{border-bottom-color:var(--br)}
+/* chips: selected = solid ink */
+.cch,.chip{font-weight:600}
+.cch.on{background:var(--tx);color:var(--bg)}
+/* sheets and toast */
+.sheet{border-radius:24px 24px 0 0}
+.sheetbg{background:rgba(25,31,40,.5)}
+.toast{background:#333D4B;color:#fff;border-radius:14px;font-weight:600;left:20px;right:20px}
+/* keypad: lighter, bigger tap */
+.keys button{font-weight:600;border-radius:16px}.keys button:active{background:var(--chip)}
+/* success check */
+.check{background:var(--br)}
+/* switch */
+.sw{width:50px;height:30px;border-radius:15px}.sw i{width:24px;height:24px;border-radius:12px;top:3px}.sw.on i{transform:translateX(20px)}
+/* list thumbs */
+.ico{background:var(--chip)}
+.pim,.rimg{border-radius:16px}
+</style>
+<style id="v873toss">
+/* v873: Toss-style pass 2. Saturated primary with white label, no step bars, softer rows, calmer amount screen. */
+@media (prefers-color-scheme:light){:root:not([data-theme=dark]){--cta:#6258F5;--ctafg:#fff}}
+:root[data-theme=light]{--cta:#6258F5;--ctafg:#fff}
+:root:not([data-theme=light]){--cta:var(--br);--ctafg:var(--on)}
+@media (prefers-color-scheme:light){:root:not([data-theme=dark]){--cta:#6258F5;--ctafg:#fff}}
+#phone#phone .btn:not(.sec2),#phone#phone .cta .btn:not(.sec2){background:var(--cta);color:var(--ctafg);font-weight:700}
+#phone#phone .btn:not(.sec2):disabled{background:var(--chip);color:var(--tt);opacity:1}
+#phone#phone .btn:not(:disabled):active{transform:scale(.98);filter:none;background:color-mix(in srgb,var(--cta) 88%,#000)}
+#phone#phone .bub button,#phone#phone .sw.on{background:var(--cta);color:var(--ctafg)}
+#phone#phone .sw.on i{background:#fff}
+#phone#phone .tl.on i,#phone#phone .tl.done i,#phone#phone .cb.on,#phone#phone .check{background:var(--cta);border-color:var(--cta)}
+#prog i{background:var(--cta)}
+/* no step bars; Toss asks one question per screen */
+.v176 .sg{display:none}
+.v176{padding:0 24px;font-size:13px;font-weight:600;color:var(--tt)}
+/* headline: question-style, left aligned, roomy */
+.screen .pad .h1{font-size:26px;line-height:35px;letter-spacing:-.9px}
+/* amount screen */
+.v420amt{font-size:52px!important;letter-spacing:-1.8px!important}
+.v420amt span:last-child{color:var(--mu);font-weight:700}
+#w9{color:var(--cta)!important}
+.v419blk .chip{height:36px;border-radius:12px;padding:0 14px;font-weight:700;background:var(--chip)}
+.v419blk [data-v345]{background:var(--chip);border-radius:16px}
+.keys button{font-size:24px;font-weight:600;height:56px}
+/* contact / list rows: rounded press and selected states, inset */
+#phone#phone .ar{margin:0 12px;padding:11px 12px;border-radius:16px}
+#phone#phone .ar.on,#phone#phone .ar[aria-selected=true]{background:var(--tint)}
+#phone#phone .asr{height:48px;border-radius:14px;background:var(--chip)}
+#phone#phone .asr:focus-within{box-shadow:inset 0 0 0 2px var(--cta)}
+/* tinted info banners */
+.warn{padding:14px 16px;margin:16px 24px 0;border-radius:16px;background:var(--chip)}
+/* headings on grouped cards */
+#phone#phone .hc .sech,#phone#phone .sec .sech{font-size:18px;letter-spacing:-.4px}
+/* tab bar: icon weight and tap target */
+.tabs button svg{transition:transform .18s var(--t-ease)}.tabs button.on svg{transform:translateY(-1px) scale(1.06)}
+/* screen transitions: shorter, more native */
+.push{animation-duration:.26s}.fade{animation-duration:.2s}
+</style>
+<style id="v873b">#phone#phone #sc .v176 .sg,#phone#phone #sc .v176 .sg i{display:none!important}
+#phone#phone #sc .v176{display:block!important;padding:0 24px!important}
+#phone#phone .v176 .sg{display:none!important}
+#phone#phone .v176{padding:0 24px!important;gap:0!important}
+#phone#phone .v420amt{font-size:52px!important;letter-spacing:-1.8px!important}
+#phone#phone .row.tap[onclick^="pick("]{margin:0 12px;padding:11px 12px;border-radius:16px}
+#phone#phone .row.tap[onclick^="pick("]:active{background:var(--chip)}
+#phone#phone .field{margin:20px 24px 0}
+</style><style id="v874toss">
+/* v874: Toss-style pass 3. Calm product cards, plain-text meta, red discount, secondary receipt button. */
+#phone#phone [onclick^="openProd("]>div:nth-child(2){font-size:15px;line-height:21px;color:var(--tx);font-weight:500;margin-top:10px}
+#phone#phone [onclick^="openProd("]>div:nth-child(3){font-size:18px;font-weight:800;letter-spacing:-.5px;margin-top:2px}
+#phone#phone [onclick^="openProd("]>div:nth-child(3) span{color:#F04452;font-weight:800;margin-right:2px}
+#phone#phone [onclick^="openProd("] span[style*="inline-block"]{background:none!important;padding:0!important;margin:4px 0 0!important;border-radius:0!important;font-size:13px!important;font-weight:600!important;color:var(--mu)!important;display:inline!important}
+#phone#phone [onclick^="openProd("]>div:nth-child(4) span{color:var(--cta,#6258F5)!important}
+#phone#phone [onclick^="openProd("]>div:nth-child(6){line-height:19px;margin-top:2px}
+#phone#phone [onclick^="openProd("]>div:nth-child(6) span{display:block!important}
+#phone#phone [onclick^="openProd("]>div:nth-child(5){color:var(--mu);margin-top:4px}
+#phone#phone [onclick^="openProd("] .pim{background:var(--chip);border-radius:16px!important}
+/* result screens: receipt is secondary, Done is primary */
+#phone#phone #sc:has(.g3) .row2 .btn:first-child:not(:last-child){background:var(--tint);color:var(--tintfg)}
+#phone#phone#phone .btn.sec2{background:var(--tint)!important;color:var(--tintfg)!important}
+/* generic: link-style actions use the CTA violet */
+#phone#phone .sech a{color:var(--cta,#6258F5);font-weight:600}
+</style><style id="v875toss">
+/* v875: Toss-style pass 4. Marketplace list, Eats cards, press feedback. */
+#phone#phone .dg-t{font-size:16px;font-weight:600;letter-spacing:-.3px;line-height:22px}
+#phone#phone .dg-s{font-size:13px;color:var(--mu);margin-top:2px}
+#phone#phone .dg-p{font-size:17px;font-weight:800;letter-spacing:-.4px;margin-top:6px}
+#phone#phone .dg-th{border-radius:16px}
+#phone#phone .mk-sp{background:none!important;padding:0!important;color:var(--cta,#6258F5)!important;font-weight:700;border-radius:0!important}
+#phone#phone .dg-m{gap:10px;color:var(--tt);font-size:13px;margin-top:6px}
+#phone#phone .dg-r{border-radius:16px;transition:background .15s}
+#phone#phone .dg-r:active{background:color-mix(in srgb,var(--tx) 5%,transparent)}
+/* Eats and shop cards: image first, calm text, gentle press */
+#phone#phone .rcard{transition:transform .15s var(--t-ease)}#phone#phone .rcard:active{transform:scale(.98)}
+#phone#phone .rtag{background:var(--bg);color:var(--tx);font-weight:700;border-radius:8px}
+#phone#phone .pc:active,#phone#phone [onclick^="openProd("]:active{transform:scale(.98)}
+/* chips row: selected = ink */
+#phone#phone .cch.on{background:var(--tx);color:var(--bg)}
+/* grouped cards press feedback */
+#phone#phone .hc .hr.tap:active{background:color-mix(in srgb,var(--tx) 4%,transparent)}
+</style>
+<script>
+/* v875: balance count-up on Home, like Toss. Runs once per render, respects reduced motion. */
+(function(){try{
+if(matchMedia('(prefers-reduced-motion:reduce)').matches)return;
+var last='';
+function run(){var n=document.querySelector('.t848 .n');if(!n||n.dataset.cu)return;
+var tn=n.firstChild;if(!tn||tn.nodeType!==3)return;
+var txt=tn.nodeValue,v=parseInt(txt.replace(/[^0-9]/g,''),10);if(!v)return;
+n.dataset.cu=1;var t0=performance.now(),D=650;
+(function f(t){var k=Math.min(1,(t-t0)/D),e=1-Math.pow(1-k,3);
+tn.nodeValue=Math.round(v*e).toLocaleString('en-US');
+if(k<1)requestAnimationFrame(f);else tn.nodeValue=txt;})(t0);}
+function go(){new MutationObserver(run).observe(document.getElementById('phone')||document.body,{childList:true,subtree:true});run();}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',go);else go();
+}catch(e){}})();
+</script><style id="v876toss">
+/* v876: Toss-style pass 5. Pay links no longer collide with the cashback tip; Marketplace type; calmer notification buttons. */
+#phone#phone .screen:has(.pctip) div:has(>.lnk){flex-wrap:nowrap;gap:10px;align-items:center;padding:0 16px;max-height:26px;overflow:hidden}
+#phone#phone .screen:has(.pctip) .lnk{min-height:0!important;height:26px!important;padding:0!important;font-size:12px!important;white-space:nowrap}
+#phone#phone :is(#mxl2,#jnl,#pnl) .dg-t{font-size:16px!important;line-height:22px!important;font-weight:600!important;letter-spacing:-.3px}
+#phone#phone#phone .dg-r .dg-p{font-size:17px;font-weight:800}
+/* secondary full-width buttons: no outline */
+#phone#phone .btn.sec2{border:0;box-shadow:none}
+/* unread count badges use the primary violet with white text */
+#phone#phone .bdg,#phone#phone .unr{background:var(--cta,#6258F5);color:#fff}
+</style><style id="v877toss">
+/* v877: Toss-style pass 6. Chat: violet outgoing bubble with white text, soft action pills, round send button. */
+#phone#phone .mm-b.me{background:var(--cta,#6258F5);color:var(--ctafg,#fff);border-radius:18px 18px 4px 18px}
+#phone#phone .mm-b.th{background:var(--chip);color:var(--tx);border-radius:18px 18px 18px 4px}
+#phone#phone .mm-bd{background:var(--cta,#6258F5);color:var(--ctafg,#fff)}
+#phone#phone .t26-act button{border:0!important;background:var(--chip)!important;border-radius:12px!important;font-weight:700}
+#phone#phone .t26-act button:active{background:var(--tint)!important}
+#phone#phone .screen:has(#msg) #msg{background:var(--chip);border:0}
+#phone#phone .screen:has(#msg) #msg:focus{box-shadow:inset 0 0 0 2px var(--cta,#6258F5);outline:0}
+#phone#phone .cta [aria-label="Send message"]{background:var(--cta,#6258F5)!important;color:var(--ctafg,#fff)!important;transition:background .15s,color .15s}
+#phone#phone .cta [aria-label="Send message"] svg *{stroke:currentColor!important;fill:currentColor!important}
+#phone#phone .cta:has(#msg:placeholder-shown) [aria-label="Send message"]{background:var(--chip)!important;color:var(--tt)!important}
+#phone#phone .c24-qk .cch{background:var(--chip);border:0!important;font-weight:600;height:36px;border-radius:12px}
+#phone#phone .c24-qk .cch:active{background:var(--tint);color:var(--tintfg)}
+#phone#phone .screen:has(.sw) .ar>span[style*="var(--lk)"],#phone#phone .screen:has(.sw) .row .r{color:var(--mu)!important;font-weight:500!important}
+#phone#phone .screen:has(.sw) .row .r svg{color:var(--tt)}
+#phone#phone .screen:has(.sw) .sw i{box-shadow:none}
+</style><style id="v878toss">
+/* v878: Toss-style pass 7. Eats: solid violet cart bar and add buttons with white labels, rounded steppers. */
+#phone#phone .e2-cta{background:var(--cta,#6258F5)!important;color:var(--ctafg,#fff)!important;border-radius:16px;font-weight:700}
+#phone#phone .e2-cta .n{background:#fff!important;color:var(--cta,#6258F5)!important;font-weight:800}
+#phone#phone .e2-cta:active{background:color-mix(in srgb,var(--cta,#6258F5) 88%,#000)!important}
+#phone#phone .lk94 button{text-decoration:none!important;color:var(--mu)!important;font-weight:600;font-size:14px}
+#phone#phone .lk94 i{width:1px;height:12px;background:var(--ln);display:inline-block}
+#phone#phone .dots6 i.on{background:var(--cta,#6258F5)}
+#phone#phone .e2-pl{background:var(--cta,#6258F5)!important;color:var(--ctafg,#fff)!important;border:2px solid var(--bg);font-weight:700}
+</style><style id="toss-polish">
+/* toss-polish v1: shared layer (low specificity, non-destructive) */
+:root{--toss-ease:cubic-bezier(.2,.8,.2,1);--toss-press:.97}
+html{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;text-rendering:optimizeLegibility}
+body{font-family:"Toss Product Sans","Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;letter-spacing:-.01em;word-break:keep-all;overflow-wrap:break-word;font-feature-settings:"tnum" 1}
+h1,h2,h3{letter-spacing:-.03em;text-wrap:balance;line-height:1.3}
+p,li{text-wrap:pretty}
+button,input,select,textarea{font-family:inherit;letter-spacing:inherit}
+button,[role=button],a,summary,label[for],.btn,[class*=card],[class*=row],[class*=item],[class*=chip],[class*=tab]{transition:transform .18s var(--toss-ease),background-color .18s,opacity .18s,box-shadow .18s}
+button:not(:disabled):active,[role=button]:active,.btn:active,[class*=card]:active,[class*=chip]:active{transform:scale(var(--toss-press))}
+button:disabled,[aria-disabled=true]{opacity:.4;cursor:not-allowed}
+:focus{outline:none}
+:focus-visible{outline:2px solid #8F89FF;outline-offset:2px;border-radius:10px}
+input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid #8F89FF;outline-offset:0}
+::selection{background:var(--tint,#EEEDFF);color:var(--tintfg,#191F28)}
+.num,[class*=amount],[class*=price],[class*=won],[class*=balance],td,th{font-variant-numeric:tabular-nums}
+img,svg{max-width:100%}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:#D1D6DB;border-radius:8px}::-webkit-scrollbar-track{background:transparent}
+@media (hover:none){::-webkit-scrollbar{display:none}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+html{scroll-behavior:smooth}
+/* end toss-polish */
+</style>
+<style id="toss-ux">
+/* toss-ux v2: component layer */
+:root{--t-r:16px;--t-r-lg:24px;--t-gray:var(--chip,#F2F4F6);--t-gray2:var(--line,var(--ln,#E5E8EB));--t-ink:var(--fg,var(--tx,#191F28));--t-sub:var(--mu,#6B7684);--t-ease:cubic-bezier(.2,.8,.2,1)}
+:root .btn,:root .cta,:root .ad-cta{min-height:56px;border-radius:var(--t-r);font-weight:700;letter-spacing:-.02em;transition:transform .18s var(--t-ease),filter .18s,opacity .18s}
+:root .btn:not(:disabled):active,:root .cta:not(:disabled):active{filter:brightness(.94)}
+:root .cta{width:100%}
+:root .cta[data-loading],:root .btn[data-loading]{pointer-events:none;color:transparent!important;position:relative}
+:root .cta[data-loading]::after,:root .btn[data-loading]::after{content:"";position:absolute;inset:0;margin:auto;width:20px;height:20px;border-radius:50%;border:2.5px solid rgba(255,255,255,.35);border-top-color:#fff;animation:t-spin .7s linear infinite}
+@keyframes t-spin{to{transform:rotate(360deg)}}
+:root .chip,:root .pill,:root .tag{border-radius:999px;font-weight:600;letter-spacing:-.01em}
+:root .chip{min-height:36px}
+:root .chip.on,:root .chip[aria-pressed=true]{background:var(--t-ink);color:var(--bg,#fff)}
+:root .card,:root .cardx{box-shadow:none;border:0;border-radius:20px}
+:root .row{min-height:64px;border-radius:14px;transition:background-color .15s,transform .18s var(--t-ease)}
+@media (hover:hover){:root .row:hover{background:var(--t-gray)}}
+:root .row:active{background:var(--t-gray);transform:scale(.985)}
+:root .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:56px 24px;color:var(--t-sub);line-height:1.6}
+:root .seg{background:var(--t-gray);border-radius:12px;padding:4px;gap:2px}
+:root .seg>*{border-radius:9px;font-weight:600;transition:background-color .2s var(--t-ease),color .2s}
+:root .seg>.on{background:var(--bg,#fff);color:var(--t-ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+:root input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),:root textarea,:root select{border-radius:14px;transition:box-shadow .18s,background-color .18s}
+:root input:not([type=checkbox]):not([type=radio]):not([type=range]):focus,:root textarea:focus{box-shadow:0 0 0 2px #8F89FF}
+:root .sh,:root .sheet,:root [role=dialog]{border-radius:24px 24px 0 0;animation:t-up .32s var(--t-ease) both}
+@keyframes t-up{from{transform:translateY(28px);opacity:0}to{transform:none;opacity:1}}
+.sk{background:linear-gradient(90deg,var(--t-gray) 25%,var(--t-gray2) 37%,var(--t-gray) 63%);background-size:400% 100%;animation:t-sk 1.3s ease infinite;border-radius:10px;color:transparent!important}
+@keyframes t-sk{0%{background-position:100% 50%}100%{background-position:0 50%}}
+#t-toast{position:fixed;left:50%;bottom:calc(32px + env(safe-area-inset-bottom,0px));transform:translate(-50%,16px);background:rgba(25,31,40,.92);color:#fff;padding:14px 20px;border-radius:16px;font-size:15px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .25s,transform .35s var(--t-ease);z-index:9999;max-width:calc(100vw - 32px)}
+#t-toast.on{opacity:1;transform:translate(-50%,0)}
+.t-edge{box-shadow:0 1px 0 var(--t-gray2)}

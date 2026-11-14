@@ -1,0 +1,1000 @@
+.bs464 .bsr .tt{flex:1;min-width:0}
+.bs464 .bsr b{font-size:17px}
+.bs464 .bsr .m{color:var(--mu);font-size:15px;margin-top:3px;line-height:21px}
+.bs464 .bsr .m.i{margin:0 0 0 8px;display:inline;font-size:17px}
+.bs464 .bsr svg{flex:none}
+.bs464 .bsb{gap:0;margin-top:10px;border-radius:22px;background:var(--chip);padding:14px 20px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:10px}
+.bs464 .bsb em{margin:0 4px;font-style:normal;color:var(--lk)}
+.bs464 .bsb.er{color:var(--er)}
+.bs464 #sl7{margin-top:14px!important}
+.bs464 button:focus-visible,.bs464 .bsr:focus-visible{outline:none}
+.bs464 .bsf{text-align:center;margin-top:14px;font-size:14px;color:var(--mu)}
+</style>
+<script id="modal-v464js">
+(()=>{try{
+const dy=n=>new Date(Date.now()+n*864e5).toLocaleDateString('en',{weekday:'short',month:'short',day:'numeric'});
+const eta=i=>i%3===0?'Arrives today':i%3===1?'Arrives tomorrow, '+dy(1):'Arrives '+dy(2);
+const ern=p=>Math.round(p.p*.07/10)*10;
+const CH=ic('chev',18,'var(--tt)');
+window.buySheet=function(i){
+ S.bq7=S.bq7||1;if(S.bq7n!==i){S.bq7=1;S.bq7n=i}
+ const x=PRODS[i],q=S.bq7,ship=x.p>=8000?0:1500,tot=x.p*q+ship,bal=S.shpts||0,u=S.bpts?Math.min(bal,tot):0,due=tot-u,bad=due>S.pay;
+ const ptsM=!bal?'No points yet':S.bpts?fmt(u)+' RWF used':'0 RWF used';
+ $('#layer').innerHTML=`<div class="sheetbg" onclick="closeSheet()"></div><div class="sheet bs464" role="dialog" aria-modal="true" aria-label="Buy now"><div class="bsh"></div>
+ <div class="bsp"><div><b class="pr">${fmt(x.p*q)} RWF</b> </div><div class="bsq"><button aria-label="Less" onclick="bqSet7(${i},-1)">−</button><b>${q}</b><button aria-label="More" onclick="bqSet7(${i},1)">+</button></div></div>
+ <div class="bsn">${x.n} · ${ship?'Shipping '+fmt(ship):'Free shipping'}</div>
+ <div class="bsc">
+  <div class="bsr"><div class="tt"><b>${eta(i)} · Home</b><div class="m">Kimironko, KG 11 Ave, Kigali</div></div>${CH}</div>
+  <div class="bsr"><div class="tt"><b>itunda Pay</b><span class="m i">${fmt(S.pay)} RWF</span></div>${CH}</div>
+  <div class="bsr" id="bsPts" ${bal?'role="button" tabindex="0"':''}><div class="tt"><b>Points</b><span class="m i">${ptsM}</span></div>${CH}</div>
+ </div>
+ ${bad?`<div class="bsb er">Not enough balance. Add money first.</div>`:`<div class="bsb">${u?`You pay <em>${fmt(due)} RWF</em> after points`:`Earn up to <em>${fmt(ern(x)*q)} RWF</em> back`}</div>`}
+ <div id="sl7" style="position:relative;height:60px;border-radius:30px;background:${bad?'var(--chip)':'var(--br)'};overflow:hidden;touch-action:none;user-select:none"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;color:${bad?'var(--tt)':'var(--on)'}">Slide to pay</div><div id="kn7" style="position:absolute;left:6px;top:6px;width:48px;height:48px;border-radius:24px;background:#fff;display:flex;align-items:center;justify-content:center;color:#191F28">${ic('chev',22)}</div></div>
+ <div class="bsf">I have checked my order</div></div>`;
+ const pr=document.getElementById('bsPts');if(pr&&bal)pr.onclick=()=>{S.bpts=!S.bpts;buySheet(i)};
+ const tr=document.getElementById('sl7'),kn=document.getElementById('kn7');if(!tr||bad)return;
+ let d=false,sx=0,mx=0;const pos=e=>(e.touches?e.touches[0].clientX:e.clientX);
+ const mv=e=>{if(!d)return;mx=Math.max(0,Math.min(tr.clientWidth-60,pos(e)-sx));kn.style.left=(6+mx)+'px'};
+ const up=()=>{if(!d)return;d=false;document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);document.removeEventListener('touchmove',mv);document.removeEventListener('touchend',up);if(mx>tr.clientWidth-80)payNow7(i);else{kn.style.transition='left .2s';kn.style.left='6px';setTimeout(()=>kn.style.transition='',220)}};
+ const dn=e=>{d=true;sx=pos(e);mx=0;document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);document.addEventListener('touchmove',mv,{passive:true});document.addEventListener('touchend',up)};
+ kn.addEventListener('mousedown',dn);kn.addEventListener('touchstart',dn,{passive:true});
+};
+}catch(e){console.error('modal-v464',e)}})();
+</script>
+<script>
+/* v474: Places hub. (1) The Browse and My places tiles were invisible because a global rule hides every .mcs row; Browse is now a single row of chips and My places is three plain rows with counts. (2) "Popular near you" listed places 9 km away; it now shows the four nearest places by distance (bus stops and ATMs stay under their own categories). (3) Stamp cards and Recent only appear when there is something to show; Recent no longer lists street addresses. (4) The Directions travel-mode tiles had the same hidden-row bug and are visible again. */
+try{(()=>{
+const L=(e,r,f)=>({en:e,rw:r,fr:f}[S.lang]||e),M=S.mp,P=()=>window.POI||[];
+const st=document.createElement('style');
+st.textContent='#phone .screen .mcs.keep{display:flex!important}#phone .screen .plc{display:flex;gap:10px;overflow-x:auto;padding:14px 16px 4px;scrollbar-width:none}#phone .screen .plc::-webkit-scrollbar{display:none}#phone .screen .plc button{flex:none;height:44px;border:0;border-radius:22px;background:var(--chip);color:var(--tx);font:inherit;font-weight:700;font-size:15px;padding:0 16px;display:flex;align-items:center;gap:8px}#phone .screen .plc button:active{opacity:.7}';
+document.head.appendChild(st);
+const sec=t=>`<div class="mt2" style="padding-top:26px">${t}</div>`;
+const km=p=>parseFloat(p.d)||99;
+const svd=p=>p.id==='cafe'?!!M.star:!!(M.sv&&M.sv[p.id]);
+const prow=p=>`<div class="pl tap" onclick="mpOpenPoi('${p.id}')"><i style="font-style:normal;font-size:20px">${p.e}</i><div style="flex:1;min-width:0"><b style="display:block;font-size:17px;font-weight:600">${p.n}</b><span>${p.k}${p.r?' · ★ '+p.r.split(' ')[0]:''} · ${p.d}</span></div></div>`;
+const cnt=(e,l,on,n)=>`<div class="pl tap" onclick="${on}"><i style="font-style:normal;font-size:20px">${e}</i><b>${l}</b><span>${n||''}</span></div>`;
+screens.placehub=()=>{
+ const near=P().filter(p=>p.c!=='bus'&&p.c!=='atm').sort((a,b)=>km(a)-km(b)).slice(0,4),
+  sv=P().filter(svd).length,
+  rv=Object.values(M.myrev||{}).reduce((a,x)=>a+x.length,0),
+  stk=Object.entries(M.st||{}).filter(x=>x[1]>0),
+  rec=(M.rec||[]).filter(r=>P().some(p=>p.n===r[0])).slice(0,3),
+  cats=[['🗺️',L('Map','Ikarita','Carte'),'map'],['☕',L('Cafe','Ikawa','Café'),'cafe'],['🍽️',L('Food','Ibiryo','Repas'),'food'],['🏥',L('Hospital','Ibitaro','Hôpital'),'hosp'],['💊',L('Pharmacy','Farumasi','Pharmacie'),'pharm'],['🏧','ATM','atm'],['🚌',L('Bus stops','Bisi','Arrêts'),'bus']];
+ return `${bar(L('Places','Ahantu','Lieux'))}
+<div class="mps tap" onclick="mpGo('mapsearch')">${ic('search',20,'var(--tt)')}<span style="flex:1">${L('Search places','Shakisha ahantu','Rechercher un lieu')}</span></div>
+<div class="plc">${cats.map(c=>`<button onclick="${c[2]==='map'?'plMap()':`plCat('${c[2]}')`}"><span style="font-size:20px">${c[0]}</span>${c[1]}</button>`).join('')}</div>
+${sec(L('Near you','Hafi yawe','Près de vous'))}${near.map(prow).join('')}
+${sec(L('My places','Ahantu hanjye','Mes lieux'))}${cnt('⭐',L('Saved','Byabitswe','Favoris'),"mpGo('mpsaved')",sv)}${cnt('📅',L('Reservations','Ibyabitswe','Réservations'),"plRsvList()",M.rsv.length)}${cnt('💬',L('My reviews','Ibitekerezo byanjye','Mes avis'),"plReviews()",rv)}
+${stk.length?sec(L('Stamp cards','Amakarita y’utubuto','Cartes de tampons'))+stk.map(([id,n])=>{const p=P().find(x=>x.id===id);return p?`<div class="pl tap" onclick="mpOpenPoi('${id}')"><i style="font-style:normal">🎟️</i><b>${p.n}</b><span>${n}/8</span></div>`:''}).join(''):''}
+${rec.length?sec(L('Recent','Ibyaheruka','Récents'))+rec.map(r=>{const p=P().find(x=>x.n===r[0]);return `<div class="pl tap" onclick="mpOpenPoi('${p.id}')"><i>${ic('pin',20,'var(--tt)')}</i><b>${r[0]}</b><span>${r[1]}</span></div>`}).join(''):''}
+<div class="pad" style="padding-top:28px"><button class="btn" onclick="ppGo('paytill')">${L('Pay at a place','Ishyura ahantu','Payer dans un lieu')}</button></div><div style="height:30px"></div>`};
+const _dh=screens.dirhub;
+if(_dh)screens.dirhub=()=>String(_dh()).split('class="mcs"').join('class="mcs keep"');
+document.title=document.title.replace(/v\d+/,'v474');
+})()}catch(e){console.error('places-v474',e)}
+</script>
+<script>
+/* v475: place detail and reservations. (1) The cafe detail said 4.4 km while the Places list said 9.2 km; the distance now always comes from the same place data. (2) Reserve a table: "Time" and "Guests" labels, "1 person" instead of "1 people", a summary line above the button, and the toast says what was booked. (3) Reservations list: each booking shows time and guests and can be cancelled. */
+try{(()=>{
+const L=(e,r,f)=>({en:e,rw:r,fr:f}[S.lang]||e),M=S.mp,cur=()=>(window.POI||[]).find(p=>p.n===PL.n);
+const ppl=n=>n===1?L('1 person','Umuntu 1','1 personne'):n+' '+L('people','abantu','pers.');
+const sh=h=>{$('#layer').innerHTML='<div class="sheetbg" onclick="closeSheet()"></div><div class="sheet">'+h+'</div>'};
+const _pl=screens.place;
+screens.place=()=>{let h=_pl();const p=cur();
+ if(p&&p.d){h=h.replace(/<b>[\d.]+ km<\/b>/,'<b>'+p.d+'</b>')}
+ return h};
+const lab=t=>`<div style="font-size:14px;font-weight:700;color:var(--mu);margin:16px 0 8px">${t}</div>`;
+window.plRsv=()=>{const q=M.rq,p=cur()||{n:PL.n};
+ sh(`<div class="h1" style="font-size:22px;line-height:30px">${L('Reserve a table','Bika ameza','Réserver une table')}</div><div class="mu" style="margin:4px 0 0">${p.n}</div>
+ ${lab(L('Time','Igihe','Heure'))}<div class="req" style="margin:0">${['12:00','14:00','18:00','20:00'].map(t=>`<button class="${q.t===t?'on':''}" onclick="M.rq.t='${t}';plRsv()">${t}</button>`).join('')}</div>
+ ${lab(L('Guests','Abantu','Personnes'))}<div class="req" style="margin:0 0 18px">${[1,2,4,6].map(n=>`<button class="${q.n===n?'on':''}" onclick="M.rq.n=${n};plRsv()">${ppl(n)}</button>`).join('')}</div>
+ <div style="text-align:center;font-size:15px;font-weight:700;margin-bottom:12px">${L('Today','Uyu munsi','Aujourd’hui')} · ${q.t} · ${ppl(q.n)}</div>
+ <button class="btn" onclick="plBook()">${L('Confirm reservation','Emeza kubika','Confirmer')}</button>`)};
+window.plBook=()=>{const q=M.rq,p=cur();M.rsv.unshift({p:p?p.n:PL.n,t:q.t,n:q.n});closeSheet();
+ toast(L('Table for ','Ameza y’abantu ','Table pour ')+q.n+' · '+q.t);render('fade-none')};
+window.plRsvCx=i=>{M.rsv.splice(i,1);toast(L('Reservation cancelled','Byakuweho','Réservation annulée'));plRsvList()};
+window.plRsvList=()=>{const h=M.rsv.length?M.rsv.map((r,i)=>`<div style="display:flex;align-items:center;gap:12px;padding:12px 0"><div style="flex:1;min-width:0"><b style="display:block;font-size:17px;font-weight:600">${r.p}</b><span class="mu" style="font-size:14px">${L('Today','Uyu munsi','Aujourd’hui')} · ${r.t} · ${ppl(r.n)}</span></div><button class="tap" style="border:0;background:var(--chip);border-radius:18px;height:36px;padding:0 14px;font:inherit;font-weight:700;font-size:14px;color:var(--tx)" onclick="plRsvCx(${i})">${L('Cancel','Kuvanaho','Annuler')}</button></div>`).join(''):`<div class="mu" style="padding:14px 0">${L('No reservations yet.','Nta cyemezo cyo kubika.','Aucune réservation.')}</div>`;
+ $('#layer').innerHTML='<div class="sheetbg" onclick="closeSheet()"></div><div class="sheet"><div class="h1" style="font-size:22px;line-height:30px">'+L('Reservations','Ibyabitswe','Réservations')+'</div>'+h+'</div>'};
+document.title=document.title.replace(/v\d+/,'v475');
+})()}catch(e){console.error('places-v475',e)}
+</script>
+<script>
+/* v476: Directions. (1) Travel mode is a choice (Bus, Car, Walk, Bike) instead of four tiles that jumped to a route; picking a place, Home, Work, a recent route or a search result now goes straight to the route in that mode. (2) Bus stops near you are sorted by distance (the 9 km stop was listed first) and show it. (3) The route screen's mode tabs used the same four times for every destination (a 0.2 km trip said 35m by bus and 1h34m on foot); they now come from the distance, and for trips under 3 km the bus tab is dropped (the sample bus trip is always 35 min, so walking is faster) and the route opens on foot. (4) The "Plan trips around Kigali" line is gone. */
+try{(()=>{
+const L=(e,r,f)=>({en:e,rw:r,fr:f}[S.lang]||e),M=S.mp,P=()=>window.POI||[],km=p=>parseFloat(p.d)||0;
+const st=document.createElement('style');
+st.textContent='#phone .screen .plc button.on{background:#191F28;color:#fff}#phone .screen .plc.md{gap:8px}#phone .screen .plc.md button{padding:0 13px;font-size:14px;gap:6px}';
+document.head.appendChild(st);
+const sec=t=>`<div class="mt2" style="padding-top:22px">${t}</div>`;
+const cut=(h,title,fn)=>{const i=h.indexOf('>'+title+'</div>');if(i<0)return h;const s=h.lastIndexOf('<div class="mt2"',i);let e=h.indexOf('<div class="mt2"',i);if(e<0)e=h.length;return h.slice(0,s)+fn()+h.slice(e)};
+const MODES=[['🚌',L('Bus','Bisi','Bus'),'bus'],['🚗',L('Car','Imodoka','Voiture'),'car'],['🚶',L('Walk','Genda','Marche'),'walk'],['🚲',L('Bike','Igare','Vélo'),'bike']];
+const _d=screens.dirhub;
+screens.dirhub=()=>{let h=String(_d());const dh=S.dh||(S.dh={}),cm=dh.mode||'bus';
+ h=h.replace(/<div class="pad" style="padding-top:4px"><div class="mu" style="font-size:15px">[^<]*<\/div><\/div>/,'');
+ h=cut(h,L('Travel mode','Uburyo bwo kugenda','Mode de transport'),()=>sec(L('Travel mode','Uburyo bwo kugenda','Mode de transport'))+`<div class="plc md" style="padding-top:2px">${MODES.map(m=>`<button class="${cm===m[2]?'on':''}" onclick="dhMode('${m[2]}')"><span style="font-size:20px">${m[0]}</span>${m[1]}</button>`).join('')}</div>`);
+ h=cut(h,L('Bus stops near you','Aho bisi zihagarara hafi','Arrêts proches'),()=>{const stops=P().filter(p=>p.c==='bus'&&(!dh.line||p.k.includes(dh.line))).sort((a,b)=>km(a)-km(b)).slice(0,3);
+  return sec(L('Bus stops near you','Aho bisi zihagarara hafi','Arrêts proches'))+(stops.length?stops.map(p=>`<div class="pl tap" onclick="mpOpenPoi('${p.id}')"><i style="font-style:normal">🚌</i><div style="flex:1;min-width:0"><b style="display:block;font-size:17px;font-weight:600">${p.n}</b><span>${p.k.replace(/^Bus stop · /,'')} · ${p.d} · ${p.o.replace(/^Next: /,'')}</span></div></div>`).join(''):`<div class="pad mu" style="font-size:14px;padding-top:6px">${L('No stops for this line nearby.','Nta hantu hafi h’iyi bisi.','Aucun arrêt proche pour cette ligne.')}</div>`)});
+ return h};
+window.dhMode=k=>{(S.dh=S.dh||{}).mode=k;render('fade-none')};
+const onHub=()=>S.stack[S.stack.length-1]==='dirhub';
+const _g=window.dhGo;
+window.dhGo=(id,mode)=>_g(id,(onHub()&&(S.dh||{}).mode)||mode);
+window.dhPick=id=>{if(id)window.dhGo(id,'bus')};
+const _a=window.mpAddr;
+window.mpAddr=(l,a)=>{const hub=onHub(),m=hub&&(S.dh||{}).mode;_a(l,a);if(m&&m!=='bus'){M.mode=m;render('fade-none')}};
+const fmt=t=>t>=60?Math.floor(t/60)+'h'+(t%60?(t%60)+'m':''):t+'m';
+const _r=screens.route;
+screens.route=()=>{const p=P().find(x=>x.n===PL.n),k=p?km(p):0,near=p&&k>0&&k<=3;
+ if(near&&M.mode==='bus')M.mode='walk';
+ let h=_r();
+ if(p&&k>0){const t={car:Math.max(2,Math.round(1.85*k)),walk:Math.max(1,Math.round(10.2*k)),bike:Math.max(1,Math.round(3.05*k))};
+  h=h.replace('</svg>17m</button>','</svg>'+fmt(t.car)+'</button>').replace('</svg>1h34m</button>','</svg>'+fmt(t.walk)+'</button>').replace('</svg>28m</button>','</svg>'+fmt(t.bike)+'</button>');
+  if(near)h=h.replace(/<button class="[^"]*" onclick="M\.opt=0;mpSet\('mode','bus'\)"[^>]*>[\s\S]*?<\/button>/,'')}
+ return h};
+document.title=document.title.replace(/v\d+/,'v476');
+})()}catch(e){console.error('directions-v476',e)}
+</script>
+<script>
+/* v477: Maps is no longer its own product. The Explore "Map" entry is gone (the group is now "Places & trips" with Places and Directions), "Look up a route in Maps" now opens Directions as "Plan a trip", and the full-screen map opens from Places: a Map chip leads the category row, and Back from the map (or from a category) returns to Places instead of leaving it. */
+try{(()=>{
+const M=S.mp;
+const _om=window.openMaps;
+window.plMap=()=>{M.cat=null;_om();S.stack=['placehub','mapview']};
+const _pc=window.plCat;
+window.plCat=k=>{_pc(k);S.stack=['placehub','mapview']};
+document.title=document.title.replace(/v\d+/,'v477');
+})()}catch(e){console.error('maps-v477',e)}
+</script>
+<script>
+/* v478: place detail. Every place used the cafe template: a hospital showed "Great coffee, Wi-Fi", Reserve and "8th drink free". Now (1) the tags fit the kind of place (food, pharmacy, hospital; none for ATMs and bus stops), (2) the itunda Place card with Pay, Reserve and stamps only appears for cafes and restaurants ("8th meal free" for restaurants), pharmacies and hospitals get a single Pay here button, ATMs and bus stops get none, (3) "Collect a stamp (demo)" is a small quiet link instead of a full button, and (4) the walking time under Directions now matches the route screen: walking up to 3 km, otherwise the 35 min bus trip. */
+try{(()=>{
+const L=(e,r,f)=>({en:e,rw:r,fr:f}[S.lang]||e),cur=()=>(window.POI||[]).find(p=>p.n===PL.n);
+const TAGS={
+ food:[['🍽️',L('Great food','Ibiryo biryoshye','Très bon repas'),420],['👥',L('Good for groups','Byiza ku matsinda','Idéal en groupe'),186],['⚡',L('Fast service','Serivisi yihuse','Service rapide'),143]],
+ pharm:[['💊',L('Well stocked','Ifite imiti ihagije','Bien approvisionnée'),96],['⚡',L('Quick service','Serivisi yihuse','Service rapide'),54]],
+ hosp:[['🚑',L('Emergency care','Ubutabazi bwihuse','Urgences'),212],['🅿️',L('Parking','Aho guhagarara','Parking'),87]]};
+const _pl=screens.place;
+screens.place=()=>{let h=_pl();const p=cur();if(!p)return h;const c=p.c;
+ const t0='<div style="display:flex;gap:8px;flex-wrap:wrap"><span',ti=h.indexOf(t0);
+ if(ti>=0&&c!=='cafe'){const te=h.indexOf('</div>',ti)+6,sm=/<span style="([^"]*)">/.exec(h.slice(ti,te)),sty=sm?sm[1]:'';
+  const tg=TAGS[c];h=h.slice(0,ti)+(tg?`<div style="display:flex;gap:8px;flex-wrap:wrap">${tg.map(x=>`<span style="${sty}">${x[0]} ${x[1]} <b style="color:var(--lk)">${x[2]}</b></span>`).join('')}</div>`:'')+h.slice(te)}
+ const cs='<div style="margin-top:16px;border-radius:22px;background:var(--tint);padding:16px">',ci=h.indexOf(cs);
+ if(ci>=0){const pi=h.indexOf('plStamp()',ci),ce=pi>=0?h.indexOf('</button></div>',pi)+15:-1;
+  if(ce>14){let card=h.slice(ci,ce);
+   if(c==='cafe'||c==='food'){
+    if(c==='food')card=card.replace('8th drink free',L('8th meal free','Icya 8 ni ubuntu','8e repas offert')).replace('Icya 8 ni ubuntu','Icya 8 ni ubuntu').replace('8e boisson offerte','8e repas offert');
+    card=card.replace(/<button[^>]*onclick="plStamp\(\)"[^>]*>[^<]*<\/button>/,`<button class="tap" onclick="plStamp()" style="margin-top:8px;border:0;background:none;color:var(--tintfg);font:inherit;font-size:13px;font-weight:700;padding:8px 0;opacity:.8">★ ${L('Collect a stamp (demo)','Fata akabuto (igerageza)','Ajouter un tampon (démo)')}</button>`);
+   }else if(c==='pharm'||c==='hosp'){card=`<div style="margin-top:16px"><button class="btn" onclick="plPay()">${L('Pay here','Ishyura hano','Payer ici')}</button></div>`}
+   else card='';
+   h=h.slice(0,ci)+card+h.slice(ce)}}
+ return h};
+const fix=()=>{document.querySelectorAll('#phone button').forEach(b=>{if(!b.dataset.v358||b.dataset.v478||!/🚶/.test(b.textContent))return;
+ const sh=b.parentElement&&b.parentElement.parentElement;if(!sh)return;
+ const ln=sh.innerText.replace(/\u00a0/g,' ').split('Directions')[0].split('\n').find(l=>/^\s*[\d.]+\s*(km|m)\b/.test(l));if(!ln)return;
+ const m=/^\s*([\d.]+)\s*(km|m)\b/.exec(ln),km=m[2]==='km'?parseFloat(m[1]):parseFloat(m[1])/1000;
+ b.dataset.v478=1;const sp=b.querySelector('span');if(sp)sp.textContent=km>3?'🚌 35 min':'🚶 '+Math.max(1,Math.round(10.2*km))+' min'})};
+new MutationObserver(fix).observe(document.getElementById('phone'),{childList:true,subtree:true});fix();
+document.title=document.title.replace(/v\d+/,'v478');
+})()}catch(e){console.error('place-v478',e)}
+</script>
+<script>
+/* v479: Directions route screen for walk, car and bike. The route option cards were hidden by the global .mcs rule, so the area under the map was blank, and their numbers were fixed (17 min and 7.9 km for a 0.2 km trip). That area now has one summary: the time in large type, the distance, and the arrival time, all from the distance to the place. The "Get destination suggestions from your trips" box (a stub) is gone. */
+try{(()=>{
+const L=(e,r,f)=>({en:e,rw:r,fr:f}[S.lang]||e),M=S.mp,P=()=>window.POI||[];
+const km=p=>parseFloat(p.d)||0;
+const clk=m=>{const t=14*60+6+m,h=Math.floor(t/60)%24,mm=t%60;return (h%12||12)+':'+String(mm).padStart(2,'0')+' '+(h<12?'am':'pm')};
+const dur=m=>m>=60?Math.floor(m/60)+' h '+(m%60)+' min':m+' min';
+const _r=screens.route;
+screens.route=()=>{let h=_r();const p=P().find(x=>x.n===PL.n);
+ if(!p||!km(p)||M.mode==='bus')return h;
+ const s=h.indexOf('<div class="mcs" style="padding:12px 16px 0">'),c=h.indexOf('<div class="cta">');
+ if(s<0||c<0||c<s||h.slice(c-6,c)!=='</div>')return h;
+ const k=km(p),m=M.mode,mins=m==='car'?Math.max(2,Math.round(1.85*k)):m==='bike'?Math.max(1,Math.round(3.05*k)):Math.max(1,Math.round(10.2*k));
+ const lab=m==='car'?L('Drive · usual traffic','Imodoka · urujya n’uruza risanzwe','Voiture · trafic habituel'):m==='bike'?L('Bike','Igare','Vélo'):L('Walk','Genda n’amaguru','Marche');
+ const card=`<div style="padding:22px 24px 0"><div style="font-size:14px;font-weight:700;color:var(--lk)">${lab}</div><div style="font-size:34px;font-weight:800;letter-spacing:-.8px;margin-top:2px">${dur(mins)}</div><div class="mu" style="font-size:15px;margin-top:6px">${p.d}</div><div class="mu" style="font-size:15px;margin-top:2px">${L('Leave now · arrive ','Genda ubu · uzagerayo ','Partir maintenant · arrivée ')}${clk(mins)}</div></div>`;
+ return h.slice(0,s)+card+h.slice(c-6)};
+document.title=document.title.replace(/v\d+/,'v480');
+})()}catch(e){console.error('route-v479',e)}
+</script>
+<script>
+/* v481: Places and Directions polish. Directions: the four travel modes share the width (Bike was cut off), bus-line chips wrap instead of running off the edge, "Edit" says what it does, a vertical line joins the From and To dots, and the swap button is an up/down arrow. Route: the bus segment bar (the 305 / 102 label was cropped) is a readable 28px bar; walk, car and bike get Preview next to Start. Place: the tags sit in one swipeable row instead of three staggered lines. Places: category chips fade at the edge to show they scroll. */
+try{(()=>{
+const L=(e,r,f)=>({en:e,rw:r,fr:f}[S.lang]||e);
+const st=document.createElement('style');
+st.textContent='#phone .screen .plc{-webkit-mask-image:linear-gradient(90deg,#000 90%,transparent);mask-image:linear-gradient(90deg,#000 90%,transparent)}#phone .screen .plc.md{-webkit-mask-image:none;mask-image:none;overflow:visible}#phone .screen .plc.md button{flex:1;justify-content:center;padding:0 6px;gap:5px;min-width:0}#phone .screen .chp{flex-wrap:wrap}#phone .screen .tgs{flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}#phone .screen .tgs::-webkit-scrollbar{display:none}#phone .screen .tgs>span{flex:none;white-space:nowrap}#phone .screen .sh2 .seg{display:flex;height:28px;border-radius:14px;overflow:hidden;margin:14px 0 6px;font-size:12px;font-weight:700;color:#fff}#phone .screen .sh2 .seg>div{display:flex;align-items:center;justify-content:center;height:100%;min-width:0;overflow:hidden}#phone .screen .rbox .fi{position:relative}#phone .screen .rbox .fi+.fi:before{content:"";position:absolute;left:10px;top:-14px;height:20px;border-left:2px dotted var(--tt);opacity:.5}';
+document.head.appendChild(st);
+const _d=screens.dirhub;
+if(_d)screens.dirhub=()=>String(_d()).replace('aria-label="Edit">✎</button>','aria-label="Edit">'+L('Edit','Hindura','Modifier')+'</button>');
+const _p=screens.place;
+if(_p)screens.place=()=>String(_p()).replace('<div style="display:flex;gap:8px;flex-wrap:wrap"><span','<div class="tgs" style="display:flex;gap:8px;flex-wrap:nowrap"><span');
+const _r=screens.route;
+screens.route=()=>{let h=String(_r());
+ h=h.replace(/(<button class="ib" aria-label="Swap"[^>]*>)[\s\S]*?(<\/button>)/,'$1<span style="font-size:20px;line-height:1">⇅</span>$2');
+ if(S.mp.mode!=='bus'&&h.indexOf('mpStart(true)')<0)
+  h=h.replace(/<div class="cta">[\s\S]*?<\/div><\/div>/,'<div class="cta"><div style="display:flex;gap:10px"><button class="btn sec2" style="flex:0 0 36%" onclick="mpStart(true)">'+L('Preview','Reba','Aperçu')+'</button><button class="btn" onclick="mpStart(false)">'+L('Start','Tangira','Démarrer')+'</button></div></div>');
+ return h};
+document.title=document.title.replace(/v\d+/,'v481');
+})()}catch(e){console.error('places-directions-v481',e)}
+</script>
+<script>
+/* v482: Walk, car and bike routes. The space between the time summary and Start is now used: choose when to leave (Now, in 15 min, 30 min, 1 h) and the arrival time moves with it, and "Share ETA" copies a message with the place and arrival time. */
+try{(()=>{
+const L=(e,r,f)=>({en:e,rw:r,fr:f}[S.lang]||e),M=S.mp;
+const st=document.createElement('style');
+st.textContent='#phone .screen .lvc{display:flex;gap:8px;padding:18px 24px 0;overflow-x:auto;scrollbar-width:none}#phone .screen .lvc::-webkit-scrollbar{display:none}#phone .screen .lvc button{flex:none;height:40px;border:0;border-radius:20px;background:var(--chip);color:var(--tx);font:inherit;font-weight:700;font-size:14px;padding:0 14px}#phone .screen .lvc button.on{background:#191F28;color:#fff}';
+document.head.appendChild(st);
+const OFF=[[0,L('Now','Ubu','Maintenant')],[15,L('In 15 min','Mu minota 15','Dans 15 min')],[30,L('In 30 min','Mu minota 30','Dans 30 min')],[60,L('In 1 h','Mu isaha 1','Dans 1 h')]];
+const add=(t,m)=>{const x=/(\d+):(\d+) (am|pm)/.exec(t);if(!x)return t;let h=(+x[1])%12+(x[3]==='pm'?12:0),n=h*60+(+x[2])+m;h=Math.floor(n/60)%24;return (h%12||12)+':'+String(n%60).padStart(2,'0')+' '+(h<12?'am':'pm')};
+window.rtLeave=m=>{M.off=m;render('fade-none')};
+window.rtShare=()=>{const a=(document.body.innerText.match(/(\d+:\d+ (am|pm))/g)||[]).pop()||'';const m=L('On my way to ','Ndi mu nzira njya ku ','Je suis en route vers ')+PL.n+L(' · arriving ',' · ngera saa ',' · arrivée ')+a;try{navigator.clipboard.writeText(m).catch(()=>{})}catch(e){}toast(L('ETA copied','Isaha yo kugera yakoporowe','Heure d’arrivée copiée'))};
+const _r=screens.route;
+screens.route=()=>{let h=String(_r());
+ if(M.mode==='bus'||h.indexOf('Leave now · arrive')<0&&h.indexOf('arrive ')<0)return h;
+ const o=M.off||0;
+ if(o)h=h.replace(/Leave now · arrive (\d+:\d+ (?:am|pm))/,(x,t)=>L('Leave in ','Genda mu minota ','Partir dans ')+o+' min · '+L('arrive ','uzagerayo ','arrivée ')+add(t,o));
+ const chips='<div class="lvc">'+OFF.map(x=>'<button class="'+(o===x[0]?'on':'')+'" onclick="rtLeave('+x[0]+')">'+x[1]+'</button>').join('')+'<button onclick="rtShare()">'+L('Share ETA','Sangiza isaha','Partager l’heure')+'</button></div>';
+ const i=h.indexOf('<div class="cta">');return i<0?h:h.slice(0,i)+chips+h.slice(i)};
+document.title=document.title.replace(/v\d+/,'v482');
+})()}catch(e){console.error('route-v482',e)}
+</script>
+<script>
+/* v483: Directions hub order. Saved routes and Recent routes now come right after Travel mode, ahead of Bus stops and Bus lines, because they are what people reopen most; Fares stays last. */
+try{(()=>{
+const L=(e,r,f)=>({en:e,rw:r,fr:f}[S.lang]||e);
+const RK=[L('Travel mode','Uburyo bwo kugenda','Mode de transport'),L('Saved routes','Inzira zabitswe','Itinéraires enregistrés'),L('Recent routes','Inzira zaheruka','Itinéraires récents'),L('Bus stops near you','Aho bisi zihagarara hafi','Arrêts proches'),L('Bus lines','Imirongo ya bisi','Lignes de bus')];
+const _d=screens.dirhub;
+if(_d)screens.dirhub=()=>{const h=String(_d()),p=h.split('<div class="mt2"');if(p.length<3)return h;
+ const head=p.shift(),last=p.pop(),rank=x=>{const t=x.slice(x.indexOf('>')+1,x.indexOf('</div>')),i=RK.indexOf(t);return i<0?9:i};
+ const mid=p.map((x,i)=>[rank(x),i,x]).sort((a,b)=>a[0]-b[0]||a[1]-b[1]).map(x=>'<div class="mt2"'+x[2]).join('');
+ return head+mid+'<div class="mt2"'+last};
+document.title=document.title.replace(/v\d+/,'v483');
+})()}catch(e){console.error('dirhub-v483',e)}
+</script>
+<script>
+/* v484: Places hub. "Near you" gets an Open now filter chip and shows each place's status (Open · closes 22:00) under its name, in green when open. */
+try{(()=>{
+const L=(e,r,f)=>({en:e,rw:r,fr:f}[S.lang]||e),P=()=>window.POI||[],km=p=>parseFloat(p.d)||99;
+const isOpen=p=>/^Open/.test(p.o||'');
+const tr=o=>String(o||'').replace('Open',L('Open','Irafunguye','Ouvert')).replace('closes',L('closes','ifunga','ferme'));
+window.plOpenTg=()=>{S.plOpen=!S.plOpen;render('fade-none')};
+const row=p=>`<div class="pl tap" onclick="mpOpenPoi('${p.id}')"><i style="font-style:normal;font-size:20px">${p.e}</i><div style="flex:1;min-width:0"><b style="display:block;font-size:17px;font-weight:600">${p.n}</b><span>${p.k}${p.r?' · ★ '+p.r.split(' ')[0]:''} · ${p.d}</span>${p.o?`<span style="display:block;margin-top:2px;font-weight:600;color:${isOpen(p)?'#1E8E3E':'var(--mu)'}">${tr(p.o)}</span>`:''}</div></div>`;
+const _h=screens.placehub;
+if(_h)screens.placehub=()=>{const h=String(_h()),T=L('Near you','Hafi yawe','Près de vous'),a=h.indexOf('>'+T+'</div>');if(a<0)return h;
+ const s=h.lastIndexOf('<div class="mt2"',a);let e=h.indexOf('<div class="mt2"',a);if(e<0)e=h.indexOf('<div class="pad"',a);if(e<0)return h;
+ let l=P().filter(p=>p.c!=='bus'&&p.c!=='atm');if(S.plOpen)l=l.filter(isOpen);l=l.sort((x,y)=>km(x)-km(y)).slice(0,5);
+ const chip=`<div class="lvc" style="padding-top:2px;padding-bottom:6px"><button class="${S.plOpen?'on':''}" aria-pressed="${!!S.plOpen}" onclick="plOpenTg()">${L('Open now','Irafunguye ubu','Ouvert maintenant')}</button></div>`;
+ return h.slice(0,s)+`<div class="mt2" style="padding-top:26px">${T}</div>`+chip+(l.length?l.map(row).join(''):`<div class="pad mu" style="font-size:14px;padding-top:6px">${L('Nothing open nearby right now.','Nta hantu hafunguye hafi.','Rien d’ouvert à proximité.')}</div>`)+h.slice(e)};
+document.title=document.title.replace(/v\d+/,'v484');
+})()}catch(e){console.error('placehub-v484',e)}
+</script>
+<script>
+/* v485: place detail alignment. The tag row and the itunda Place card were indented 16px more than the name, status and buttons above them; they now line up with the rest of the sheet. The tag row still scrolls sideways and runs to the screen edge. */
+try{(()=>{
+const st=document.createElement('style');
+st.textContent='#phone .screen .sh2 .tgs{margin:0 -21px!important;padding:0 21px!important}';
+document.head.appendChild(st);
+const _p=screens.place;
+if(_p)screens.place=()=>String(_p()).split('<div style="padding:18px 16px 0">').join('<div style="padding:18px 0 0">');
+document.title=document.title.replace(/v\d+/,'v485');
+})()}catch(e){console.error('place-v485',e)}
+</script>
+<script>
+/* v486: "Send in this chat" uses the same floating sheet as the Shop checkout modal: inset and fully rounded, grab handle, a title, and one grouped card with Send money, Gift and Split a bill, each with a short line under it and a chevron. Send money shows the itunda Pay balance it will come from. */
+try{(()=>{
+const L=(e,r,f)=>({en:e,rw:r,fr:f}[S.lang]||e);
+window.chatMenu=function(){
+ const CH=ic('chev',18,'var(--tt)');
+ const it=(ico,t,m,on)=>`<div class="bsr tap" role="button" tabindex="0" onclick="${on}"><div class="ico" style="margin-right:12px">${gl(ico,30)}</div><div class="tt"><b>${t}</b><div class="m">${m}</div></div>${CH}</div>`;
+ $('#layer').innerHTML=`<div class="sheetbg" onclick="closeSheet()"></div><div class="sheet bs464" role="dialog" aria-modal="true" aria-label="${L('Send in this chat','Ohereza muri iki kiganiro','Envoyer dans ce chat')}"><div class="bsh"></div>
+ <div class="bsp"><div><b class="pr" style="font-size:22px">${L('Send in this chat','Ohereza muri iki kiganiro','Envoyer dans ce chat')}</b></div></div>
+ <div class="bsc">
+  ${it('send',L('Send money','Ohereza amafaranga','Envoyer de l’argent'),L('From itunda Pay · ','Ziva kuri itunda Pay · ','Depuis itunda Pay · ')+fmt(S.pay)+' RWF',"closeSheet();flow()")}
+  ${it('gift',L('Gift','Impano','Cadeau'),L('Send a gift voucher with a message','Ohereza inyemezabuguzi y’impano n’ubutumwa','Envoyez un bon cadeau avec un message'),"giftSheet()")}
+  ${it('settle',L('Split a bill','Gabana fagitire','Partager une facture'),L('Share a bill with this chat','Gabana fagitire n’iki kiganiro','Partagez une facture avec ce chat'),"splitSheet()")}
+ </div></div>`};
+document.title=document.title.replace(/v\d+/,'v486');
+})()}catch(e){console.error('chatmenu-v486',e)}
+</script>
+<script>
+/* v487: Send money in a chat is a slide-to-pay sheet, same floating style as Shop checkout. You stay in the conversation: pick an amount (stepper or 1,000 / 5,000 / 10,000 / 20,000), see who gets it and where it comes from (itunda Pay), then slide. The amount leaves itunda Pay and appears as a money message in the chat. Not enough balance disables the slider. "Send to someone else" still opens the full send flow. */
+try{(()=>{
+const L=(e,r,f)=>({en:e,rw:r,fr:f}[S.lang]||e);
+const CH=()=>ic('chev',18,'var(--tt)');
+const who=()=>{try{return THREADS.find(t=>t.id===S.chat).n}catch(e){return L('this chat','iki kiganiro','ce chat')}};
+const Q=[1000,5000,10000,20000];
+window.chatPay=function(a){
+ if(typeof a==='number')S.cpA=Math.max(500,Math.min(2000000,a));else if(!S.cpA)S.cpA=5000;
+ const amt=S.cpA,bad=amt>S.pay,nm=who();
+ $('#layer').innerHTML=`<div class="sheetbg" onclick="closeSheet()"></div><div class="sheet bs464" role="dialog" aria-modal="true" aria-label="${L('Send money','Ohereza amafaranga','Envoyer de l’argent')}"><div class="bsh"></div>
+ <div class="bsp"><div><b class="pr">${fmt(amt)} RWF</b></div><div class="bsq"><button aria-label="Less" onclick="chatPay(S.cpA-1000)">−</button><b style="min-width:0"></b><button aria-label="More" onclick="chatPay(S.cpA+1000)">+</button></div></div>
+ <div class="bsn">${L('To ','Kuri ','À ')}${nm} · ${L('Free to send','Kohereza ni ubuntu','Envoi gratuit')}</div>
+ <div class="req" style="margin:0 0 14px">${Q.map(q=>`<button class="${amt===q?'on':''}" onclick="chatPay(${q})">${fmt(q)}</button>`).join('')}</div>
+ <div class="bsc">
+  <div class="bsr"><div class="tt"><b>${L('Send to','Kohereza kuri','Envoyer à')}</b><span class="m i">${nm}</span></div></div>
+  <div class="bsr"><div class="tt"><b>itunda Pay</b><span class="m i">${fmt(S.pay)} RWF</span></div>${CH()}</div>
+ </div>
+ ${bad?`<div class="bsb er">${L('Not enough balance. Add money first.','Amafaranga ntahagije. Banza wongeremo.','Solde insuffisant. Ajoutez de l’argent.')}</div>`:`<div class="bsb">${L('Balance after: ','Asigaye: ','Solde après : ')}<em>${fmt(S.pay-amt)} RWF</em></div>`}
+ <div id="sl8" style="position:relative;height:60px;border-radius:30px;background:${bad?'var(--chip)':'var(--br)'};overflow:hidden;touch-action:none;user-select:none"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;color:${bad?'var(--tt)':'var(--on)'}">${L('Slide to pay','Kurura ushyure','Glisser pour payer')}</div><div id="kn8" style="position:absolute;left:6px;top:6px;width:48px;height:48px;border-radius:24px;background:#fff;display:flex;align-items:center;justify-content:center;color:#191F28">${ic('chev',22)}</div></div>
+ <button class="tap" style="display:block;margin:14px auto 0;border:0;background:none;color:var(--mu);font:inherit;font-weight:700;font-size:14px" onclick="closeSheet();flow()">${L('Send to someone else','Ohereza undi muntu','Envoyer à quelqu’un d’autre')}</button></div>`;
+ const tr=document.getElementById('sl8'),kn=document.getElementById('kn8');if(!tr||bad)return;
+ let d=false,sx=0,mx=0;const pos=e=>(e.touches?e.touches[0].clientX:e.clientX);
+ const mv=e=>{if(!d)return;mx=Math.max(0,Math.min(tr.clientWidth-60,pos(e)-sx));kn.style.left=(6+mx)+'px'};
+ const up=()=>{if(!d)return;d=false;document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);document.removeEventListener('touchmove',mv);document.removeEventListener('touchend',up);if(mx>tr.clientWidth-80)chatPaid();else{kn.style.transition='left .2s';kn.style.left='6px';setTimeout(()=>kn.style.transition='',220)}};
+ const dn=e=>{d=true;sx=pos(e);mx=0;document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);document.addEventListener('touchmove',mv,{passive:true});document.addEventListener('touchend',up)};
+ kn.addEventListener('mousedown',dn);kn.addEventListener('touchstart',dn,{passive:true});
+};
+window.chatPaid=function(){const amt=S.cpA,nm=who();if(!(amt>0)||amt>S.pay)return;S.pay-=amt;
+ const ms=S.msgs[S.chat]=S.msgs[S.chat]||[],x=['money',amt];x.ts=Date.now();ms.push(x);
+ try{navigator.vibrate&&navigator.vibrate(12)}catch(e){}
+ closeSheet();render('fade-none');toast(L('Sent ','Byoherejwe ','Envoyé ')+fmt(amt)+' RWF · '+nm);
+ setTimeout(()=>{const c=document.querySelector('#phone .screen');if(c)c.scrollTop=c.scrollHeight},60)};
+const _m=window.chatMenu;
+window.chatMenu=function(){_m.apply(this,arguments);const l=document.getElementById('layer');if(l)l.innerHTML=l.innerHTML.replace('closeSheet();flow()','S.cpA=0;chatPay()')};
+document.title=document.title.replace(/v\d+/,'v487');
+})()}catch(e){console.error('chatpay-v487',e)}
+</script>
+<script>
+/* v488: Link your family, rebuilt in our style (English, Kinyarwanda, French). Before: one long form with radio rows, labelled boxes, a hint line and a grey button. Now: "Your family" first when there are invites (avatar, name, what they can see, a quiet Cancel); two big choice cards (A child / A guardian) filled in lavender when chosen; one soft card holding Name and Phone as large bare fields (the number formats itself as you type, 078 123 4567); for a child, three equal weekly-limit pills; one lavender line saying what is shared, read-only; and a bottom button that names the person, or says what is missing instead of staying grey and silent. Review and Cancel-invite are floating sheets like Shop checkout. fr/rw strings need native review. */
+try{(()=>{
+const L=(e,r,f)=>({en:e,rw:r,fr:f}[S.lang]||e);
+const E=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dg=v=>String(v||'').replace(/\D/g,'').slice(0,10);
+const fp=v=>{v=dg(v);return v.length>6?v.slice(0,3)+' '+v.slice(3,6)+' '+v.slice(6):v.length>3?v.slice(0,3)+' '+v.slice(3):v};
+const nmv=()=>String((S.fm||{}).n||'').trim();
+const missing=()=>{const p=dg(S.fm.ph);
+ if(nmv().length<2)return L('Add their name','Andika izina rye','Ajoutez son prénom');
+ if(!p)return L('Add their phone number','Andika nimero ye','Ajoutez son numéro');
+ if(!/^07/.test(p))return L('Phone numbers start with 07','Nimero itangirana na 07','Le numéro commence par 07');
+ if(p.length<10){const n=10-p.length;return L(n+' more digit'+(n>1?'s':''),'Hasigaye imibare '+n,'Encore '+n+' chiffre'+(n>1?'s':''))}
+ if((S.fam||[]).some(x=>dg(x.ph)===p))return L('Already invited','Yamaze gutumirwa','Déjà invité');return ''};
+const lbl=()=>L('Send invite to ','Ohereza ubutumire kuri ','Inviter ')+nmv();
+const st=document.createElement('style');
+st.textContent='#phone .screen .fm9{padding:0 20px}#phone .screen .fm9 .tl{font-size:28px;font-weight:700;letter-spacing:-.6px;line-height:36px;margin-top:18px}#phone .screen .fm9 .sub{color:var(--mu);font-size:15px;line-height:22px;margin-top:8px}#phone .screen .fm9 .sc{font-size:14px;font-weight:600;color:var(--mu);margin:28px 4px 10px}#phone .screen .fm9 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}#phone .screen .fm9 .rc{border:0;border-radius:22px;background:var(--chip);padding:18px 16px;text-align:left;font:inherit;color:var(--tx);display:flex;flex-direction:column;gap:10px;min-height:156px}#phone .screen .fm9 .rc.on{background:var(--tint);color:var(--tintfg)}#phone .screen .fm9 .rc b{font-size:17px;font-weight:700}#phone .screen .fm9 .rc .d{font-size:13px;line-height:18px;font-weight:500;opacity:.8}#phone .screen .fm9 .card{background:var(--chip);border-radius:22px;padding:10px 18px}#phone .screen .fm9 .fld{padding:10px 0}#phone .screen .fm9 .fld label{display:block;font-size:13px;font-weight:600;color:var(--mu)}#phone .screen .fm9 .fld input{width:100%;border:0;background:none;outline:0;font:inherit;font-size:19px;font-weight:600;color:var(--tx);padding:4px 0 0;height:34px}#phone .screen .fm9 .fld input::placeholder{color:var(--tt);font-weight:500}#phone .screen .fm9 .lim{display:flex;gap:8px}#phone .screen .fm9 .lim button{flex:1;height:48px;border:0;border-radius:24px;background:var(--chip);font:inherit;font-weight:700;font-size:15px;color:var(--tx)}#phone .screen .fm9 .lim button.on{background:var(--tx);color:var(--bg)}#phone .screen .fm9 .see{display:flex;gap:12px;align-items:center;background:var(--tint);color:var(--tintfg);border-radius:20px;padding:14px 16px;margin-top:22px;font-size:14px;line-height:20px;font-weight:600}#phone .screen .fm9 .pp{display:flex;align-items:center;gap:12px;padding:8px 0}#phone .screen .fm9 .av{width:44px;height:44px;border-radius:22px;background:var(--tint);color:var(--tintfg);display:flex;align-items:center;justify-content:center;font-weight:700;flex:none}#phone .screen .fm9 .pp .x{border:0;background:var(--chip);border-radius:16px;height:32px;padding:0 12px;font:inherit;font-weight:700;font-size:13px;color:var(--tx)}';
+document.head.appendChild(st);
+const role=(k)=>k==='child'?L('A child','Umwana','Un enfant'):L('A guardian','Umurera','Un tuteur');
+const ago=x=>x.role==='child'?L('Child · ','Umwana · ','Enfant · ')+fmt(x.lim)+' RWF '+L('a week','mu cyumweru','par semaine'):L('Guardian','Umurera','Tuteur');
+const _s=screens.svc;
+screens.svc=()=>{if(S.svk!=='family'||!S.fm)return _s();
+ try{const f=S.fm,ch=f.role==='child',m=missing(),fam=S.fam||[];
+ const list=fam.length?`<div class="sc">${L('Your family','Umuryango wawe','Votre famille')}</div>`+fam.map((x,i)=>`<div class="pp"><div class="av">${E(x.n.split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase())}</div><div style="flex:1;min-width:0"><b style="display:block;font-size:16px;font-weight:700">${E(x.n)}</b><span class="mu" style="font-size:13px">${ago(x)} · ${L('Waiting for them','Dutegereje ko yemera','En attente')}</span></div><button class="x tap" onclick="famAsk(${i})">${L('Cancel','Kuvanaho','Annuler')}</button></div>`).join(''):'';
+ const rc=(k,g,d)=>`<button class="rc ${f.role===k?'on':''}" aria-pressed="${f.role===k}" onclick="famRole('${k}')">${gx(g,40)}<b>${role(k)}</b><span class="d">${d}</span></button>`;
+ return bar(L('Family','Umuryango','Famille'))+`<div class="fm9"><div class="tl">${L('Link your family','Huza umuryango wawe','Reliez votre famille')}</div><div class="sub">${L('Add a child or a guardian. You can cancel until they accept.','Ongeraho umwana cyangwa umurera. Ushobora guhagarika kugeza yemeye.','Ajoutez un enfant ou un tuteur. Vous pouvez annuler jusqu’à son acceptation.')}</div>${list}
+ <div class="sc">${L('Who are you linking?','Uhuza nde?','Qui reliez-vous ?')}</div><div class="two">${rc('child','child',L('You see their spending and set a weekly limit','Ureba ibyo akoresha ukamushyiriraho igipimo cy’icyumweru','Vous voyez ses dépenses et fixez une limite hebdomadaire'))}${rc('guardian','user',L('They see your spending, read-only','Areba ibyo ukoresha, ntashobora kubihindura','Il voit vos dépenses, en lecture seule'))}</div>
+ <div class="sc">${L('Their details','Amakuru ye','Ses informations')}</div><div class="card"><div class="fld"><label for="fN">${L('First name','Izina','Prénom')}</label><input id="fN" value="${E(f.n)}" maxlength="30" autocomplete="off" placeholder="Aline" oninput="famIn('n',this)"></div><div class="fld"><label for="fP">${L('Phone number','Nimero ya telefoni','Numéro de téléphone')}</label><input id="fP" value="${E(fp(f.ph))}" inputmode="tel" autocomplete="off" placeholder="078 123 4567" oninput="famIn('ph',this)"></div></div>
+ ${ch?`<div class="sc">${L('Weekly spending limit','Igipimo cy’icyumweru','Limite hebdomadaire')}</div><div class="lim" role="group">${[1000,3000,5000].map(v=>`<button class="${f.lim===v?'on':''}" aria-pressed="${f.lim===v}" onclick="famLim(${v})">${fmt(v)}</button>`).join('')}</div><div class="mu" style="font-size:13px;margin:8px 4px 0">RWF · ${L('You can change it later.','Ushobora kubihindura nyuma.','Modifiable plus tard.')}</div>`:''}
+ <div class="see">${gx('shield',28)}<span>${ch?L('You will see their spending, read-only.','Uzabona ibyo akoresha, utabihindura.','Vous verrez ses dépenses, en lecture seule.'):L('They will see your spending, read-only.','Azabona ibyo ukoresha, atabihindura.','Il verra vos dépenses, en lecture seule.')}</span></div></div>
+ <div style="height:110px"></div><div class="cta"><button class="btn" id="fGo" style="white-space:nowrap" ${m?'disabled ':''}onclick="famReview()">${m||lbl()}</button></div>`}catch(e){console.error('family-v488',e);return _s()}};
+window.famIn=(k,el)=>{if(k==='ph'){const d=dg(el.value);el.value=fp(d);S.fm.ph=d}else S.fm.n=el.value.slice(0,30);const b=document.getElementById('fGo'),m=missing();if(b){b.disabled=!!m;b.textContent=m||lbl()}};
+const sh=(title,rows,yes,go,no)=>{$('#layer').innerHTML=`<div class="sheetbg" onclick="closeSheet()"></div><div class="sheet bs464" role="dialog" aria-modal="true" aria-label="${title}"><div class="bsh"></div><div class="bsp"><div><b class="pr" style="font-size:22px;line-height:30px">${title}</b></div></div><div class="bsc" style="margin-top:16px">${rows.map(r=>`<div class="bsr"><div class="tt"><b>${r[0]}</b><span class="m i">${r[1]}</span></div></div>`).join('')}</div><button class="btn" style="margin-top:18px" onclick="${go}">${yes}</button><button class="tap" style="display:block;margin:12px auto 0;border:0;background:none;color:var(--mu);font:inherit;font-weight:700;font-size:15px" onclick="closeSheet()">${no}</button></div>`};
+window.famReview=()=>{if(missing())return;const f=S.fm,ch=f.role==='child';
+ sh(L('Send an invite to ','Ohereza ubutumire kuri ','Inviter ')+E(nmv())+'?',[[L('Linking','Uhuza','Lien'),role(f.role)],[L('Name','Izina','Prénom'),E(nmv())],[L('Phone','Telefoni','Téléphone'),fp(f.ph)]].concat(ch?[[L('Weekly limit','Igipimo cy’icyumweru','Limite hebdomadaire'),fmt(f.lim)+' RWF']]:[]).concat([[ch?L('You can see','Ushobora kureba','Vous voyez'):L('They can see','Ashobora kureba','Il voit'),ch?L('Their spending, read-only','Ibyo akoresha, ntibihinduka','Ses dépenses, lecture seule'):L('Your spending, read-only','Ibyo ukoresha, ntibihinduka','Vos dépenses, lecture seule')]]),L('Send invite','Ohereza ubutumire','Envoyer l’invitation'),'famGo()',L('Cancel','Kuvanaho','Annuler'))};
+window.famGo=()=>{if(missing())return;const f=S.fm,n=nmv();S.fam.push({n,ph:dg(f.ph),role:f.role,lim:f.lim});S.fm={role:f.role,n:'',ph:'',lim:f.lim};closeSheet();render('fade-none');toast(L('Invite sent to ','Ubutumire bwoherejwe kuri ','Invitation envoyée à ')+n)};
+window.famAsk=i=>{const x=S.fam[i];if(!x)return;sh(L('Cancel the invite to ','Hagarika ubutumire kuri ','Annuler l’invitation à ')+E(x.n)+'?',[[L('Phone','Telefoni','Téléphone'),fp(x.ph)],[L('Linking','Uhuza','Lien'),role(x.role)]],L('Cancel invite','Hagarika ubutumire','Annuler l’invitation'),'famDel('+i+')',L('Keep it','Bugumane','Garder'))};
+window.famDel=i=>{const x=S.fam[i];if(!x)return;S.fam.splice(i,1);closeSheet();render('fade-none');toast(L('Invite to ','Ubutumire kuri ','Invitation à ')+x.n+L(' cancelled',' bwahagaritswe',' annulée'))};
+document.title=document.title.replace(/v\d+/,'v488');
+})()}catch(e){console.error('family-v488',e)}
+</script>
+<script>
+/* v489: Gift in a chat uses the same slide-to-pay sheet as Send money: big amount with − / + (1,000 steps), 2,000 / 5,000 / 10,000 chips, who gets it and where it is paid from, the balance left after, and Slide to pay. Not enough balance disables the slider. The gift still appears in the chat as a gift voucher. fr/rw strings need native review. */
+try{(()=>{
+const L=(e,r,f)=>({en:e,rw:r,fr:f}[S.lang]||e);
+const who=()=>{try{return thr().n}catch(e){return L('this chat','iki kiganiro','ce chat')}};
+const CH=()=>ic('chev',18,'var(--tt)');
+window.drawGift=function(a){
+ if(typeof a==='number')S.giftAmt=Math.max(1000,Math.min(2000000,a));
+ const amt=S.giftAmt||5000,bad=amt>S.pay,nm=who();
+ $('#layer').innerHTML=`<div class="sheetbg" onclick="closeSheet()"></div><div class="sheet bs464" role="dialog" aria-modal="true" aria-label="${L('Send a gift','Ohereza impano','Envoyer un cadeau')}"><div class="bsh"></div>
+ <div class="bsp"><div><b class="pr">${fmt(amt)} RWF</b></div><div class="bsq"><button aria-label="Less" onclick="drawGift(S.giftAmt-1000)">−</button><b style="min-width:0"></b><button aria-label="More" onclick="drawGift(S.giftAmt+1000)">+</button></div></div>
+ <div class="bsn">${L('Gift voucher to ','Inyemezabuguzi y’impano kuri ','Bon cadeau pour ')}${nm}</div>
+ <div class="req" style="margin:0 0 14px">${[2000,5000,10000].map(q=>`<button class="${amt===q?'on':''}" onclick="drawGift(${q})">${fmt(q)}</button>`).join('')}</div>
+ <div class="bsc">
+  <div class="bsr"><div class="tt"><b>${L('Gift to','Impano kuri','Cadeau pour')}</b><span class="m i">${nm}</span></div></div>
+  <div class="bsr"><div class="tt"><b>itunda Pay</b><span class="m i">${fmt(S.pay)} RWF</span></div>${CH()}</div>
+ </div>
+ ${bad?`<div class="bsb er">${L('Not enough balance. Add money first.','Amafaranga ntahagije. Banza wongeremo.','Solde insuffisant. Ajoutez de l’argent.')}</div>`:`<div class="bsb">${L('Balance after: ','Asigaye: ','Solde après : ')}<em>${fmt(S.pay-amt)} RWF</em></div>`}
+ <div id="sl9" style="position:relative;height:60px;border-radius:30px;background:${bad?'var(--chip)':'var(--br)'};overflow:hidden;touch-action:none;user-select:none"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;color:${bad?'var(--tt)':'var(--on)'}">${L('Slide to pay','Kurura ushyure','Glisser pour payer')}</div><div id="kn9" style="position:absolute;left:6px;top:6px;width:48px;height:48px;border-radius:24px;background:#fff;display:flex;align-items:center;justify-content:center;color:#191F28">${ic('chev',22)}</div></div></div>`;
+ const tr=document.getElementById('sl9'),kn=document.getElementById('kn9');if(!tr||bad)return;
+ let d=false,sx=0,mx=0;const pos=e=>(e.touches?e.touches[0].clientX:e.clientX);
+ const mv=e=>{if(!d)return;mx=Math.max(0,Math.min(tr.clientWidth-60,pos(e)-sx));kn.style.left=(6+mx)+'px'};
+ const up=()=>{if(!d)return;d=false;document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);document.removeEventListener('touchmove',mv);document.removeEventListener('touchend',up);if(mx>tr.clientWidth-80){try{navigator.vibrate&&navigator.vibrate(12)}catch(e){}giftSend();toast(L('Gift sent · ','Impano yoherejwe · ','Cadeau envoyé · ')+fmt(S.giftAmt)+' RWF')}else{kn.style.transition='left .2s';kn.style.left='6px';setTimeout(()=>kn.style.transition='',220)}};
+ const dn=e=>{d=true;sx=pos(e);mx=0;document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);document.addEventListener('touchmove',mv,{passive:true});document.addEventListener('touchend',up)};
+ kn.addEventListener('mousedown',dn);kn.addEventListener('touchstart',dn,{passive:true});
+};
+document.title=document.title.replace(/v\d+/,'v489');
+})()}catch(e){console.error('gift-v489',e)}
+</script>
+<script>
+/* v490: place detail action row. The main button said "Arrive" for most places (only the first cafe was renamed). It now says "Directions" with the trip time under the same rules as the route screen: on foot up to 3 km, otherwise the 35 min bus trip. */
+try{(()=>{
+const L=(e,r,f)=>({en:e,rw:r,fr:f}[S.lang]||e),P=()=>window.POI||[];
+const _p=screens.place;
+if(_p)screens.place=()=>{let h=String(_p());const p=P().find(x=>x.n===PL.n);if(!p)return h;
+ const km=parseFloat(p.d)||0,t=km>0&&km<=3?'🚶 '+Math.max(1,Math.round(10.2*km))+' min':'🚌 35 min';
+ return h.replace(/(<button class="q" onclick="mpArriveAt\('[^']*'\)">)Arrive(<\/button>)/,'$1'+L('Directions','Inzira','Itinéraire')+' · '+t+'$2')};
+document.title=document.title.replace(/v\d+/,'v490');
+})()}catch(e){console.error('place-v490',e)}
+</script>
+<script>
+/* v491: two fixes. (1) Walk, car and bike routes: the "Now / In 15 min / In 30 min / In 1 h / Share ETA" row from v482 was placed after the sheet closed, so it never showed; it now sits inside the sheet under the arrival time, and the map is shorter on those routes so the row is not hidden behind Start. (2) Places > Map opened with no category selected, so every pin was filtered out and the list said "Nothing nearby"; it now opens on All. */
+try{(()=>{
+const _r=screens.route;
+screens.route=()=>{let h=String(_r());
+ const m=h.match(/<\/div>(<div class="lvc">[\s\S]*?<\/div>)<div class="cta">/);
+ if(m)h=h.replace(m[0],m[1]+'</div><div class="cta">');if(S.mp.mode!=='bus')h=h.replace('data-k="rt" style="height:330px"','data-k="rt" style="height:262px"');return h};
+const _pm=window.plMap;
+if(_pm)window.plMap=()=>{S.mp.cat='all';_pm();S.mp.cat='all'};
+document.title=document.title.replace(/v\d+/,'v491');
+})()}catch(e){console.error('fix-v491',e)}
+</script>
+<script>
+/* v492: every itunda Eats store is now also a place in itunda Places. Each store in REST becomes a map pin and a place page (address, hours, phone, rating, distance, reviews, nearby) under Cafe or Food, shows in Near you, Search and Saved, and its page has an "Order on itunda Eats" button that opens the store's menu. Built from REST at runtime, so new Eats stores appear in Places automatically. */
+try{(()=>{
+const L=(e,r,f)=>({en:e,rw:r,fr:f}[S.lang]||e);
+const EMO={bread:'🥖',brochette:'🍢',rice:'🍚',coffee:'☕',chips:'🍟',fish:'🐟',salad:'🥗',stew:'🍲',cake:'🍰',chicken:'🍗',mandazi:'🍩',tea:'🍵',juice:'🥤',wrap:'🌯'};
+const CAFE=/coffee|bread|bakery|dessert|cake|tea/i;
+const ph=s=>s?'+250 '+String(s).replace(/^0/,''):'';
+function sync(){
+ const P=window.POI,X=window.PX,R=typeof REST!=='undefined'?REST:[];if(!P||!X)return;
+ R.forEach((r,i)=>{
+  const id='eats'+i;if(P.find(p=>p.id===id))return;
+  const inf=(typeof INFO!=='undefined'&&INFO[i])||[];
+  const cats=r.cats||[r.cat].filter(Boolean),sub=r.sub||cats.join(', ');
+  const hrs=r.hrs||inf[1]||'09:00 – 21:00',addr=r.addr||inf[0]||'Kigali',tel=r.ph||inf[2]||'';
+  const t=hrs.split(/\s*[–-]\s*/),open=r.closed?'Closed · opens '+r.closed:'Open · closes '+(t[1]||'21:00');
+  const ang=i*2.4+.7,rad=Math.max(.5,r.d||1)*80;
+  const x=Math.round(Math.max(-100,Math.min(460,250+rad*Math.cos(ang)))),y=Math.round(Math.max(-50,Math.min(640,440+rad*Math.sin(ang))));
+  const c=cats.some(k=>CAFE.test(k))?'cafe':'food';
+  P.push({id,c,e:EMO[r.g]||(c==='cafe'?'☕':'🍽️'),n:r.n,x,y,k:cats.join(', ')+' · itunda Eats',r:r.r+' ('+r.rc+')',d:(r.d||1).toFixed(1)+' km',o:open,eats:i});
+  X[id]={a:addr,p:ph(tel),h:'Mon–Sun '+hrs,g:[r.bg||'#eee',r.bg||'#eee'],f:['Delivery','Pickup','itunda Pay'],
+   s:[sub+'. Order delivery or pickup on itunda Eats.',sub+'. Tumiza kuri itunda Eats ugezwaho cyangwa ujye gufata.',sub+'. Commandez en livraison ou à emporter sur itunda Eats.']};
+ });
+}
+window.plOrderEats=i=>openERest(i);
+const wrap=n=>{const f=screens[n];if(f)screens[n]=function(){sync();return f.apply(this,arguments)}};
+['placehub','mapview','mapsearch','mpsaved','place'].forEach(wrap);
+const _pl=screens.place;
+if(_pl)screens.place=function(){let h=String(_pl.apply(this,arguments));
+ const p=(window.POI||[]).find(x=>x.n===PL.n);if(!p||p.eats===undefined)return h;
+ const r=(typeof REST!=='undefined'?REST:[])[p.eats],btn=`<button class="btn" style="width:100%;margin:10px 0 0" onclick="plOrderEats(${p.eats})">${L('Order on itunda Eats','Tumiza kuri itunda Eats','Commander sur itunda Eats')}${r&&r.t?' · '+r.t+' min':''}</button>`;
+ return h.replace(/(<div class="acts"[^>]*>[\s\S]*?<\/div>)/,'$1'+btn)};
+sync();
+document.title=document.title.replace(/v\d+/,'v492');
+})()}catch(e){console.error('eats-places-v492',e)}
+</script>
+<script>
+/* v493: itunda Place page, tidied. Before: the action row ran off the screen (Call and Share cut off), Pay here / Reserve / Stamp card sat in a big lilac card with a second heading and a full stamp strip, the tags, the Order button and that card all stacked above the tabs, "Menu 5" had a heading but no items, the opening-hours row used a phone icon, and the sheet over the map repeated the open time and the distance on two lines. Now: ONE action row (Directions with the walk time under it, Call, Share; "From here" moves to the bottom of Home), the Order on itunda Eats button when the place is an Eats store, then one Pay here / Reserve row. The tags and a slim one-line Stamp card (8 dots and a + button) sit inside the Home tab under the tabs, so the other tabs are not pushed down. The hero picture is shorter, the menu shows as a plain list with See all, hours get a clock icon, and the map sheet merges open time and distance into one line and drops the tags and stamp card. */
+try{(()=>{
+const L=(e,r,f)=>({en:e,rw:r,fr:f}[S.lang]||e),M=S.mp;
+const st=document.createElement('style');
+st.textContent=`
+#phone .pz-acts{display:flex;gap:8px;padding:14px 16px 0}
+#phone .pz-acts.c{padding:14px 0 0}
+#phone .pz-acts button{height:50px;border-radius:25px;border:1.5px solid var(--ln);background:none;font:inherit;font-weight:700;font-size:15px;color:var(--tx);padding:0 18px;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:18px}
+#phone .pz-acts button.main{flex:1 1 auto;background:var(--lk);color:#fff;border-color:transparent}
+#phone .pz-acts button .s{font-size:12px;font-weight:600;color:inherit;opacity:.9;line-height:14px}
+#phone .pz-row{display:flex;gap:8px;padding:10px 16px 0}
+#phone .pz-row.c{padding:10px 0 0}
+#phone .pz-row .btn{flex:1;height:48px;font-size:15px;margin:0;min-width:0}
+#phone .pz-tags{display:flex;gap:8px;overflow-x:auto;padding:16px 16px 0;scrollbar-width:none}
+#phone .pz-tags::-webkit-scrollbar{display:none}
+#phone .pz-tags span{flex:0 0 auto}
+#phone .pz-stamp{margin:12px 16px 0;padding:10px 12px 10px 14px;border-radius:18px;background:var(--chip);display:flex;align-items:center;gap:10px}
+#phone .pz-stamp .t{flex:1;min-width:0;font-size:14px;font-weight:800;line-height:18px}
+#phone .pz-stamp .t small{display:block;font-size:12px;font-weight:600;color:var(--tt)}
+#phone .pz-stamp .d{display:flex;gap:3px;flex:0 0 auto}
+#phone .pz-stamp .d i{width:9px;height:9px;border-radius:5px;background:var(--tt);opacity:.3;display:block}
+#phone .pz-stamp .d i.on{background:var(--lk);opacity:1}
+#phone .pz-ai{margin:20px 16px 0!important;padding:16px!important;background:var(--tint)!important;border-radius:20px!important}
+#phone .pz-ai b{color:var(--tintfg)}
+#phone .pz-stamp button{flex:0 0 auto;width:34px;height:34px;border-radius:17px;border:0;background:var(--bg);color:var(--lk);font:inherit;font-size:20px;font-weight:800;line-height:34px;padding:0}
+#phone .pz-rsv{margin:12px 16px 0;font-size:14px;font-weight:700}
+#phone .pz-menu{padding:0 16px}
+#phone .pz-menu .r{display:flex;align-items:center;gap:12px;height:52px}
+#phone .pz-menu .r i{font-style:normal;font-size:22px;width:36px;height:36px;border-radius:12px;background:var(--chip);display:flex;align-items:center;justify-content:center}
+#phone .pz-menu .r span{flex:1;min-width:0;font-size:16px}
+#phone .pz-menu .r b{font-size:15px}
+#phone .pz-more{padding:6px 16px 0}
+#phone .pz-more button{border:0;background:none;color:var(--lk);font:inherit;font-weight:700;font-size:14px;padding:10px 0}
+`;
+document.head.appendChild(st);
+const cur=()=>(window.POI||[]).find(p=>p.n===PL.n)||{id:'cafe',d:'4.4 km'};
+const esc=x=>String(x).replace(/"/g,'&quot;');
+const _pl=screens.place;
+screens.place=function(){
+ const h=String(_pl.apply(this,arguments));
+ try{
+  const t=document.createElement('template');t.innerHTML=h;const R=t.content;
+  const acts=R.querySelector('.acts');if(!acts)return h;
+  const p=cur(),exp=!!R.querySelector('.ptabs'),padded=/padding:0 16px/.test(acts.parentElement&&acts.parentElement.getAttribute&&acts.parentElement.getAttribute('style')||''),c=(exp&&!padded)?'':' c';
+  const bt=k=>[...acts.querySelectorAll('button')].find(b=>k.test(b.getAttribute('onclick')||''));
+  const bDir=bt(/mpArrive/),bCall=bt(/mpCall|Calling/),bShare=bt(/Link copied/),bDep=bt(/mpDepart/);
+  const km=parseFloat(p.d)||0,wt=km>0&&km<=3?'🚶 '+Math.max(1,Math.round(10.2*km))+' min':'🚌 35 min';
+  const oc=b=>esc(b.getAttribute('onclick')||'');
+  /* harvest the old blocks */
+  const eb=R.querySelector('[onclick^="plOrderEats"]'),ebH=eb?`<div class="pz-row${c}"><button class="btn" onclick="${oc(eb)}">${eb.textContent.trim()}</button></div>`:'';
+  const pay=R.querySelector('[onclick="plPay()"]'),rsv=R.querySelector('[onclick="plRsv()"]'),stamp=R.querySelector('[onclick="plStamp()"]');
+  const wrap=(pay||stamp||R.querySelector('.tgs')||{closest:()=>null}).closest('div[style*="padding:18px"]');
+  const tags=R.querySelector('.tgs'),tagsH=tags?`<div class="pz-tags">${tags.innerHTML}</div>`:'';
+  let stH='',rsH='';
+  if(wrap){
+   const sp=[...wrap.querySelectorAll('span')].find(x=>/^\s*\d\/8/.test(x.textContent));
+   if(stamp&&sp){const n=Math.min(8,+sp.textContent.trim()[0]||0),perk=(sp.textContent.split('·')[1]||'').trim();
+    stH=`<div class="pz-stamp"><span style="font-size:20px">🎟️</span><div class="t">${L('Stamp card','Ikarita y’utubuto','Carte de tampons')} · ${n}/8<small>${perk}</small></div><div class="d">${Array.from({length:8},(_,i)=>`<i class="${i<n?'on':''}"></i>`).join('')}</div><button onclick="plStamp()" aria-label="${L('Collect a stamp (demo)','Fata akabuto (igerageza)','Ajouter un tampon (démo)')}">+</button></div>`}
+   const rv=[...wrap.querySelectorAll('.fi')].find(x=>x.textContent.includes('📅'));
+   if(rv)rsH=`<div class="pz-rsv">${rv.textContent.trim()}</div>`}
+  const payH=pay?`<div class="pz-row${c}"><button class="btn${eb?' sec2':''}" onclick="plPay()">${L('Pay here','Ishyura hano','Payer ici')}</button>${rsv?`<button class="btn sec2" onclick="plRsv()">${L('Reserve','Bika','Réserver')}</button>`:''}</div>`:'';
+  const actsH=`<div class="pz-acts${c}">${bDir?`<button class="main" onclick="${oc(bDir)}">${L('Directions','Inzira','Itinéraire')}<span class="s">${wt}</span></button>`:''}${bCall?`<button onclick="${oc(bCall)}">${L('Call','Hamagara','Appeler')}</button>`:''}${bShare?`<button onclick="${oc(bShare)}">${L('Share','Sangiza','Partager')}</button>`:''}</div>${(!exp||M.tab==='home')?ebH+payH:''}`;
+  if(wrap)wrap.remove();if(eb)eb.remove();
+  acts.insertAdjacentHTML('beforebegin',actsH);acts.remove();
+  if(!exp){ /* map sheet: one status line */
+   const a=R.querySelector('.sh2 > div[style*="margin-top:6px"]'),b=a&&a.nextElementSibling;
+   if(a&&b&&b.querySelector('b')){a.innerHTML+=' · '+b.innerHTML;b.remove()}
+  }else{
+   const tabs=R.querySelector('.ptabs');
+   if(M.tab==='home')tabs.insertAdjacentHTML('afterend',tagsH+stH+rsH);
+   const hero=[...R.querySelectorAll('div')].find(d=>/height:(190|170)px;border-radius:24px/.test(d.getAttribute('style')||''));
+   if(hero)hero.setAttribute('style',hero.getAttribute('style').replace(/height:\d+px/,'height:120px').replace(/font-size:\d+px/,'font-size:52px'));
+   [...R.querySelectorAll('.fi')].forEach(f=>{const d=f.querySelector(':scope>div');if(d&&/^\s*(Open|Closed)\b/.test(d.textContent)){const sv=f.querySelector(':scope>svg');if(sv)sv.outerHTML=ic('clock',20,'var(--tt)')}});
+   const mc=R.querySelector('.mcs'),mh=mc&&mc.previousElementSibling;
+   if(mc){const rows=[...mc.children].map(x=>{const ph=x.querySelector('.ph'),nm=ph&&ph.closest('.mn')?ph.closest('.mn').nextElementSibling:null,pr=x.querySelector('b');return ph&&nm&&pr?`<div class="r"><i>${ph.textContent.trim()}</i><span>${nm.textContent.trim()}</span><b>${pr.textContent.trim()}</b></div>`:''}).join('');
+    const n=mh&&(/(\d+)\s*$/.exec(mh.textContent)||[])[1],more=!!R.querySelector('.ptabs [onclick*="\'menu\'"]');
+    if(mh&&mh.classList.contains('mt2'))mh.innerHTML=`<span>${L('Menu','Menu','Menu')}</span>`+(n&&more?`<button class="tap" style="border:0;background:none;color:var(--lk);font:inherit;font-weight:700;font-size:14px" onclick="mpSet('tab','menu')">${L('See all','Reba byose','Tout voir')} ${n}</button>`:'');
+    const mm=document.createElement('div');mm.className='pz-menu';mm.innerHTML=rows;mc.replaceWith(mm)}
+   const ai=[...R.querySelectorAll('div')].find(d=>/^\s*✨/.test(d.textContent)&&d.children.length<=2&&/margin:24px 16px 0/.test(d.getAttribute('style')||''));if(ai){ai.removeAttribute('style');ai.className='pz-ai'}
+   const end=[...R.children].reverse().find(d=>/height:30px/.test(d.getAttribute&&d.getAttribute('style')||''));
+   if(bDep&&end&&M.tab==='home')end.insertAdjacentHTML('beforebegin',`<div class="pz-more"><button onclick="${oc(bDep)}">${L('Use as route start','Tangira hano','Partir d’ici')}</button></div>`)}
+  const d=document.createElement('div');d.appendChild(R);return d.innerHTML
+ }catch(e){console.error('place-v493',e);return h}};
+document.title=document.title.replace(/v\d+/,'v493');
+})()}catch(e){console.error('place-v493',e)}
+</script>
+<script>
+/* v494: Places, round two. (1) Map: opening Places > Map showed "Nothing nearby" under pins that were on screen, because the sheet was drawn while the category was still empty; it is now drawn again once the category is All. (2) Places hub, Near you: each place was three lines (name, details, a green open line). Now two: name with a small Eats tag for itunda Eats stores, then rating, type and distance, and the open time moves to the right ("Open till 19:00", red when closed). (3) Place page, Reviews / Photos / Nearby / Info: only the Directions row stays on top; Order, Pay here and Reserve stay on Home, so these tabs start higher. */
+try{(()=>{
+const L=(e,r,f)=>({en:e,rw:r,fr:f}[S.lang]||e),M=S.mp,P=()=>window.POI||[];
+const st=document.createElement('style');
+st.textContent=`#phone .pz-hub{min-height:60px;align-items:center}
+#phone .pz-hub .pz-n{display:flex;align-items:center;gap:8px;min-width:0}
+#phone .pz-hub .pz-n b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#phone .pz-hub em{font-style:normal;flex:0 0 auto;font-size:11px;font-weight:800;color:var(--tintfg);background:var(--tint);border-radius:9px;padding:2px 7px}
+#phone .pz-hub .pz-m{display:block;font-size:14px;color:var(--tt);margin-top:2px}
+#phone .pz-hub .pz-s{font-weight:700;color:#1E8E3E}
+#phone .pz-hub .pz-d{flex:0 0 auto;font-size:13px;font-weight:600;color:var(--tt)}
+#phone .pz-hub .pz-s.x{color:#D92D20}`;
+document.head.appendChild(st);
+const _pm=window.plMap;
+if(_pm)window.plMap=()=>{_pm();S.mp.cat='all';render('fade-none')};
+const stat=o=>{o=String(o||'');let m;
+ if(m=/^Open · closes (\d\d:\d\d)/.exec(o))return[L('Open till ','Irafunguye kugeza ','Ouvert jusqu’à ')+(m[1]==='00:00'?'midnight':m[1]),0];
+ if(m=/^Closed · opens (\d\d:\d\d)/.exec(o))return[L('Closed · opens ','Irafunze · ifungura ','Fermé · ouvre ')+m[1],1];
+ if(/^24 hours|24 hours$/.test(o))return[L('Open 24 hours','Ikora amasaha 24','Ouvert 24 h'),0];
+ return[o,0]};
+const _h=screens.placehub;
+if(_h)screens.placehub=function(){
+ const h=String(_h.apply(this,arguments));
+ try{
+  const t=document.createElement('template');t.innerHTML=h;const R=t.content;
+  R.querySelectorAll('.pl.tap').forEach(row=>{
+   const m=/mpOpenPoi\('([^']+)'\)/.exec(row.getAttribute('onclick')||'');if(!m)return;
+   const g=row.querySelector('span[style*="1E8E3E"],span[style*="color:#"]');if(!g)return;
+   const p=P().find(x=>x.id===m[1]);if(!p)return;
+   const [txt,bad]=stat(p.o),eats=p.eats!==undefined,rt=p.r?p.r.split(' ')[0]:'',
+    k=String(p.k||'').replace(/ · itunda Eats$/,'').split(' · ')[0].split(',')[0];
+   const ic0=row.querySelector('i');
+   row.className='pl tap pz-hub';
+   row.innerHTML=`${ic0?ic0.outerHTML:''}<div style="flex:1;min-width:0"><div class="pz-n"><b style="font-size:17px;font-weight:600">${p.n}</b>${eats?'<em>Eats</em>':''}</div><span class="pz-m">${rt?'★ '+rt+' · ':''}${k} · <span class="pz-s${bad?' x':''}">${txt}</span></span></div><span class="pz-d">${p.d}</span>`});
+  const d=document.createElement('div');d.appendChild(R);return d.innerHTML
+ }catch(e){console.error('hub-v494',e);return h}};
+document.title=document.title.replace(/v\d+/,'v494');
+})()}catch(e){console.error('places-v494',e)}
+</script>
+<script>
+/* v495: Places and Directions, round three. Places hub, Near you: each place is now two lines (name, then "★ 4.0 · Open till 20:00"); the category word is gone because the icon already says it, so the status no longer wraps onto a third line. Directions hub, Recent routes: places show their distance under the name (the date moves into the same line), so you can tell a 0.2 km walk from a 6 km ride before you tap. */
+try{(()=>{
+const P=()=>window.POI||[];
+const _h=screens.placehub;
+if(_h)screens.placehub=function(){
+ const h=String(_h.apply(this,arguments));
+ return h.replace(/(<span class="pz-m">★ [\d.]+) · [^<·]+ · (<span class="pz-s)/g,'$1 · $2')};
+const _d=screens.dirhub;
+if(_d)screens.dirhub=function(){
+ const h=String(_d.apply(this,arguments));
+ return h.replace(/(<div class="pl tap" onclick="dhGo\('([^']+)'[^"]*"><i[^>]*>[\s\S]*?<\/i>)<b>([^<]+)<\/b><span>([^<]+)<\/span><\/div>/g,(m,a,id,n,dt)=>{
+  const p=P().find(x=>x.id===id),d=p&&p.d?p.d+' · ':'';
+  return a+'<div style="flex:1;min-width:0"><b style="display:block;font-size:17px;font-weight:600">'+n+'</b><span style="font-size:14px;color:var(--tt)">'+d+dt+'</span></div></div>'})};
+document.title=document.title.replace(/v\d+/,'v495');
+})()}catch(e){console.error('places-directions-v495',e)}
+</script>
+<script>
+/* v496: Place page. The line under the name ("Open · closes at 22:00 · 9.2 km · Nyarugenge, Kigali") wrapped onto a second line and cut the neighbourhood mid-phrase. Open hours and distance stay on one line; the neighbourhood is now its own quiet line under it. */
+try{(()=>{
+const _p=screens.place;
+if(_p)screens.place=function(){
+ const h=String(_p.apply(this,arguments));
+ return h.replace(/ <span class="mu">· ([^<]+)<\/span><\/div>(\s*<div class="pz-acts)/,'</div><div class="sm mu" style="margin-top:2px">$1</div>$2')};
+document.title=document.title.replace(/v\d+/,'v496');
+})()}catch(e){console.error('place-v496',e)}
+</script>
+<script>
+/* v497: Place page, Naver / Kakao Place layout. Before: Directions, Call and Share on one row, Pay here and Reserve on another, and a second star beside the name. Now: one quiet icon row (Call, Save, Share, Reserve) like Naver and Kakao Place, then two big buttons, Directions with the trip time and Pay here. The duplicate star beside the name is gone (Save lives in the icon row and shows Saved once you tap it). */
+try{(()=>{
+const L=(e,r,f)=>({en:e,rw:r,fr:f}[S.lang]||e);
+const st=document.createElement('style');
+st.textContent='#phone .pz-q{display:flex;margin:14px 0 4px;border-top:1px solid var(--chip);border-bottom:1px solid var(--chip)}#phone .pz-q button{flex:1;border:0;background:none;font:inherit;font-size:13px;font-weight:600;color:var(--tx);padding:10px 0 8px;display:flex;flex-direction:column;align-items:center;gap:2px}#phone .pz-q button i{font-style:normal;font-size:22px;line-height:28px}#phone .pz-q button:active{background:var(--chip)}#phone .pz-cta{display:flex;gap:10px;margin-top:10px}#phone .pz-cta .btn{flex:1;margin:0}#phone .pz-cta .btn.p{background:#5748E8;color:#fff;line-height:1.25;padding-top:9px;padding-bottom:9px}#phone .pz-cta .btn.p span{display:block;font-size:12px;font-weight:600;color:#fff!important;opacity:.9}';
+document.head.appendChild(st);
+const _p=screens.place;
+if(_p)screens.place=function(){
+ let h=String(_p.apply(this,arguments));
+ const sv=/aria-label="Save" onclick="([^"]*)"/.exec(h);
+ const re=/<div class="pz-acts c"><button class="main" onclick="([^"]*)"[^>]*>([\s\S]*?)<\/button><button onclick="([^"]*)"[^>]*>[^<]*<\/button><button onclick="([^"]*)"[^>]*>[^<]*<\/button><\/div><div class="pz-row c"><button class="btn" onclick="([^"]*)"[^>]*>[^<]*<\/button><button class="btn sec2" onclick="([^"]*)"[^>]*>[^<]*<\/button><\/div>/;
+ const m=re.exec(h);if(!m||!sv)return h;
+ const star=!!S.mp.star,dir=m[2];
+ const q=`<div class="pz-q"><button onclick="${m[3]}"><i>📞</i>${L('Call','Hamagara','Appeler')}</button><button onclick="${sv[1]}"><i>${star?'⭐':'☆'}</i>${star?L('Saved','Byabitswe','Enregistré'):L('Save','Bika','Enregistrer')}</button><button onclick="${m[4]}"><i>🔗</i>${L('Share','Sangiza','Partager')}</button><button onclick="${m[6]}"><i>📅</i>${L('Reserve','Bika','Réserver')}</button></div><div class="pz-cta"><button class="btn p" onclick="${m[1]}">${dir}</button><button class="btn sec2" onclick="${m[5]}">${L('Pay here','Ishyura hano','Payer ici')}</button></div>`;
+ h=h.replace(re,()=>q).replace(/<button class="ib"[^>]*aria-label="Save"[\s\S]*?<\/button>/,'');
+ return h};
+document.title=document.title.replace(/v\d+/,'v497');
+})()}catch(e){console.error('place-v497',e)}
+</script>
+<script>
+/* v498: Place page, expanded view. Before: Directions, Call, Share, Pay here and Reserve took half the first screen before any content, and the tab row ran off the edge (Info was hidden). Now: the same icon row as the sheet (Call, Save, Share, Reserve), Directions and Pay here pinned in a bar at the bottom like Naver and Kakao Place, and the tabs sit still at the top while you scroll and all six fit. */
+try{(()=>{
+const L=(e,r,f)=>({en:e,rw:r,fr:f}[S.lang]||e);
+const st=document.createElement('style');
+st.textContent='#phone .pz-bar{position:sticky;bottom:0;z-index:5;display:flex;gap:10px;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));background:var(--bg,#fff);border-top:1px solid var(--chip)}#phone .pz-bar .btn{flex:1;margin:0}#phone .pz-bar .btn.p{background:#5748E8;color:#fff;line-height:1.25;padding-top:9px;padding-bottom:9px}#phone .pz-bar .btn.p span{display:block;font-size:12px;font-weight:600;color:#fff!important;opacity:.9}#phone .ptabs{position:sticky;top:0;z-index:4;background:var(--bg,#fff)}#phone .ptabs button{padding:0 11px!important;font-size:15px}#phone .pz-q{margin:10px 16px 0}';
+document.head.appendChild(st);
+const _p=screens.place;
+if(_p)screens.place=function(){
+ let h=String(_p.apply(this,arguments));
+ const sv=/aria-label="Save" onclick="([^"]*)"/.exec(h);
+ const re=/<div class="pz-acts"><button class="main" onclick="([^"]*)"[^>]*>([\s\S]*?)<\/button><button onclick="([^"]*)"[^>]*>[^<]*<\/button><button onclick="([^"]*)"[^>]*>[^<]*<\/button><\/div><div class="pz-row"><button class="btn" onclick="([^"]*)"[^>]*>[^<]*<\/button><button class="btn sec2" onclick="([^"]*)"[^>]*>[^<]*<\/button><\/div>/;
+ const m=re.exec(h);if(!m||!sv)return h;
+ const star=!!S.mp.star;
+ const q=`<div class="pz-q"><button onclick="${m[3]}"><i>📞</i>${L('Call','Hamagara','Appeler')}</button><button onclick="${sv[1]}"><i>${star?'⭐':'☆'}</i>${star?L('Saved','Byabitswe','Enregistré'):L('Save','Bika','Enregistrer')}</button><button onclick="${m[4]}"><i>🔗</i>${L('Share','Sangiza','Partager')}</button><button onclick="${m[6]}"><i>📅</i>${L('Reserve','Bika','Réserver')}</button></div>`;
+ const bar=`<div class="pz-bar"><button class="btn p" onclick="${m[1]}">${m[2]}</button><button class="btn sec2" onclick="${m[5]}">${L('Pay here','Ishyura hano','Payer ici')}</button></div>`;
+ h=h.replace(re,()=>q).replace(/<button class="ib"[^>]*aria-label="Save"[\s\S]*?<\/button>/,'');
+ return h+bar};
+document.title=document.title.replace(/v\d+/,'v498');
+})()}catch(e){console.error('place-v498',e)}
+</script>
+<script>
+/* v499: Kigali Maps goes real — pan/zoom map on a road network, live routing (bus/car/walk/bike), Naver/Kakao-style place + directions */
+try{(function(){
+const L=(e,r,f)=>({en:e,rw:r,fr:f}[S.lang]||e),M=S.mp,W=340;
+const m2=(la,lo)=>[(lo-30.0619)*111300,(-1.9441-la)*110600];
+const N0={NB:[-1.9395,30.0445,'Nyabugogo Bus Park'],NY:[-1.978,30.044,'Nyamirambo'],TW:[-1.9441,30.0619,'Town Centre'],KC:[-1.9366,30.0647,'Kacyiru'],KH:[-1.9536,30.0935,'Kigali Heights'],SO:[-1.966,30.099,'Sonatubes'],RM:[-1.9566,30.11,'Remera Taxi Park'],KM:[-1.9498,30.1255,'Kimironko Market']};
+const ND={};for(const k in N0)ND[k]={p:m2(N0[k][0],N0[k][1]),n:N0[k][2]};
+const pl=g=>g.reduce((s,p,i)=>i?s+Math.hypot(p[0]-g[i-1][0],p[1]-g[i-1][1]):0,0);
+const EG=[['NB','TW','KN 3 Rd',1,'305 102'],['TW','KC','KG 7 Ave',2,''],['TW','KH','KG 7 Ave',1,'305'],['KC','KH','KG 11 Ave',2,''],['KH','RM','KG 11 Ave',1,'305 311'],['RM','KM','KG 11 Ave',1,'305 311'],['KH','SO','KG 9 Ave',2,''],['SO','RM','KG 17 Ave',2,''],['NB','NY','KN 2 Rd',2,''],['NY','TW','KN 2 Rd',2,'102']].map(([a,b,nm,c,bs],i)=>{const A=ND[a].p,B=ND[b].p,dx=B[0]-A[0],dy=B[1]-A[1],l=Math.hypot(dx,dy),o=(i%2?.07:-.07)*l,g=[A,[(A[0]+B[0])/2-dy/l*o,(A[1]+B[1])/2+dx/l*o],B];return{a,b,nm,c,bs:bs?bs.split(' '):[],g,len:pl(g)}});
+const adj={},hasBus={};for(const k in ND)adj[k]=[];EG.forEach(e=>{adj[e.a].push({to:e.b,e,r:0});adj[e.b].push({to:e.a,e,r:1});if(e.bs.length)hasBus[e.a]=hasBus[e.b]=1});
+const dj=(s,t,cost)=>{const d={},pv={},q=new Set(Object.keys(ND));for(const k of q)d[k]=1e18;d[s]=0;while(q.size){let u=null;for(const k of q)if(u===null||d[k]<d[u])u=k;if(d[u]>=1e17)return null;q.delete(u);if(u===t)break;for(const x of adj[u]){const c=cost(x.e);if(d[u]+c<d[x.to]){d[x.to]=d[u]+c;pv[x.to]={u,x}}}}if(d[t]>=1e17)return null;const o=[];for(let k=t;k!==s;k=pv[k].u)o.unshift(pv[k].x);return o.map(x=>({n:x.to,e:x.e,r:x.r,g:x.r?x.e.g.slice().reverse():x.e.g}))};
+const near=(P,bus)=>Object.keys(ND).filter(k=>!bus||hasBus[k]).sort((a,b)=>Math.hypot(ND[a].p[0]-P[0],ND[a].p[1]-P[1])-Math.hypot(ND[b].p[0]-P[0],ND[b].p[1]-P[1]))[0];
+const K=ND.KM.p,H=ND.KH.p,at=(k,x,y)=>[ND[k].p[0]+x,ND[k].p[1]+y];
+const POS={cafe:at('NB',300,250),cafe2:at('KM',-250,180),rest:at('NY',150,-200),bus:at('NB',60,40),bus2:at('KM',-60,40),pharm:at('KC',80,60),atm:at('KH',-120,80)};
+const pp=p=>POS[p.id]||[H[0]+(p.x-170)*20,H[1]+(p.y-240)*20];
+const ME=at('KM',-320,20),mePt={n:L('My location','Aho uri','Ma position'),p:ME};
+const ep=n=>{if(!n||n==='My location')return mePt;const p=POI.find(x=>x.n===n);return p?{n:p.n,p:pp(p)}:{n:n,p:ND.TW.p}};
+const dm=m=>m<1000?Math.max(10,Math.round(m/10)*10)+' m':(m/1000).toFixed(1)+' km';
+const tm=s=>{const m=Math.max(1,Math.round(s/60));return m>=60?Math.floor(m/60)+' h '+(m%60)+' min':m+' min'};
+const clk=s=>new Date(Date.now()+s*1000).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+POI.forEach(p=>{p.d=(Math.hypot(pp(p)[0]-ME[0],pp(p)[1]-ME[1])*1.25/1000).toFixed(1)+' km'});
+const SP={car:{1:8.5,2:6},bike:{1:4.2,2:4.2},walk:{1:1.35,2:1.35},bus:{1:6.5,2:5}};
+const ang=g=>Math.atan2(g[g.length-1][1]-g[g.length-2][1],g[g.length-1][0]-g[g.length-2][0])*180/Math.PI,ang0=g=>Math.atan2(g[1][1]-g[0][1],g[1][0]-g[0][0])*180/Math.PI;
+function build(mode,A,B,pth,na,nb){const sp=SP[mode],wk=mode==='walk'||mode==='bus',car=mode==='car',as=car?6:mode==='bike'?4.2:1.35,det=wk?1.3:1.2;
+const a1=Math.hypot(ND[na].p[0]-A.p[0],ND[na].p[1]-A.p[1])*det,a2=Math.hypot(ND[nb].p[0]-B.p[0],ND[nb].p[1]-B.p[1])*det;
+/* v656: start and end beside the same road node: go straight there, not via the node */
+if(mode!=='bus'&&!pth.length){const dd=Math.hypot(A.p[0]-B.p[0],A.p[1]-B.p[1])*det;if(dd<a1+a2){const kmd=dd/1000;return{pts:[A.p,B.p],dist:dd,secs:dd/as,steps:[{g:'📍',m:dd,t:L('Start at ','Tangirira kuri ','Départ : ')+A.n,s:L('Head toward ','Jya werekeza ','Direction ')+B.n},{g:'🏁',m:0,t:L('Arrive at ','Ugeze kuri ','Arrivée : ')+B.n,s:dm(dd)}],tr:car?[{g:[A.p,B.p],c:'#2BA84A'}]:null,delay:0,cost:car?L('Taxi ≈ ','Taxi ≈ ','Taxi ≈ ')+(Math.round((1000+450*kmd)/100)*100).toLocaleString('en-US')+' RWF':mode==='bike'?Math.round(kmd*30)+' kcal':Math.round(dd/.75).toLocaleString('en-US')+' '+L('steps','intambwe','pas')+' · '+Math.round(kmd*55)+' kcal'}}}
+const LV=e=>(e.a.charCodeAt(0)+e.b.charCodeAt(1)+e.c*3)%5,MU=[1,1,1,1.4,2.1],TC=['#2BA84A','#2BA84A','#2BA84A','#F5B301','#D92D20'];
+let pts=[A.p,ND[na].p],dist=a1+a2,secs=a1/as+a2/as,delay=0,tr=car?[{g:[A.p,ND[na].p],c:TC[0]}]:null,steps=[];
+pth.forEach(x=>{pts=pts.concat(x.g.slice(1));const s0=x.e.len/sp[x.e.c],lv=car?LV(x.e):0;dist+=x.e.len;secs+=s0*MU[lv];delay+=s0*(MU[lv]-1);if(car)tr.push({g:x.g,c:TC[lv]})});pts.push(B.p);if(car)tr.push({g:[ND[nb].p,B.p],c:TC[0]});
+if(mode==='bus'){const legs=[{k:'w',secs:a1/as,m:a1}],line=[];
+steps.push({g:'🚶',m:a1,t:L('Walk to ','Genda ugana ','Marchez vers ')+ND[na].n+L(' stop',' aho bisi zihagarara',' (arrêt)'),s:dm(a1)+' · '+tm(a1/as)});
+let i=0;while(i<pth.length){let set=pth[i].e.bs.slice(),j=i+1;while(j<pth.length&&set.some(l=>pth[j].e.bs.includes(l))){set=set.filter(l=>pth[j].e.bs.includes(l));j++}
+const from=i?pth[i-1].n:na,to=pth[j-1].n,ln=set[0],w=((new Date().getMinutes()+i*2)%6)+1,seg=pth.slice(i,j),ss=seg.reduce((a,x)=>a+x.e.len/sp[x.e.c],0),mm=seg.reduce((a,x)=>a+x.e.len,0);
+line.push(ln);legs.push({k:'b',ln,w,wait:i?240:w*60,from:ND[from].n,to:ND[to].n,secs:ss,m:mm,stops:[ND[from].n].concat(seg.map(x=>ND[x.n].n))});
+steps.push({g:'🚌',bus:1,m:mm,t:L('Take ','Fata ','Prenez ')+ln+' → '+ND[to].n,s:(i?L('Transfer at ','Guhindurira ','Correspondance à '):L('Board at ','Urira kuri ','Montez à '))+ND[from].n+' · '+seg.length+L(' stops',' aho bisi zihagarara',' arrêts')});i=j}
+legs.push({k:'w',secs:a2/as,m:a2});steps.push({g:'🚶',m:a2,t:L('Walk to ','Genda ugana ','Marchez vers ')+B.n,s:dm(a2)+' · '+tm(a2/as)});
+secs=legs.reduce((a,l)=>a+l.secs+(l.wait||0),0);const fare=Math.max(400,200*line.length+Math.round(dist/1000)*20);
+return{pts,dist,secs,steps,legs,line,fare,cost:'Tap&Go '+fare+' RWF'}}
+steps.push({g:'📍',m:a1,t:L('Start at ','Tangirira kuri ','Départ : ')+A.n,s:L('Head toward ','Jya werekeza ','Direction ')+ND[na].n});
+let prev=ang(pts.slice(0,2));const gs=[];pth.forEach(x=>{const l=gs[gs.length-1];if(l&&l.nm===x.e.nm)l.len+=x.e.len;else gs.push({nm:x.e.nm,len:x.e.len,a:ang0(x.g)})});
+gs.forEach((q,i)=>{const d=((q.a-prev+540)%360)-180,st=Math.abs(d)<25;steps.push({g:i?st?'↑':d>0?'↱':'↰':'↑',m:q.len,t:(i?st?L('Continue on ','Komeza kuri ','Continuez sur '):(d>0?L('Turn right onto ','Kata iburyo kuri ','Tournez à droite sur '):L('Turn left onto ','Kata ibumoso kuri ','Tournez à gauche sur ')):L('Take ','Fata ','Prenez '))+q.nm,s:dm(q.len)});prev=q.a});
+steps.push({g:'🏁',m:a2,t:L('Arrive at ','Ugeze kuri ','Arrivée : ')+B.n,s:dm(a2)});
+const km=dist/1000,cost=car?L('Taxi ≈ ','Taxi ≈ ','Taxi ≈ ')+(Math.round((1000+450*km)/100)*100).toLocaleString('en-US')+' RWF':mode==='bike'?Math.round(km*30)+' kcal':Math.round(dist/.75).toLocaleString('en-US')+' '+L('steps','intambwe','pas')+' · '+Math.round(km*55)+' kcal';
+return{pts,dist,secs,steps,tr,delay,cost}}
+function rt(mode,A,B){const bus=mode==='bus',na=near(A.p,bus),nb=near(B.p,bus),f=e=>e.len/(SP[mode][e.c]),ok=e=>!bus||e.bs.length,used={},out=[],seen={},lab=bus?['Best','Fewest transfers','Alternative']:['Best','Shortest','Alternative'];
+for(let k=0;k<3;k++){const c=k===1?(e=>e.len):(e=>f(e)*(k===2&&used[e.a+e.b]?3:1)),p=dj(na,nb,e=>ok(e)?c(e):1e18);if(!p)continue;const key=p.map(x=>x.e.a+x.e.b+x.n).join();if(seen[key])continue;seen[key]=1;p.forEach(x=>used[x.e.a+x.e.b]=1);const r=build(mode,A,B,p,na,nb);r.label=out.length?lab[k]:lab[0];out.push(r)}
+if(!out.length)out.push(build(mode,A,B,[],na,nb));if(bus)out.forEach((r,i)=>{if(i===1)r.label=r.line.length<out[0].line.length?'Fewest transfers':'Alternative'});return out}
+M.v=M.v||{x:ME[0]+500,y:ME[1]-300,z:.06};M.layer=M.layer||0;
+window.__rt=rt;window.__ep=ep;window.__tm=tm;/* v657: shared with the Places screens */
+const MODES=[['bus','mbus'],['car','mcar'],['walk','mwalk'],['bike','mbike']],COL={bus:'#3B7D20',car:'#2E6BF0',walk:'#2E6BF0',bike:'#2E6BF0'};
+function svg(h){const v=M.v,z=v.z,X=x=>((x-v.x)*z+W/2).toFixed(1),Y=y=>((y-v.y)*z+h/2).toFixed(1),pt=p=>X(p[0])+' '+Y(p[1]),sat=M.layer===1,tr=M.layer===2,bg=sat?'#2F4A35':'var(--chip)',rd=sat?'#A8B0A8':'var(--bg)',cs=sat?'#1C2A20':'var(--ln)';
+let s=`<svg viewBox="0 0 ${W} ${h}" width="100%" style="display:block;background:${bg};touch-action:none;user-select:none" role="img" aria-label="Map of Kigali">`;
+const w1=[at('NB',-900,-1800),at('NB',-400,800),at('NY',-300,-400),at('NY',-700,1500)];
+s+=`<path d="M${w1.map(pt).join('L')}" fill="none" stroke="${sat?'#2C5D7A':'#8FBFE8'}" stroke-width="${Math.max(6,500*z)}" opacity=".6" stroke-linecap="round"/><circle cx="${X(H[0]-900)}" cy="${Y(H[1]-1000)}" r="${Math.max(10,600*z)}" fill="${sat?'#3A6A43':'#BFE3B4'}" opacity=".7"/>`;
+const ew=e=>(e.c===1?3.5+z*45:2.2+z*28);
+EG.forEach(e=>{s+=`<path d="M${e.g.map(pt).join('L')}" fill="none" stroke="${cs}" stroke-width="${ew(e)+2}" stroke-linecap="round" stroke-linejoin="round"/>`});
+EG.forEach((e,i)=>{s+=`<path d="M${e.g.map(pt).join('L')}" fill="none" stroke="${tr?['#2BA84A','#F5B301','#D92D20'][(i*7)%3]:rd}" stroke-width="${ew(e)}" stroke-linecap="round" stroke-linejoin="round"/>`;if(z>.05)s+=`<text x="${X(e.g[1][0])}" y="${Y(e.g[1][1])-4}" font-size="9" font-weight="700" fill="${sat?'#dfe':'var(--mu)'}" text-anchor="middle" stroke="${sat?'#1C2A20':'var(--chip)'}" stroke-width="2.5" paint-order="stroke">${e.nm}</text>`});
+for(const k in ND)s+=`<text x="${X(ND[k].p[0])}" y="${Y(ND[k].p[1])+16}" font-size="11" font-weight="800" text-anchor="middle" fill="${sat?'#fff':'var(--tt)'}" stroke="${sat?'#1C2A20':'var(--chip)'}" stroke-width="3" paint-order="stroke">${ND[k].n.replace(' Bus Park','').replace(' Taxi Park','')}</text>`;
+const R=M._r;if(R){R.list.forEach((r,i)=>{if(i!==R.sel)s+=`<path d="M${r.pts.map(pt).join('L')}" fill="none" stroke="#8B95A1" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/>`});const r=R.list[R.sel];if(r&&(M._nv||r.tr)){s+=routeSvg(r,pt,X,Y)}else if(r){s+=`<path d="M${r.pts.map(pt).join('L')}" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/><path d="M${r.pts.map(pt).join('L')}" fill="none" stroke="${COL[R.mode]}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" ${R.mode==='bike'?'stroke-dasharray="1 9"':R.mode==='walk'?'stroke-dasharray="1 10"':''}/>`;s+=`<circle cx="${X(r.pts[0][0])}" cy="${Y(r.pts[0][1])}" r="9" fill="#2BA84A" stroke="#fff" stroke-width="3"/><circle cx="${X(r.pts[r.pts.length-1][0])}" cy="${Y(r.pts[r.pts.length-1][1])}" r="11" fill="#D92D20" stroke="#fff" stroke-width="3"/>`}}
+if(M._pins!==false)POI.filter(p=>M.cat==='all'||p.c===M.cat).forEach(p=>{const q=pp(p),x=X(q[0]),y=Y(q[1]),on=M.sel===p.id;s+=`<g onclick="mpPin('${p.id}')" style="cursor:pointer" role="button" aria-label="${p.n}"><circle cx="${x}" cy="${y-16}" r="${on?20:14}" fill="${on?'var(--lk)':'#E8604C'}" stroke="#fff" stroke-width="3"/><text x="${x}" y="${+y-(on?9:11)}" font-size="${on?19:14}" text-anchor="middle">${p.e}</text>${on||z>.1?`<text x="${x}" y="${+y+10}" font-size="11" font-weight="800" text-anchor="middle" fill="var(--tx)" stroke="var(--bg)" stroke-width="3" paint-order="stroke">${p.n}</text>`:''}</g>`});
+const nv=M._nv,mp=nv?nv.p:ME;s+=`<g transform="translate(${X(mp[0])} ${Y(mp[1])})">${nv?`<circle r="18" fill="#2E6BF0" opacity=".2"/><g transform="rotate(${nv.a})"><path d="M0-14L10 10L0 5L-10 10Z" fill="#2E6BF0" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/></g>`:`<circle class="pulse" r="10" fill="#2E6BF0"/><circle r="8" fill="#2E6BF0" stroke="#fff" stroke-width="3"/>`}</g></svg>`;return s}
+function routeSvg(r,pt,X,Y){const nv=M._nv;let s='',pts=r.pts;if(nv){s+=`<path d="M${r.pts.slice(0,nv.k+1).concat([nv.p]).map(pt).join('L')}" fill="none" stroke="#8B95A1" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/>`;pts=[nv.p].concat(r.pts.slice(nv.k+1))}
+const d='M'+pts.map(pt).join('L');s+=`<path d="${d}" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>`;
+if(r.tr&&!nv)r.tr.forEach(q=>{s+=`<path d="M${q.g.map(pt).join('L')}" fill="none" stroke="${q.c}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>`});else s+=`<path d="${d}" fill="none" stroke="${COL[M._r.mode]}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" ${M._r.mode==='bike'?'stroke-dasharray="1 9"':M._r.mode==='walk'?'stroke-dasharray="1 10"':''}/>`;
+const e=r.pts[r.pts.length-1];return s+`<circle cx="${X(r.pts[0][0])}" cy="${Y(r.pts[0][1])}" r="9" fill="#2BA84A" stroke="#fff" stroke-width="3"/><circle cx="${X(e[0])}" cy="${Y(e[1])}" r="11" fill="#D92D20" stroke="#fff" stroke-width="3"/>`}
+const draw=()=>{const g=document.getElementById('gm');if(g)g.innerHTML=svg(+g.dataset.h)};
+const zoom=f=>{M.v.z=Math.max(.02,Math.min(.6,M.v.z*f));draw()};
+window.mpZoom=f=>zoom(f);
+const gm=h=>`<div id="gm" data-h="${h}" style="touch-action:none">${svg(h)}</div>`;
+const fit=(pts,h,padb)=>{let a=1e9,b=-1e9,c=1e9,d=-1e9;pts.forEach(p=>{a=Math.min(a,p[0]);b=Math.max(b,p[0]);c=Math.min(c,p[1]);d=Math.max(d,p[1])});M.v={x:(a+b)/2,y:(c+d)/2,z:Math.min(.6,Math.max(.02,Math.min((W-70)/Math.max(b-a,300),(h-90)/Math.max(d-c,300))))}};
+if(!window.__gmH){window.__gmH=1;const ps={};let pd=0,cap=0;
+document.addEventListener('pointerdown',e=>{const g=e.target.closest&&e.target.closest('#gm');if(!g)return;ps[e.pointerId]=[e.clientX,e.clientY];M.mv=0;cap=0;const a=Object.values(ps);pd=a.length==2?Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]):0});
+document.addEventListener('pointermove',e=>{const p=ps[e.pointerId],g=document.getElementById('gm');if(!p)return;if(!g){delete ps[e.pointerId];return}const k=W/g.getBoundingClientRect().width,ks=Object.keys(ps),dx=e.clientX-p[0],dy=e.clientY-p[1];
+if(ks.length==1){M.mv+=Math.abs(dx)+Math.abs(dy);if(M.mv>6&&!cap){cap=1;try{g.setPointerCapture(e.pointerId)}catch(_){}}if(M.mv>6){M.v.x-=dx*k/M.v.z;M.v.y-=dy*k/M.v.z;M.fit=M.fit}}
+ps[e.pointerId]=[e.clientX,e.clientY];if(ks.length==2){const a=Object.values(ps),d=Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]);if(pd)zoom(d/pd);pd=d;M.mv=99}draw()});
+const up=e=>{delete ps[e.pointerId];pd=0};document.addEventListener('pointerup',up);document.addEventListener('pointercancel',up);
+document.addEventListener('wheel',e=>{if(e.target.closest&&e.target.closest('#gm')){e.preventDefault();zoom(e.deltaY<0?1.2:.83)}},{passive:false})}
+const X_=ic('plus',20).replace('<svg','<svg style="transform:rotate(45deg)"');
+const ctl=(top)=>`<button class="mb" style="top:${top}px" aria-label="Zoom in" onclick="mpZoom(1.5)"><b style="font-size:22px">+</b></button><button class="mb" style="top:${top+50}px" aria-label="Zoom out" onclick="mpZoom(.67)"><b style="font-size:22px">−</b></button>`;
+const LAY=[L('Standard','Isanzwe','Standard'),L('Satellite','Isanzure','Satellite'),L('Traffic','Urujya n’uruza','Trafic')];
+window.mpLayer=()=>{M.layer=(M.layer+1)%3;toast(LAY[M.layer]);render('fade-none')};
+window.mpLoc=()=>{M.v={x:ME[0],y:ME[1],z:Math.max(M.v.z,.1)};toast(L('Centered on you','Uri hano','Centré sur vous'));draw()};
+window.mpPin=id=>{if(M.mv>6)return;M.sel=M.sel===id?null:id;if(M.sel){const p=POI.find(x=>x.id===id);M.v={x:pp(p)[0],y:pp(p)[1]+250,z:Math.max(M.v.z,.1)}}render('fade-none')};
+window.mpDir=id=>{const p=POI.find(x=>x.id===id);PL.n=p.n;M.from=null;M.mode=M.mode||'bus';M.opt=0;M.exp=false;S.stack.push('route');render('push')};
+window.mpFrom=id=>{const p=POI.find(x=>x.id===id);M.from=p.n;toast(L('Start set to ','Itangiriro: ','Départ : ')+p.n);render('fade-none')};
+const star=id=>id==='cafe'?M.star:(M.sv||{})[id];
+screens.mapview=()=>{M._nv=null;M._r=null;M._pins=true;const sel=POI.find(p=>p.id===M.sel),vis=POI.filter(p=>M.cat==='all'||p.c===M.cat),CATS=[['all',L('All','Byose','Tout')],['cafe','☕ '+L('Cafe','Ikawa','Café')],['food','🍽️ '+L('Food','Ibiryo','Repas')],['bus','🚌 '+L('Bus stops','Bisi','Arrêts')],['pharm','💊 '+L('Pharmacy','Farumasi','Pharmacie')],['atm','🏧 ATM']];
+let sheet;if(sel){const me=mePt,B={n:sel.n,p:pp(sel)},ti=['bus','car','walk','bike'].map((m,i)=>`<span class="tg" style="font-size:13px">${['🚌','🚗','🚶','🚲'][i]} ${tm(rt(m,me,B)[0].secs)}</span>`).join(' ');
+sheet=`<div class="sh2"><div class="hdl" onclick="mpPin('${sel.id}')"></div><div style="display:flex;align-items:center;gap:8px"><b style="flex:1;font-size:22px;letter-spacing:-.3px">${sel.n}</b><button class="ib" style="background:var(--chip);border-radius:22px" aria-label="Close" onclick="mpPin('${sel.id}')">${X_}</button></div><div class="sm mu" style="margin-top:4px">${sel.k}${sel.r?' · <span style="color:#F5B301">★</span> '+sel.r:''}</div><div style="margin-top:6px;font-size:15px"><b style="color:#2BA84A">${sel.o}</b> · ${sel.d} ${L('from you','uvuye hano','de vous')}</div><div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">${ti}</div><div class="acts" style="padding:14px 0 0"><button class="q" onclick="mpDir('${sel.id}')">${L('Directions','Inzira','Itinéraire')}</button><button class="p" onclick="mpFrom('${sel.id}')">${L('Depart','Gutangira','Départ')}</button><button onclick="mpOpenPoi('${sel.id}')">${L('Details','Amakuru','Détails')}</button><button onclick="toast('${L('Link copied','Link yakopowe','Lien copié')}')">${L('Share','Sangiza','Partager')}</button></div></div>`}
+else sheet=`<div class="sh2"><div class="hdl"></div><b style="font-size:19px">${L('Nearby','Hafi yawe','À proximité')}</b>${vis.slice().sort((a,b)=>parseFloat(a.d)-parseFloat(b.d)).slice(0,5).map(p=>`<div class="pc tap" onclick="mpPin('${p.id}')"><i>${p.e}</i><div style="flex:1;min-width:0"><b style="font-size:16px">${p.n}</b><div class="sm mu">${p.k}${p.r?' · ★ '+p.r:''}</div></div><span class="sm mu">${p.d}</span></div>`).join('')}</div>`;
+return `<div style="position:relative"><div class="mvs"><button class="ib" aria-label="Back" onclick="back()" style="color:var(--tx)">${ic('back',22)}</button><span style="flex:1" onclick="mpGo('mapsearch')">${L('Search places, bus stops, addresses','Shakisha ahantu, aho bisi zihagarara','Lieux, arrêts, adresses')}</span><button class="ib" aria-label="Search" onclick="mpGo('mapsearch')">${ic('search',20,'var(--tt)')}</button></div><div class="mcs mvc" style="padding:0 12px">${CATS.map(([k,l])=>`<button class="ocp ${M.cat===k?'on':''}" onclick="mpCat('${k}')">${l}</button>`).join('')}</div>${gm(480)}<button class="mb" style="top:130px" aria-label="Layers" onclick="mpLayer()">${ic('grid',20,M.layer?'var(--lk)':'var(--tx)')}</button>${ctl(182)}<button class="mb" style="bottom:46px" aria-label="My location" onclick="mpLoc()">${ic('pin',20,'#2E6BF0')}</button>${M.layer?`<div style="position:absolute;left:12px;bottom:46px;background:var(--bg);border-radius:14px;padding:6px 12px;font-size:13px;font-weight:700">${LAY[M.layer]}</div>`:''}</div>${sheet}<div style="height:24px"></div>`};
+window.mpCat=k=>{M.cat=k;M.sel=null;render('fade-none')};
+const _pl=screens.place;screens.place=()=>{let h=_pl();if(M.exp)return h;const p=POI.find(x=>x.n===PL.n);if(!p)return h;M._r=null;M._pins=true;M.sel=p.id;M.v={x:pp(p)[0],y:pp(p)[1]+120,z:.14};
+return h.replace(/<svg viewBox="0 0 340 300"[\s\S]*?<\/svg>/,()=>gm(300)).replace(/onclick="mpArrive\(\)"/,`onclick="mpDir('${p.id}')"`).replace(/onclick="mpArriveAt\('[^']*'\)"/,`onclick="mpDir('${p.id}')"`)};
+const pick=w=>{$('#layer').innerHTML=`<div class="sheetbg" onclick="closeSheet()"></div><div class="sheet" role="dialog" aria-modal="true"><div class="h1" style="font-size:22px">${w?L('Choose destination','Hitamo aho ujya','Destination'):L('Choose start','Hitamo itangiriro','Point de départ')}</div><div style="max-height:52vh;overflow:auto;margin-top:8px">${[`<div class="pl tap" onclick="mpSetEp(${w},'')"><i>📍</i><b>${L('My location','Aho uri','Ma position')}</b></div>`].concat(POI.map(p=>`<div class="pl tap" onclick="mpSetEp(${w},'${p.id}')"><i style="font-style:normal;font-size:20px">${p.e}</i><div style="flex:1;min-width:0"><b style="display:block;font-size:16px">${p.n}</b><span>${p.k} · ${p.d}</span></div></div>`)).join('')}</div></div>`};
+window.mpPick=pick;window.mpSetEp=(w,id)=>{const n=id?POI.find(p=>p.id===id).n:'My location';if(w)PL.n=n;else M.from=id?n:null;M.opt=0;closeSheet();render('fade-none')};
+window.mpSwap=()=>{const a=M.from||'My location';M.from=PL.n==='My location'?null:PL.n;PL.n=a;M.opt=0;render('fade-none')};
+const LC=n=>({'305':'#3B7D20','102':'#2E6BF0','311':'#E8730C'})[n]||'#7B4DD6',WR='background:repeating-linear-gradient(var(--tt) 0 3px,transparent 3px 8px)';
+if(!document.getElementById('st501')){const st=document.createElement('style');st.id='st501';st.textContent='.dpc{display:flex;gap:8px;overflow-x:auto;padding:10px 16px 0;scrollbar-width:none}.dpc::-webkit-scrollbar{display:none}.dpc button{flex:none;height:34px;padding:0 14px;border:0;border-radius:17px;background:var(--chip);color:var(--tx);font:inherit;font-size:14px;font-weight:700}.dpc button.on{background:var(--tx);color:var(--bg)}.rsh{position:relative;margin-top:-22px;background:var(--bg);border-radius:24px 24px 0 0;padding:8px 16px 0}.rcd{border-radius:20px;background:var(--chip);padding:14px 16px;margin-top:10px}.rcd.on{box-shadow:inset 0 0 0 2px var(--lk)}.rt1{display:flex;align-items:baseline;gap:8px}.rt1 b{font-size:24px;letter-spacing:-.5px}.rt1 span{font-size:14px;color:var(--mu);flex:1}.rt1 em{font-style:normal;font-size:14px;font-weight:700}.rtag{font-size:12px;font-weight:800;color:var(--lk);margin-bottom:2px}.rbr{display:flex;gap:2px;height:26px;margin-top:10px;border-radius:13px;overflow:hidden}.rbr i{display:flex;align-items:center;justify-content:center;font-style:normal;font-size:11px;font-weight:800;white-space:nowrap;overflow:hidden;min-width:0;color:#fff}.rsb{font-size:13px;color:var(--mu);margin-top:8px;line-height:19px}.tl5{margin-top:14px;border-top:1px solid var(--ln);padding-top:12px}.tr5{display:flex;gap:12px;min-height:44px}.tr5 .ra{width:22px;flex:none;display:flex;flex-direction:column;align-items:center}.tr5 .ra u{width:14px;height:14px;border-radius:7px;border:3px solid;background:var(--bg);flex:none;box-sizing:border-box}.tr5 .ra s{flex:1;width:4px;border-radius:2px;margin:2px 0;text-decoration:none}.tr5 .rb{flex:1;min-width:0;padding-bottom:12px;font-size:15px;line-height:21px}.tr5 .rb small{display:block;font-size:13px;color:var(--mu)}.tr5 .rtm{font-size:13px;font-weight:700;color:var(--mu);flex:none}.pl5{display:inline-block;min-width:34px;text-align:center;border-radius:8px;color:#fff;font-size:13px;font-weight:800;padding:1px 6px;margin-right:6px}.nvt{background:var(--lk);color:#fff;border-radius:20px;padding:12px 16px;display:flex;align-items:center;gap:14px}.nvt span{font-size:34px}.nvt b{font-size:28px;display:block;line-height:32px}.nvt small{font-size:14px;line-height:18px;display:block}.nvt2{background:var(--bg);margin:6px 20px 0;border-radius:14px;padding:8px 12px;font-size:13px;font-weight:700}';document.head.appendChild(st)}
+function rl(){const m=M.mode||'bus',A=ep(M.from),B=ep(PL.n);let list=rt(m,A,B);if(m==='bus'){const wk=r=>r.legs.filter(l=>l.k==='w').reduce((a,l)=>a+l.m,0),tc=r=>r.legs.filter(l=>l.k==='b').length,f=[null,(a,b)=>a.secs-b.secs,(a,b)=>tc(a)-tc(b)||a.secs-b.secs,(a,b)=>wk(a)-wk(b)][M.so||0];if(f)list=list.slice().sort(f)}return{m,A,B,list}}
+const row=(c,dot,body,t,rail)=>`<div class="tr5"><div class="ra">${dot?`<u style="border-color:${c}"></u>`:''}<s style="${rail}"></s></div><div class="rb">${body}</div><span class="rtm">${t||''}</span></div>`;
+window.mpSx=k=>{M.sx=M.sx||{};M.sx[k]=!M.sx[k];render('fade-none')};
+function detail(r,m,A,B,key){const t0=(M.dp||0)*60;let t=t0,h=row('#2BA84A',1,`<b>${A.n}</b>`,clk(t),m==='bus'?WR:'background:'+COL[m]);
+if(m==='bus'){r.legs.forEach((l,i)=>{if(l.k==='w'){t+=l.secs;h+=row('',0,`🚶 ${L('Walk','Genda','Marchez')} ${tm(l.secs)} · ${dm(l.m)}`,'',i===r.legs.length-1?'display:none':WR);return}
+t+=l.wait;const c=LC(l.ln),k2=key+'-'+i,mid=l.stops.slice(1,-1),open=(M.sx||{})[k2];
+h+=row(c,1,`<span class="pl5" style="background:${c}">${l.ln}</span><b>${L('Board at','Urira kuri','Montez à')} ${l.from}</b>${l.w&&i===1?`<small>${L('Next in','Ikurikira mu','Prochain dans')} ${l.w} min · ${l.w+7} min</small>`:`<small>${L('Transfer: wait','Gutegereza','Correspondance : attente')} ~4 min</small>`}`,clk(t),'background:'+c);
+h+=row(c,0,`<div ${mid.length?`onclick="mpSx('${k2}')" style="color:var(--lk);font-weight:700;cursor:pointer"`:'class="mu"'}>${l.stops.length-1} ${L('stops','aho bisi zihagarara','arrêts')} · ${tm(l.secs)}${mid.length?(open?' ⌃':' ⌄'):''}</div>${open?mid.map(n=>`<small>• ${n}</small>`).join(''):''}`,'','background:'+c);
+t+=l.secs;h+=row(c,1,`<b>${L('Get off at','Manuka kuri','Descendez à')} ${l.to}</b>`,clk(t),WR)})}
+else{t=t0;r.steps.forEach((s,i,a)=>{const e=i===a.length-1;if(i&&!e)h+=row('',0,`<span style="font-size:18px">${s.g}</span> ${s.t}<small>${s.s||''}</small>`,'','background:'+COL[m]);if(e)t=t0+r.secs});}
+return h+row('#D92D20',1,`<b>${B.n}</b>`,clk(t0+r.secs),'display:none')}
+function card(x,i,o,m,A,B){const on=o===i,t0=(M.dp||0)*60,lab=x.label==='Best'?L('Recommended','Byiza cyane','Recommandé'):x.label==='Shortest'?L('Shortest','Ngufi','Plus court'):x.label==='Fewest transfers'?L('Fewest transfers','Guhindura bike','Moins de correspondances'):L('Alternative','Ubundi buryo','Alternative');
+let bar='',sb='',em='';
+if(m==='bus'){const T=x.secs;bar=`<div class="rbr">${x.legs.map(l=>l.k==='w'?`<i style="flex:${Math.max(l.secs,70)};background:var(--tt)">🚶 ${Math.max(1,Math.round(l.secs/60))}</i>`:`<i style="flex:${Math.max(l.secs,90)};background:${LC(l.ln)}">${l.ln} · ${Math.round(l.secs/60)}</i>`).join('')}</div>`;const bs=x.legs.filter(l=>l.k==='b'),b=bs[0],wk=x.legs.filter(l=>l.k==='w').reduce((a,l)=>a+l.secs,0);em=x.fare+' RWF';
+sb=b?`${L('Board at','Urira kuri','Montez à')} ${b.from} · ${L('next in','ikurikira mu','prochain dans')} ${b.w} min<br>${bs.length>1?(bs.length-1)+' '+L('transfer','guhindura','correspondance'):L('Direct','Nta guhindura','Direct')} · ${L('Walk','Kugenda','Marche')} ${tm(wk)} · ${bs.reduce((a,l)=>a+l.stops.length-1,0)} ${L('stops','aho bisi zihagarara','arrêts')}`:''}
+else{if(m==='car'&&x.tr)bar=`<div class="rbr">${x.tr.map(q=>`<i style="flex:${Math.max(1,pl(q.g))};background:${q.c}"></i>`).join('')}</div>`;
+sb=`${dm(x.dist)} · ${x.cost}${m==='car'?`<br>${x.delay>90?'🟠 '+L('Slow traffic','Urujya n’uruza ruratinze','Trafic dense')+' +'+tm(x.delay):'🟢 '+L('Smooth traffic','Nta mubyigano','Trafic fluide')} · ${L('Toll free','Nta mahoro','Sans péage')}`:''}`}
+return `<div class="rcd ${on?'on':''}" onclick="${on?'':`mpSet('opt',${i})`}"><div class="rtag">${i===0?'✨ ':''}${lab}</div><div class="rt1"><b>${tm(x.secs)}</b><span>${clk(t0)} → ${clk(t0+x.secs)}</span><em>${em}</em></div>${bar}<div class="rsb">${sb}</div>${on?`<div class="tl5">${detail(x,m,A,B,o)}</div>`:''}</div>`}
+screens.route=()=>{M._nv=null;const{m,A,B,list}=rl(),o=Math.min(M.opt||0,list.length-1),cur=list[o],key=[A.n,B.n,m].join('|');M._r={list,sel:o,mode:m};M._pins=false;if(M.fk!==key){M.fk=key;fit(cur.pts,190)}
+const dot=c=>`<span style="width:12px;height:12px;border-radius:6px;border:3px solid ${c};margin:6px 6px 0 0;flex-shrink:0"></span>`,tms=MODES.map(([k,g])=>{const r=rt(k,A,B)[0];return `<button class="${m===k?'on':''}" onclick="M.opt=0;mpSet('mode','${k}')" aria-label="${k}">${ic(g,20,m===k?'#fff':'var(--mu)')}${tm(r.secs).replace(' min','m').replace(' h ','h')}</button>`}).join('');
+const DP=[[0,L('Depart now','Ahaguruka ubu','Partir maintenant')],[15,'+15 min'],[30,'+30 min'],[60,'+1 h']],SO=[L('Recommended','Byiza cyane','Recommandé'),L('Fastest','Byihuse','Plus rapide'),L('Fewest transfers','Guhindura bike','Moins de correspondances'),L('Least walking','Kugenda make','Moins de marche')];
+return `<div class="mh" style="padding-bottom:0"><button class="ib" aria-label="Back" onclick="back()">${ic('back',24)}</button><b style="font-size:18px;flex:1">${L('Directions','Inzira','Itinéraire')}</b><button class="ib" aria-label="Swap" onclick="mpSwap()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4v16M4 8l4-4 4 4M16 20V4M12 16l4 4 4-4"/></svg></button></div>
+<div class="rbox" style="margin-top:8px"><div class="fi tap" style="padding:10px 4px" onclick="mpPick(0)">${dot('#2BA84A')}<span style="flex:1">${A.n}</span></div><div class="fi tap" style="padding:10px 4px;border-top:0" onclick="mpPick(1)">${dot('#D92D20')}<span style="flex:1">${B.n}</span></div></div><div class="modes">${tms}</div>
+<div class="dpc">${DP.map(([v,l])=>`<button class="${(M.dp||0)===v?'on':''}" onclick="mpSet('dp',${v})">${v?'🕑 ':''}${l}</button>`).join('')}${m==='bus'?SO.map((l,i)=>`<button class="${(M.so||0)===i?'on':''}" style="background:${(M.so||0)===i?'var(--lk)':'var(--chip)'};color:${(M.so||0)===i?'#fff':'var(--tx)'}" onclick="M.opt=0;mpSet('so',${i})">${l}</button>`).join(''):''}</div>
+<div style="position:relative;margin-top:10px">${gm(190)}${ctl(12)}</div><div class="rsh"><div class="hdl"></div>${list.map((x,i)=>card(x,i,o,m,A,B)).join('')}</div><div style="height:100px"></div><div class="cta"><div style="display:flex;gap:10px"><button class="btn sec2" style="flex:0 0 36%" onclick="mpStart(true)">${L('Preview','Reba','Aperçu')}</button><button class="btn" onclick="mpStart(false)">${m==='bus'?'🚌 ':''}${L('Start','Tangira','Démarrer')}</button></div></div>`};
+/* ---- turn-by-turn navigation ---- */
+let NT=null;const cl=r=>{if(r._cl)return r._cl;const c=[0];for(let i=1;i<r.pts.length;i++)c[i]=c[i-1]+Math.hypot(r.pts[i][0]-r.pts[i-1][0],r.pts[i][1]-r.pts[i-1][1]);return r._cl=c};
+function at2(r,f){const c=cl(r),d=f*c[c.length-1];let k=0;while(k<c.length-2&&c[k+1]<d)k++;const a=r.pts[k],b=r.pts[k+1],u=c[k+1]>c[k]?(d-c[k])/(c[k+1]-c[k]):0;return{p:[a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u],k,a:Math.atan2(b[1]-a[1],b[0]-a[0])*180/Math.PI+90}}
+function nvui(){const N=M.nr,r=N.r,f=M.nv.f,st=r.steps,tot=st.reduce((a,s)=>a+(s.m||0),0)||1,d=f*tot;let i=0,e=st[0].m||0;while(i<st.length-1&&e<=d){i++;e+=st[i].m||0}
+const rem=Math.max(0,e-d),last=i>=st.length-1,nx=st[Math.min(i+1,st.length-1)],done=f>=1,left=r.secs*(1-f),sp=Math.round(32+16*Math.sin(f*37));
+const top=done?`<div class="nvt" style="background:#0A8F5B"><span>🏁</span><div><b>${L('You have arrived','Wageze','Vous êtes arrivé')}</b><small>${N.B.n}</small></div></div>`:`<div class="nvt"><span>${last?'🏁':nx.g}</span><div><b>${dm(rem)}</b><small>${last?L('Arrive at ','Ugera kuri ','Arrivée : ')+N.B.n:nx.t}</small></div></div>${i+2<st.length?`<div class="nvt2">${L('Then','Hanyuma','Puis')} ${st[i+2].g} ${st[i+2].t}</div>`:''}`;
+const bot=done?`<button class="btn" onclick="mpEnd()">${L('Done','Byarangiye','Terminé')}</button>`:`<div style="display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0"><b style="font-size:26px;color:var(--lk)">${tm(left)}</b><div class="sm mu">${clk(left)} ${L('arrival','kugera','arrivée')} · ${dm(r.dist*(1-f))}${N.mode==='car'?' · '+sp+' km/h':''}</div></div><button class="btn sec2" style="width:auto;padding:0 14px" aria-label="Overview" onclick="mpNvOv()">${M.nv.ov?'📍':'🗺️'}</button><button class="btn sec2" style="width:auto;padding:0 14px" aria-label="Sound" onclick="mpNvMute()">${M.nv.mute?'🔇':'🔊'}</button><button class="btn" style="width:auto;padding:0 18px" onclick="mpEnd()">${L('End','Hagarika','Arrêter')}</button></div>`;
+return{top,bot,i,rem,nx,last,done}}
+function ntick(){if(S.stack[S.stack.length-1]!=='nav'||!M.nr){clearInterval(NT);NT=null;return}const N=M.nr,v=M.nv;if(v.f>=1){clearInterval(NT);NT=null;return}v.f=Math.min(1,v.f+.0125);const q=at2(N.r,v.f);M._nv=q;if(!v.ov)M.v={x:q.p[0],y:q.p[1],z:M.v.z};
+const u=nvui(),b=document.getElementById('nvb'),f=document.getElementById('nvf');if(b)b.innerHTML=u.top;if(f)f.innerHTML=u.bot;if(!u.done&&!u.last&&u.rem<150&&v.say!==u.i&&!v.mute){v.say=u.i;toast(L('In ','Nyuma ya ','Dans ')+dm(u.rem)+': '+u.nx.t)}if(u.done)toast(L('You have arrived','Wageze','Vous êtes arrivé'));draw()}
+window.mpStart=pre=>{const{m,B,list}=rl(),r=list[Math.min(M.opt||0,list.length-1)];M.nr={r,mode:m,B,pre:!!pre};M.nv={f:0,say:-1,mute:false,ov:false};M._nv=at2(r,0);M.v={x:M._nv.p[0],y:M._nv.p[1],z:m==='walk'?.25:.16};S.stack.push('nav');render('push');clearInterval(NT);NT=setInterval(ntick,pre?250:500)};
+window.mpNvOv=()=>{M.nv.ov=!M.nv.ov;if(M.nv.ov)fit(M.nr.r.pts,540);else M.v={x:M._nv.p[0],y:M._nv.p[1],z:.16};render('fade-none')};
+window.mpNvMute=()=>{M.nv.mute=!M.nv.mute;toast(M.nv.mute?L('Voice off','Ijwi rizimye','Voix désactivée'):L('Voice on','Ijwi rifunguye','Voix activée'));render('fade-none')};
+window.mpEnd=()=>{const a=M.nv&&M.nv.f>=1;clearInterval(NT);NT=null;M._nv=null;M.nr=null;M.fk=null;M.from=null;S.stack=['mapview'];M.sel=null;render('pop');toast(a?L('Trip finished','Urugendo rurarangiye','Trajet terminé'):L('Navigation ended','Kuyobora byahagaze','Navigation arrêtée'))};
+window.mpNext=()=>{};
+screens.nav=()=>{const N=M.nr;if(!N)return '';M._r={list:[N.r],sel:0,mode:N.mode};M._pins=false;const u=nvui();return `<div style="position:relative">${gm(540)}<div id="nvb" style="position:absolute;left:10px;right:10px;top:10px">${u.top}</div>${ctl(130)}</div><div class="cta" id="nvf">${u.bot}</div>`};
+if(document.title)document.title=document.title.replace(/v\d+/,'v499');
+})()}catch(e){console.error('maps-v499',e)}
+/* v501: Directions, Naver / Kakao style. Route cards with a leg bar (walk / bus line colours, proportional), fare, boarding stop and next-bus time, expandable stops timeline with clock times, depart-time chips (Now / +15 / +30 / +1 h), bus sort chips (Recommended / Fastest / Fewest transfers / Least walking), car routes coloured by traffic with taxi fare and delay, walk / bike with steps and kcal, and real turn-by-turn navigation: next-turn banner with distance, "Then" preview, moving heading arrow on the map, ETA and distance left, speed, voice prompts, overview toggle and arrival. Code is in the v499 block (route screen) so it shares the road network. */
+/* v500: Place page, more like Naver / Kakao Place. Before: the first screen was a flat colour block with one emoji, the hours were one line, Home ended after four info rows, Directions and Pay here sat in the scrolling header (the bottom bar from v498 was missing). Now: a photo strip (one large and two small tiles, "+N" count) that opens Photos, tappable hours that expand to the week with today marked and the last order time, a Reviews block (big rating, stars, 5-to-1 bars, two visitor reviews, See all), a Menu list with prices for cafes and food, a Busy hours chart, and Directions + Pay here pinned in a bar at the bottom. */
+try{(function(){
+const L=(e,r,f)=>({en:e,rw:r,fr:f}[S.lang]||e),M=S.mp,_p=screens.place;
+const hs=s=>{let h=0;for(const c of String(s))h=(h*31+c.charCodeAt(0))>>>0;return h};
+const COL={cafe:['#5B3A29','#8A5A3C','#C49A6C'],food:['#A8452B','#D9722F','#F0A95A'],pharm:['#1F7A5A','#3FA37F','#8FD1B5'],hosp:['#2E5FA8','#5B8FD1','#A9C6EA'],atm:['#454D5A','#6B7482','#A5ADBA'],bus:['#2F6B2A','#4F9A45','#9FD197']};
+const MENU={cafe:[['Cappuccino',3500],['Iced latte',4000],['Butter croissant',2500],['Rwandan drip coffee',3000]],food:[['Grilled brochette',5000],['Chicken and chips',6500],['Fresh fish plate',8000],['Veggie rice bowl',4500]]};
+const REV=[['Aline','Great place, friendly staff and quick service. I will come back.','2 days ago',5],['Eric','Clean and calm. A little busy at lunch but worth it.','1 week ago',4],['Divine','Good value for the price. Easy to find near the main road.','2 weeks ago',5],['Jean Paul','Nice atmosphere and a welcoming owner.','3 weeks ago',4]];
+const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],fm=n=>Number(n).toLocaleString('en-US');
+const dist=r=>{const a=[Math.pow(r/5,7),Math.pow(r/5,4)*.45,.1,.04,.03],t=a.reduce((x,y)=>x+y,0);return a.map(v=>Math.round(v/t*100))};
+const st=document.createElement('style');st.textContent='.pz-ph{display:grid;grid-template-columns:2fr 1fr;grid-template-rows:1fr 1fr;gap:3px;height:176px;margin:14px 16px 0;border-radius:20px;overflow:hidden;cursor:pointer}.pz-ph>div{display:flex;align-items:center;justify-content:center;position:relative;font-size:28px}.pz-ph>div:first-child{grid-row:1/3;font-size:60px}.pz-ph em{position:absolute;right:8px;bottom:6px;background:rgba(0,0,0,.55);color:#fff;font-style:normal;font-size:12px;font-weight:800;padding:2px 8px;border-radius:10px}.pz-s{margin:22px 16px 0;padding-top:20px;border-top:1px solid var(--ln)}.pz-h{display:flex;align-items:baseline;gap:8px;font-size:18px;font-weight:800}.pz-h a{margin-left:auto;font-size:14px;font-weight:700;color:var(--lk);cursor:pointer}.pz-b{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mu);height:17px}.pz-b i{flex:1;height:6px;border-radius:3px;background:var(--chip)}.pz-b u{display:block;height:6px;border-radius:3px;background:#F5B301}.pz-rv{padding:14px 0;border-top:1px solid var(--ln)}.pz-rv:first-of-type{border-top:0}.pz-d{display:flex;justify-content:space-between;font-size:14px;color:var(--mu);padding:5px 0}.pz-d.on{color:var(--tx);font-weight:800}.pz-mn{display:flex;align-items:center;gap:12px;padding:10px 0;font-size:15px}.pz-mn i{width:44px;height:44px;border-radius:12px;background:var(--chip);display:flex;align-items:center;justify-content:center;font-style:normal;font-size:22px}.pz-bz{display:flex;align-items:flex-end;gap:6px;height:64px;margin-top:14px}.pz-bz i{flex:1;border-radius:4px 4px 0 0;background:var(--chip)}.pz-bz i.on{background:var(--br)}';document.head.appendChild(st);
+window.plHrs=()=>{S.hrs=!S.hrs;render('fade-none')};
+screens.place=()=>{let h=_p();if(!M.exp)return h;const p=POI.find(x=>x.n===PL.n);if(!p||h.indexOf('class="ptabs"')<0)return h;
+const lab=(h.match(/class="btn p"[^>]*>Directions<span class="s">([^<]*)<\/span>/)||[])[1]||'';
+h=h.replace(/<div class="pz-cta">[\s\S]*?<\/div>/,'').replace(/<div style="height:30px"><\/div>(?![\s\S]*<div style="height:30px">)/,'<div style="height:104px"></div>');
+const bar=h.indexOf('class="cta"')<0?`<div class="cta" style="display:flex;gap:10px"><button class="btn" style="flex:1.4" onclick="mpDir('${p.id}')">${L('Directions','Inzira','Itinéraire')}${lab?' · '+lab:''}</button><button class="btn sec2" style="flex:1" onclick="plPay()">${L('Pay here','Ishyura hano','Payer ici')}</button></div>`:'';
+if(M.tab!=='home')return h+bar;
+const n=hs(p.id),c=COL[p.c]||COL.cafe,r=parseFloat(p.r)||0,cnt=(String(p.r).match(/\(([^)]+)\)/)||[])[1]||'0',goods=p.c==='cafe'||p.c==='food'||p.c==='pharm'||p.c==='hosp';
+h=h.replace(/<div style="margin:14px 16px 0;height:120px;border-radius:24px;background:[^>]*>[^<]*<\/div>/,`<div class="pz-ph" role="button" aria-label="${L('Photos','Amafoto','Photos')}" onclick="mpSet('tab','photos')"><div style="background:${c[0]}">${p.e}</div><div style="background:${c[1]}">${p.e}</div><div style="background:${c[2]}">${p.e}<em>+${6+n%20}</em></div></div>`);
+if(goods&&/Open|Closed/.test(p.o||'')){const m=(p.o||'').match(/(\d\d:\d\d)/),cl=m?m[1]:'22:00',t=(m?+cl.slice(0,2)*60+ +cl.slice(3):1320)-30,lo=String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0'),td=(new Date().getDay()+6)%7;
+h=h.replace(/<div class="fi">(<svg[\s\S]*?<\/svg>)<div>(<b[^>]*>(?:Open|Closed)<\/b>[^<]*)<\/div><\/div>/,(a,ic0,s)=>`<div class="fi tap" role="button" aria-expanded="${!!S.hrs}" onclick="plHrs()" style="cursor:pointer">${ic0}<div style="flex:1">${s}</div><span style="transform:rotate(${S.hrs?270:90}deg);display:inline-flex">${ic('chev',16,'var(--tt)')}</span></div>${S.hrs?`<div style="padding:0 0 6px 44px">${DAYS.map((d,i)=>`<div class="pz-d ${i===td?'on':''}"><span>${d}</span><span>${i===6?'09:00':'07:00'} – ${cl}</span></div>`).join('')}${p.c==='cafe'||p.c==='food'?`<div class="pz-d"><span>${L('Last order','Itegeko rya nyuma','Dernière commande')}</span><span>${lo}</span></div>`:''}</div>`:''}`)}
+let x='';
+if(r){const d=dist(r),full=Math.round(r);x+=`<div class="pz-s"><div class="pz-h">${L('Reviews','Ibitekerezo','Avis')}<span class="mu" style="font-weight:600;font-size:15px">${cnt}</span><a onclick="mpSet('tab','reviews')">${L('See all','Byose','Tout voir')} ›</a></div><div style="display:flex;gap:22px;align-items:center;margin-top:14px"><div style="text-align:center"><div style="font-size:40px;font-weight:800;letter-spacing:-1px;line-height:44px">${r.toFixed(1)}</div><div style="color:#F5B301;font-size:14px;letter-spacing:2px">${'★'.repeat(full)}${'☆'.repeat(5-full)}</div></div><div style="flex:1">${d.map((v,i)=>`<div class="pz-b"><span>${5-i}</span><i><u style="width:${v}%"></u></i></div>`).join('')}</div></div><div style="margin-top:10px">${[0,1].map(i=>{const v=REV[(n+i)%REV.length];return `<div class="pz-rv"><div style="display:flex;align-items:center;gap:10px"><span style="width:32px;height:32px;border-radius:16px;background:var(--tint);color:var(--tintfg);display:flex;align-items:center;justify-content:center;font-weight:800">${v[0][0]}</span><div><b style="font-size:15px">${v[0]}</b><div class="sm mu"><span style="color:#F5B301">★ ${v[3]}</span> · ${v[2]}</div></div></div><div style="margin-top:8px;font-size:15px;line-height:22px">${v[1]}</div></div>`}).join('')}</div></div>`}
+if(MENU[p.c]){x+=`<div class="pz-s"><div class="pz-h">${L('Menu','Menu','Menu')}</div>${MENU[p.c].slice(0,3).map(([a,b])=>`<div class="pz-mn"><i>${p.e}</i><span style="flex:1;font-weight:600">${a}</span><b>${fm(b)} RWF</b></div>`).join('')}</div>`}
+if(p.c==='cafe'||p.c==='food'){const hr=new Date().getHours(),bz=[8,10,12,14,16,18,20].map((t,i)=>({t,v:28+(hs(p.id+i)%50)+(t===12||t===14?22:0)}));x+=`<div class="pz-s"><div class="pz-h">${L('Busy hours','Igihe cyuzuye','Heures de pointe')}</div><div class="pz-bz">${bz.map(b=>`<i class="${hr>=b.t&&hr<b.t+2?'on':''}" style="height:${b.v}%"></i>`).join('')}</div><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--tt);margin-top:6px">${bz.map(b=>`<span style="flex:1;text-align:center">${b.t}</span>`).join('')}</div><div class="sm mu" style="margin-top:8px">${L('Usually busiest 12:00 – 14:00','Hakunze kuba huzuye 12:00 – 14:00','Souvent plein de 12h à 14h')}</div></div>`}
+const k='<div class="pz-ai">',i=h.indexOf(k);h=i<0?h.replace(/(<div style="height:104px">)/,x+'$1'):h.slice(0,i)+x+h.slice(i);
+return h+bar};
+if(document.title)document.title=document.title.replace(/v\d+/,'v501');
+})()}catch(e){console.error('place-v500',e)}
+</script>
+<script>
+/* v509 (adds to v508 and v502, below): a Popular near you strip of the busiest listings above the list, quick questions to the seller (Is it still available?, Can you do a lower price?, Where can we meet?) that open the chat with that message ready, and two neighbour comments about the seller. v508 (adds to v502, below): Marketplace gets Free sharing (a Free chip and free items shown as Free), owner controls to mark a listing Reserved, Available again or Sold, on a buyer's page the listing's chats, saves and views, suggested public meet-up spots near the seller's area, and more from the same seller, and an Alert me button when a search finds nothing. v502: Marketplace, a real neighbourhood marketplace (Daangn style). Before: one flat list of items with a search box. Now: you pick your neighbourhood and range (My area, up to 3 km, up to 8 km) and only see listings near you, each with its distance and how long ago it was posted; rows show a big photo tile, price, Reserved / Sold badges, chat and save counts; Latest / Nearest sort; Saved and Mine tabs; a friendly empty state that widens the range. Listing page: seller card with a manner temperature, verified-neighbour badge, reply rate and deals done, a safe meet-up note, and a Bump to top button on your own listings. English only; rw/fr need native review. */
+try{(function(){
+const H=HD.market,esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const AR={Kimironko:[5,3],Remera:[3.5,2],Kacyiru:[1,3.5],Gisozi:[1,6],Nyamirambo:[-3,1],Kicukiro:[3,-3]};
+const RAD=[[0,'My area'],[3,'Up to 3 km'],[8,'Up to 8 km']],CT=['All','Electronics','Phones','Home','Fashion','Kids','Sports','Free','Saved','Mine'];
+if(S.mxHood===undefined){S.mxHood='Kimironko';S.mxRad=1;S.mxSortN=0;S.mxCt='All'}
+S.mxHide=S.mxHide||{};
+if(!H.fr){H.fr=1;H.items.push({id:901,ti:'Baby clothes, 0–12 months',g:'bag',p:0,sub:'Kimironko · 2 h ago',who:'Aline N.',c:'Kids',cond:'Good',d:'Clean baby clothes my daughter outgrew. Free to a neighbour who can use them. Pick up near Kimironko.'},{id:902,ti:'Wooden bookshelf',g:'house',p:0,sub:'Remera · Yesterday',who:'Joseph T.',c:'Home',cond:'Fair',d:'Sturdy shelf with a few scratches. You collect it.'},{id:903,ti:'Senior 2 textbooks',g:'school',p:0,sub:'Kacyiru · 5 h ago',who:'Claire U.',c:'Kids',cond:'Good',d:'Full set of Senior 2 books. Free for a student who needs them.'})}
+const hs=n=>{let h=0;String(n).split('').forEach(c=>h=(h*31+c.charCodeAt(0))>>>0);return h};
+const dist=(a,b)=>{const p=AR[a],q=AR[b];return p&&q?Math.hypot(p[0]-q[0],p[1]-q[1]):(a===b?0:4)};
+const area=x=>x.sub.split(' · ')[0],when=x=>x.sub.split(' · ')[1]||'Just now';
+const age=x=>{const s=when(x);let m;if(/now|min/i.test(s))return 0;if(m=s.match(/(\d+)\s*h/))return+m[1];if(/yesterday/i.test(s))return 24;if(m=s.match(/(\d+)\s*d/))return m[1]*24;return 48};
+const km=x=>{const d=dist(S.mxHood,area(x));return d<.5?'0.'+(2+hs(x.id)%6)+' km':d.toFixed(1)+' km'};
+const list=()=>{const q=S.mkQ.trim().toLowerCase(),c=S.mxCt,F=S.mxf||{cond:[],max:0,hood:''},R=RAD[S.mxRad][0];
+const l=H.items.filter(x=>!S.mxHide[x.id]&&(c==='All'||x.c===c||(c==='Free'&&x.p===0)||(c==='Saved'&&S.hdFav['market:'+x.id])||(c==='Mine'&&x.who==='You'))&&(c==='Saved'||c==='Mine'||dist(S.mxHood,area(x))<=R)&&(!q||(x.ti+' '+x.sub).toLowerCase().includes(q))&&(!F.cond.length||F.cond.includes(x.cond))&&(!F.max||x.p<=F.max)&&(!F.hood||area(x)===F.hood));
+return l.sort(S.mxSortN?(a,b)=>dist(S.mxHood,area(a))-dist(S.mxHood,area(b)):(a,b)=>age(a)-age(b))};
+const row=x=>{const st=x.st==='sold'?'Sold':x.st==='reserved'?'Reserved':'',ch=2+hs('c'+x.id)%9,lk=1+hs('l'+x.id)%14+(S.hdFav['market:'+x.id]?1:0);
+return `<div class="dg-r" role="button" tabindex="0" onclick="hdOpen('market',${x.id})"><div class="dg-th" style="${x.st==='sold'?'opacity:.5':''}">${gl(x.g,44)}</div><div class="dg-b"><div class="dg-t">${esc(x.ti)}</div><div class="dg-s">${esc(area(x))} · ${km(x)} · ${esc(when(x))}</div><div class="dg-p">${st?`<span class="dg-st ${st==='Sold'?'sd':''}">${st}</span>`:''}${x.p?fmt(x.p)+' RWF':'Free'}</div><div class="dg-m">${x.neg?'<span>Negotiable</span>':''}<span>💬 ${ch}</span><span>♡ ${lk}</span></div></div><span class="dg-h" onclick="event.stopPropagation()">${hdHeart('market',x.id)}</span></div>`};
+const body=()=>{const l=list();if(!l.length)return `<div class="dg-e"><div style="font-size:40px">🏘️</div><b>${S.mxCt==='Saved'?'Nothing saved yet':S.mxCt==='Mine'?'You have not sold anything yet':'Nothing near '+S.mxHood+' yet'}</b><div class="sm mu">${S.mxCt==='Saved'?'Tap the heart on a listing to keep it here.':S.mxCt==='Mine'?'List something and neighbours can chat with you.':'Try a wider range, or be the first neighbour to list something.'}</div><div style="display:flex;gap:10px;justify-content:center;margin-top:14px">${S.mkQ.trim()?'<button class="cch" onclick="mxAlert()">🔔 Alert me</button>':''}${S.mxRad<2&&S.mxCt!=='Saved'&&S.mxCt!=='Mine'?'<button class="cch" onclick="mxSetRad(2)">Widen range</button>':''}<button class="cch on" onclick="hdPost()">Sell something</button></div></div>`;return hot()+l.map(row).join('')};
+const hot=()=>{if(S.mxCt!=='All'||S.mkQ.trim())return '';const l=list().filter(x=>!x.st).sort((a,b)=>hs('c'+b.id)%9-hs('c'+a.id)%9).slice(0,4);return l.length<2?'':`<div style="padding:12px 24px 0"><b>Popular near ${esc(S.mxHood)}</b><div style="display:flex;gap:8px;overflow-x:auto;padding-top:8px">${l.map(x=>`<button class="cch" style="flex:none" onclick="hdOpen('market',${x.id})">🔥 ${esc(x.ti)} · ${x.p?fmt(x.p):'Free'}</button>`).join('')}</div></div>`};
+const QS=['Is it still available?','Can you do a lower price?','Where can we meet?'],RQ=['Arrived on time.','Item exactly as described.','Friendly and fair.','Easy to deal with.'];
+window.mxAsk=(id,i)=>{const x=H.items.find(y=>y.id===id);if(!x)return;const th='hdmarket'+id;hdThread(th,x.who,x.ti,[['me',QS[i]]]);S.tab='messages';openChat(th)};
+const bar_=()=>{const F=S.mxf||{cond:[],max:0,hood:''},n=F.cond.length+(F.max?1:0)+(F.hood?1:0);return `<span class="mu sm">${list().length} near ${esc(S.mxHood)}</span><span style="flex:1"></span><button class="cch" onclick="mxSortT()">${S.mxSortN?'Nearest':'Latest'} ⇅</button><button class="cch ${n?'on':''}" onclick="mxFilt()">Filter${n?' · '+n:''}</button>`};
+const chips=()=>CT.map(c=>`<button class="cch ${S.mxCt===c?'on':''}" onclick="mxPick('${c}')">${c}</button>`).join('');
+window.mxRedraw=()=>{if($('#mxl2'))$('#mxl2').innerHTML=body();if($('#mxcc'))$('#mxcc').innerHTML=chips();if($('#mxbr'))$('#mxbr').innerHTML=bar_()};
+window.mxPick=c=>{S.mxCt=c;mxRedraw()};window.mxSortT=()=>{S.mxSortN=S.mxSortN?0:1;mxRedraw()};
+window.mxSearch=v=>{S.mkQ=v;mxRedraw()};
+window.mxSetHood=a=>{S.mxHood=a;closeSheet();render('fade-none')};
+window.mxSetRad=i=>{S.mxRad=i;closeSheet();render('fade-none')};
+window.mxHoodSheet=()=>{$('#layer').innerHTML='<div class="sheetbg" onclick="closeSheet()"></div><div class="sheet"><div class="h1" style="font-size:22px;line-height:30px">Your neighbourhood</div><div class="sm mu" style="margin-top:6px;line-height:20px">You see listings from here and nearby, so you can meet and hand over in minutes.</div><div style="margin-top:10px">'+Object.keys(AR).map(a=>`<div class="dg-o" role="button" tabindex="0" onclick="mxSetHood('${a}')"><span>${a}</span><b>${S.mxHood===a?'✓':''}</b></div>`).join('')+'</div><div class="lab" style="margin-top:14px">Range</div><div class="dg-sg">'+RAD.map(([k,l],i)=>`<button class="${S.mxRad===i?'on':''}" onclick="mxSetRad(${i})">${l}</button>`).join('')+'</div></div>'};
+window.mxSt=(id,v)=>{const x=H.items.find(i=>i.id===id);if(!x)return;x.st=v;toast(v==='sold'?'Marked as sold':v==='reserved'?'Marked as reserved':'Available again');render('fade-none')};
+window.mxAlert=()=>{const q=S.mkQ.trim();if(!q)return;S.mxAl=S.mxAl||[];if(!S.mxAl.includes(q))S.mxAl.push(q);toast('We will tell you when a neighbour near '+S.mxHood+' lists '+q)};
+window.mxBump=id=>{const x=H.items.find(i=>i.id===id);if(!x)return;x.sub=area(x)+' · Just now';toast('Moved to the top of '+area(x));render('fade-none')};
+const oR=window.rf2;window.rf2=function(){if(S.hd==='market'&&$('#mxl2'))mxRedraw();else if(oR)return oR.apply(this,arguments)};
+const oT=window.hdTg;window.hdTg=function(t,id){oT.apply(this,arguments);if(t==='market'&&S.mxCt==='Saved'&&$('#mxl2'))mxRedraw()};
+if(!$('#dg502')){const s=document.createElement('style');s.id='dg502';s.textContent=`.dg-loc{display:flex;align-items:center;gap:10px;padding:12px 24px 0}.dg-hb{border:0;background:none;color:var(--tx);font:inherit;font-size:20px;font-weight:800;padding:0;display:flex;align-items:center;gap:6px}.dg-hb i{font-style:normal;font-size:13px;color:var(--tt)}.dg-v{font-size:12px;font-weight:700;padding:3px 9px;border-radius:12px;background:var(--tint);color:var(--tintfg)}.dg-q{margin:12px 24px 0}.dg-q input{width:100%;height:44px;border-radius:22px;border:0;background:var(--chip);color:var(--tx);font:inherit;font-size:15px;padding:0 16px}.dg-ib{display:flex;align-items:center;gap:8px;padding:12px 24px 0}.dg-r{position:relative;display:flex;gap:14px;padding:16px 24px;border-bottom:1px solid var(--chip);cursor:pointer}.dg-th{width:96px;height:96px;flex:none;border-radius:16px;background:var(--tint);display:flex;align-items:center;justify-content:center}.dg-b{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;padding-right:30px}.dg-t{font-size:16px;line-height:22px;font-weight:600;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.dg-s{font-size:13px;color:var(--tt)}.dg-p{font-size:17px;font-weight:800;display:flex;align-items:center;gap:6px}.dg-st{font-size:12px;font-weight:700;padding:2px 8px;border-radius:10px;background:var(--tint);color:var(--tintfg)}.dg-st.sd{background:var(--chip);color:var(--tt)}.dg-m{display:flex;gap:10px;justify-content:flex-end;font-size:13px;color:var(--tt);margin-top:auto}.dg-m span:first-child:not(:last-child){margin-right:auto}.dg-h{position:absolute;right:18px;top:12px}.dg-e{text-align:center;padding:48px 24px;display:flex;flex-direction:column;gap:6px;align-items:center}.dg-o{display:flex;justify-content:space-between;padding:14px 4px;font-size:17px;font-weight:600;border-bottom:1px solid var(--chip);cursor:pointer}.dg-sg{display:flex;gap:6px;background:var(--chip);border-radius:14px;padding:4px;margin-top:8px}.dg-sg button{flex:1;height:40px;border:0;border-radius:11px;background:none;color:var(--tx);font:inherit;font-size:14px;font-weight:600}.dg-sg button.on{background:var(--bg,#fff);box-shadow:0 1px 4px rgba(0,0,0,.14)}.dg-sel{margin:16px 24px 0;padding:16px;border-radius:20px;background:var(--chip)}.dg-sr{display:flex;align-items:center;gap:12px}.dg-av{width:44px;height:44px;border-radius:22px;background:var(--tint);color:var(--tintfg);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px}.dg-tmp{text-align:right;min-width:92px}.dg-tb{height:5px;border-radius:3px;background:var(--tint);margin:4px 0 2px;overflow:hidden}.dg-tb i{display:block;height:100%}.dg-tmp span{font-size:11px;color:var(--tt)}.dg-n{font-size:13px;color:var(--tt);margin-top:12px;line-height:19px}`;document.head.appendChild(s)}
+const oS=screens.hood;screens.hood=function(){if(S.hd!=='market')return oS.apply(this,arguments);
+return `${bar('Marketplace')}<div class="dg-loc"><button class="dg-hb" onclick="mxHoodSheet()">📍 ${esc(S.mxHood)} <i>▾</i></button><span class="dg-v">✓ Verified area</span></div><div class="dg-q"><input id="mxq" type="search" aria-label="Search listings" placeholder="Search in ${esc(S.mxHood)}" value="${esc(S.mkQ)}" oninput="mxSearch(this.value)"></div><div class="chips" style="padding-top:12px" id="mxcc">${chips()}</div><div class="dg-ib" id="mxbr">${bar_()}</div><div id="mxl2" style="padding-top:6px">${body()}</div><div class="pad fine" style="padding-top:18px">Listings are sample data for this prototype.</div><div class="fab"><button class="btn" onclick="hdPost()" style="height:46px;padding:0 20px;font-size:15px;border-radius:23px;width:auto">+ Sell</button></div>`};
+const oI=screens.hoodItem;screens.hoodItem=function(){const h=oI.apply(this,arguments);if(S.hd!=='market'||h.includes('dg-sel'))return h;const x=H.items.find(i=>i.id===S.hdI);if(!x)return h;
+const mine=x.who==='You',tmp=mine?36.5:36.5+(hs(x.who)%80)/10,col=tmp<37.5?'#4C8DF6':tmp<40?'#2E9E5B':'#F08A24',a=area(x);
+const card=mine?`<div class="dg-sel"><div class="dg-sr"><div class="dg-av">${esc(x.who[0])}</div><div style="flex:1"><b>Your listing</b><div class="sm mu">${esc(a)} · posted ${esc(when(x))}</div></div></div><div class="dg-n">💬 ${2+hs('c'+x.id)%9} chats · ♡ ${1+hs('l'+x.id)%14} saves · 👁 ${20+hs('v'+x.id)%80} views</div><button class="cch on" style="margin-top:10px;height:44px" onclick="mxBump(${x.id})">Bump to top</button>${x.st==='sold'?'':`<div style="display:flex;gap:8px;margin-top:8px"><button class="cch" onclick="mxSt(${x.id},'${x.st==='reserved'?'':'reserved'}')">${x.st==='reserved'?'Mark available':'Mark reserved'}</button><button class="cch" onclick="mxSt(${x.id},'sold')">Mark sold</button></div>`}</div>`:`<div class="dg-sel"><div class="dg-sr"><div class="dg-av">${esc(x.who[0])}</div><div style="flex:1;min-width:0"><b>${esc(x.who)}</b><div class="sm mu">${esc(a)} · Verified neighbour</div></div><div class="dg-tmp"><b style="color:${col}">${tmp.toFixed(1)}°C</b><div class="dg-tb"><i style="width:${Math.min(100,(tmp-30)*5)}%;background:${col}"></i></div><span>Manner temperature</span></div></div><div class="dg-n">Replies within an hour · ${70+hs(x.who)%30}% reply rate · ${3+hs(x.who)%20} deals done</div></div><div class="dg-n" style="margin:10px 24px 0">📍 Meet in a public place near ${esc(a)}, like a bus stop, shop or café. Check the item before you pay.</div>`;
+let extra='';if(!mine){const o=H.items.filter(y=>y.who===x.who&&y.id!==x.id&&!y.st).slice(0,3);
+extra=`<div class="dg-sel" style="margin-top:12px"><div class="dg-n" style="margin:0">💬 ${2+hs('c'+x.id)%9} chats · ♡ ${1+hs('l'+x.id)%14} saves · 👁 ${20+hs('v'+x.id)%80} views</div>${x.st?'':`<div class="lab" style="margin-top:12px">Ask the seller</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">${QS.map((q,i)=>`<button class="cch" onclick="mxAsk(${x.id},${i})">${q}</button>`).join('')}</div>`}<div class="sm" style="line-height:21px;margin-top:12px;color:var(--mu)">💬 “${RQ[hs(x.who)%4]}”<br>💬 “${RQ[(hs(x.who)+2)%4]}”<div style="font-size:12px;color:var(--tt);margin-top:2px">From neighbours who dealt with ${esc(x.who)}</div></div><div class="lab" style="margin-top:12px">Suggested public meet-up spots</div><div class="sm" style="line-height:21px">📍 ${esc(a)} bus stop<br>📍 ${esc(a)} market<br>📍 ${esc(a)} sector office</div></div>${o.length?`<div class="dg-sel" style="margin-top:12px"><b>More from ${esc(x.who)}</b><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">${o.map(y=>`<button class="cch" onclick="hdOpen('market',${y.id})">${esc(y.ti)}</button>`).join('')}</div></div>`:''}`}
+const c=h.indexOf('<div class="cta"');return c>0?h.slice(0,c)+card+extra+h.slice(c):h+card+extra};
+if(document.title)document.title=document.title.replace(/v\d+/,'v502');
+})()}catch(e){console.error('market-v502',e)}
+</script>
+<script>
+/* v510 (adds to v503, below): Post a job now starts with the shift (days and hours), number of openings and perks (Paid same day, Meal included, Transport), and sets the work location to your neighbourhood; rows and job pages show perks and openings; a Map view shows a pin per area with the number of open jobs, tap a pin to see that area. v503: Jobs, a real neighbourhood job board (Daangn Alba style). Before: one flat list of sample jobs with Part-time / Gig chips. Now: Jobs shares your neighbourhood and range with Marketplace (📍 on top; My area, up to 3 km, up to 8 km), so you only see work close to home. Each row shows distance, how long ago it was posted, pay with the hourly equivalent, the shift (days and hours), a type tag (New, Start ASAP, Part-time, Gig), applicants and your application status. Categories (Food, Shop, Delivery, Cleaning, Tutoring, Events, Office) plus Saved, Applied, Mine; Latest / Nearest sort; Filter and Profile still work. Job page: a When and where card (shift, pay per hour, distance with walk or moto time, posted, applicants), an employer card (verified local business, manner temperature, reply rate, people hired, two neighbour reviews) and a never-pay-to-get-a-job note. Your own jobs show chats, saves, views, applicants and Bump to top. Five new sample jobs so every neighbourhood has work. English only; rw/fr need native review. */
+try{(function(){
+const H=HD.jobs,esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const AR={Kimironko:[5,3],Remera:[3.5,2],Kimihurura:[2.5,2.5],Kacyiru:[1,3.5],Gisozi:[1,6],Nyamirambo:[-3,1],Nyabugogo:[-3,-1],Kicukiro:[3,-3]};
+const HOODS=['Kimironko','Remera','Kacyiru','Gisozi','Nyamirambo','Kicukiro'],RAD=['My area','Up to 3 km','Up to 8 km'],RV=[0,3,8];
+const CT=['All','Today','Food','Shop','Delivery','Cleaning','Tutoring','Events','Office','Saved','Applied','Shifts','Mine'],STS=['Applied','Viewed','Interview invite'],SP=['Saved','Applied','Shifts','Mine'];
+if(S.mxHood===undefined){S.mxHood='Kimironko';S.mxRad=1}
+if(S.jnSort===undefined){S.jnSort=0;S.jnQ=''}
+if(!H.jn){H.jn=1;
+const E={1:['Shop',2,'Mon–Fri · 07:00–13:00'],2:['Delivery',5,'Flexible · you pick the hours'],3:['Tutoring',26,'Saturdays · 09:00–11:00'],4:['Events',50,'One day · 07:00–16:00'],5:['Shop',9,'Mon–Sat · 13:00–19:00'],6:['Office',72,'Mon–Fri · 08:00–17:00'],7:['Office',120,'Mon–Sat · 08:00–16:00']};
+H.items.forEach(x=>{const e=E[x.id];if(e){x.k=e[0];x.ago=e[1];x.sh=e[2]}if(x.id===4)x.loc='Kimihurura'});
+H.items.push(
+{id:8,ti:'Barista helper',g:'bag',c:'Part-time',who:'Kimironko Brew House',n:5000,u:'day',loc:'Kimironko',k:'Food',ago:1,sh:'Mon–Fri · 07:00–13:00',start:'asap',d:'Prepare drinks, wash cups and keep the counter clean. Training on the job.',req:['Friendly and punctual','Can start this week']},
+{id:9,ti:'House cleaner',g:'house',c:'Gig',who:'Gisozi Homes',n:4000,u:'day',loc:'Gisozi',k:'Cleaning',ago:6,sh:'Tue and Fri · 08:00–12:00',d:'Clean a family home twice a week. Cleaning supplies are provided.',req:['Honest and careful','Lives in or near Gisozi']},
+{id:10,ti:'Pharmacy delivery rider',g:'moto',c:'Gig',who:'Kicukiro Pharmacy',n:600,u:'task',loc:'Kicukiro',k:'Delivery',ago:3,sh:'Flexible · you pick the hours',d:'Deliver medicines to homes in Kicukiro. Paid per delivery, every week.',req:['Own moto','Valid licence']},
+{id:11,ti:'Restaurant waiter',g:'bag',c:'Part-time',who:'Kacyiru Kitchen',n:4500,u:'day',loc:'Kacyiru',k:'Food',ago:20,sh:'Wed–Sun · 16:00–22:00',d:'Welcome guests, take orders and serve tables. Tips are yours to keep.',req:['Good with customers','Can work evenings']},
+{id:12,ti:'Kitchen helper',g:'bag',c:'Part-time',who:'Remera Pizza',n:3500,u:'day',loc:'Remera',k:'Food',ago:30,sh:'Mon–Sat · 10:00–16:00',d:'Chop vegetables, wash dishes and help the cook. A hot meal is included.',req:['Hard-working','Clean and tidy']});}
+const hs=n=>{let h=0;String(n).split('').forEach(c=>h=(h*31+c.charCodeAt(0))>>>0);return h};
+const kind=x=>x.k||(/cook|waiter|kitchen|caf|barista|restaurant|chef/i.test(x.ti)?'Food':/shop|cashier|sales|seller/i.test(x.ti)?'Shop':/deliver|rider|moto|driver/i.test(x.ti)?'Delivery':/clean|laundry|garden/i.test(x.ti)?'Cleaning':/tutor|teach/i.test(x.ti)?'Tutoring':/event|usher/i.test(x.ti)?'Events':'Other');
+const area=x=>{const l=String(x.loc||'');for(const k in AR)if(l.includes(k))return k;return x.who==='You'?S.mxHood:(l||'Kigali')};
+const dist=x=>{const p=AR[area(x)],q=AR[S.mxHood];return p&&q?Math.hypot(p[0]-q[0],p[1]-q[1]):4};
+const km=x=>{const d=dist(x);return d<.5?'0.'+(2+hs(x.id)%6)+' km':d.toFixed(1)+' km'};
+const eta=x=>{const d=dist(x);return d<=1.5?Math.max(3,Math.round(d*12))+' min walk':'about '+Math.max(8,Math.round(d*4))+' min by moto'};
+const ago=x=>x.ago||0,when=x=>{const a=ago(x);return a<1?'Just now':a<24?a+' h ago':a<48?'Yesterday':Math.floor(a/24)+' d ago'};
+const hrs=x=>{const m=/(\d\d):(\d\d)\D+(\d\d):(\d\d)/.exec(x.sh||'');return m?((+m[3]*60+ +m[4])-(+m[1]*60+ +m[2]))/60:0};
+const hourly=x=>{const h=hrs(x);return h>0&&x.u!=='month'&&x.n?Math.round(x.n/h/10)*10:0};
+const pay=x=>fmt(x.n)+' RWF / '+x.u,nApp=x=>2+hs('a'+x.id)%9,stT=x=>S.hdApplied[x.id]?STS[S.jbSt[x.id]||0]:'';
+const pks=x=>x.pk||({1:['Paid same day'],8:['Training'],9:['Transport'],10:['Paid weekly'],11:['Meal included'],12:['Meal included']}[x.id])||[];
+const px=x=>Math.round(48+(x+3)*30),py=y=>Math.round(290-(y+3.5)*26);
+const jmap=()=>{const R=RV[S.mxRad],c=AR[S.mxHood];return `<div style="margin:10px 24px 0;border-radius:20px;background:var(--chip);overflow:hidden"><svg viewBox="0 0 330 312" width="100%" role="img" aria-label="Map of open jobs by area">${c&&R?`<ellipse cx="${px(c[0])}" cy="${py(c[1])}" rx="${R*30}" ry="${R*26}" fill="var(--tint)" opacity=".5" stroke="var(--tintfg)" stroke-dasharray="4 4"/>`:''}${Object.keys(AR).map(a=>{const n=H.items.filter(x=>area(x)===a&&!x.st).length,here=a===S.mxHood,X=px(AR[a][0]),Y=py(AR[a][1]);return `<g onclick="jnArea('${a}')" style="cursor:pointer"><circle cx="${X}" cy="${Y}" r="${here?19:15}" fill="${n?'var(--tintfg)':'var(--mu)'}" opacity="${n?1:.4}" ${here?'stroke="var(--tx)" stroke-width="3"':''}/><text x="${X}" y="${Y+5}" text-anchor="middle" font-size="14" font-weight="800" fill="#fff">${n}</text><text x="${X}" y="${Y+(here?34:30)}" text-anchor="middle" font-size="11" font-weight="700" fill="var(--tx)">${a}</text></g>`}).join('')}</svg><div class="sm mu" style="padding:0 14px 10px">Tap an area to see its jobs. Your area has a dark ring.</div></div>`};
+window.jnArea=a=>{S.jbfl=S.jbfl||{};S.jbfl.area=S.jbfl.area===a?'':a;S.jnMap=0;jnRedraw()};
+const cat=()=>CT.includes(S.jbCat)?S.jbCat:'All';
+const list=()=>{const q=S.jnQ.trim().toLowerCase(),c=cat(),R=RV[S.mxRad];
+const l=H.items.filter(x=>!(S.jbHide||{})[x.id]&&window.jbFltOk(x)&&(c==='All'||(c==='Today'&&x.start==='asap'&&!x.st)||kind(x)===c||(c==='Saved'&&S.hdFav['jobs:'+x.id])||(c==='Applied'&&S.hdApplied[x.id])||(c==='Shifts'&&S.hdApplied[x.id]&&(S.jbSt[x.id]||0)>=2)||(c==='Mine'&&x.who==='You'))&&(SP.includes(c)||(S.jbfl||{}).area||dist(x)<=R)&&(!q||(x.ti+' '+x.who+' '+x.loc+' '+kind(x)).toLowerCase().includes(q)));
+return l.sort(S.jnSort?(a,b)=>dist(a)-dist(b):(a,b)=>ago(a)-ago(b))};
+const row=x=>{const ap=stT(x),tg=[`<span class="jn-t">${x.c}</span>`],hr=hourly(x);
+if(!x.st&&ago(x)<24)tg.unshift('<span class="jn-t hi">New</span>');if(x.start==='asap'&&!x.st)tg.push('<span class="jn-t hi">Start ASAP</span>');pks(x).slice(0,2).forEach(p=>tg.push('<span class="jn-t">'+p+'</span>'));if(x.op>1)tg.push('<span class="jn-t">'+x.op+' openings</span>');
+return `<div class="dg-r" role="button" tabindex="0" style="${x.st?'opacity:.55':''}" onclick="hdOpen('jobs',${x.id})"><div class="dg-th">${gl(x.g,44)}</div><div class="dg-b"><div class="dg-t">${esc(x.ti)}</div><div class="dg-s">${esc(x.who)} · ${km(x)} · ${when(x)}</div><div class="dg-p">${x.st?'<span class="dg-st sd">Filled</span>':ap?`<span class="dg-st">${ap}</span>`:''}${pay(x)}</div>${hr?`<div class="jn-sh">≈ ${fmt(hr)} RWF / hour</div>`:''}${x.sh?`<div class="jn-sh">🕒 ${esc(x.sh)}</div>`:''}<div class="jn-m">${tg.join('')}<span class="jn-p">👥 ${nApp(x)}</span></div></div><span class="dg-h" onclick="event.stopPropagation()">${hdHeart('jobs',x.id)}</span></div>`};
+const body=()=>(S.jnMap?jmap():'')+body1();const body1=()=>{const l=list(),c=cat();if(!l.length)return `<div class="dg-e"><div style="font-size:40px">💼</div><b>${c==='Saved'?'Nothing saved yet':c==='Applied'?'You have not applied yet':c==='Shifts'?'No shifts yet':c==='Mine'?'You have not posted a job yet':'No jobs near '+esc(S.mxHood)+' yet'}</b><div class="sm mu">${c==='Saved'?'Tap the heart on a job to keep it here.':c==='Applied'?'Chat with an employer or tap Apply on a job.':c==='Shifts'?'When an employer invites you, your shift shows here. Check in, check out and get paid.':c==='Mine'?'Post a job and neighbours can chat with you.':'Try a wider range, or another category.'}</div><div style="display:flex;gap:10px;justify-content:center;margin-top:14px">${S.mxRad<2&&!SP.includes(c)?'<button class="cch" onclick="mxSetRad(2)">Widen range</button>':''}<button class="cch on" onclick="hdPost()">Post a job</button></div></div>`;return l.map(row).join('')};
+const bar_=()=>{const F=S.jbfl||{},n=(F.area?1:0)+(F.unit?1:0)+(F.hide?1:0),k=list().length;return `<span class="mu sm">${k} jobs</span><span style="flex:1"></span><button class="cch ${S.jnMap?'on':''}" onclick="S.jnMap=S.jnMap?0:1;jnRedraw()">🗺 Map</button><button class="cch" onclick="jnSortT()">${S.jnSort?'Nearest':'Latest'} ⇅</button><button class="cch ${(S.jn13al||[]).includes(jn13k())?'on':''}" onclick="jn13Al()">🔔 Alert</button><button class="cch ${n?'on':''}" onclick="jbFilt()">Filter${n?' · '+n:''}</button>`};
+const chips=()=>CT.map(c=>`<button class="cch ${cat()===c?'on':''}" onclick="jbCat('${c}')">${c}</button>`).join('')+'<button class="cch" onclick="jbProf()">👤 Profile</button>';
+window.jnRedraw=()=>{if($('#jnl'))$('#jnl').innerHTML=body();if($('#jncc'))$('#jncc').innerHTML=chips();if($('#jnbr'))$('#jnbr').innerHTML=bar_()};
+window.jbCat=c=>{if(c)S.jbCat=c;jnRedraw()};window.jnSortT=()=>{S.jnSort=S.jnSort?0:1;jnRedraw()};window.jnSearch=v=>{S.jnQ=v;jnRedraw()};
+window.jnHood=()=>{$('#layer').innerHTML='<div class="sheetbg" onclick="closeSheet()"></div><div class="sheet"><div class="h1" style="font-size:22px;line-height:30px">Your neighbourhood</div><div class="sm mu" style="margin-top:6px;line-height:20px">Jobs, Marketplace, Community and Property use the same neighbourhood. You see what is close to home, so everything is a short trip away.</div><div style="margin-top:10px">'+HOODS.map(a=>`<div class="dg-o" role="button" tabindex="0" onclick="mxSetHood('${a}')"><span>${a}</span><b>${S.mxHood===a?'✓':''}</b></div>`).join('')+'</div><div class="lab" style="margin-top:14px">Range</div><div class="dg-sg">'+RAD.map((l,i)=>`<button class="${S.mxRad===i?'on':''}" onclick="mxSetRad(${i})">${l}</button>`).join('')+'</div></div>'};
+window.jnBump=id=>{const x=H.items.find(i=>i.id===id);if(!x)return;x.ago=0;toast('Moved to the top of '+area(x));render('fade-none')};
+const oR=window.rf2;window.rf2=function(){if(S.hd==='jobs'&&$('#jnl'))jnRedraw();else if(oR)return oR.apply(this,arguments)};
+const oT=window.hdTg;window.hdTg=function(t,id){oT.apply(this,arguments);if(t==='jobs'&&S.jbCat==='Saved'&&$('#jnl'))jnRedraw()};
+const oA=window.jbApplyGo;if(oA)window.jbApplyGo=function(){oA.apply(this,arguments);[5200,12200].forEach(t=>setTimeout(()=>{if(S.hd==='jobs'&&$('#jnl'))jnRedraw()},t))};
+if(!$('#jn503')){const s=document.createElement('style');s.id='jn503';s.textContent='.jn-sh{font-size:13px;color:var(--mu)}.jn-m{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:auto;padding-top:4px}.jn-t{font-size:12px;font-weight:700;padding:2px 8px;border-radius:10px;background:var(--chip);color:var(--mu)}.jn-t.hi{background:var(--tint);color:var(--tintfg)}.jn-p{margin-left:auto;font-size:13px;color:var(--tt)}.jn-g{display:grid;grid-template-columns:1fr 1fr;gap:14px}.jn-g span{display:block;font-size:12px;color:var(--tt)}.jn-g b{font-size:14px;line-height:19px}.jn-rv{font-size:14px;line-height:21px;margin-top:12px;color:var(--mu)}';document.head.appendChild(s)}
+const oS=screens.hood;screens.hood=function(){if(S.hd!=='jobs')return oS.apply(this,arguments);
+return `${bar(H.t)}<div class="dg-loc"><button class="dg-hb" onclick="jnHood()">📍 ${esc(S.mxHood)} <i>▾</i></button><span class="dg-v">✓ Verified area</span></div><div class="dg-q"><input id="jnq" type="search" aria-label="Search jobs" placeholder="Search jobs in ${esc(S.mxHood)}" value="${esc(S.jnQ)}" oninput="jnSearch(this.value)"></div><div class="chips" style="padding-top:12px" id="jncc">${chips()}</div><div class="dg-ib" id="jnbr">${bar_()}</div><div id="jnl" style="padding-top:6px">${body()}</div><div class="pad fine" style="padding-top:18px">Listings are sample data for this prototype.</div><div class="fab"><button class="btn" onclick="hdPost()" style="height:46px;padding:0 20px;font-size:15px;border-radius:23px;width:auto">+ Post a job</button></div>`};
+const oI=screens.hoodItem;screens.hoodItem=function(){let h=oI.apply(this,arguments);if(S.hd!=='jobs'||h.includes('jn-g')||h.includes('jn-mine'))return h;const x=H.items.find(i=>i.id===S.hdI);if(!x)return h;
+const mine=x.who==='You',a=area(x),hr=hourly(x),SEL='<div class="dg-sel" style="margin:16px 0 0">';
+const cardA=mine?`<div class="dg-sel jn-mine" style="margin:16px 0 0"><div class="dg-sr"><div class="dg-av">Y</div><div style="flex:1"><b>Your job</b><div class="sm mu">${esc(a)} · posted ${when(x)}</div></div></div><div class="dg-n">💬 ${2+hs('c'+x.id)%9} chats · ♡ ${1+hs('l'+x.id)%14} saves · 👁 ${20+hs('v'+x.id)%80} views · 👥 ${nApp(x)} applicants</div>${x.st?'':`<button class="cch on" style="margin-top:10px;height:44px" onclick="jnBump(${x.id})">Bump to top</button>`}</div>`
+:`${SEL}<div class="jn-g"><div><span>🕒 Shift</span><b>${x.sh?esc(x.sh):'Ask the employer'}</b></div><div><span>💰 Per hour</span><b>${hr?'≈ '+fmt(hr)+' RWF':'Not fixed'}</b></div><div><span>📍 From ${esc(S.mxHood)}</span><b>${km(x)} · ${eta(x)}</b></div><div><span>🗓 Posted</span><b>${when(x)} · ${nApp(x)} applied</b></div>${pks(x).length?`<div style="grid-column:1/3"><span>🎁 Perks</span><b>${pks(x).join(' · ')}</b></div>`:''}${x.op>1?`<div style="grid-column:1/3"><span>👥 Openings</span><b>${x.op} people needed</b></div>`:''}</div></div>`;
+const an='<div style="font-size:15px;line-height:23px;margin-top:16px">',i=h.indexOf(an);h=i>=0?h.slice(0,i)+cardA+h.slice(i):h;
+if(mine)return h;
+const tmp=36.5+(hs(x.who)%80)/10,col=tmp<37.5?'#4C8DF6':tmp<40?'#2E9E5B':'#F08A24',rv=['Pays on time every week.','Clear hours and a friendly boss.','Easy to reach from home.','Fair and respectful.'];
+const cardE=`${SEL.replace('16px','18px')}<div class="dg-sr"><div class="dg-av">${esc(x.who[0])}</div><div style="flex:1;min-width:0"><b>${esc(x.who)}</b><div class="sm mu">${esc(a)} · Verified local business</div></div><div class="dg-tmp"><b style="color:${col}">${tmp.toFixed(1)}°C</b><div class="dg-tb"><i style="width:${Math.min(100,(tmp-30)*5)}%;background:${col}"></i></div><span>Manner temperature</span></div></div><div class="dg-n">Replies within an hour · ${70+hs(x.who)%30}% reply rate · ${3+hs(x.who)%20} people hired</div><div class="jn-rv">💬 “${rv[hs(x.who)%4]}”<br>💬 “${rv[(hs(x.who)+2)%4]}”<div style="font-size:12px;color:var(--tt);margin-top:4px">From neighbours who worked here</div></div></div><div class="dg-n" style="margin:10px 0 0">🛡 Never pay to get a job. Meet at the workplace in daylight and tell a friend where you are going.</div>`;
+const m=/<div class="tap"[^>]*onclick="jbEmp\(/.exec(h);return m?h.slice(0,m.index)+cardE+h.slice(m.index):h};
+if(document.title)document.title=document.title.replace(/v\d+/,'v503');
+})()}catch(e){console.error('jobs-v503',e)}
+</script>
+<script>
+/* v504: Community, a real neighbourhood community (Daangn "Life" style). Before: one city-wide feed with a search field and area chips. Now: Community shares your neighbourhood and range with Marketplace and Jobs (📍 on top, with how many neighbours live there), and the feed only shows posts from there and nearby. Every post shows its area, distance, how long ago it was posted and how many neighbours looked at it. A "Ask your neighbours something…" bar sits on top, topic chips (Ask, Tips, Events, Safety, Lost & found, Saved, Following, Mine) filter the feed, Latest / Popular sort and Muted still work, and an empty feed offers "Widen range". New posts default to your neighbourhood. Six new sample posts so each area has some. Polls, events, replies, follow, mute and report are unchanged. English only; rw/fr need native review. */
+try{(function(){
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const AR={Kimironko:[5,3],Remera:[3.5,2],Kimihurura:[2.5,2.5],Kacyiru:[1,3.5],Gisozi:[1,6],Nyamirambo:[-3,1],Nyabugogo:[-3,-1],Kicukiro:[3,-3],Gikondo:[1,-3.5]};
+const RV=[0,3,8],TOP=[['All','All'],['Ask','Ask'],['Tips','Tips'],['Events','Events'],['Safety','Safety'],['Lost','Lost & found'],['Saved','Saved'],['Following','Following'],['Mine','Mine']],SP=['Saved','Following','Mine'];
+if(S.mxHood===undefined){S.mxHood='Kimironko';S.mxRad=1}
+if(!S.cnSeed&&S.posts&&S.cm){S.cnSeed=1;S.posts.push(
+{id:201,who:'Diane K.',t:'25 min ago',a:25,area:'Kimironko',cat:'Ask',x:'Where can I find a reliable tailor near Kimironko market? I need a school uniform fixed by Monday.',l:4,c:2,me:false,rp:[['Eric M.','Ask for Mama Chantal at the market, second row. Fast and fair.'],['Aline N.','Seconded. She fixed mine in one day.']]},
+{id:202,who:'Patrick H.',t:'3 h ago',a:180,area:'Kacyiru',cat:'Tips',x:'Tip: the 8:00 bus from Kacyiru to town is almost empty, the 7:00 one is packed. Leave 30 minutes later and you get a seat.',l:19,c:5,me:false,v:1,rp:[]},
+{id:203,who:'Gisozi Sector Office',t:'5 h ago',a:300,area:'Gisozi',cat:'Events',x:'Community clean-up in Gisozi this Saturday at 8:00. Gloves and bags are provided at the sector office.',l:31,c:6,me:false,v:1,rp:[],ev:{w:'Sat 08:00',wh:'Gisozi sector office',n:42,me:0,rm:0,x:0}},
+{id:204,who:'Grace U.',t:'Yesterday',a:1500,area:'Kicukiro',cat:'Lost',x:'Lost a black school bag near Kicukiro centre on Tuesday evening. It has exercise books inside. Please message me.',l:9,c:1,me:false,rp:[]},
+{id:205,who:'Joseph T.',t:'Yesterday',a:1700,area:'Remera',cat:'Safety',x:'The street lights on the road behind Remera stadium are out again. Walk in groups after dark until it is fixed.',l:27,c:7,me:false,rp:[['Claire U.','Thanks. I reported it to the cell office this morning.']]},
+{id:206,who:'Sandrine M.',t:'2 d ago',a:2800,area:'Kimironko',cat:'Tips',x:'The new bakery on the Kimironko main road sells fresh bread at 6:00 for 300 RWF. Worth the walk.',l:15,c:3,me:false,rp:[]})}
+const hs=n=>{let h=0;String(n).split('').forEach(c=>h=(h*31+c.charCodeAt(0))>>>0);return h};
+const pa=p=>p.area||S.mxHood,dist=p=>{const a=AR[pa(p)],b=AR[S.mxHood];return a&&b?Math.hypot(a[0]-b[0],a[1]-b[1]):4};
+const km=p=>{const d=dist(p);return d<.5?'0.'+(2+hs(p.id)%6)+' km':d.toFixed(1)+' km'};
+const feed=()=>{const all=S.posts,cm=S.cm,sv=cm.area,sp=SP.includes(cm.cat),R=RV[S.mxRad];
+S.posts=all.filter(p=>sp||!p.area||dist(p)<=R).map(p=>Object.assign({},p,{area:pa(p)+' · '+km(p),t:p.t+' · 👁 '+(30+hs('v'+p.id)%170)}));cm.area='';
+let h='';try{h=window.rowsC2()}finally{S.posts=all;cm.area=sv}
+const n=(h.match(/class="post"/g)||[]).length;
+if(!n&&!sp&&S.mxRad<2)h+='<div style="text-align:center;padding-top:6px"><button class="cch" onclick="mxSetRad(2)">Widen range</button></div>';
+return {h,n}};
+const bar_=n=>{const nm=Object.keys(S.cm.mute).length;return `<span class="mu sm">${n} ${SP.includes(S.cm.cat)?'posts':'near '+esc(S.mxHood)}</span><span style="flex:1"></span><button class="cch" onclick="cmSort()">${S.cm.sort?'Popular':'Latest'} ⇅</button>${nm?`<button class="cch" onclick="cmMuted()">🔇 ${nm}</button>`:''}`};
+const chips=()=>TOP.map(([k,l])=>`<button class="cch ${S.cm.cat===k?'on':''}" onclick="cnCat('${k}')">${l}</button>`).join('');
+window.cnRedraw=()=>{const f=feed();if($('#cnl'))$('#cnl').innerHTML=f.h;if($('#cnc'))$('#cnc').innerHTML=chips();if($('#cnb'))$('#cnb').innerHTML=bar_(f.n)};
+window.cnCat=k=>{S.cm.cat=k;cnRedraw()};window.cnSearch=v=>{S.cm.q=v;cnRedraw()};
+const oP=window.postSheet;if(oP)window.postSheet=function(){const sv=S.cm.area;S.cm.area=S.mxHood;try{return oP.apply(this,arguments)}finally{S.cm.area=sv}};
+const oRd=window.render;window.render=render=function(m){const had=$('#cnl'),y=had&&$('#sc')?$('#sc').scrollTop:0,r=oRd.apply(this,arguments);if(had&&m==='fade-none'&&$('#cnl')&&$('#sc'))$('#sc').scrollTop=y;return r};
+if(!$('#cn504')){const s=document.createElement('style');s.id='cn504';s.textContent='.cn-c{display:flex;align-items:center;gap:10px;margin:12px 24px 0;padding:0 16px;height:48px;border-radius:24px;background:var(--chip);color:var(--mu);font-size:15px;font-weight:600;cursor:pointer}';document.head.appendChild(s)}
+screens.community=function(){const f=feed(),d=S.cqDraft&&S.cqDraft.t;
+return `${bar('Community')}<div class="dg-loc"><button class="dg-hb" onclick="jnHood()">📍 ${esc(S.mxHood)} <i>▾</i></button><span class="dg-v">✓ Verified area</span></div><div class="dg-n" style="margin:4px 24px 0">${(900+hs(S.mxHood)%900).toLocaleString('en-US')} neighbours here</div><div class="dg-q"><input id="cnq" type="search" aria-label="Search posts" placeholder="Search posts in ${esc(S.mxHood)}" value="${esc(S.cm.q)}" oninput="cnSearch(this.value)"></div><div class="cn-c" role="button" tabindex="0" onclick="postSheet()"><span>✏️</span><span>${d?'Continue your draft…':'Ask your neighbours something…'}</span></div><div class="chips" style="padding-top:12px" id="cnc">${chips()}</div><div class="dg-ib" id="cnb">${bar_(f.n)}</div><div id="cnl" style="padding-top:6px">${f.h}</div><div class="pad fine" style="padding-top:18px">Posts are sample data for this prototype.</div>`};
+if(document.title)document.title=document.title.replace(/v\d+/,'v504');
+})()}catch(e){console.error('community-v504',e)}
+</script>
+<script>
+/* v507 (builds on v506 and v505, below): homes can show a Price dropped tag with the old price crossed out; rentals show extra costs beside the rent (none, water and power extra, or service charge), which an owner or agent picks when listing; the listing page has a Living in this area card with a neighbour rating and two neighbour comments. v506 (builds on v505, below): List a property now starts with who is listing (Owner or Agent) and when it is available, defaults the neighbourhood to yours, and tags the listing; every home shows an Available now / Available from date line, with an Available now filter; a Map view shows a pin per area with home counts and your range circled, tap a pin to see that area. v505: */
+/* v505: Property, a real neighbourhood property board (Daangn Real Estate style). Before: one city-wide list with search, beds chips and filter. Now: Property shares your neighbourhood and range with Marketplace, Jobs and Community (📍 on top; My area, up to 3 km, up to 8 km), so you only see homes close to where you live. Each row shows area, distance, how long ago it was listed, price (with price per m² for sales), size, and tags (Owner direct or Agent, Verified, New, Furnished). Deal chips (All, Rent, Sale, Saved, Mine), type chips (Apartment, House, Room, Shop, Land), Newest / Price / Size / Nearest sort, Filter, Compare and Viewings all still work. Listing page: distance and walk or moto time from your neighbourhood, an Owner or Agent card with verified status, manner temperature, reply rate and homes listed, an owner-direct note, and a safe-visit note; your own listings get Bump to top. Five new sample homes so every area has some. English only; rw/fr need native review. */
+try{(function(){
+const H=HD.property,esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const AR={Kimironko:[5,3],Remera:[3.5,2],Kimihurura:[2.5,2.5],Kacyiru:[1,3.5],Gisozi:[1,6],Nyamirambo:[-3,1],Nyabugogo:[-3,-1],Kicukiro:[3,-3],Gikondo:[1,-3.5],Nyarutarama:[3,4.5],Bugesera:[12,-10]};
+const RV=[0,3,8],DEAL=['All','Rent','Sale','Saved','Mine'],KINDS=[['','Any type'],['apt','Apartment'],['house','House'],['room','Room'],['shop','Shop'],['land','Land']],SORTS=['Newest','Price ↑','Price ↓','Size','Nearest'];
+if(S.mxHood===undefined){S.mxHood='Kimironko';S.mxRad=1}
+if(!H.pn){H.pn=1;H.items.push(
+{id:11,ti:'2-bedroom apartment',loc:'Gisozi',n:180000,u:'mo',beds:2,baths:1,m2:70,furn:0,g:'house',c:'Rent',who:'Agent Samuel',d:'Bright first-floor apartment with tiled floors, prepaid water and power. Ten minutes from the main road.',k:'apt',am:['water','power','sec'],dp:2,ago:1,ok:1},
+{id:12,ti:'Single room near the market',loc:'Kicukiro',n:40000,u:'mo',beds:1,baths:1,m2:12,furn:0,g:'house',c:'Rent',who:'Mama Chantal',d:'Clean room in a family compound. Shared tap and latrine, very quiet. You deal with the owner.',k:'room',am:['water'],dp:1,ago:4,ok:0},
+{id:13,ti:'Studio, owner direct',loc:'Kimironko',n:120000,u:'mo',beds:1,baths:1,m2:30,furn:1,g:'house',c:'Rent',who:'Eric M.',d:'Furnished studio with Wi-Fi, two minutes from the Kimironko bus stop. Available now.',k:'apt',am:['net','water','sec'],dp:1,ago:0,ok:1},
+{id:14,ti:'1-bedroom, furnished',loc:'Kacyiru',n:300000,u:'mo',beds:1,baths:1,m2:55,furn:1,g:'house',c:'Rent',who:'Agent Diane',d:'Modern apartment with a lift, parking and 24-hour security. Close to offices and embassies.',k:'apt',am:['lift','sec','net','park'],dp:2,ago:2,ok:1},
+{id:15,ti:'Family house with yard',loc:'Remera',n:48000000,u:'',beds:3,baths:2,m2:180,furn:null,g:'house',c:'Sale',who:'Jean B.',d:'Sold by the owner. Titled plot, small garden, walking distance to a school and the bus stop.',k:'house',am:['gar','park','water'],dp:0,ago:5,ok:1})}
+const hs=n=>{let h=0;String(n).split('').forEach(c=>h=(h*31+c.charCodeAt(0))>>>0);return h};
+const area=x=>AR[x.loc]?x.loc:x.who==='You'?S.mxHood:(x.loc||'Kigali');
+const dist=x=>{const p=AR[area(x)],q=AR[S.mxHood];return p&&q?Math.hypot(p[0]-q[0],p[1]-q[1]):4};
+const km=x=>{const d=dist(x);return d<.5?'0.'+(2+hs(x.id)%6)+' km':d.toFixed(1)+' km'};
+const eta=x=>{const d=dist(x);return d<=1.5?Math.max(3,Math.round(d*12))+' min walk':'about '+Math.max(8,Math.round(d*4))+' min by moto'};
+const ago=x=>x.ago||0,when=x=>{const a=ago(x);return a<1?'Today':a===1?'Yesterday':a+' d ago'};
+const owner=x=>x.ag?false:x.who==='You'||!/Agent/i.test(x.who);
+const price=x=>fmt(x.n)+' RWF'+(x.u==='mo'?' / month':'');
