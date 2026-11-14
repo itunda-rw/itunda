@@ -51,6 +51,10 @@ internal class DemoInterceptor : Interceptor {
             path == "api/v1/merchant/reviews/my-reviews" -> """{"success":true,"reviews":[]}"""
             path == "api/v1/messages/presence" -> """{"success":true,"presence":{"u-c1":true,"u-c2":true}}"""
             path == "api/v1/orders/my-orders" || path == "api/v1/eats/orders/my-orders" -> """{"success":true,"orders":[]}"""
+            path == "api/v1/messages/contacts" -> """{"success":true,"contacts":[{"userId":"u-c2","name":"Amina K."},{"userId":"u-c1","name":"Patrick H."},{"userId":"u-e1","name":"Eric M."}]}"""
+            path == "api/v1/messages/contacts/birthdays-today" -> """{"success":true,"contacts":[]}"""
+            path.startsWith("api/v1/messages/conversations/") && path.endsWith("/messages") ->
+                """{"success":true,"messages":[{"id":"mm1","conversationId":"c1","senderId":"u-c1","body":"Hi, is the phone still available?","sentAt":"2026-11-14T08:50:00Z","readAt":"2026-11-14T08:51:00Z"},{"id":"mm2","conversationId":"c1","senderId":"demo-user","body":"Yes, still available. Can you come tomorrow?","sentAt":"2026-11-14T08:52:00Z","readAt":null}]}"""
             path == "api/v1/messages/conversations" -> """{"success":true,"conversations":${conversations()}}"""
             path == "api/v1/auth/terms" -> """{"success":true,"terms":[]}"""
             path == "api/v1/account" -> """{"success":true,"accounts":$ACCOUNTS}"""
