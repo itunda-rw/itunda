@@ -77,6 +77,7 @@ data class ProtoHomeState(
 )
 
 internal fun homeRwf(v: Double) = String.format(Locale.US, "%,.0f", v)
+private fun rwf(v: Double) = homeRwf(v)
 
 private data class HomeCopy(
     val bank:String,val pay:String,val send:String,val add:String,val quick:String,val scan:String,val bills:String,val airtime:String,
