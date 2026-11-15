@@ -68,6 +68,7 @@ fun TalkTab(
     // Real KakaoTalk 전체/안읽음/통화 filter (itunda Talk redesign, 2026-08-28) -- see
     // TalkFilterTabs.kt's own doc comment.
     var directFilter by remember { mutableStateOf(TalkDirectFilter.ALL) }
+    var chatQuery by remember { mutableStateOf("") }
     var showServiceChannel by remember { mutableStateOf(false) }
     var showAiChat by remember { mutableStateOf(false) }
     // Real per-room Links/Settings + input-lock (itunda Talk redesign, 2026-08-28) --
@@ -318,6 +319,7 @@ fun TalkTab(
             Text("Messages", color = Ids.colors.textPrimary, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
             Icon(Icons.Outlined.Edit, "New message", Modifier.size(26.dp).pressScaleClickable { view = TalkView.FRIENDS }, tint = Ids.colors.textPrimary)
         }
+        if (view == TalkView.DIRECT) { ProtoSearchField(chatQuery, { chatQuery = it }); Spacer(Modifier.height(12.dp)) }
         ProtoChips(listOf(TalkView.DIRECT to "All", TalkView.GROUPS to "Groups", TalkView.FRIENDS to "Friends"), view, { view = it })
         if (view == TalkView.FRIENDS) {
             FriendsView(
@@ -340,7 +342,7 @@ fun TalkTab(
                 CallHistoryList(conversations = conversations)
             } else {
                 DirectMessagesList(
-                    conversations = if (directFilter == TalkDirectFilter.UNREAD) conversations?.filter { it.unreadCount > 0 } else conversations,
+                    conversations = conversations?.filter { (directFilter != TalkDirectFilter.UNREAD || it.unreadCount > 0) && it.otherUserName.contains(chatQuery.trim(), ignoreCase = true) },
                     archivedConversations = archivedConversations,
                     error = conversationsError,
                     presence = presence,
