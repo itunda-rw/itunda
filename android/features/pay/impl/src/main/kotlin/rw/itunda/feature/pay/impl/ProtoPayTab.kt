@@ -23,7 +23,7 @@ fun ProtoPayTab(
     onReceive: () -> Unit,
     scanContent: @Composable () -> Unit,
 ) {
-    var mode by remember { mutableStateOf(ProtoPayMode.MY_CODE) }
+    var mode by remember { mutableStateOf(ProtoPayMode.SCAN) }
     var code by remember { mutableStateOf<String?>(null) }
     var expiresAt by remember { mutableStateOf(0L) }
     var secondsLeft by remember { mutableStateOf(0) }
