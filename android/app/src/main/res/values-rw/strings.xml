@@ -356,4 +356,9 @@
     <string name="family_sent">Byoherejwe.</string>
     <string name="family_your_guardians">Abarinzi bawe</string>
     <string name="family_empty_state">Nta munyamuryango uhuje na wowe -- tumira umwe hejuru.</string>
+    <string name="account_manage_title">Gucunga konti</string>
+    <string name="account_manage_bank">itunda Bank</string>
+    <string name="account_manage_copy">Koporora nimero</string>
+    <string name="account_manage_share">Sangiza</string>
+    <string name="account_manage_copied">Nimero ya konti yakoporowe</string>
 </resources>
