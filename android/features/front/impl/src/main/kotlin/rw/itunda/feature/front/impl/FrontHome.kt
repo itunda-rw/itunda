@@ -58,7 +58,7 @@ fun FrontEntryPoint(onBack: () -> Unit) {
             }
             Column(Modifier.weight(1f)) {
                 Text("Front", color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
-                Text("Order, pay and go", color = Ids.colors.textTertiary, fontSize = 14.sp)
+                Text("Order, pay and go", color = Ids.colors.textTertiary, fontSize = 13.sp)
             }
         }
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -67,16 +67,16 @@ fun FrontEntryPoint(onBack: () -> Unit) {
             ) {
                 Text("Lunch deal", color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
                 Spacer(Modifier.height(6.dp))
-                Text("Pay with itunda and earn double points", color = Ids.colors.textPrimary, fontSize = 14.sp)
+                Text("Pay with itunda and earn double points", color = Ids.colors.textPrimary, fontSize = 13.sp)
             }
             Column(Modifier.width(294.dp).clip(RoundedCornerShape(24.dp)).background(Color(0xFFFFE3BF)).padding(20.dp)) {
                 Text("New on the menu", color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
                 Spacer(Modifier.height(6.dp))
-                Text("Fresh juice, passion or mango", color = Ids.colors.textPrimary, fontSize = 14.sp)
+                Text("Fresh juice, passion or mango", color = Ids.colors.textPrimary, fontSize = 13.sp)
             }
         }
         Spacer(Modifier.height(28.dp))
-        Text("Choose how to order", color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(horizontal = 28.dp))
+        Text("Choose how to order", color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(horizontal = 28.dp))
         Spacer(Modifier.height(14.dp))
         Row(Modifier.padding(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OrderModeCard(Modifier.weight(1f), "restaurant", "Eat here", "We bring it to your table", eatHere) { eatHere = true }
@@ -91,12 +91,12 @@ fun FrontEntryPoint(onBack: () -> Unit) {
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text("Scan the table code", color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                Text("Menu, bill and payment at your table", color = Ids.colors.textTertiary, fontSize = 14.sp)
+                Text("Menu, bill and payment at your table", color = Ids.colors.textTertiary, fontSize = 13.sp)
             }
             ItundaArt("chev", ItundaArtSet.Line, 18.dp, tint = Ids.colors.textTertiary)
         }
         Spacer(Modifier.height(28.dp))
-        Text(if (eatHere) "Eat here near you" else "Take away near you", color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(horizontal = 28.dp))
+        Text(if (eatHere) "Eat here near you" else "Take away near you", color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(horizontal = 28.dp))
         Spacer(Modifier.height(8.dp))
         frontPlaces.forEach { p ->
             Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -105,8 +105,11 @@ fun FrontEntryPoint(onBack: () -> Unit) {
                 }
                 Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(p.name, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                    Text("★ ${p.rating} (${p.reviews}) · ${p.km}", color = Ids.colors.textTertiary, fontSize = 14.sp)
+                    Text(p.name, color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("★", color = Color(0xFFFFB800), fontSize = 13.sp)
+                        Text(" ${p.rating} (${p.reviews}) · ${p.km}", color = Ids.colors.textTertiary, fontSize = 13.sp)
+                    }
                 }
                 ItundaArt("chev", ItundaArtSet.Line, 18.dp, tint = Ids.colors.textTertiary)
             }
@@ -124,6 +127,6 @@ private fun OrderModeCard(modifier: Modifier, art: String, title: String, subtit
         ItundaArt(art, ItundaArtSet.Color, 34.dp)
         Spacer(Modifier.height(14.dp))
         Text(title, color = Ids.colors.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
-        Text(subtitle, color = Ids.colors.textTertiary, fontSize = 14.sp)
+        Text(subtitle, color = Ids.colors.textTertiary, fontSize = 13.sp)
     }
 }
