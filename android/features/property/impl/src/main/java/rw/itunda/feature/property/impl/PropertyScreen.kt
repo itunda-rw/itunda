@@ -632,6 +632,7 @@ private fun PropertyListingCard(
     listerTrustScore: Int? = null,
     currentUserId: String? = null,
 ) {
+    var expanded by androidx.compose.runtime.saveable.rememberSaveable(listing.id) { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var offering by remember { mutableStateOf(false) }
@@ -651,28 +652,17 @@ private fun PropertyListingCard(
         listing.sizeSqm?.let { "${it} m²" },
     ).joinToString(" · ")
 
-    // Real optional buyer/tenant identification at mark-taken time (2026-07-24) -- see
-    // backend PropertyListingService.markTaken's own doc comment. Confirm with a
-    // phone number or Skip, either way the listing completes.
     var markingTaken by remember { mutableStateOf(false) }
     var counterpartyPhone by remember { mutableStateOf("") }
 
-    // Real Karrot(당근마켓)-style price-drop notification -- see backend
-    // PropertyListingService.updatePrice's own doc comment. Real, shipped on the
-    // backend + bank-mfe with zero Android client until now -- found via a
-    // cross-platform-parity check.
     var editingPrice by remember { mutableStateOf(false) }
     var newPrice by remember(listing.id) { mutableStateOf(listing.price.toInt().toString()) }
 
-    // Real post-transaction review with asymmetric public/private visibility
-    // (2026-07-24) -- see backend HoodReviewService's own doc comment.
     var showReviewSheet by remember { mutableStateOf(false) }
     var selectedGoodPoints by remember { mutableStateOf<Set<String>>(emptySet()) }
     var selectedUncomfortablePoints by remember { mutableStateOf<Set<String>>(emptySet()) }
     var submittingReview by remember { mutableStateOf(false) }
     var reviewSubmitted by remember { mutableStateOf(false) }
-    // Real read-back for the review above (item 192/198) -- see bank-mfe's
-    // HoodReviewResultView (item 192) for the full account.
     var hoodReviews by remember { mutableStateOf<List<rw.itunda.core.network.HoodReviewDto>?>(null) }
     LaunchedEffect(listing.id, listing.status, listing.counterpartyId, isMine) {
         if (isMine && listing.status == "TAKEN" && listing.counterpartyId != null) {
@@ -723,7 +713,12 @@ private fun PropertyListingCard(
     val ownershipStatus = submittedOwnershipStatus ?: listing.ownershipVerificationStatus
 
     Card(shape = androidx.compose.ui.graphics.RectangleShape, colors = CardDefaults.cardColors(containerColor = Color.Transparent), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(modifier = Modifier.padding(vertical = if (expanded) 14.dp else 0.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (!expanded) {
+                PropertyListRow(listing, propertyTypeLabel, relativeTimeAgo(listing.createdAt), onOpen = { expanded = true }, trailing = {
+                    if (!isMine) WishlistHeart(favorited = favorited, size = 20.dp, modifier = Modifier.pressScaleClickable { onToggleFavorite() })
+                })
+            } else {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -752,7 +747,7 @@ private fun PropertyListingCard(
                     Text(priceLabel, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 }
             }
-            Text(listing.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(listing.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.pressScaleClickable { expanded = false })
             // Real ownership verification badge (2026-07-25) -- shown to every viewer,
             // not just the lister, since this is a trust signal for the buyer/tenant
             // deciding whether to contact this listing.
@@ -954,6 +949,7 @@ private fun PropertyListingCard(
                 myLocation?.let { loc ->
                     if (showRoute) RouteMiniMap(loc.first, loc.second, propertyLat, propertyLng, "You", listing.title)
                 }
+            }
             }
         }
     }
