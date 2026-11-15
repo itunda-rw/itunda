@@ -36,7 +36,7 @@ private val partners = listOf(
 
 /** Prototype "Find loan" partner list: tap a row to open its one-line explanation (dummy copy). */
 @Composable
-fun LoansFindPartners() {
+fun LoansFindPartners(onOverdraft: () -> Unit = {}, onPostpaid: () -> Unit = {}) {
     var open by remember { mutableStateOf<Int?>(null) }
     Column(Modifier.fillMaxWidth().padding(top = 20.dp)) {
         partners.forEachIndexed { i, p ->
@@ -52,6 +52,12 @@ fun LoansFindPartners() {
             }
             if (open == i) {
                 Text(p.detail, color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 21.sp, modifier = Modifier.padding(start = 50.dp, bottom = 12.dp))
+            }
+        }
+        listOf("Overdraft" to onOverdraft, "Postpaid credit" to onPostpaid).forEach { (label, go) ->
+            Row(Modifier.fillMaxWidth().pressScaleClickable(onClick = go).padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(label, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                Text("\u203A", color = Ids.colors.textTertiary, fontSize = 22.sp)
             }
         }
     }

@@ -1,11 +1,9 @@
 package rw.itunda.feature.credit.impl
 
 import rw.itunda.core.designsystem.components.formatMoney
-import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsChip
 import rw.itunda.core.designsystem.components.IdsButtonVariant
-import rw.itunda.core.designsystem.components.IdsSegmentedControl
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.theme.Ids
 import androidx.activity.compose.BackHandler
@@ -120,19 +118,13 @@ fun LoansScreen(onBack: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(20.dp)) {
-            BackTopBar(title = "Loans", onBack = onBack)
-        }
-        IdsSegmentedControl(
-            options = listOf(
-                LoansMode.OFFERS to "Offers",
-                LoansMode.MY_LOANS to "My loans (${myLoans?.size ?: 0})",
-                LoansMode.OVERDRAFT to "Overdraft",
-                LoansMode.POSTPAID_CREDIT to "Postpaid credit",
-            ),
-            selected = mode,
-            onSelect = { mode = it },
-            modifier = Modifier.padding(horizontal = 20.dp),
+        LoansTopBar(
+            findSelected = mode == LoansMode.OFFERS,
+            mineSelected = mode == LoansMode.MY_LOANS,
+            myCount = myLoans?.size ?: 0,
+            onBack = onBack,
+            onFind = { mode = LoansMode.OFFERS },
+            onMine = { mode = LoansMode.MY_LOANS },
         )
         Spacer(Modifier.height(8.dp))
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -150,7 +142,7 @@ fun LoansScreen(onBack: () -> Unit) {
             }
             if (mode == LoansMode.OFFERS) {
                 item { LoansFindHero(offers?.minOfOrNull { it.interestRate }?.toString()) }
-                item { LoansFindPartners() }
+                item { LoansFindPartners(onOverdraft = { mode = LoansMode.OVERDRAFT }, onPostpaid = { mode = LoansMode.POSTPAID_CREDIT }) }
                 lenders?.let { currentLenders ->
                     item {
                         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
