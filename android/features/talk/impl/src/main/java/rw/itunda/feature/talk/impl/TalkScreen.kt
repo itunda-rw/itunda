@@ -1,5 +1,9 @@
 package rw.itunda.feature.talk.impl
 
+import rw.itunda.core.designsystem.components.ItundaArtSet
+import rw.itunda.core.designsystem.components.ItundaArt
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
@@ -379,18 +383,18 @@ fun TalkTab(
 // that real state to show.
 @Composable
 private fun SyntheticTalkChannelRow(name: String, subtitle: String, onClick: () -> Unit) {
+    // Same row anatomy as ProtoChatRow: 52dp soft circle avatar, bold name, tertiary preview.
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(64.dp)
-            .pressScaleClickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth().height(72.dp).pressScaleClickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IdsAvatar(name = name)
-        Spacer(modifier = Modifier.width(12.dp))
+        Box(Modifier.size(52.dp).clip(CircleShape).background(Ids.colors.brand.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
+            ItundaArt(if (name == "itunda AI") "chat" else "bell", ItundaArtSet.Proto, 30.dp)
+        }
+        Spacer(modifier = Modifier.width(14.dp))
         Column {
-            Text(name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Medium, fontSize = 16.sp)
-            Text(subtitle, color = Ids.colors.textSecondary, fontSize = 13.sp, maxLines = 1)
+            Text(name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(subtitle, color = Ids.colors.textTertiary, fontSize = 14.sp, maxLines = 1)
         }
     }
 }
