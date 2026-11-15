@@ -80,202 +80,86 @@ data class ProtoHomeState(
 private fun rwf(v: Double) = String.format(Locale.US, "%,.0f", v)
 
 private data class HomeCopy(
-    val interest: String, val send: String, val add: String, val bills: String,
-    val card: String, val savings: String, val seeAll: String, val inviteLead: String,
-    val inviteAmount: String, val dismiss: String, val spentIn: String, val due: String,
-    val pay: String, val earned: String, val pointsAndCoupons: String, val view: String,
-    val notifications: String,
+    val bank:String,val pay:String,val send:String,val add:String,val quick:String,val scan:String,val bills:String,val airtime:String,
+    val services:String,val irembo:String,val taxes:String,val electricity:String,val water:String,val school:String,val spending:String,
+    val spent:String,val due:String,val forYou:String,val goal:String,val goalHint:String,val credit:String,val creditHint:String,
+    val view:String,val status:String,val profile:String,
 )
-
-private fun homeCopy(language: String) = when (language) {
-    "rw" -> HomeCopy(
-        interest = "+inyungu", send = "Ohereza", add = "Ongeramo",
-        bills = "Fagitire", card = "Ikarita", savings = "Kubika", seeAll = "Reba byose",
-        inviteLead = "Tumira inshuti ubone ", inviteAmount = "RWF 10,000", dismiss = "Ivanaho",
-        spentIn = "Wakoresheje muri", due = "Bigomba", pay = "Ishyura",
-        earned = "RWF wungutse", pointsAndCoupons = "Amanota na kuponi", view = "Reba",
-        notifications = "Amamenyesha",
-    )
-    "fr" -> HomeCopy(
-        interest = "+intérêts", send = "Envoyer", add = "Ajouter",
-        bills = "Factures", card = "Carte", savings = "Épargne", seeAll = "Tout voir",
-        inviteLead = "Invitez des amis, recevez ", inviteAmount = "10 000 RWF", dismiss = "Ignorer",
-        spentIn = "Dépensé en", due = "Échéance", pay = "Payer",
-        earned = "RWF gagnés", pointsAndCoupons = "Points et coupons", view = "Voir",
-        notifications = "Notifications",
-    )
-    else -> HomeCopy(
-        interest = "+interest", send = "Send", add = "Add",
-        bills = "Bills", card = "Card", savings = "Savings", seeAll = "See all",
-        inviteLead = "Invite friends, get ", inviteAmount = "10,000 RWF", dismiss = "Dismiss",
-        spentIn = "Spent in", due = "Due", pay = "Pay",
-        earned = "RWF earned", pointsAndCoupons = "Points and coupons", view = "View",
-        notifications = "Notifications",
-    )
+private fun homeCopy(language:String)=when(language){
+"rw"->HomeCopy("itunda Bank","itunda Pay","Ohereza","Ongeraho","Ibikorwa byihuse","Sikana wishyure","Ishyura fagitire","Igihe cyo guhamagara","Serivisi zo mu Rwanda","Irembo","Imisoro ya RRA","Amashanyarazi","Amazi","Amafaranga y'ishuri","Imikoreshereze","Yakoreshejwe muri iki gihe","Birishyurwa vuba","Byagenewe wowe","Tangira intego yawe yo kuzigama","Hitamo amafaranga n'igihe uzayageraho","Amanota y'inguzanyo","Reba amanota yawe ku buntu","Reba","MTN MoMo na Airtel Money birakora neza","Umwirondoro")
+"fr"->HomeCopy("itunda Bank","itunda Pay","Envoyer","Ajouter","Actions rapides","Scanner pour payer","Payer les factures","Crédit téléphonique","Services au Rwanda","Irembo","Impôts RRA","Électricité","Eau","Frais scolaires","Dépenses","Dépensé pendant cette période","À payer prochainement","Pour vous","Créez votre premier objectif d’épargne","Choisissez un montant et une date cible","Votre score de crédit","Vérification gratuite avec vos données alternatives","Voir","MTN MoMo et Airtel Money fonctionnent normalement","Profil")
+else->HomeCopy("itunda Bank","itunda Pay","Send","Add","Quick actions","Scan to pay","Pay bills","Airtime","Rwanda services","Irembo","RRA taxes","REG electricity","WASAC water","School fees","Spending","Spent this period, mostly on food","Upcoming, due Friday","For you","Start your first savings goal","A target and a date make saving easier","My credit score","Free check, alternative data","View","MTN MoMo and Airtel Money are working normally","Profile")
 }
-
-private val PillShape = RoundedCornerShape(18.dp)
 
 @Composable
 fun ProtoHomeContent(
-    state: ProtoHomeState,
-    hasUnread: Boolean,
-    onOpenBank: () -> Unit,
-    onOpenPay: () -> Unit,
-    onOpenNotifications: () -> Unit,
-    onSend: () -> Unit,
-    onAdd: () -> Unit,
-    onBills: () -> Unit,
-    onCard: () -> Unit,
-    onSavings: () -> Unit,
-    onSeeAll: () -> Unit,
-    onInvite: () -> Unit,
-    onOpenSpending: () -> Unit,
-    onPayBill: () -> Unit,
-    onOpenRewards: () -> Unit,
-) {
-    var inviteDismissed by remember { mutableStateOf(false) }
-    val language = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]?.language ?: "en"
-    val copy = homeCopy(language)
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().background(Ids.colors.surfaceSoft),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 15.dp, end = 15.dp, bottom = 96.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item { HomeBar(hasUnread, onOpenBank, onOpenPay, onOpenNotifications, copy.notifications) }
-        item {
-            Card {
-                Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 36.dp)) {
-                    AccountRow(
-                        tile = { Icon(painterResource(rw.itunda.core.designsystem.R.drawable.itunda_mark), null, Modifier.size(22.dp), tint = Ids.colors.brand) },
-                        amount = state.bankBalance,
-                        subtitle = buildAnnotatedString {
-                            append("itunda Bank")
-                            state.interestDays?.let {
-                                append(" ")
-                                withStyle(SpanStyle(color = Ids.colors.textBrand)) { append("${copy.interest} $it") }
-                            }
-                        },
-                        action = copy.send, onAction = onSend, onClick = onOpenBank,
-                    )
-                    Spacer(Modifier.height(34.dp))
-                    AccountRow(
-                        tile = { ItundaArt("wallet", ItundaArtSet.Color, 26.dp) },
-                        amount = state.payBalance,
-                        subtitle = buildAnnotatedString { append("itunda Pay") },
-                        action = copy.add, onAction = onAdd, onClick = onOpenPay,
-                    )
-                    Spacer(Modifier.height(22.dp))
-                    Divider(color = Ids.colors.divider, thickness = 0.5.dp)
-                    Row(Modifier.fillMaxWidth().heightIn(min = 49.dp), verticalAlignment = Alignment.CenterVertically) {
-                        ShortcutText(copy.bills, onBills)
-                        Spacer(Modifier.width(18.dp))
-                        ShortcutText(copy.card, onCard)
-                        Spacer(Modifier.width(18.dp))
-                        ShortcutText(copy.savings, onSavings)
-                        Spacer(Modifier.weight(1f))
-                        ShortcutText(copy.seeAll, onSeeAll)
-                    }
-                }
-            }
-        }
-        if (!inviteDismissed) {
-            item {
-                Card {
-                    Row(
-                        Modifier.fillMaxWidth().clickable(onClick = onInvite).padding(horizontal = 16.dp).height(76.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Box(
-                            Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(Ids.colors.brand.copy(alpha = 0.12f)),
-                            contentAlignment = Alignment.Center,
-                        ) { ItundaArt("gift", ItundaArtSet.Color, 32.dp) }
-                        Spacer(Modifier.width(14.dp))
-                        Text(
-                            buildAnnotatedString {
-                                append(copy.inviteLead)
-                                withStyle(SpanStyle(color = Ids.colors.textBrand)) { append(copy.inviteAmount) }
-                            },
-                            color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold,
-                            modifier = Modifier.weight(1f),
-                        )
-                        Box(
-                            Modifier.size(44.dp).pressScaleClickable { inviteDismissed = true },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(IdsIcons.Close, copy.dismiss, Modifier.size(20.dp), tint = Ids.colors.textPrimary)
-                        }
-                    }
-                }
-            }
-        }
-        item {
-            Card {
-                Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 36.dp, bottom = 12.dp)) {
-                    Row(Modifier.fillMaxWidth().clickable(onClick = onOpenSpending), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            AmountLine(state.spentThisMonth)
-                            Text("${copy.spentIn} ${state.monthName}", color = Ids.colors.textSecondary, fontSize = 14.sp)
-                        }
-                        Icon(IdsIcons.ChevronRight, null, Modifier.size(20.dp), tint = Ids.colors.textTertiary.copy(alpha = 0.7f))
-                    }
-                    ProtoWeekChart(state.week, today = state.today)
-                    state.bill?.let { bill ->
-                        Spacer(Modifier.height(20.dp))
-                        Row(Modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) {
-                            IconTile { ItundaArt("bill", ItundaArtSet.Color, 26.dp) }
-                            Spacer(Modifier.width(12.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(bill.title, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-                                Text("${copy.due} ${bill.due} · ${rwf(bill.amount)} RWF", color = Ids.colors.textSecondary, fontSize = 14.sp)
-                            }
-                            Pill(copy.pay, onPayBill)
-                        }
-                    }
-                }
-            }
-        }
-        item {
-            Card {
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(105.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconTile { Text("⭐", fontSize = 20.sp) }
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("${rwf(state.earned)} ${copy.earned}", color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-                        Text(copy.pointsAndCoupons, color = Ids.colors.textSecondary, fontSize = 14.sp)
-                    }
-                    Pill(copy.view, onOpenRewards)
-                }
-            }
-        }
-    }
+state:ProtoHomeState,hasUnread:Boolean,onOpenBank:()->Unit,onOpenPay:()->Unit,onOpenNotifications:()->Unit,
+onSend:()->Unit,onAdd:()->Unit,onBills:()->Unit,onCard:()->Unit,onSavings:()->Unit,onSeeAll:()->Unit,
+onInvite:()->Unit,onOpenSpending:()->Unit,onPayBill:()->Unit,onOpenRewards:()->Unit,
+onOpenProfile:()->Unit,onOpenCreditScore:()->Unit,
+){
+val language=androidx.compose.ui.platform.LocalConfiguration.current.locales[0]?.language?:"en"
+val t=homeCopy(language)
+LazyColumn(Modifier.fillMaxSize().background(Ids.colors.surface),contentPadding=androidx.compose.foundation.layout.PaddingValues(bottom=96.dp)){
+item{HomeHeader(onOpenProfile,t.profile)}
+item{Row(Modifier.fillMaxWidth().padding(horizontal=24.dp).padding(top=12.dp),verticalAlignment=Alignment.CenterVertically){
+Box(Modifier.size(8.dp).clip(CircleShape).background(Ids.colors.success));Spacer(Modifier.width(8.dp));Text(t.status,color=Ids.colors.textSecondary,fontSize=13.sp)
+}}
+item{Column(Modifier.fillMaxWidth().padding(horizontal=24.dp).padding(top=28.dp)){
+Column(Modifier.fillMaxWidth().clickable(onClick=onOpenBank)){
+Text(t.bank,color=Ids.colors.textSecondary,fontSize=13.sp)
+Row(verticalAlignment=Alignment.Bottom){Text(rwf(state.bankBalance),color=Ids.colors.textPrimary,fontSize=40.sp,fontWeight=FontWeight.ExtraBold,letterSpacing=(-1.2).sp);Text(" RWF",color=Ids.colors.textSecondary,fontSize=14.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.padding(bottom=5.dp))}
 }
-
-@Composable
-private fun HomeBar(hasUnread: Boolean, onOpenBank: () -> Unit, onOpenPay: () -> Unit, onOpenNotifications: () -> Unit, notificationsLabel: String) {
-    Row(Modifier.fillMaxWidth().height(78.dp).padding(start = 10.dp, top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-        IdsAppBarTitle(area = "bank", onClick = onOpenBank)
-        Spacer(Modifier.weight(1f))
-        Box(Modifier.size(44.dp).pressScaleClickable(onClick = onOpenPay), contentAlignment = Alignment.Center) {
-            PayScanGlyph(30.dp, Ids.colors.textTertiary)
-        }
-        Spacer(Modifier.width(8.dp))
-        Box(
-            Modifier.size(44.dp).pressScaleClickable(onClick = onOpenNotifications)
-                .semantics { contentDescription = notificationsLabel },
-            contentAlignment = Alignment.Center,
-        ) {
-            Box(Modifier.size(28.dp)) {
-                ItundaArt("bell", ItundaArtSet.Line, 28.dp, tint = Ids.colors.textTertiary)
-                if (hasUnread) {
-                    Box(Modifier.align(Alignment.TopEnd).size(9.dp).clip(CircleShape).background(Ids.colors.danger))
-                }
-            }
-        }
-    }
+Row(Modifier.fillMaxWidth().padding(top=14.dp).clickable(onClick=onOpenPay),verticalAlignment=Alignment.CenterVertically){
+Text(t.pay,color=Ids.colors.textSecondary,fontSize=15.sp);Spacer(Modifier.weight(1f));Text("${rwf(state.payBalance)} RWF",color=Ids.colors.textPrimary,fontSize=15.sp,fontWeight=FontWeight.ExtraBold);Spacer(Modifier.width(4.dp));ItundaArt("chev",ItundaArtSet.Proto,16.dp)
+}
+}}
+item{Row(Modifier.fillMaxWidth().padding(horizontal=24.dp).padding(top=20.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)){
+HomeActionButton(t.send,true,Modifier.weight(1f),onSend);HomeActionButton(t.add,false,Modifier.weight(1f),onAdd)
+}}
+item{HomeSection(t.quick){Row(Modifier.fillMaxWidth()){
+HomeGridAction("send",t.send,onSend,Modifier.weight(1f));HomeGridAction("qr",t.scan,onOpenPay,Modifier.weight(1f));HomeGridAction("bill",t.bills,onBills,Modifier.weight(1f));HomeGridAction("phone",t.airtime,onBills,Modifier.weight(1f))
+}}}
+item{HomeSection(t.services){Row(Modifier.fillMaxWidth()){
+HomeGridAction("home",t.irembo,onBills,Modifier.weight(1f));HomeGridAction("bill",t.taxes,onBills,Modifier.weight(1f));HomeGridAction("bolt",t.electricity,onBills,Modifier.weight(1f));HomeGridAction("drop",t.water,onBills,Modifier.weight(1f));HomeGridAction("school",t.school,onBills,Modifier.weight(1f))
+}}}
+item{HomeSection(t.spending){
+HomeListRow("coin","${rwf(state.spentThisMonth)} RWF",t.spent,null,onOpenSpending)
+state.bill?.let{b->HomeListRow("bill",b.title,"${t.due} · ${rwf(b.amount)} RWF",null,onPayBill)}
+}}
+item{HomeSection(t.forYou){
+HomeListRow("coin",t.goal,t.goalHint,null,onSavings);HomeListRow("trend",t.credit,t.creditHint,t.view,onOpenCreditScore)
+}}
+}
+}
+@Composable private fun HomeHeader(onOpenProfile:()->Unit,profileLabel:String){
+Row(Modifier.fillMaxWidth().padding(start=24.dp,end=16.dp,top=20.dp),verticalAlignment=Alignment.CenterVertically){
+Icon(painterResource(rw.itunda.core.designsystem.R.drawable.itunda_mark),null,Modifier.size(40.dp),tint=Ids.colors.brand)
+Spacer(Modifier.width(8.dp));Text("itunda",color=Ids.colors.textPrimary,fontSize=20.sp,fontWeight=FontWeight.ExtraBold,letterSpacing=(-0.5).sp)
+Spacer(Modifier.weight(1f));Box(Modifier.size(44.dp).clickable(onClick=onOpenProfile).semantics{contentDescription=profileLabel},contentAlignment=Alignment.Center){ItundaArt("user",ItundaArtSet.Proto,24.dp)}
+}
+}
+@Composable private fun HomeSection(title:String,content:@Composable()->Unit){
+Column(Modifier.fillMaxWidth().padding(horizontal=24.dp).padding(top=32.dp)){Text(title,color=Ids.colors.textPrimary,fontSize=18.sp,fontWeight=FontWeight.ExtraBold,modifier=Modifier.padding(bottom=8.dp));content()}
+}
+@Composable private fun HomeGridAction(name:String,label:String,onClick:()->Unit,modifier:Modifier=Modifier){
+Column(modifier.clickable(onClick=onClick),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(8.dp)){
+Box(Modifier.size(60.dp).clip(RoundedCornerShape(22.dp)).background(Ids.colors.surfaceSoft),contentAlignment=Alignment.Center){ItundaArt(name,ItundaArtSet.Proto,38.dp)}
+Text(label,color=Ids.colors.textPrimary,fontSize=12.sp,fontWeight=FontWeight.Bold,textAlign=androidx.compose.ui.text.style.TextAlign.Center,lineHeight=15.sp,maxLines=2)
+}
+}
+@Composable private fun HomeListRow(icon:String,title:String,subtitle:String,trailing:String?,onClick:()->Unit){
+Row(Modifier.fillMaxWidth().clickable(onClick=onClick).padding(vertical=11.dp),verticalAlignment=Alignment.CenterVertically){
+Box(Modifier.size(44.dp).clip(CircleShape).background(Ids.colors.surfaceSoft),contentAlignment=Alignment.Center){ItundaArt(icon,ItundaArtSet.Proto,30.dp)}
+Spacer(Modifier.width(14.dp));Column(Modifier.weight(1f)){Text(title,color=Ids.colors.textPrimary,fontSize=16.sp,fontWeight=FontWeight.Bold,maxLines=1);Text(subtitle,color=Ids.colors.textSecondary,fontSize=13.sp,lineHeight=18.sp,maxLines=2)}
+if(trailing!=null){Text(trailing,color=Ids.colors.textSecondary,fontSize=14.sp,fontWeight=FontWeight.Bold);Spacer(Modifier.width(4.dp))}
+ItundaArt("chev",ItundaArtSet.Proto,16.dp,tint=Ids.colors.textTertiary)
+}
+}
+@Composable private fun HomeActionButton(label:String,primary:Boolean,modifier:Modifier,onClick:()->Unit){
+Box(modifier.height(52.dp).clip(RoundedCornerShape(16.dp)).background(if(primary)Ids.colors.brand else Ids.colors.surfaceSoft).clickable(onClick=onClick),contentAlignment=Alignment.Center){
+Text(label,color=if(primary)Color(0xFF17171C)else Ids.colors.textPrimary,fontSize=16.sp,fontWeight=FontWeight.ExtraBold)
+}
 }
 
 @Composable
