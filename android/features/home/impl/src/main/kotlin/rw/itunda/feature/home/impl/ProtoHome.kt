@@ -199,10 +199,12 @@ fun ProtoHomeContent(
                             color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold,
                             modifier = Modifier.weight(1f),
                         )
-                        Icon(
-                            IdsIcons.Close, copy.dismiss, Modifier.size(20.dp).pressScaleClickable { inviteDismissed = true },
-                            tint = Ids.colors.textPrimary,
-                        )
+                        Box(
+                            Modifier.size(44.dp).pressScaleClickable { inviteDismissed = true },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(IdsIcons.Close, copy.dismiss, Modifier.size(20.dp), tint = Ids.colors.textPrimary)
+                        }
                     }
                 }
             }
@@ -257,12 +259,20 @@ private fun HomeBar(hasUnread: Boolean, onOpenBank: () -> Unit, onOpenPay: () ->
     Row(Modifier.fillMaxWidth().height(78.dp).padding(start = 10.dp, top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
         IdsAppBarTitle(area = "bank", onClick = onOpenBank)
         Spacer(Modifier.weight(1f))
-        PayScanGlyph(30.dp, Ids.colors.textTertiary, Modifier.pressScaleClickable(onClick = onOpenPay))
-        Spacer(Modifier.width(20.dp))
-        Box(Modifier.pressScaleClickable(onClick = onOpenNotifications).semantics { contentDescription = notificationsLabel }.padding(end = 6.dp)) {
-            ItundaArt("bell", ItundaArtSet.Line, 28.dp, tint = Ids.colors.textTertiary)
-            if (hasUnread) {
-                Box(Modifier.align(Alignment.TopEnd).size(9.dp).clip(CircleShape).background(Ids.colors.danger))
+        Box(Modifier.size(44.dp).pressScaleClickable(onClick = onOpenPay), contentAlignment = Alignment.Center) {
+            PayScanGlyph(30.dp, Ids.colors.textTertiary)
+        }
+        Spacer(Modifier.width(8.dp))
+        Box(
+            Modifier.size(44.dp).pressScaleClickable(onClick = onOpenNotifications)
+                .semantics { contentDescription = notificationsLabel },
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(Modifier.size(28.dp)) {
+                ItundaArt("bell", ItundaArtSet.Line, 28.dp, tint = Ids.colors.textTertiary)
+                if (hasUnread) {
+                    Box(Modifier.align(Alignment.TopEnd).size(9.dp).clip(CircleShape).background(Ids.colors.danger))
+                }
             }
         }
     }
