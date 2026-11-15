@@ -53,10 +53,18 @@ import rw.itunda.core.designsystem.theme.IdsIcons
  * wireframe rather than an actual app (feedback from comparing directly
  * against real Toss screenshots, 2026-07-10).
  */
+// The prototype's own bar icons, from the itunda line/solid sets.
+private fun tabArt(tab: ItundaTab) = when (tab) {
+    ItundaTab.Home -> "home"
+    ItundaTab.Pay -> "qr"
+    ItundaTab.Explore -> "compass"
+    ItundaTab.Messages -> "chat"
+    ItundaTab.You -> "user"
+}
+
 @Composable
 internal fun ItundaBottomBar(selectedTab: ItundaTab, onSelect: (ItundaTab) -> Unit, messagesUnreadCount: Long = 0) {
     Column {
-        Divider(color = Ids.colors.divider, thickness = 0.5.dp)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -64,7 +72,8 @@ internal fun ItundaBottomBar(selectedTab: ItundaTab, onSelect: (ItundaTab) -> Un
                 // Ids.colors.background in dark mode (0x202027 vs 0x17171C), making
                 // the bottom bar visibly stand out from the page -- real Toss/Coupang
                 // keep every chrome bar the same color as the content underneath it.
-                .background(Ids.colors.background),
+                .clip(RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
+                .background(Ids.colors.surface),
                 // Real fix (2026-08-25, direct user comparison against the live real
                 // Toss app on the same physical device -- uiautomator-measured):
                 // this Row's own top/bottom padding used to stack with each tab
@@ -84,15 +93,19 @@ internal fun ItundaBottomBar(selectedTab: ItundaTab, onSelect: (ItundaTab) -> Un
                         // Real fix (2026-08-25) -- matches Toss's own real measured
                         // ~8dp top / ~8dp bottom inset exactly (this Column is now the
                         // only padding layer, see the Row's own comment above).
-                        .padding(top = 8.dp, bottom = 8.dp),
+                        .padding(top = 4.dp, bottom = 10.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    Box(Modifier.size(width = 22.dp, height = 3.dp).clip(RoundedCornerShape(2.dp)).background(if (selected) Ids.colors.brand else androidx.compose.ui.graphics.Color.Transparent))
+                    Spacer(Modifier.height(6.dp))
                     Box {
-                        Icon(
-                            imageVector = tab.icon,
-                            contentDescription = tab.label,
-                            modifier = Modifier.size(24.dp),
-                            tint = if (selected) Ids.colors.brand else Ids.colors.textTertiary
+                        val ink = Ids.colors.textPrimary
+                        val solid = selected && tab != ItundaTab.Pay && tab != ItundaTab.Explore
+                        rw.itunda.core.designsystem.components.ItundaArt(
+                            name = if (solid) "${tabArt(tab)}-solid" else tabArt(tab),
+                            set = if (solid) rw.itunda.core.designsystem.components.ItundaArtSet.Solid else rw.itunda.core.designsystem.components.ItundaArtSet.Line,
+                            size = 26.dp,
+                            tint = if (selected) ink else Ids.colors.textTertiary,
                         )
                         // Real cross-platform-parity gap found live (2026-09-13) -- web
                         // already shows this exact numeric badge (BankDashboard.tsx,
@@ -122,7 +135,7 @@ internal fun ItundaBottomBar(selectedTab: ItundaTab, onSelect: (ItundaTab) -> Un
                     Spacer(modifier = Modifier.height(3.dp))
                     Text(
                         text = tab.label,
-                        fontSize = 11.sp,
+                        fontSize = 13.sp,
                         // Real fix (2026-08-25, same live-device comparison) -- Compose's
                         // Text defaults to the font's full built-in line-height metrics
                         // (~24dp measured for this 11sp label), well beyond the glyphs'
@@ -138,8 +151,8 @@ internal fun ItundaBottomBar(selectedTab: ItundaTab, onSelect: (ItundaTab) -> Un
                                 trim = LineHeightStyle.Trim.Both,
                             ),
                         ),
-                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                        color = if (selected) Ids.colors.brand else Ids.colors.textTertiary
+                        fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Medium,
+                        color = if (selected) Ids.colors.textPrimary else Ids.colors.textTertiary
                     )
                 }
             }
