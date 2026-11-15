@@ -102,30 +102,28 @@ fun MyEntryPoint(
         modifier = Modifier.fillMaxSize().padding(start = Ids.layout.screenHorizontal, end = Ids.layout.screenHorizontal, top = Ids.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
-        item { BackTopBar("My", onBack) }
+        item { Text("You", color = Ids.colors.textPrimary, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)) }
         item { ProfilePhotoCard() }
         item { PinUpgradeCard() }
         item { VerificationCard() }
         if (affiliateLinks.isNotEmpty()) {
             item {
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("Partner earnings", color = Ids.colors.textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 22.sp)
+                    Text("Earn 3% when people buy via your links.", color = Ids.colors.textTertiary, fontSize = 14.sp)
+                }
+            }
+            item {
                 val totalClicks = affiliateLinks.sumOf { it.clickCount }
                 val totalEarned = affiliateCommissions.sumOf { it.commissionAmount }
-                Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Partner earnings", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    Text("Earn 3% on any purchase made through a product link you've shared.", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Links shared", color = Ids.colors.textSecondary, fontSize = 13.sp)
-                        Text("${affiliateLinks.size}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Total clicks", color = Ids.colors.textSecondary, fontSize = 13.sp)
-                        Text("$totalClicks", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Total earned", color = Ids.colors.textSecondary, fontSize = 13.sp)
-                        Text("${String.format(Locale.US, "%,.0f", totalEarned)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    }
-                }
+                FlatSection(
+                    "",
+                    listOf(
+                        FlatRow("Shared links", trailing = "${affiliateLinks.size}", glyph = { Text("📨", fontSize = 22.sp) }),
+                        FlatRow("Clicks", trailing = "$totalClicks", glyph = { Text("📊", fontSize = 22.sp) }),
+                        FlatRow("Earned", trailing = "${String.format(Locale.US, "%,.0f", totalEarned)} RWF", glyph = { Text("💵", fontSize = 22.sp) }),
+                    ),
+                )
             }
         }
         if (shopOrders.isNotEmpty() || eatsOrders.isNotEmpty()) {
@@ -155,7 +153,7 @@ fun MyEntryPoint(
                 }
             }
         }
-        item { Text("My favorites", color = Ids.colors.textPrimary, fontSize = 19.sp, fontWeight = FontWeight.Bold) }
+        item { Text("My favorites", color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 8.dp)) }
         item {
             FlatSection(
                 "",
