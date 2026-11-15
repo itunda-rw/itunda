@@ -18,7 +18,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -27,7 +26,7 @@ import kotlinx.coroutines.delay
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 
-/** One offer card: white text on the brand gradient, with a big emoji on the right (prototype v1038). */
+/** One offer card: a solid Itunda-indigo surface, white text, and art on the right. */
 internal data class ExploreOffer(val title: String, val subtitle: String, val art: String)
 
 // Placeholder offers until a real offers endpoint exists; they mirror the prototype's three
@@ -63,7 +62,7 @@ internal fun ExploreOffersCarousel(
                 .fillMaxWidth()
                 .height(132.dp)
                 .clip(RoundedCornerShape(28.dp))
-                .background(Brush.linearGradient(listOf(Color(0xFF5B54D6), Color(0xFF8F89FF))))
+                .background(Color(0xFF5B54D6))
                 .pressScaleClickable { onClick(offer) }
                 .padding(start = 22.dp, end = 22.dp, top = 22.dp, bottom = 16.dp),
         ) {
