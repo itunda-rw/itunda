@@ -387,6 +387,11 @@ val assembleConsumerPrototypeAsset = tasks.register("assembleConsumerPrototypeAs
         check(html.contains("<!doctype html>", ignoreCase = true)) { "Consumer prototype HTML doctype is missing" }
         check(html.contains("v1038: pull threshold")) { "Consumer prototype v1038 final marker is missing" }
         check(html.contains("function render(mode='fade')")) { "Consumer prototype render entry point is missing" }
+        // Preserve the prototype's canonical Itunda graphics; native substitutes are not parity.
+        check(html.contains("itundaicons-js")) { "Canonical itundaicons script is missing from the consumer prototype" }
+        check(html.contains("window.itundaIcon=function")) { "itundaicons renderer is missing from the consumer prototype" }
+        check(html.contains("itundaface-css")) { "Canonical itundaface styles are missing from the consumer prototype" }
+        check(html.contains("window.itundaFaceOriginal=function")) { "itundaface original renderer is missing from the consumer prototype" }
     }
 }
 android.sourceSets.getByName("main").assets.srcDir(consumerPrototypeAssetDir)
