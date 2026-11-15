@@ -24,7 +24,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.CardGiftcard
-import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.ReceiptLong
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
@@ -224,13 +223,10 @@ private fun HomeBar(hasUnread: Boolean, onOpenBank: () -> Unit, onOpenPay: () ->
     Row(Modifier.fillMaxWidth().height(78.dp).padding(start = 10.dp, top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
         IdsAppBarTitle(area = "bank", onClick = onOpenBank)
         Spacer(Modifier.weight(1f))
-        Icon(
-            Icons.Outlined.QrCodeScanner, "Pay", Modifier.size(28.dp).pressScaleClickable(onClick = onOpenPay),
-            tint = Ids.colors.textTertiary,
-        )
+        ItundaArt("qr", ItundaArtSet.Line, 28.dp, tint = Ids.colors.textTertiary, modifier = Modifier.pressScaleClickable(onClick = onOpenPay))
         Spacer(Modifier.width(20.dp))
         Box(Modifier.pressScaleClickable(onClick = onOpenNotifications).padding(end = 6.dp)) {
-            Icon(IdsIcons.Bell, "Notifications", Modifier.size(28.dp), tint = Ids.colors.textTertiary)
+            ItundaArt("bell", ItundaArtSet.Line, 28.dp, tint = Ids.colors.textTertiary)
             if (hasUnread) {
                 Box(Modifier.align(Alignment.TopEnd).size(9.dp).clip(CircleShape).background(Ids.colors.danger))
             }
