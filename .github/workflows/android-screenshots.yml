@@ -38,7 +38,7 @@ jobs:
         working-directory: android
         run: |
           chmod +x ./gradlew
-          ./gradlew :screenshots:testDebugUnitTest --stacktrace
+          ./gradlew :screenshots:testDebugUnitTest -Proborazzi.test.record=true --stacktrace
       - name: Push PNGs to ci-screenshots branch
         if: always()
         env:
