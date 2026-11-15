@@ -19,6 +19,7 @@ import rw.itunda.feature.pay.impl.PayDoneScreen
 import rw.itunda.feature.pay.impl.PaySettingsScreen
 import rw.itunda.feature.pay.impl.PayAmountScreen
 import rw.itunda.feature.pay.impl.AddMoneyScreen
+import rw.itunda.feature.pay.impl.PayCouponAddScreen
 import rw.itunda.feature.pay.impl.PayHub
 import rw.itunda.feature.pay.impl.ProtoPayContent
 import rw.itunda.feature.pay.impl.ProtoPayMode
@@ -75,4 +76,5 @@ class PayScreenshotTest {
         val pay = rw.itunda.core.network.Account("p", "u", "0002", "itunda Pay", null, "PAY", 120500.0, 120500.0, "RWF", true)
         AddMoneyScreen(pay, listOf(bank), {}, {})
     }
+    @Test fun couponAdd() = shot("coupon-add") { PayCouponAddScreen({}) }
 }

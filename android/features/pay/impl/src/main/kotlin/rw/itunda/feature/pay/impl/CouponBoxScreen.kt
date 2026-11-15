@@ -56,6 +56,8 @@ private enum class CouponTab { RECEIVED, USED }
 fun CouponBoxScreen(onBack: () -> Unit, onBrowseMerchants: () -> Unit) {
     BackHandler(onBack = onBack)
     var tab by remember { mutableStateOf(CouponTab.RECEIVED) }
+    var adding by remember { mutableStateOf(false) }
+    if (adding) { PayCouponAddScreen(onBack = { adding = false }); return }
     var coupons by remember { mutableStateOf<List<CouponBrowseViewDto>?>(null) }
     var redemptions by remember { mutableStateOf<List<CouponRedemptionDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -84,8 +86,9 @@ fun CouponBoxScreen(onBack: () -> Unit, onBrowseMerchants: () -> Unit) {
         }
 
         Row(
-            Modifier.padding(horizontal = Ids.layout.screenHorizontal).padding(bottom = 12.dp),
+            Modifier.fillMaxWidth().padding(horizontal = Ids.layout.screenHorizontal).padding(bottom = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             listOf(
                 CouponTab.RECEIVED to stringResource(R.string.pay_coupons_received, received.size),
@@ -98,6 +101,8 @@ fun CouponBoxScreen(onBack: () -> Unit, onBrowseMerchants: () -> Unit) {
                     modifier = Modifier.pressScaleClickable { tab = key },
                 )
             }
+            Spacer(Modifier.weight(1f))
+            Text("+", fontSize = 26.sp, color = Ids.colors.textPrimary, modifier = Modifier.pressScaleClickable { adding = true })
         }
 
         if (coupons == null || redemptions == null) {
