@@ -442,20 +442,20 @@ private fun IkiminaDetailContent(id: String) {
             item {
                 // Real fix (flat-design sweep): dropped the Card wrapper.
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Invite a member", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("Invite a member", color = Ids.colors.textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             IdsTextField(value = phoneNumber, onValueChange = { phoneNumber = it }, label = "Phone number", modifier = Modifier.weight(1f))
                             Box(
-                                modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
+                                modifier = Modifier.clip(RoundedCornerShape(16.dp)).background(Ids.colors.brand)
                                     .pressScaleClickable(enabled = !busy && phoneNumber.isNotBlank()) { invite() }
-                                    .padding(horizontal = 20.dp, vertical = 14.dp),
-                            ) { Text(if (busy) "…" else "Invite", color = Color.White, fontWeight = FontWeight.Bold) }
+                                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                            ) { Text(if (busy) "…" else "Invite", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
                         }
                         Box(
-                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                .pressScaleClickable(enabled = !busy && current.members.size >= 2) { start() }.padding(vertical = 14.dp),
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Ids.colors.brand)
+                                .pressScaleClickable(enabled = !busy && current.members.size >= 2) { start() }.padding(vertical = 16.dp),
                             contentAlignment = Alignment.Center,
-                        ) { Text(if (busy) "…" else "Start the cycle", color = Color.White, fontWeight = FontWeight.Bold) }
+                        ) { Text(if (busy) "…" else "Start the cycle", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
                 }
             }
         }
@@ -464,22 +464,22 @@ private fun IkiminaDetailContent(id: String) {
                 // Real fix (flat-design sweep): dropped the Card wrapper.
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(
-                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
                                 .background(if (iContributed) Ids.colors.surfaceSoft else Ids.colors.brand)
-                                .pressScaleClickable(enabled = !busy && !iContributed) { contribute() }.padding(vertical = 14.dp),
+                                .pressScaleClickable(enabled = !busy && !iContributed) { contribute() }.padding(vertical = 16.dp),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
                                 if (iContributed) "✓ You've contributed this round" else if (busy) "…" else "Contribute ${formatMoney(current.ikimina.contributionAmount)} RWF",
-                                color = if (iContributed) Ids.colors.textPrimary else Color.White, fontWeight = FontWeight.Bold,
+                                color = if (iContributed) Ids.colors.textPrimary else Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp,
                             )
                         }
                         if (allContributed) {
                             Box(
-                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                    .pressScaleClickable(enabled = !busy) { triggerPayout() }.padding(vertical = 14.dp),
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Ids.colors.brand)
+                                    .pressScaleClickable(enabled = !busy) { triggerPayout() }.padding(vertical = 16.dp),
                                 contentAlignment = Alignment.Center,
-                            ) { Text(if (busy) "…" else "Trigger this round's payout", color = Color.White, fontWeight = FontWeight.Bold) }
+                            ) { Text(if (busy) "…" else "Trigger this round's payout", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
                         }
                         payoutMessage?.let { Text(it, color = Ids.colors.success, fontSize = 13.sp) }
                 }
