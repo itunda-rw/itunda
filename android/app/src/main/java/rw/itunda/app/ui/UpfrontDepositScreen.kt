@@ -228,7 +228,7 @@ private fun depositStatusColor(deposit: UpfrontDepositDto): Color = when {
 
 @Composable
 private fun UpfrontDepositCreateContent(onCreated: () -> Unit) {
-    var principal by remember { mutableStateOf("") }
+    var principal by remember { mutableStateOf("100000") }
     var submitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
@@ -259,34 +259,59 @@ private fun UpfrontDepositCreateContent(onCreated: () -> Unit) {
         }
     }
 
+    // Prototype v1038 "Get your interest today": amount chips, tinted summary, one CTA.
+    val unlocks = remember { java.time.LocalDate.now().plusMonths(TERM_MONTHS.toLong()).toString() }
     Column(
         modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
+        Text("Get your interest today", color = Ids.colors.textPrimary, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
         Text(
-            "Unlike a regular fixed deposit, you get the full $TERM_MONTHS months' interest paid to your main " +
-                "account the moment you open this -- not at maturity. In exchange, the principal is locked for " +
-                "the full $TERM_MONTHS months with no early withdrawal.",
-            color = Ids.colors.textSecondary, fontSize = 13.sp,
+            "Lock money for $TERM_MONTHS months. We pay the interest upfront and hold the principal.",
+            color = Ids.colors.textTertiary, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp),
         )
-        rw.itunda.core.designsystem.components.AmountKeypadInput(
-            digits = principal, onDigitsChange = { principal = it },
-            quickAmounts = listOf(10_000L, 100_000L),
-        )
-        previewInterest?.let {
-            Text("You'll receive ${formatMoney(it.toDouble())} RWF immediately", color = Ids.colors.success, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        Spacer(Modifier.height(20.dp))
+        listOf(50_000L, 100_000L, 250_000L, 500_000L).chunked(2).forEach { pair ->
+            Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                pair.forEach { v ->
+                    val on = principal == v.toString()
+                    Box(
+                        Modifier.weight(1f).height(48.dp).clip(RoundedCornerShape(16.dp))
+                            .background(if (on) Ids.colors.brand else Ids.colors.surfaceSoft)
+                            .pressScaleClickable { principal = v.toString() },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("${formatMoney(v.toDouble())} RWF", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = if (on) Ids.colors.textPrimary else Ids.colors.textTertiary)
+                    }
+                }
+            }
+        }
+        Column(Modifier.fillMaxWidth().padding(top = 8.dp).clip(RoundedCornerShape(20.dp)).background(Ids.colors.brand.copy(alpha = 0.08f)).padding(horizontal = 20.dp, vertical = 4.dp)) {
+            DepositSummaryLine("Rate", "$ANNUAL_RATE%")
+            DepositSummaryLine("Paid to you now", "+${formatMoney((previewInterest ?: BigDecimal.ZERO).toDouble())} RWF", Ids.colors.success)
+            DepositSummaryLine("Unlocks", unlocks)
         }
         Spacer(modifier = Modifier.weight(1f))
-        error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp, modifier = Modifier.padding(bottom = 8.dp)) }
         Box(
-            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
                 .background(Ids.colors.brand)
                 .pressScaleClickable(enabled = !submitting) { submit() }
-                .padding(vertical = 14.dp),
+                .padding(vertical = 16.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(if (submitting) "Working…" else "Open deposit", color = Color.White, fontWeight = FontWeight.Bold)
+            Text(
+                if (submitting) "Working…" else "Lock ${formatMoney((principal.toBigDecimalOrNull() ?: BigDecimal.ZERO).toDouble())} RWF",
+                color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp,
+            )
         }
+    }
+}
+
+@Composable
+private fun DepositSummaryLine(label: String, value: String, valueColor: Color = Ids.colors.textPrimary) {
+    Row(Modifier.fillMaxWidth().height(52.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, color = Ids.colors.textPrimary, fontSize = 15.sp, modifier = Modifier.weight(1f))
+        Text(value, color = valueColor, fontSize = 15.sp, fontWeight = FontWeight.Bold)
     }
 }
 
