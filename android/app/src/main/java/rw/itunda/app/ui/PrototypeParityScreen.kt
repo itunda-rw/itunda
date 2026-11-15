@@ -10,6 +10,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -17,11 +18,46 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
+import rw.itunda.core.designsystem.components.LocalRealActivity
 
 /** Renders the canonical v1038 HTML prototype after the native session/auth gate. */
 @Composable
 fun PrototypeParityScreen(modifier: Modifier = Modifier) {
     val webViewRef = remember { mutableStateOf<WebView?>(null) }
+    val activity = LocalRealActivity.current
+    val backPending = remember { mutableStateOf(false) }
+
+    // Mirror the prototype's own navigation model for the Android system Back action:
+    // dismiss an open sheet first, then pop its screen stack, then return to Home.
+    // Only finish the Activity when the prototype is already at its root destination.
+    BackHandler {
+        if (backPending.value) return@BackHandler
+        val webView = webViewRef.value
+        if (webView == null) {
+            activity.finish()
+        } else {
+            backPending.value = true
+            webView.evaluateJavascript(
+                \"\"\"
+                (function() {
+                  try {
+                    const layer = document.getElementById('layer');
+                    if (layer && layer.innerHTML.trim()) { closeSheet(); return 'handled'; }
+                    if (typeof S !== 'undefined' && Array.isArray(S.stack) && S.stack.length) { back(); return 'handled'; }
+                    if (typeof S !== 'undefined' && S.tab && S.tab !== 'home') { tab('home'); return 'handled'; }
+                    return 'exit';
+                  } catch (error) {
+                    console.error('Itunda system Back handling failed', error);
+                    return 'exit';
+                  }
+                })();
+                \"\"\".trimIndent(),
+            ) { result ->
+                backPending.value = false
+                if (result?.contains("exit") == true) activity.finish()
+            }
+        }
+    }
 
     DisposableEffect(Unit) {
         onDispose {
