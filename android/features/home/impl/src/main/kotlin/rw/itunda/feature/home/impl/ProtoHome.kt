@@ -99,36 +99,32 @@ onOpenProfile:()->Unit,onOpenCreditScore:()->Unit,
 ){
 val language=androidx.compose.ui.platform.LocalConfiguration.current.locales[0]?.language?:"en"
 val t=homeCopy(language)
+var inviteShown by remember{mutableStateOf(true)}
 LazyColumn(Modifier.fillMaxSize().background(Ids.colors.background),contentPadding=androidx.compose.foundation.layout.PaddingValues(bottom=96.dp)){
-item{HomeHeader(hasUnread,onOpenNotifications,onOpenProfile,t.notifications,t.profile)}
-item{Row(Modifier.fillMaxWidth().padding(horizontal=24.dp).padding(top=12.dp),verticalAlignment=Alignment.CenterVertically){
-Box(Modifier.size(8.dp).clip(CircleShape).background(Ids.colors.success));Spacer(Modifier.width(8.dp));Text(t.status,color=Ids.colors.textSecondary,fontSize=13.sp)
+item{HomeProtoHeader(hasUnread,onOpenBank,onOpenPay,onOpenNotifications,t.notifications)}
+item{HomeAccountsCard(state.bankBalance,state.payBalance,state.interestDays,onOpenBank,onOpenPay,onSend,onAdd,onBills,onCard,onSavings,onSeeAll)}
+if(inviteShown) item{HomeInviteBanner(onInvite){inviteShown=false}}
+item{Column(Modifier.fillMaxWidth().padding(horizontal=24.dp).padding(top=8.dp)){
+Row(Modifier.fillMaxWidth().clickable(onClick=onOpenSpending),verticalAlignment=Alignment.CenterVertically){
+Column(Modifier.weight(1f)){
+Row(verticalAlignment=Alignment.Bottom){Text(rwf(state.spentThisMonth),color=Ids.colors.textPrimary,fontSize=24.sp,fontWeight=FontWeight.ExtraBold);Text(" RWF",color=Ids.colors.textSecondary,fontSize=14.sp,modifier=Modifier.padding(bottom=3.dp))}
+Text("Spent in ${state.monthName}",color=Ids.colors.textSecondary,fontSize=15.sp)}
+ItundaArt("chev",ItundaArtSet.Line,18.dp,tint=Ids.colors.textTertiary)}
+Spacer(Modifier.height(16.dp));ProtoWeekChart(state.week,state.today)
 }}
-item{Column(Modifier.fillMaxWidth().padding(horizontal=24.dp).padding(top=28.dp)){
-Column(Modifier.fillMaxWidth().clickable(onClick=onOpenBank)){
-Text(t.bank,color=Ids.colors.textSecondary,fontSize=13.sp)
-Row(verticalAlignment=Alignment.Bottom){Text(rwf(state.bankBalance),color=Ids.colors.textPrimary,fontSize=40.sp,fontWeight=FontWeight.ExtraBold,letterSpacing=(-1.2).sp);Text(" RWF",color=Ids.colors.textSecondary,fontSize=14.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.padding(bottom=5.dp))}
-}
-Row(Modifier.fillMaxWidth().padding(top=14.dp).clickable(onClick=onOpenPay),verticalAlignment=Alignment.CenterVertically){
-Text(t.pay,color=Ids.colors.textSecondary,fontSize=15.sp);Spacer(Modifier.weight(1f));Text("${rwf(state.payBalance)} RWF",color=Ids.colors.textPrimary,fontSize=15.sp,fontWeight=FontWeight.ExtraBold);Spacer(Modifier.width(4.dp));ItundaArt("chev",ItundaArtSet.Line,16.dp)
-}
-}}
-item{Row(Modifier.fillMaxWidth().padding(horizontal=24.dp).padding(top=20.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)){
-HomeActionButton(t.send,true,Modifier.weight(1f),onSend);HomeActionButton(t.add,false,Modifier.weight(1f),onAdd)
-}}
-item{HomeSection(t.quick){Row(Modifier.fillMaxWidth()){
-HomeGridAction("send",t.send,onSend,Modifier.weight(1f));HomeGridAction("qr",t.scan,onOpenPay,Modifier.weight(1f));HomeGridAction("bill",t.bills,onBills,Modifier.weight(1f));HomeGridAction("phone",t.airtime,onBills,Modifier.weight(1f))
-}}}
-item{HomeSection(t.services){Row(Modifier.fillMaxWidth()){
-HomeGridAction("gov",t.irembo,onBills,Modifier.weight(1f));HomeGridAction("receipt",t.taxes,onBills,Modifier.weight(1f));HomeGridAction("bolt",t.electricity,onBills,Modifier.weight(1f));HomeGridAction("drop",t.water,onBills,Modifier.weight(1f));HomeGridAction("school-fees",t.school,onBills,Modifier.weight(1f))
-}}}
-item{HomeSection(t.spending){
-HomeListRow("spending","${rwf(state.spentThisMonth)} RWF",t.spent,null,onOpenSpending)
-state.bill?.let{b->HomeListRow("bill",b.title,t.due,"${rwf(b.amount)} RWF",onPayBill)}
-}}
-item{HomeSection(t.forYou){
-HomeListRow("new-savings-goal",t.goal,t.goalHint,null,onSavings);HomeListRow("my-credit-score",t.credit,t.creditHint,t.view,onOpenCreditScore)
-}}
+state.bill?.let{b->item{HomeRow("bill",b.title,"Due ${b.due} · ${rwf(b.amount)} RWF","Pay",onPayBill)}}
+item{HomeRow("gift","${rwf(state.earned)} RWF earned","Points and coupons","View",onOpenRewards)}
+item{HomeSectionHeader("Pockets","See all",onSavings)}
+item{HomeRow("school-fees","School fees","120,000 RWF","Top up",onSavings)}
+item{HomeRow("lock","Emergency fund","50,000 RWF","Top up",onSavings)}
+item{HomeSectionHeader("Around you",null){}}
+item{HomeNavRow("market","Kigali Roast","Cafe · open till 20:00 · 3 min walk"){}}
+item{HomeNavRow("restaurant","Eats","Free delivery on your first order"){}}
+item{HomeNavRow("moto","Home","About 24 min by bus · leave now"){}}
+item{HomeSectionHeader("Recent activity","See all",onSeeAll)}
+item{HomeActivityRow("receive","Amina K.","Received · Yesterday","+25,000 RWF",null)}
+item{HomeActivityRow("transit","Kigali Bus Services","Paid · Tuesday","−300 RWF","+9 earned")}
+item{HomeSettingsButton{}}
 }
 }
 @Composable private fun HomeHeader(hasUnread:Boolean,onOpenNotifications:()->Unit,onOpenProfile:()->Unit,notificationsLabel:String,profileLabel:String){
