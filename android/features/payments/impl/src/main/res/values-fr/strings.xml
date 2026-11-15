@@ -45,4 +45,10 @@
     <string name="transfer_gift_note">Retenu jusqu’à ce qu’il soit réclamé — remboursé après 7 jours sinon. Fonctionne uniquement avec un numéro de téléphone, pas un numéro de compte.</string>
     <string name="transfer_gift_note_hint">Ajouter une note (facultatif)</string>
     <string name="transfer_memo_hint">Ajouter un mémo — le destinataire le verra</string>
+    <string name="transfer_review">Vérifier</string>
+    <string name="transfer_review_title">Envoyer %1$s RWF à %2$s ?</string>
+    <string name="transfer_review_to">À</string>
+    <string name="transfer_review_from">De</string>
+    <string name="transfer_review_amount">Montant</string>
+    <string name="transfer_review_bank">itunda Bank</string>
 </resources>

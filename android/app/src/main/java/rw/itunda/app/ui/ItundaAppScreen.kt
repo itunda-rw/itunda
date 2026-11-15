@@ -362,7 +362,7 @@ private fun TransferSuccessScreen(amountRwf: Long, recipientLabel: String, fraud
     // own affiliate-link share), not something invented for this screen.
     val shareContext = androidx.compose.ui.platform.LocalContext.current
     rw.itunda.core.designsystem.components.IdsCelebrationScreen(
-        headline = String.format(java.util.Locale.US, "%,d RWF sent", amountRwf),
+        headline = String.format(java.util.Locale.US, "%,d RWF", amountRwf),
         message = "",
         recipientLabel = recipientLabel,
         onShare = {

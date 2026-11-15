@@ -65,8 +65,18 @@ fun TransferAmountScreen(
     val balance = availableBalance.toLong()
     // The best error is the one that never occurs: catch an over-balance amount here.
     val insufficientBalance = amount > 0 && amount > balance
+    var reviewing by rememberSaveable { mutableStateOf(false) }
     fun add(n: Long) { digits = ((digits.toLongOrNull() ?: 0L) + n).toString().take(9) }
 
+    if (reviewing) {
+        androidx.activity.compose.BackHandler { reviewing = false }
+        TransferReview(
+            amount = amount, to = recipientAccountNumber, from = fromAccountName ?: stringResource(R.string.transfer_review_bank),
+            isSubmitting = isSubmitting, onBack = { reviewing = false },
+            onSend = { onConfirm(amount, isGift, giftNote.trim().ifEmpty { null }, giftTheme) },
+        )
+        return
+    }
     Column(modifier = Modifier.fillMaxSize().background(Ids.colors.background)) {
         FlowTopBar(onBack)
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
@@ -122,8 +132,8 @@ fun TransferAmountScreen(
         } else {
             Box(modifier = Modifier.padding(horizontal = 16.dp)) {
                 IdsButton(
-                    text = if (isGift) stringResource(R.string.transfer_send_gift) else stringResource(R.string.transfer_send),
-                    onClick = { onConfirm(amount, isGift, giftNote.trim().ifEmpty { null }, giftTheme) },
+                    text = stringResource(R.string.transfer_review),
+                    onClick = { reviewing = true },
                     enabled = amount > 0 && !insufficientBalance,
                 )
             }
