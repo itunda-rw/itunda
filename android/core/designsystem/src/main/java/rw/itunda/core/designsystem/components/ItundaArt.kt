@@ -1,7 +1,6 @@
 package rw.itunda.core.designsystem.components
 
 import android.content.Context
-import android.graphics.RectF
 import android.util.LruCache
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
@@ -40,12 +39,13 @@ private fun load(context: Context, set: ItundaArtSet, name: String): SVG? {
 fun ItundaArt(name: String, set: ItundaArtSet = ItundaArtSet.Color, size: Dp = 24.dp, tint: Color? = null, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val svg = remember(set, name) { load(context, set, name) }
-    val options = remember(tint) { tint?.let { RenderOptions().css("svg { color: #%06X }".format(it.toArgb() and 0xFFFFFF)) } }
+    val css = remember(tint) { tint?.let { "svg { color: #%06X }".format(it.toArgb() and 0xFFFFFF) } }
     Canvas(modifier.size(size)) {
         val s = svg ?: return@Canvas
         drawIntoCanvas { c ->
-            val rect = RectF(0f, 0f, this.size.width, this.size.height)
-            if (options != null) s.renderToCanvas(c.nativeCanvas, rect, options) else s.renderToCanvas(c.nativeCanvas, rect)
+            val o = RenderOptions().viewPort(0f, 0f, this.size.width, this.size.height)
+            if (css != null) o.css(css)
+            s.renderToCanvas(c.nativeCanvas, o)
         }
     }
 }
