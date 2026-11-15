@@ -17,8 +17,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AccountBalance
-import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -31,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -69,9 +68,9 @@ internal fun HomeTopBar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IdsAppBarTitle()
-            Icon(
-                Icons.Outlined.ExpandMore, contentDescription = stringResource(R.string.home_account_switcher),
-                modifier = Modifier.size(20.dp), tint = Ids.colors.textPrimary,
+            ItundaArt(
+                "chev", ItundaArtSet.Line, size = 16.dp, tint = Ids.colors.textPrimary,
+                modifier = Modifier.rotate(90f),
             )
         }
         Spacer(modifier = Modifier.weight(1f))
@@ -155,7 +154,7 @@ private fun AccountSwitcherSheet(onDismiss: () -> Unit, onOpenOverview: () -> Un
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(Icons.Outlined.AccountBalance, contentDescription = null, modifier = Modifier.size(22.dp), tint = Ids.colors.textSecondary)
+                        ItundaArt("bank", ItundaArtSet.Line, size = 22.dp, tint = Ids.colors.textSecondary)
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text("${account.provider} · ${account.externalAccountNumberMasked}", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
