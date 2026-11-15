@@ -42,6 +42,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # Verify the PR's source tree, not GitHub's synthetic merge commit.
+          # The integration test branch carries the canonical archive; the merge
+          # ref can omit it when the base branch does not yet contain that file.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
 
       - name: Verify v3 archive identity
