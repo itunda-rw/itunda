@@ -248,6 +248,7 @@ fun BankHubEntryPoint(
                     }
                 }
             }
+            item { BankCardRow { bankSub = BankSub.CARDS } }
             item { BankPocketsRow(count = 3) { bankSub = BankSub.POCKETS } }
             item {
                 Row(

@@ -182,5 +182,6 @@ fun BankSubOverlay(sub: BankSub?, onClose: () -> Unit, onOpen: (BankSub) -> Unit
         BankSub.POCKETS -> BankPocketsScreen(onClose)
         BankSub.MANAGE -> BankManageScreen(onClose, onOpen)
         BankSub.LIMITS -> BankLimitsScreen { onOpen(BankSub.MANAGE) }
+        BankSub.CARDS -> BankCardsScreen(onClose)
     }
 }
