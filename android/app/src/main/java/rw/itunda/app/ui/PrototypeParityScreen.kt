@@ -2,6 +2,7 @@ package rw.itunda.app.ui
 
 import android.graphics.Color as AndroidColor
 import android.util.Log
+import android.view.ViewGroup
 import android.webkit.ConsoleMessage
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -11,26 +12,56 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 
 /** Renders the canonical v1038 HTML prototype after the native session/auth gate. */
 @Composable
 fun PrototypeParityScreen(modifier: Modifier = Modifier) {
+    val webViewRef = remember { mutableStateOf<WebView?>(null) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            webViewRef.value?.let { webView ->
+                // Detach before destroy: Android WebView requires that it is no longer
+                // attached to a parent when its renderer and native resources are released.
+                (webView.parent as? ViewGroup)?.removeView(webView)
+                webView.stopLoading()
+                webView.webChromeClient = null
+                webView.webViewClient = WebViewClient()
+                webView.destroy()
+            }
+            webViewRef.value = null
+        }
+    }
+
     AndroidView(
         modifier = modifier.fillMaxSize(),
         factory = { context ->
             WebView(context).apply {
+                webViewRef.value = this
                 setBackgroundColor(AndroidColor.TRANSPARENT)
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
                 settings.allowFileAccess = true
                 settings.allowContentAccess = false
                 settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                settings.cacheMode = WebSettings.LOAD_NO_CACHE
+                // Keep the local prototype instant while allowing remote font assets
+                // to use WebView's normal HTTP cache between app launches.
+                settings.cacheMode = WebSettings.LOAD_DEFAULT
                 webChromeClient = object : WebChromeClient() {
                     override fun onConsoleMessage(message: ConsoleMessage): Boolean {
-                        Log.e("ItundaPrototype", "${message.message()} (line ${message.lineNumber()})")
+                        val detail = "${message.message()} (line ${message.lineNumber()})"
+                        when (message.messageLevel()) {
+                            ConsoleMessage.MessageLevel.ERROR -> Log.e("ItundaPrototype", detail)
+                            ConsoleMessage.MessageLevel.WARNING -> Log.w("ItundaPrototype", detail)
+                            ConsoleMessage.MessageLevel.LOG -> Log.i("ItundaPrototype", detail)
+                            ConsoleMessage.MessageLevel.TIP,
+                            ConsoleMessage.MessageLevel.DEBUG -> Log.d("ItundaPrototype", detail)
+                        }
                         return true
                     }
                 }
