@@ -54,14 +54,13 @@ import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsIcons
 
 /**
- * Home, rebuilt from the HTML prototype (v1038) with its measured values: every
- * size/radius/weight below is a number read off the prototype's DOM at a 390dp-wide
- * viewport, not an approximation. Layout (top to bottom): app bar, balance card (two
- * accounts with Send/Add pills + Bills/Card/Savings/See all row), slim invite row,
- * spending card (month total, selected-day readout, 7 bars, upcoming bill), earned card.
+ * Consumer Home composed to follow the supplied v1038 prototype at its 390dp viewport:
+ * brand/profile header, provider-status line, Bank and Pay balances, primary actions,
+ * Quick actions, Rwanda services, Spending, and For you. Keep this screen flat and
+ * content-led: no dashboard cards or extra promotional modules absent from the source.
  *
- * Stateless on purpose so the Roborazzi screenshot test can render it with fixed data
- * and compare it with the prototype (android/screenshots).
+ * Demo-only bill data is supplied by ProtoHomeTab; account and spending figures remain
+ * sourced from the existing app state. Keep interactions routed through app callbacks.
  */
 data class ProtoBill(val title: String, val due: String, val amount: Double)
 
