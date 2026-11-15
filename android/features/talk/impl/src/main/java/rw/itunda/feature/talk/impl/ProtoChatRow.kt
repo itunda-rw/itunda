@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.components.ItundaArt
@@ -28,13 +29,24 @@ import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.ConversationSummaryDto
 
-// People without a profile photo get one of itunda's own character faces, picked from their name so it stays stable.
-private val chatFaces = listOf("shopkeeper", "farmer", "student", "teacher", "fisherman", "moto-rider", "tea-picker", "community-health-worker", "intore-dancer", "momo-agent")
+// Prototype avatars: an illustrated tile for service/group/shop chats, a friendly emoji on a pale-yellow
+// tile for people. Picked from the name so each chat keeps the same avatar.
+private val chatEmoji = listOf("😄", "🙂", "😎", "😊", "😁")
 
 @Composable
 internal fun ChatFace(name: String, size: Int) {
-    Box(Modifier.size(size.dp).clip(CircleShape).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
-        ItundaArt(chatFaces[Math.floorMod(name.hashCode(), chatFaces.size)], ItundaArtSet.Face, (size * 0.8f).dp)
+    val art = when {
+        name.contains("support", true) || name.equals("itunda", true) -> "color/bell"
+        name.contains("savers", true) || name.contains("group", true) -> "color/community"
+        name.contains("bakery", true) -> "color/bread"
+        else -> null
+    }
+    Box(
+        Modifier.size(size.dp).clip(CircleShape).background(if (art == null) Color(0xFFFFF3C4) else Ids.colors.surfaceSoft),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (art == null) Text(chatEmoji[Math.floorMod(name.hashCode(), chatEmoji.size)], fontSize = (size * 0.5f).sp)
+        else ItundaArt(art.substringAfter('/'), ItundaArtSet.Color, (size * 0.6f).dp)
     }
 }
 
