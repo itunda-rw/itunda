@@ -113,6 +113,14 @@ internal fun LanguageSwitcher(locale: String, onLocaleChange: (String) -> Unit) 
     )
 }
 
+/** Thin brand progress line along the very top of the screen, as in the prototype's create-account flow. */
+@Composable
+internal fun StepProgress(total: Int, current: Int, modifier: Modifier = Modifier) {
+    Box(modifier.fillMaxWidth().height(3.dp).background(Ids.colors.surfaceSoft)) {
+        Box(Modifier.fillMaxWidth((current + 1f) / total).height(3.dp).background(Ids.colors.brand))
+    }
+}
+
 @Composable
 internal fun StepDots(total: Int, current: Int) {
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -145,24 +153,11 @@ private fun StepHeadline(headline: String, subtitle: String? = null) {
  */
 @Composable
 internal fun CompletedFieldRow(label: String, value: String, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(Ids.colors.surfaceSoft)
-            .pressScaleClickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = label, style = IdsTypography.Typography7, color = Ids.colors.textTertiary)
-            Text(text = value, style = IdsTypography.Body1, color = Ids.colors.textPrimary)
-        }
-        Icon(
-            imageVector = IdsIcons.ChevronRight,
-            contentDescription = null,
-            tint = Ids.colors.textTertiary,
-        )
+    // Flat answered-field row (prototype): small grey label, 18sp value, hairline underneath.
+    Column(Modifier.fillMaxWidth().pressScaleClickable(onClick = onClick).padding(top = 14.dp)) {
+        Text(text = label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textTertiary)
+        Text(text = value, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textTertiary, modifier = Modifier.padding(top = 2.dp, bottom = 14.dp))
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Ids.colors.surfaceSoft))
     }
 }
 

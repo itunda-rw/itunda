@@ -337,7 +337,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                         }
                     }
                     Spacer(modifier = Modifier.weight(1f))
-                    if (stage != AuthStage.PHONE) StepDots(total = stepCount, current = stepIndex)
+                    if (stage != AuthStage.PHONE) StepProgress(total = stepCount, current = stepIndex, modifier = Modifier.weight(1f))
                     Spacer(modifier = Modifier.weight(1f))
                     LanguageSwitcher(
                         locale = locale,

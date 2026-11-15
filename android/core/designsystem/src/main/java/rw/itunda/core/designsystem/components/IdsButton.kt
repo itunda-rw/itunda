@@ -112,7 +112,7 @@ fun IdsButton(
     // Only applies to Filled -- Tinted's own disabled state (a secondary style, not
     // shown in the reference) keeps the existing neutral fallback.
     val (disabledContainerColor, disabledContentColor) = when (variant) {
-        IdsButtonVariant.Filled -> Ids.colors.brand.copy(alpha = 0.35f) to Ids.colors.onBrand
+        IdsButtonVariant.Filled -> Ids.colors.brand.copy(alpha = 0.12f) to Ids.colors.brand
         IdsButtonVariant.Tinted -> Ids.colors.divider to Ids.colors.textTertiary
         IdsButtonVariant.Tertiary -> Color.Transparent to Ids.colors.textTertiary
         IdsButtonVariant.Destructive -> Ids.colors.danger.copy(alpha = 0.35f) to IdsColors.White
