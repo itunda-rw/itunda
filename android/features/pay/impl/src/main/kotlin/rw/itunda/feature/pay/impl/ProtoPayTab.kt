@@ -14,6 +14,8 @@ import kotlinx.coroutines.delay
 import rw.itunda.core.network.GenerateCustomerPaymentCodeRequest
 import rw.itunda.core.network.NetworkClient
 
+internal enum class PaySub { TILL, ORDER, DONE, HISTORY, SAVED, POINTS }
+
 /** Stateful Pay tab for the prototype layout: real payment code + real PAY account, nothing invented. */
 @Composable
 fun ProtoPayTab(
@@ -24,6 +26,8 @@ fun ProtoPayTab(
     scanContent: @Composable () -> Unit,
 ) {
     var showHub by remember { mutableStateOf(false) }
+    var sub by remember { mutableStateOf<PaySub?>(null) }
+    var merchant by remember { mutableStateOf("") }
     var mode by remember { mutableStateOf(ProtoPayMode.SCAN) }
     var code by remember { mutableStateOf<String?>(null) }
     var expiresAt by remember { mutableStateOf(0L) }
@@ -51,8 +55,20 @@ fun ProtoPayTab(
             delay(1000)
         }
     }
+    when (sub) {
+        PaySub.TILL -> { PayTillScreen(onBack = { sub = null }, onNext = { merchant = it.name; sub = PaySub.ORDER }); return }
+        PaySub.ORDER -> { PayOrderScreen(merchant, onBack = { sub = null }, onPay = { sub = PaySub.DONE }); return }
+        PaySub.DONE -> { PayDoneScreen(merchant, onDone = { sub = null }); return }
+        PaySub.HISTORY -> { PayHistoryScreen(onBack = { sub = null }); return }
+        PaySub.SAVED -> { PaySavedMerchantsScreen(onBack = { sub = null }); return }
+        PaySub.POINTS -> { PayPointsScreen(onBack = { sub = null }); return }
+        null -> Unit
+    }
     if (showHub) {
-        PayHub(onBack = { showHub = false }, onFindStores = onFindStores)
+        PayHub(
+            onBack = { showHub = false }, onFindStores = onFindStores,
+            onOpenPoints = { sub = PaySub.POINTS }, onOpenHistory = { sub = PaySub.HISTORY }, onOpenSaved = { sub = PaySub.SAVED },
+        )
         return
     }
     ProtoPayContent(
@@ -61,5 +77,7 @@ fun ProtoPayTab(
         fundingBalance = balance?.let { String.format(java.util.Locale.US, "%,.0f", it) } ?: "—",
         onOpenPay = { showHub = true }, onSettings = onSettings, onChangeFunding = onChangeFunding, onReceive = onReceive,
         scanContent = { Column(Modifier.verticalScroll(rememberScrollState())) { scanContent() } },
+        onTill = { sub = PaySub.TILL },
+        onMerchant = { merchant = it; sub = PaySub.ORDER },
     )
 }

@@ -10,6 +10,12 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import rw.itunda.core.designsystem.theme.IdsTheme
+import rw.itunda.feature.pay.impl.PayTillScreen
+import rw.itunda.feature.pay.impl.PayOrderScreen
+import rw.itunda.feature.pay.impl.PayHistoryScreen
+import rw.itunda.feature.pay.impl.PaySavedMerchantsScreen
+import rw.itunda.feature.pay.impl.PayPointsScreen
+import rw.itunda.feature.pay.impl.PayDoneScreen
 import rw.itunda.feature.pay.impl.PayHub
 import rw.itunda.feature.pay.impl.ProtoPayContent
 import rw.itunda.feature.pay.impl.ProtoPayMode
@@ -47,4 +53,15 @@ class PayScreenshotTest {
         rule.setContent { IdsTheme(darkTheme = false) { SplitBillAmountScreen(onBack = {}, onContinue = {}) } }
         rule.onRoot().captureRoboImage("build/screenshots/pay-split-light.png")
     }
+
+    private fun shot(name: String, content: @androidx.compose.runtime.Composable () -> Unit) {
+        rule.setContent { IdsTheme(darkTheme = false) { content() } }
+        rule.onRoot().captureRoboImage("build/screenshots/pay-$name.png")
+    }
+    @Test fun till() = shot("till") { PayTillScreen({}, {}) }
+    @Test fun order() = shot("order") { PayOrderScreen("Nyamirambo Coffee House", {}, {}) }
+    @Test fun done() = shot("done") { PayDoneScreen("Nyamirambo Coffee House", {}) }
+    @Test fun history() = shot("history") { PayHistoryScreen({}) }
+    @Test fun saved() = shot("saved") { PaySavedMerchantsScreen({}) }
+    @Test fun points() = shot("points") { PayPointsScreen({}) }
 }

@@ -37,7 +37,7 @@ import rw.itunda.core.designsystem.theme.Ids
  * All numbers are dummy until a rewards summary endpoint exists.
  */
 @Composable
-fun PayHub(onBack: () -> Unit, onFindStores: () -> Unit) {
+fun PayHub(onBack: () -> Unit, onFindStores: () -> Unit, onOpenPoints: () -> Unit = {}, onOpenHistory: () -> Unit = {}, onOpenSaved: () -> Unit = {}) {
     Column(Modifier.fillMaxSize().background(Ids.colors.background).verticalScroll(rememberScrollState())) {
         Box(Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) { BackTopBar(title = "itunda pay", onBack = onBack) }
         StoresMapHero()
@@ -49,8 +49,11 @@ fun PayHub(onBack: () -> Unit, onFindStores: () -> Unit) {
             Spacer(Modifier.height(4.dp))
             Text("6,400 RWF received", color = Ids.colors.textPrimary, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
             Spacer(Modifier.height(16.dp))
-            BenefitRow("Points · Pay Money", "Total 6,400 RWF")
+            BenefitRow("Points · Pay Money", "Total 6,400 RWF", onOpenPoints)
             BenefitRow("Coupons received", "0")
+            Spacer(Modifier.height(12.dp))
+            BenefitRow("Payment history", "28,700 RWF this month", onOpenHistory)
+            BenefitRow("Saved merchants", "3", onOpenSaved)
             Spacer(Modifier.height(24.dp))
         }
     }
@@ -105,8 +108,8 @@ private fun EarningCard(onFindStores: () -> Unit) {
 }
 
 @Composable
-private fun BenefitRow(label: String, value: String) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+private fun BenefitRow(label: String, value: String, onClick: (() -> Unit)? = null) {
+    Row(Modifier.fillMaxWidth().then(if (onClick != null) Modifier.pressScaleClickable(onClick = onClick) else Modifier).padding(vertical = 10.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Text(label, color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
         Text(value, color = Ids.colors.textTertiary, fontSize = 14.sp)
     }

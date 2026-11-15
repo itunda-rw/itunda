@@ -62,6 +62,8 @@ fun ProtoPayContent(
     onChangeFunding: () -> Unit,
     onReceive: () -> Unit,
     scanContent: @Composable () -> Unit,
+    onTill: () -> Unit = {},
+    onMerchant: (String) -> Unit = {},
 ) {
     // Scan is the prototype's one dark screen: force the dark token set for it only.
     IdsTheme(darkTheme = mode == ProtoPayMode.SCAN || MaterialTheme.colorScheme.background.luminance() < 0.5f) {
@@ -81,7 +83,10 @@ fun ProtoPayContent(
         when (mode) {
             ProtoPayMode.MY_CODE -> MyCode(qrContent, secondsLeft, fundingName, fundingBalance, onReceive)
             ProtoPayMode.TAP -> ProtoPayTap(secondsLeft, fundingName, fundingBalance)
-            ProtoPayMode.SCAN -> Box(Modifier.weight(1f).fillMaxWidth()) { scanContent() }
+            ProtoPayMode.SCAN -> Column(Modifier.weight(1f).fillMaxWidth()) {
+                Box(Modifier.weight(1f).fillMaxWidth()) { scanContent() }
+                PayScanChips(onTill, onMerchant)
+            }
         }
         if (mode != ProtoPayMode.SCAN) Spacer(Modifier.weight(1f))
         if (mode != ProtoPayMode.SCAN) FundingCard(fundingName, fundingBalance, onChangeFunding)
