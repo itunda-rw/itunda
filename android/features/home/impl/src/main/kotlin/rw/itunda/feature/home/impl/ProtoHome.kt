@@ -137,10 +137,10 @@ Icon(painterResource(rw.itunda.core.designsystem.R.drawable.itunda_mark),null,Mo
 Spacer(Modifier.width(8.dp));Text("itunda",color=Ids.colors.textPrimary,fontSize=20.sp,fontWeight=FontWeight.ExtraBold,letterSpacing=(-0.5).sp)
 Spacer(Modifier.weight(1f))
 Box(Modifier.size(44.dp).clickable(onClick=onOpenNotifications).semantics{contentDescription=notificationsLabel},contentAlignment=Alignment.Center){
-ItundaArt("bell",ItundaArtSet.Line,24.dp)
+ItundaArt("bell",ItundaArtSet.Line,24.dp,tint=Ids.colors.textPrimary)
 if(hasUnread) Box(Modifier.align(Alignment.TopEnd).padding(top=8.dp,end=8.dp).size(8.dp).clip(CircleShape).background(Ids.colors.danger))
 }
-Box(Modifier.size(44.dp).clickable(onClick=onOpenProfile).semantics{contentDescription=profileLabel},contentAlignment=Alignment.Center){ItundaArt("user",ItundaArtSet.Line,24.dp)}
+Box(Modifier.size(44.dp).clickable(onClick=onOpenProfile).semantics{contentDescription=profileLabel},contentAlignment=Alignment.Center){ItundaArt("user",ItundaArtSet.Line,24.dp,tint=Ids.colors.textPrimary)}
 }
 }
 @Composable private fun HomeSection(title:String,content: @Composable () -> Unit){
@@ -148,7 +148,7 @@ Column(Modifier.fillMaxWidth().padding(horizontal=24.dp).padding(top=32.dp)){Tex
 }
 @Composable private fun HomeGridAction(name:String,label:String,onClick:()->Unit,modifier:Modifier=Modifier){
 Column(modifier.clickable(onClick=onClick),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(8.dp)){
-Box(Modifier.size(60.dp).clip(RoundedCornerShape(22.dp)).background(Ids.colors.surfaceSoft),contentAlignment=Alignment.Center){ItundaArt(name,if(name in setOf("qr","phone","bolt","drop")) ItundaArtSet.Line else ItundaArtSet.Proto,38.dp)}
+Box(Modifier.size(60.dp).clip(RoundedCornerShape(22.dp)).background(Ids.colors.surfaceSoft),contentAlignment=Alignment.Center){ItundaArt(name,if(name in setOf("qr","phone","bolt","drop")) ItundaArtSet.Line else ItundaArtSet.Proto,38.dp,tint=if(name in setOf("qr","phone","bolt","drop")) Ids.colors.textPrimary else null)}
 Text(label,color=Ids.colors.textPrimary,fontSize=12.sp,fontWeight=FontWeight.Bold,textAlign=androidx.compose.ui.text.style.TextAlign.Center,lineHeight=15.sp,maxLines=2)
 }
 }
