@@ -111,7 +111,7 @@ Text(t.bank,color=Ids.colors.textSecondary,fontSize=13.sp)
 Row(verticalAlignment=Alignment.Bottom){Text(rwf(state.bankBalance),color=Ids.colors.textPrimary,fontSize=40.sp,fontWeight=FontWeight.ExtraBold,letterSpacing=(-1.2).sp);Text(" RWF",color=Ids.colors.textSecondary,fontSize=14.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.padding(bottom=5.dp))}
 }
 Row(Modifier.fillMaxWidth().padding(top=14.dp).clickable(onClick=onOpenPay),verticalAlignment=Alignment.CenterVertically){
-Text(t.pay,color=Ids.colors.textSecondary,fontSize=15.sp);Spacer(Modifier.weight(1f));Text("${rwf(state.payBalance)} RWF",color=Ids.colors.textPrimary,fontSize=15.sp,fontWeight=FontWeight.ExtraBold);Spacer(Modifier.width(4.dp));ItundaArt("chev",ItundaArtSet.Proto,16.dp)
+Text(t.pay,color=Ids.colors.textSecondary,fontSize=15.sp);Spacer(Modifier.weight(1f));Text("${rwf(state.payBalance)} RWF",color=Ids.colors.textPrimary,fontSize=15.sp,fontWeight=FontWeight.ExtraBold);Spacer(Modifier.width(4.dp));ItundaArt("chev",ItundaArtSet.Line,16.dp)
 }
 }}
 item{Row(Modifier.fillMaxWidth().padding(horizontal=24.dp).padding(top=20.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)){
@@ -121,14 +121,14 @@ item{HomeSection(t.quick){Row(Modifier.fillMaxWidth()){
 HomeGridAction("send",t.send,onSend,Modifier.weight(1f));HomeGridAction("qr",t.scan,onOpenPay,Modifier.weight(1f));HomeGridAction("bill",t.bills,onBills,Modifier.weight(1f));HomeGridAction("phone",t.airtime,onBills,Modifier.weight(1f))
 }}}
 item{HomeSection(t.services){Row(Modifier.fillMaxWidth()){
-HomeGridAction("home",t.irembo,onBills,Modifier.weight(1f));HomeGridAction("bill",t.taxes,onBills,Modifier.weight(1f));HomeGridAction("bolt",t.electricity,onBills,Modifier.weight(1f));HomeGridAction("drop",t.water,onBills,Modifier.weight(1f));HomeGridAction("school",t.school,onBills,Modifier.weight(1f))
+HomeGridAction("gov",t.irembo,onBills,Modifier.weight(1f));HomeGridAction("receipt",t.taxes,onBills,Modifier.weight(1f));HomeGridAction("bolt",t.electricity,onBills,Modifier.weight(1f));HomeGridAction("drop",t.water,onBills,Modifier.weight(1f));HomeGridAction("school-fees",t.school,onBills,Modifier.weight(1f))
 }}}
 item{HomeSection(t.spending){
-HomeListRow("coin","${rwf(state.spentThisMonth)} RWF",t.spent,null,onOpenSpending)
+HomeListRow("spending","${rwf(state.spentThisMonth)} RWF",t.spent,null,onOpenSpending)
 state.bill?.let{b->HomeListRow("bill",b.title,"${t.due} · ${rwf(b.amount)} RWF",null,onPayBill)}
 }}
 item{HomeSection(t.forYou){
-HomeListRow("coin",t.goal,t.goalHint,null,onSavings);HomeListRow("trend",t.credit,t.creditHint,t.view,onOpenCreditScore)
+HomeListRow("new-savings-goal",t.goal,t.goalHint,null,onSavings);HomeListRow("my-credit-score",t.credit,t.creditHint,t.view,onOpenCreditScore)
 }}
 }
 }
@@ -136,7 +136,7 @@ HomeListRow("coin",t.goal,t.goalHint,null,onSavings);HomeListRow("trend",t.credi
 Row(Modifier.fillMaxWidth().padding(start=24.dp,end=16.dp,top=20.dp),verticalAlignment=Alignment.CenterVertically){
 Icon(painterResource(rw.itunda.core.designsystem.R.drawable.itunda_mark),null,Modifier.size(40.dp),tint=Ids.colors.brand)
 Spacer(Modifier.width(8.dp));Text("itunda",color=Ids.colors.textPrimary,fontSize=20.sp,fontWeight=FontWeight.ExtraBold,letterSpacing=(-0.5).sp)
-Spacer(Modifier.weight(1f));Box(Modifier.size(44.dp).clickable(onClick=onOpenProfile).semantics{contentDescription=profileLabel},contentAlignment=Alignment.Center){ItundaArt("user",ItundaArtSet.Proto,24.dp)}
+Spacer(Modifier.weight(1f));Box(Modifier.size(44.dp).clickable(onClick=onOpenProfile).semantics{contentDescription=profileLabel},contentAlignment=Alignment.Center){ItundaArt("user",ItundaArtSet.Line,24.dp)}
 }
 }
 @Composable private fun HomeSection(title:String,content:@Composable()->Unit){
@@ -144,16 +144,16 @@ Column(Modifier.fillMaxWidth().padding(horizontal=24.dp).padding(top=32.dp)){Tex
 }
 @Composable private fun HomeGridAction(name:String,label:String,onClick:()->Unit,modifier:Modifier=Modifier){
 Column(modifier.clickable(onClick=onClick),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(8.dp)){
-Box(Modifier.size(60.dp).clip(RoundedCornerShape(22.dp)).background(Ids.colors.surfaceSoft),contentAlignment=Alignment.Center){ItundaArt(name,ItundaArtSet.Proto,38.dp)}
+Box(Modifier.size(60.dp).clip(RoundedCornerShape(22.dp)).background(Ids.colors.surfaceSoft),contentAlignment=Alignment.Center){ItundaArt(name,if(name in setOf("qr","phone","bolt","drop")) ItundaArtSet.Line else ItundaArtSet.Proto,38.dp)}
 Text(label,color=Ids.colors.textPrimary,fontSize=12.sp,fontWeight=FontWeight.Bold,textAlign=androidx.compose.ui.text.style.TextAlign.Center,lineHeight=15.sp,maxLines=2)
 }
 }
 @Composable private fun HomeListRow(icon:String,title:String,subtitle:String,trailing:String?,onClick:()->Unit){
 Row(Modifier.fillMaxWidth().clickable(onClick=onClick).padding(vertical=11.dp),verticalAlignment=Alignment.CenterVertically){
-Box(Modifier.size(44.dp).clip(CircleShape).background(Ids.colors.surfaceSoft),contentAlignment=Alignment.Center){ItundaArt(icon,ItundaArtSet.Proto,30.dp)}
+Box(Modifier.size(44.dp).clip(CircleShape).background(Ids.colors.surfaceSoft),contentAlignment=Alignment.Center){ItundaArt(icon,if(icon in setOf("coin","trend","chev")) ItundaArtSet.Line else ItundaArtSet.Proto,30.dp)}
 Spacer(Modifier.width(14.dp));Column(Modifier.weight(1f)){Text(title,color=Ids.colors.textPrimary,fontSize=16.sp,fontWeight=FontWeight.Bold,maxLines=1);Text(subtitle,color=Ids.colors.textSecondary,fontSize=13.sp,lineHeight=18.sp,maxLines=2)}
 if(trailing!=null){Text(trailing,color=Ids.colors.textSecondary,fontSize=14.sp,fontWeight=FontWeight.Bold);Spacer(Modifier.width(4.dp))}
-ItundaArt("chev",ItundaArtSet.Proto,16.dp,tint=Ids.colors.textTertiary)
+ItundaArt("chev",ItundaArtSet.Line,16.dp,tint=Ids.colors.textTertiary)
 }
 }
 @Composable private fun HomeActionButton(label:String,primary:Boolean,modifier:Modifier,onClick:()->Unit){
