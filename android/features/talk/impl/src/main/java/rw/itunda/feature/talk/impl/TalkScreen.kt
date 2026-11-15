@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -313,13 +314,11 @@ fun TalkTab(
     // the full account): this bottom padding was stacking with the Scaffold's already
     // -correct bottomBar inset. Top kept, bottom now comes from Scaffold alone.
     Column(modifier = Modifier.fillMaxSize().padding(start = Ids.layout.screenHorizontal, end = Ids.layout.screenHorizontal, top = Ids.layout.screenVertical)) {
-        TabHeader("Talk")
-        IdsSegmentedControl(
-            options = listOf(TalkView.DIRECT to "Direct", TalkView.GROUPS to "Groups", TalkView.FRIENDS to "Friends"),
-            selected = view,
-            onSelect = { view = it },
-            modifier = Modifier.padding(bottom = Ids.layout.cardGap),
-        )
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("Messages", color = Ids.colors.textPrimary, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
+            Icon(Icons.Outlined.Edit, "New message", Modifier.size(26.dp).pressScaleClickable { view = TalkView.FRIENDS }, tint = Ids.colors.textPrimary)
+        }
+        ProtoChips(listOf(TalkView.DIRECT to "All", TalkView.GROUPS to "Groups", TalkView.FRIENDS to "Friends"), view, { view = it })
         if (view == TalkView.FRIENDS) {
             FriendsView(
                 onStarted = { conversationId ->
