@@ -29,9 +29,9 @@
     <string name="home_cash_out">Cash out</string>
     <string name="home_send">Send</string>
     <string name="back">Back</string>
-    <string name="pay_money_detail_title">itunda Pay Money</string>
-    <string name="pay_money_add">Add money</string>
-    <string name="pay_money_history_only">See payment history only</string>
+    <string name="pay_money_detail_title">itunda Pay</string>
+    <string name="pay_money_add">Top up</string>
+    <string name="pay_money_history_only">Payments only</string>
     <string name="pay_money_empty">No details found</string>
     <string name="add_money_title">Add money</string>
     <string name="add_money_from">From</string>

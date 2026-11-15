@@ -14,7 +14,7 @@ import kotlinx.coroutines.delay
 import rw.itunda.core.network.GenerateCustomerPaymentCodeRequest
 import rw.itunda.core.network.NetworkClient
 
-internal enum class PaySub { AMOUNT, TILL, ORDER, DONE, HISTORY, SAVED, POINTS }
+internal enum class PaySub { SETTINGS, AMOUNT, TILL, ORDER, DONE, HISTORY, SAVED, POINTS }
 
 /** Stateful Pay tab for the prototype layout: real payment code + real PAY account, nothing invented. */
 @Composable
@@ -56,6 +56,7 @@ fun ProtoPayTab(
         }
     }
     when (sub) {
+        PaySub.SETTINGS -> { PaySettingsScreen(onBack = { sub = null }, onAllSettings = onSettings); return }
         PaySub.AMOUNT -> { PayAmountScreen(merchant, onBack = { sub = null }, onPay = { sub = PaySub.DONE }); return }
         PaySub.TILL -> { PayTillScreen(onBack = { sub = null }, onNext = { merchant = it.name; sub = PaySub.ORDER }); return }
         PaySub.ORDER -> { PayOrderScreen(merchant, onBack = { sub = null }, onPay = { sub = PaySub.DONE }); return }
@@ -76,7 +77,7 @@ fun ProtoPayTab(
         mode = mode, onMode = { mode = it }, qrContent = code, secondsLeft = secondsLeft,
         fundingName = "itunda Pay Money",
         fundingBalance = balance?.let { String.format(java.util.Locale.US, "%,.0f", it) } ?: "—",
-        onOpenPay = { showHub = true }, onSettings = onSettings, onChangeFunding = onChangeFunding, onReceive = onReceive,
+        onOpenPay = { showHub = true }, onSettings = { sub = PaySub.SETTINGS }, onChangeFunding = onChangeFunding, onReceive = onReceive,
         scanContent = { Column(Modifier.verticalScroll(rememberScrollState())) { scanContent() } },
         onTill = { sub = PaySub.TILL },
         onMerchant = { merchant = it; sub = if (it == "Amina K.") PaySub.AMOUNT else PaySub.ORDER },

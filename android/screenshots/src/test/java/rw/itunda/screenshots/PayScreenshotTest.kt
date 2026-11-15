@@ -16,6 +16,8 @@ import rw.itunda.feature.pay.impl.PayHistoryScreen
 import rw.itunda.feature.pay.impl.PaySavedMerchantsScreen
 import rw.itunda.feature.pay.impl.PayPointsScreen
 import rw.itunda.feature.pay.impl.PayDoneScreen
+import rw.itunda.feature.pay.impl.PaySettingsScreen
+import rw.itunda.feature.pay.impl.PayAmountScreen
 import rw.itunda.feature.pay.impl.PayHub
 import rw.itunda.feature.pay.impl.ProtoPayContent
 import rw.itunda.feature.pay.impl.ProtoPayMode
@@ -64,4 +66,7 @@ class PayScreenshotTest {
     @Test fun history() = shot("history") { PayHistoryScreen({}) }
     @Test fun saved() = shot("saved") { PaySavedMerchantsScreen({}) }
     @Test fun points() = shot("points") { PayPointsScreen({}) }
+    @Test fun settings() = shot("settings") { PaySettingsScreen({}) }
+    @Test fun amount() = shot("amount") { PayAmountScreen("Amina K.", {}, {}) }
+    @Test fun scanChips() = render(false, "pay-scan-chips-light", ProtoPayMode.SCAN)
 }
