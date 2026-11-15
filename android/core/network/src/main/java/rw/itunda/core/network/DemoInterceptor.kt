@@ -37,6 +37,8 @@ internal class DemoInterceptor : Interceptor {
                 "api/v1/auth/check-phone" -> """{"exists":true}"""
                 "api/v1/auth/login", "api/v1/auth/register" ->
                     """{"message":"ok","user":$USER,"accessToken":"demo-access","refreshToken":"demo-refresh"}"""
+                "api/v1/merchant/pay/customer-code" ->
+                    """{"success":true,"code":"ITUNDA-DEMO-${'$'}{System.currentTimeMillis() / 5000}","expiresAt":"${'$'}{java.time.Instant.now().plusSeconds(60)}"}"""
                 else -> OK
             }
         }
