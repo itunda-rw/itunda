@@ -139,10 +139,12 @@ internal class DemoInterceptor : Interceptor {
         // The prototype's Messages rows (names, previews, unread badges), timestamps relative to now.
         private fun conversations(): String {
             fun ago(min: Long) = java.time.Instant.now().minus(min, java.time.temporal.ChronoUnit.MINUTES).toString()
-            fun c(id: String, name: String, preview: String, unread: Int, min: Long) =
-                """{"conversationId":"$id","otherUserId":"u-$id","otherUserName":"$name","lastMessageAt":"${ago(min)}","lastMessagePreview":"$preview","unreadCount":$unread}"""
+            fun c(id: String, name: String, preview: String, unread: Int, min: Long, source: String? = null) =
+                """{"conversationId":"$id","otherUserId":"u-$id","otherUserName":"$name","lastMessageAt":"${ago(min)}","lastMessagePreview":"$preview","unreadCount":$unread${if (source != null) ",\"source\":\"$source\"" else ""}}"""
             return "[" + listOf(
-                c("c1", "Patrick H.", "Yes, still available. Can you come tomorrow?", 1, 8),
+                c("c1", "Patrick H.", "Yes, still available. Can you come tomorrow?", 1, 8, "market"),
+                c("c6", "Kigali Bakery", "Thanks for applying. Can you start Monday?", 1, 40, "jobs"),
+                c("c7", "Agent Diane", "Yes. You can view it on Saturday morning.", 0, 1300, "homes"),
                 c("c2", "Amina K.", "See you on Friday", 1, 2),
                 c("c3", "Umurenge Savers", "Contributions are due on Friday", 0, 60),
                 c("c4", "Kigali Bakery", "Your order is on the way", 0, 300),

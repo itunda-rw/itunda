@@ -327,11 +327,8 @@ fun TalkTab(
         if (view == TalkView.DIRECT) { ProtoSearchField(chatQuery, { chatQuery = it }); Spacer(Modifier.height(12.dp)) }
         // One chip row (prototype): All / Unread / Calls filter the direct list, Groups / Friends switch view.
         ProtoChips(
-            listOf(
-                (TalkView.DIRECT to TalkDirectFilter.ALL) to "All", (TalkView.DIRECT to TalkDirectFilter.UNREAD) to "Unread",
-                (TalkView.DIRECT to TalkDirectFilter.CALLS) to "Calls", (TalkView.GROUPS to TalkDirectFilter.ALL) to "Groups",
-                (TalkView.FRIENDS to TalkDirectFilter.ALL) to "Friends",
-            ),
+            TalkDirectFilter.entries.map { (TalkView.DIRECT to it) to it.label } +
+                listOf((TalkView.GROUPS to TalkDirectFilter.ALL) to "Groups", (TalkView.FRIENDS to TalkDirectFilter.ALL) to "Friends"),
             view to (if (view == TalkView.DIRECT) directFilter else TalkDirectFilter.ALL),
             { (v, f) -> view = v; directFilter = f },
         )
@@ -353,7 +350,7 @@ fun TalkTab(
                 CallHistoryList(conversations = conversations)
             } else {
                 DirectMessagesList(
-                    conversations = conversations?.filter { (directFilter != TalkDirectFilter.UNREAD || it.unreadCount > 0) && it.otherUserName.contains(chatQuery.trim(), ignoreCase = true) },
+                    conversations = conversations?.filter { (directFilter != TalkDirectFilter.UNREAD || it.unreadCount > 0) && (directFilter.source == null || it.source == directFilter.source) && it.otherUserName.contains(chatQuery.trim(), ignoreCase = true) },
                     archivedConversations = archivedConversations,
                     error = conversationsError,
                     presence = presence,

@@ -780,9 +780,9 @@ data class ConversationSummaryDto(
     val lastMessagePreview: String?,
     val unreadCount: Int,
     val quiet: Boolean = false,
+    val source: String? = null, // chat origin: "market", "jobs", "homes", "neighbours"; null = plain chat
     val pinnedMessageId: String? = null,
-    // Real recoverable archive (2026-08-05) -- see backend ConversationPreference
-    // .archived's own doc comment. Same private-to-me model as quiet.
+    // Real recoverable archive (2026-08-05), private-to-me like quiet -- see backend ConversationPreference.archived.
     val archived: Boolean = false,
     // Real KakaoTalk 채팅방 상단 고정 (pin chat room to top) (2026-08-18) -- see backend
     // MessagingController's own doc comment distinguishing this from the existing
