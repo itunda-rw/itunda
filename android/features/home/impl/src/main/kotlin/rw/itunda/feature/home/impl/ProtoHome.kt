@@ -100,7 +100,7 @@ onOpenProfile:()->Unit,onOpenCreditScore:()->Unit,
 ){
 val language=androidx.compose.ui.platform.LocalConfiguration.current.locales[0]?.language?:"en"
 val t=homeCopy(language)
-LazyColumn(Modifier.fillMaxSize().background(Ids.colors.surface),contentPadding=androidx.compose.foundation.layout.PaddingValues(bottom=96.dp)){
+LazyColumn(Modifier.fillMaxSize().background(Ids.colors.background),contentPadding=androidx.compose.foundation.layout.PaddingValues(bottom=96.dp)){
 item{HomeHeader(onOpenProfile,t.profile)}
 item{Row(Modifier.fillMaxWidth().padding(horizontal=24.dp).padding(top=12.dp),verticalAlignment=Alignment.CenterVertically){
 Box(Modifier.size(8.dp).clip(CircleShape).background(Ids.colors.success));Spacer(Modifier.width(8.dp));Text(t.status,color=Ids.colors.textSecondary,fontSize=13.sp)
