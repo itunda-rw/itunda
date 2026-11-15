@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -395,40 +396,41 @@ private fun IkiminaDetailContent(id: String) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            // Real fix (flat-design sweep): dropped the Card wrapper.
-            Column {
-                    Text(current.ikimina.name, color = Ids.colors.textSecondary, fontSize = 13.sp)
-                    val animatedBalance = rememberCountUp(current.balance.toDouble())
-                    Text("${formatMoney(java.math.BigDecimal.valueOf(animatedBalance))} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
-                    Text(
-                        when (current.ikimina.status) {
-                            "FORMING" -> "Forming · ${current.members.size} member${if (current.members.size == 1) "" else "s"}"
-                            "ACTIVE" -> "Round ${current.ikimina.currentRound} · pot ${formatMoney(pot)} RWF"
-                            else -> "Completed"
-                        },
-                        color = Ids.colors.textSecondary, fontSize = 12.sp,
-                    )
-            }
-        }
-        item {
-            Column {
-                    Text("Members & payout order", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    current.members.sortedBy { it.payoutOrder }.forEach { m ->
-                        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Column {
-                                Text("${m.payoutOrder}. ${m.firstName} ${m.lastName}${if (m.userId == myUserId) " (you)" else ""}", fontSize = 13.sp)
-                                if (current.ikimina.status == "ACTIVE") {
-                                    val contributed = current.currentRoundContributions.find { it.userId == m.userId }?.contributed ?: false
-                                    Text(
-                                        if (contributed) "✓ Contributed this round" else "Not yet contributed",
-                                        color = if (contributed) Ids.colors.success else Ids.colors.textSecondary, fontSize = 11.sp,
-                                    )
-                                }
-                            }
-                            if (m.hasReceivedPayout) Text("✓ Paid", color = Ids.colors.success, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                            else if (m.isOrganizer) Text("Organizer", color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+            // Prototype v1038 Ikimina detail: caption, big pot, tinted "Next to receive", flat roster.
+            val ordered = current.members.sortedBy { it.payoutOrder }
+            val next = ordered.firstOrNull { !it.hasReceivedPayout }
+            val animatedBalance = rememberCountUp(current.balance.toDouble())
+            Column(Modifier.padding(top = 12.dp)) {
+                Text("${current.ikimina.name} · ${current.members.size} member${if (current.members.size == 1) "" else "s"}", color = Ids.colors.textTertiary, fontSize = 14.sp)
+                Text("${formatMoney(java.math.BigDecimal.valueOf(animatedBalance))} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 32.sp)
+                Text(
+                    when (current.ikimina.status) {
+                        "FORMING" -> "Forming"
+                        "ACTIVE" -> "Round ${current.ikimina.currentRound} · pot ${formatMoney(pot)} RWF"
+                        else -> "Completed"
+                    },
+                    color = Ids.colors.textTertiary, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp),
+                )
+                if (current.ikimina.status == "ACTIVE" && next != null) {
+                    Column(Modifier.fillMaxWidth().padding(top = 20.dp).clip(RoundedCornerShape(20.dp)).background(Ids.colors.brand.copy(alpha = 0.08f)).padding(horizontal = 18.dp, vertical = 14.dp)) {
+                        Text("Next to receive", color = Ids.colors.textBrand, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
+                        Text("${next.firstName} ${next.lastName}${if (next.userId == myUserId) " (you)" else ""}", color = Ids.colors.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 2.dp))
+                        Text("Payout order ${next.payoutOrder} of ${ordered.size}", color = Ids.colors.textTertiary, fontSize = 14.sp, modifier = Modifier.padding(top = 2.dp))
+                    }
+                }
+                Text(if (current.ikimina.status == "ACTIVE") "This round" else "Members", color = Ids.colors.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 24.dp, bottom = 4.dp))
+                ordered.forEach { m ->
+                    val contributed = current.currentRoundContributions.find { it.userId == m.userId }?.contributed ?: false
+                    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) { rw.itunda.core.designsystem.components.ItundaArt("community", rw.itunda.core.designsystem.components.ItundaArtSet.Color, 24.dp) }
+                        Text("${m.firstName} ${m.lastName}${if (m.userId == myUserId) " (you)" else ""}", color = Ids.colors.textPrimary, fontSize = 15.sp, modifier = Modifier.weight(1f).padding(start = 12.dp))
+                        when {
+                            m.hasReceivedPayout -> Text("Paid out", color = Ids.colors.success, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            current.ikimina.status == "ACTIVE" -> Text(if (contributed) "Paid" else "Due", color = if (contributed) Ids.colors.success else Ids.colors.danger, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            m.isOrganizer -> Text("Organizer", color = Ids.colors.textBrand, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
                     }
+                }
             }
         }
         if (current.ikimina.status == "FORMING" && isOrganizer) {
