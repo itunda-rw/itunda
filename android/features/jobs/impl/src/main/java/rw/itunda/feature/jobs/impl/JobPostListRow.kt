@@ -42,7 +42,7 @@ fun JobPostListRow(
     onOpen: () -> Unit,
 ) {
     val (emoji, tint) = tileFor(categoryLabel)
-    val period = if (post.payType == "HOURLY") " / hr" else " / task"
+    val period = when (post.payType) { "HOURLY" -> " / hr"; "DAILY" -> " / day"; else -> " / task" }
     Row(modifier.fillMaxWidth().pressScaleClickable(onClick = onOpen).padding(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(post.title, color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
