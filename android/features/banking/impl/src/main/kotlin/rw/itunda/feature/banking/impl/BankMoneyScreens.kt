@@ -111,7 +111,7 @@ internal fun BankSendScreen(onBack: () -> Unit) {
             Text("${account.length}/10", color = Ids.colors.textTertiary, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
             BankSectionLabel("Amount")
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf(10_000L, 50_000L, 100_000L, 500_000L).forEach { BankChip("${rwf(it)} RWF", amount == it, { amount = it }, Modifier.weight(1f)) }
+                listOf(10_000L, 50_000L, 100_000L, 500_000L).forEach { BankChip("${rwf(it)} RWF", amount == it, { amount = it }, Modifier.weight(1f), compact = true) }
             }
             Row(Modifier.fillMaxWidth().padding(top = 28.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("Arrives", color = Ids.colors.textTertiary, fontSize = 15.sp)

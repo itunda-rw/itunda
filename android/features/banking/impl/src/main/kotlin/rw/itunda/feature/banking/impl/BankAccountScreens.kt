@@ -123,7 +123,7 @@ private data class Pocket(val name: String, val emoji: String, val amount: Long,
 @Composable
 internal fun BankPocketsScreen(onBack: () -> Unit) {
     val pockets = remember {
-        mutableStateListOf(Pocket("Interest jar", "🪴", 0), Pocket("Emergency fund", "🔒", 50_000), Pocket("School fees", "🎓", 120_000, 300_000))
+        mutableStateListOf(Pocket("Interest jar", "💰", 0), Pocket("Emergency fund", "🔒", 50_000), Pocket("School fees", "🎓", 120_000, 300_000))
     }
     var open by remember { mutableStateOf<Pocket?>(null) }
     open?.let { BankPocketDetail(it.name, it.emoji, it.amount) { open = null }; return }

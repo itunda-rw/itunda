@@ -55,12 +55,12 @@ internal fun BankSubCta(label: String, enabled: Boolean = true, onClick: () -> U
 }
 
 @Composable
-internal fun BankChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun BankChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, compact: Boolean = false) {
     Box(
         modifier.clip(RoundedCornerShape(50)).background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
-            .pressScaleClickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 12.dp),
+            .pressScaleClickable(onClick = onClick).padding(horizontal = if (compact) 4.dp else 12.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center,
-    ) { Text(label, color = if (selected) Ids.colors.background else Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false) }
+    ) { Text(label, color = if (selected) Ids.colors.background else Ids.colors.textPrimary, fontSize = if (compact) 12.sp else 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false) }
 }
 
 @Composable

@@ -80,7 +80,7 @@ internal fun BankLimitsScreen(onBack: () -> Unit) {
             )
             Spacer(Modifier.height(14.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf(200_000L, 500_000L, 1_000_000L, 2_000_000L).forEach { BankChip(rwf(it), limit == it, { limit = it }, Modifier.weight(1f)) }
+                listOf(200_000L, 500_000L, 1_000_000L, 2_000_000L).forEach { BankChip(rwf(it), limit == it, { limit = it }, Modifier.weight(1f), compact = true) }
             }
             Row(Modifier.fillMaxWidth().padding(top = 28.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
