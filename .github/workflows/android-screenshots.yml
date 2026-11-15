@@ -1,0 +1,57 @@
+name: Android Screenshots
+
+# Renders Compose screens to PNG (Robolectric + Roborazzi, no emulator) and pushes
+# them to the `ci-screenshots` branch so they can be compared with the HTML prototype.
+on:
+  push:
+    branches: ["integration/prototype-parity", "feat/screenshot-loop"]
+    paths: ["android/**", ".github/workflows/android-screenshots.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: android-screenshots-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - run: corepack enable
+      - name: Install Saronite dependencies (settings.gradle autolinking needs them)
+        working-directory: packages/saronite
+        run: yarn install --no-immutable
+      - name: Render screenshots
+        working-directory: android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :screenshots:testDebugUnitTest --stacktrace
+      - name: Push PNGs to ci-screenshots branch
+        if: always()
+        run: |
+          set -e
+          mkdir -p /tmp/shots
+          cp -r android/screenshots/build/screenshots/. /tmp/shots/ 2>/dev/null || true
+          ls /tmp/shots || true
+          git config user.name "ci-screenshots"
+          git config user.email "ci-screenshots@users.noreply.github.com"
+          git fetch origin ci-screenshots || true
+          git checkout --orphan shots-tmp
+          git rm -rf . >/dev/null 2>&1 || true
+          cp -r /tmp/shots/. .
+          git add -A
+          git commit -m "screenshots for ${GITHUB_SHA}" || exit 0
+          git push -f origin shots-tmp:ci-screenshots
