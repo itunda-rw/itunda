@@ -125,7 +125,7 @@ private enum class AuthStage { PHONE, NOT_FOUND, NAME, TERMS, PASSWORD }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun LoginScreen(onLoggedIn: () -> Unit) {
+fun LoginScreen(onLoggedIn: () -> Unit, onDemoMode: (() -> Unit)? = null) {
     val baseContext = LocalContext.current
     val locale by AppLocalePreference.locale.collectAsState()
     val isImeVisible = WindowInsets.isImeVisible
@@ -495,6 +495,11 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                             onClick = { goNext() },
                             enabled = currentStepValid,
                         )
+                        if (onDemoMode != null && stage == AuthStage.PHONE && !isImeVisible) {
+                            TextButton(onClick = onDemoMode) {
+                                Text("Continue in demo mode")
+                            }
+                        }
                     }
                 }
             }
