@@ -846,14 +846,6 @@ fun ListingRow(
                             modifier = Modifier.weight(1f),
                         )
                         if (!isMine) {
-                            Text(
-                                if (hiding) "…" else "Hide",
-                                color = Ids.colors.textSecondary,
-                                fontSize = 11.sp,
-                                modifier = Modifier.padding(end = 8.dp)
-                                    .semantics { contentDescription = "Hide this listing -- you won't see it again" }
-                                    .pressScaleClickable(enabled = !hiding, onClick = onHide),
-                            )
                             WishlistHeart(
                                 favorited = favorited,
                                 size = 20.dp,
@@ -894,12 +886,24 @@ fun ListingRow(
                 }
             }
             Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+                modifier = Modifier.fillMaxWidth().padding(start = 96.dp, bottom = 10.dp),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (!isMine && listing.price > 0.0) {
                     Text("Safe pay", color = Ids.colors.textBrand, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                } else {
+                    androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+                }
+                if (!isMine) {
+                            Text(
+                                if (hiding) "…" else "Hide",
+                                color = Ids.colors.textSecondary,
+                                fontSize = 11.sp,
+                                modifier = Modifier.padding(end = 12.dp)
+                                    .semantics { contentDescription = "Hide this listing -- you won't see it again" }
+                                    .pressScaleClickable(enabled = !hiding, onClick = onHide),
+                            )
                 }
                 WishlistHeart(
                     favorited = liked,
@@ -927,6 +931,7 @@ fun ListingRow(
 // inline into every row of the browse list -- moved here unchanged, just reached by
 // navigation instead of always being visible.
 @Composable
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 fun ListingDetailScreen(
     listing: ListingDto, isMine: Boolean, onBack: () -> Unit, onChanged: () -> Unit, onMessageSeller: (String) -> Unit, onMakeOffer: (String, Double) -> Unit,
     favorited: Boolean = false, favoriteBusy: Boolean = false, onToggleFavorite: () -> Unit = {},
@@ -1116,6 +1121,8 @@ fun ListingDetailScreen(
             if (!isMine && sellerTrustScore != null) {
                 TrustBadge(sellerTrustScore)
             }
+            Text(listing.category, color = Ids.colors.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 12.dp, vertical = 6.dp))
             Text(listing.description, color = Ids.colors.textSecondary, fontSize = 13.sp)
             VehicleDetailSection(listing)
             listing.meetingPlace?.let {
@@ -1301,7 +1308,7 @@ fun ListingDetailScreen(
                     }
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (isMine) {
                     if (listing.status == "ACTIVE" && !markingSold && !editingPrice) {
                         ListingActionButton("Mark sold", busy) { markingSold = true }
@@ -1385,6 +1392,9 @@ fun ListingDetailScreen(
                         }
                     }
                 }
+            }
+            if (!isMine && listing.status == "ACTIVE" && !offering) {
+                Text("Buy with itunda: your money is held until you confirm pickup.", color = Ids.colors.textTertiary, fontSize = 12.sp)
             }
             // Real escrow status (2026-07-25) -- Confirm receipt releases payment to the
             // seller; Report a problem flags it for real human admin review instead of
