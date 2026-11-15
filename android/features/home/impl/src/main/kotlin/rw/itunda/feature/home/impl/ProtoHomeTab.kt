@@ -34,6 +34,7 @@ internal fun ProtoHomeTab(
     onOpenSeeAll: () -> Unit,
     onOpenRewards: () -> Unit,
     onOpenInvite: () -> Unit,
+    onOpenSpending: () -> Unit,
     onOpenProfile: () -> Unit,
     onOpenCreditScore: () -> Unit,
     onOpenProfile: () -> Unit,
@@ -80,7 +81,7 @@ internal fun ProtoHomeTab(
         hasUnread = unreadNotificationCount > 0,
         onOpenBank = onOpenBank, onOpenPay = onOpenPay, onOpenNotifications = onOpenNotifications,
         onSend = onOpenSend, onAdd = onOpenPay, onBills = onOpenBills, onCard = onOpenCard, onSavings = onOpenSavings,
-        onSeeAll = onOpenSeeAll, onInvite = onOpenInvite, onOpenSpending = onOpenBank, onPayBill = onOpenBills, onOpenRewards = onOpenRewards,
+        onSeeAll = onOpenSeeAll, onInvite = onOpenInvite, onOpenSpending = onOpenSpending, onPayBill = onOpenBills, onOpenRewards = onOpenRewards,
         onOpenProfile = onOpenProfile, onOpenCreditScore = onOpenCreditScore,
         onOpenProfile = onOpenProfile, onOpenCreditScore = onOpenCreditScore,
     )
