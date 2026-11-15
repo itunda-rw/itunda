@@ -650,16 +650,18 @@ private fun NotificationSettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     Column(modifier = Modifier.fillMaxSize().background(Ids.colors.background)) {
         SettingsSubScreenHeader(stringResource(R.string.settings_manage_notifications), onBack)
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp)) {
-            SettingsCard {
-                Text(stringResource(R.string.settings_notifications), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                Spacer(modifier = Modifier.height(8.dp))
-                SettingsChevronRow(stringResource(R.string.settings_channel_money)) {
-                    context.startActivity(channelSettingsIntent(context, rw.itunda.app.push.NotificationChannels.CHANNEL_MONEY))
+        // Prototype rows; only two real OS channels exist, so no fake per-topic switches.
+        Text("Choose what itunda can notify you about.", color = Ids.colors.textTertiary, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp))
+        listOf(
+            Triple(stringResource(R.string.settings_channel_money), "Money in, money out, bills", rw.itunda.app.push.NotificationChannels.CHANNEL_MONEY),
+            Triple(stringResource(R.string.settings_channel_general), "Offers, community and map updates", rw.itunda.app.push.NotificationChannels.CHANNEL_GENERAL),
+        ).forEach { (title, sub, channel) ->
+            Row(Modifier.fillMaxWidth().pressScaleClickable { context.startActivity(channelSettingsIntent(context, channel)) }.padding(horizontal = 24.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(title, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                    Text(sub, color = Ids.colors.textTertiary, fontSize = 14.sp)
                 }
-                SettingsChevronRow(stringResource(R.string.settings_channel_general)) {
-                    context.startActivity(channelSettingsIntent(context, rw.itunda.app.push.NotificationChannels.CHANNEL_GENERAL))
-                }
+                Text("Manage", color = Ids.colors.textBrand, fontSize = 15.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
