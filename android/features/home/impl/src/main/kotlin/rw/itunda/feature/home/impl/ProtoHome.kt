@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -107,10 +105,7 @@ fun ProtoHomeContent(
     ) {
         item { HomeBar(hasUnread, onOpenBank, onOpenPay, onOpenNotifications) }
         item {
-            Card(Modifier.drawBehind {
-                drawRect(Brush.radialGradient(listOf(Color(0xFF8F89FF).copy(alpha = 0.22f), Color.Transparent), center = Offset(size.width, 0f), radius = size.width * 0.8f))
-                drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color(0xFF8F89FF).copy(alpha = 0.10f)), startY = size.height * 0.7f, endY = size.height))
-            }) {
+            Card {
                 Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 36.dp)) {
                     AccountRow(
                         tile = { Icon(painterResource(rw.itunda.core.designsystem.R.drawable.itunda_mark), null, Modifier.size(22.dp), tint = Ids.colors.brand) },
@@ -153,7 +148,7 @@ fun ProtoHomeContent(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Box(
-                            Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(Brush.linearGradient(listOf(Color(0xFFEEEDFF), Color(0xFFC9C5FF)))),
+                            Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(Ids.colors.brand.copy(alpha = 0.12f)),
                             contentAlignment = Alignment.Center,
                         ) { ItundaArt("gift", ItundaArtSet.Color, 32.dp) }
                         Spacer(Modifier.width(14.dp))
