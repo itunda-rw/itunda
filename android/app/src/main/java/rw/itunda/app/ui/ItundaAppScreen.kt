@@ -619,6 +619,7 @@ fun ItundaAppScreen(
         // Real 토스뱅크 외화통장 (foreign-currency account) screen (2026-07-25) -- same
         // "backend existed with zero mobile UI" gap-close pattern as the two above.
         var showForeignCurrency by rememberSaveable { mutableStateOf(false) }
+        var showProtoBills by rememberSaveable { mutableStateOf(false) }
         // Real person-to-person payment request (item 170) -- same "backend real,
         // live-verified, zero mobile UI" gap-close pattern as the two above.
         var showRequestMoney by rememberSaveable { mutableStateOf(false) }
@@ -1636,7 +1637,7 @@ fun ItundaAppScreen(
                 onOpenScheduledTransfers = { showAccountManage = false; showTransferHub = true; showScheduledTransfers = true },
                 onOpenDelayedTransfers = { showAccountManage = false; showTransferHub = true; showDelayedTransfers = true },
                 onOpenForeignCurrency = { showAccountManage = false; showForeignCurrency = true },
-                onOpenBills = { manageContext.startActivity(android.content.Intent(manageContext, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java)) },
+                onOpenBills = { showAccountManage = false; showProtoBills = true },
                 onOpenSupport = { showAccountManage = false; showSupport = true },
             )
             return@IdsTheme
@@ -1766,6 +1767,7 @@ fun ItundaAppScreen(
             ParkingScreen(onBack = { showParking = false })
             return@IdsTheme
         }
+        if (showProtoBills) { ProtoBillsScreen(onBack = { showProtoBills = false }); return@IdsTheme }
         // Real 토스뱅크 외화통장 screen (2026-07-25) -- same pattern.
         if (showForeignCurrency) {
             BackHandler { showForeignCurrency = false }
@@ -1845,7 +1847,7 @@ fun ItundaAppScreen(
                         onRetry = { viewModel.retry() },
                         onOpenPay = { selectedTab = ItundaTab.Pay },
                         onOpenSend = { showTransferHub = true },
-                        onOpenBills = { homeContext.startActivity(android.content.Intent(homeContext, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java)) },
+                        onOpenBills = { showProtoBills = true },
                         onOpenNotifications = { showNotificationsFeed = true },
                         onOpenOverview = { showOverview = true },
                         onOpenBank = { showBank = true },
@@ -1979,9 +1981,7 @@ fun ItundaAppScreen(
                             onOpenRewardTasksMiniApp = {
                                 menuContext.startActivity(android.content.Intent(menuContext, rw.itunda.app.miniapps.RewardTasksMiniAppActivity::class.java))
                             },
-                            onOpenPayBillsMiniApp = {
-                                menuContext.startActivity(android.content.Intent(menuContext, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))
-                            },
+                            onOpenPayBillsMiniApp = { showProtoBills = true },
                             onOpenInsuranceMiniApp = {
                                 menuContext.startActivity(android.content.Intent(menuContext, rw.itunda.app.miniapps.InsuranceMiniAppActivity::class.java))
                             },
