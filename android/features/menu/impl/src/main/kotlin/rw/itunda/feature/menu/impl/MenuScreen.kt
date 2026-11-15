@@ -156,6 +156,26 @@ fun MenuEntryPoint(
         onOpenUssdSettings = onOpenUssdSettings,
     )
 
+    ProtoExploreContent(
+        query = menuSearchQuery, onQuery = { menuSearchQuery = it }, onHelp = onOpenSupport, onSettings = onOpenSettings,
+        onOpen = { key ->
+            when (key) {
+                "shop" -> onOpenShop(); "eats", "front" -> onOpenEats(); "marketplace" -> onOpenMarketplace()
+                "community" -> onOpenCommunity(); "jobs" -> onOpenJobs(); "property" -> onOpenProperty(); "places", "directions" -> onOpenMap()
+                "benefits" -> onOpenRewardTasksMiniApp(); "invest" -> onOpenInvest(); "week26" -> onOpenWeeklySavings(); "day31" -> onOpenGrow31Savings()
+                "open" -> onOpenBank(); "assets" -> onOpenOverview(); "card" -> onOpenCard(); "transit" -> onOpenTransit(); "spending" -> onOpenSpending()
+                "group" -> onOpenGroupAccounts(); "family" -> onOpenFamilyLink(); "fx" -> onOpenForeignCurrency(); "subs" -> onOpenSubscriptions()
+                "cert" -> onOpenCertificate(); "transfer" -> onOpenTransferHub(); "request" -> onOpenRequestMoney(); "topup" -> onOpenAutoTopUp()
+                "mobile" -> onOpenPayBillsMiniApp(); "deposit" -> onOpenUpfrontDeposit(); "youth" -> onOpenYouthAccount(); "ikimina" -> onOpenIkimina()
+                "sacco" -> onOpenSacco(); "loan" -> onOpenLoans(); "credit" -> onOpenCreditScore(); "harvest" -> onOpenHarvestAdvance()
+                "vup" -> onOpenVupLoan(); "student" -> onOpenStudentLoan(); "moto" -> onOpenMotoOwnership(); "rides" -> onOpenRides()
+                "bike" -> onOpenBikeRental(); "bus" -> onOpenBus(); "chat", "report", "news" -> onOpenSupport(); "ussd" -> onOpenUssdSettings()
+                "apps" -> showMiniAppsHub = true; "verify" -> onOpenIdentity(); "bank" -> onOpenBank()
+            }
+        },
+    )
+    if (true) return
+
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(start = Ids.layout.screenHorizontal, end = Ids.layout.screenHorizontal, top = Ids.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
