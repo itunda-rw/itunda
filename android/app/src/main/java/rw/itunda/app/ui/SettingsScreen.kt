@@ -273,8 +273,8 @@ fun SettingsScreen(
               // real, already-working AppLocalePreference, just relocated.
             item {
                 SettingsCard {
-                    Text(stringResource(R.string.settings_my_info), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(stringResource(R.string.settings_my_info), color = Ids.colors.textTertiary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Spacer(modifier = Modifier.height(4.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -314,7 +314,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(stringResource(R.string.settings_language), color = Ids.colors.textPrimary, fontSize = 15.sp)
+                        Text(stringResource(R.string.settings_language), color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
                         // Real Toss row shape (2026-08-12, direct screenshot comparison)
                         // -- every row in this card ends with a chevron, including this
                         // one (value + chevron together), not just a bare value.
@@ -337,7 +337,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(stringResource(R.string.settings_notifications), color = Ids.colors.textPrimary, fontSize = 15.sp)
+                        Text(stringResource(R.string.settings_notifications), color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             if (unreadCount > 0) {
                                 Text(unreadCount.toString(), color = Ids.colors.brand, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
@@ -369,8 +369,8 @@ fun SettingsScreen(
                     // Real Toss section name (2026-08-12) -- "Authentication & Security"
                     // is the real header on the real Toss Settings screenshot; itunda's
                     // own shorter "Security" was close but not the actual real label.
-                    Text(stringResource(R.string.settings_authentication_security), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(stringResource(R.string.settings_authentication_security), color = Ids.colors.textTertiary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Spacer(modifier = Modifier.height(4.dp))
                 if (biometricAvailable) {
                     val tokenStore = remember { NetworkClient.currentTokenStore() }
                     var appLockEnabled by remember { mutableStateOf(tokenStore.isAppLockEnabled()) }
@@ -556,8 +556,8 @@ fun SettingsScreen(
             // the same real, already-shipped screens, nothing new built here.
             item {
                 SettingsCard {
-                    Text(stringResource(R.string.settings_transfer_payment), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(stringResource(R.string.settings_transfer_payment), color = Ids.colors.textTertiary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Spacer(modifier = Modifier.height(4.dp))
                     SettingsChevronRow(stringResource(R.string.settings_send), onClick = onOpenSend)
                     SettingsChevronRow(stringResource(R.string.settings_pay), onClick = onOpenPay)
                 }
@@ -573,8 +573,8 @@ fun SettingsScreen(
             // now (no document screen existed to link to).
             item {
                 SettingsCard {
-                    Text(stringResource(R.string.settings_legal_documents), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(stringResource(R.string.settings_legal_documents), color = Ids.colors.textTertiary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Spacer(modifier = Modifier.height(4.dp))
                     SettingsChevronRow(stringResource(R.string.settings_credit_data_policy)) {
                         openLegalDocument = "credit_data_policy" to baseContext.getString(R.string.settings_credit_data_policy)
                     }
@@ -739,13 +739,7 @@ internal fun SettingsSubScreenHeader(title: String, onBack: () -> Unit, trailing
 // continuous scrolling list with inline dividers between sections.
 @Composable
 private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
-    androidx.compose.material3.Card(
-        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = Ids.colors.surface),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(modifier = Modifier.padding(20.dp), content = content)
-    }
+    Column(modifier = Modifier.fillMaxWidth(), content = content)
 }
 
 // Plain chevron row (2026-08-12) -- the real Toss Settings screenshot's second row
@@ -758,7 +752,7 @@ private fun SettingsChevronRow(label: String, onClick: () -> Unit) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, color = Ids.colors.textPrimary, fontSize = 15.sp)
+        Text(label, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
         Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
     }
 }
