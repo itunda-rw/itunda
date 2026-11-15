@@ -177,6 +177,17 @@ fun SettingsScreen(
         )
         return
     }
+    var showLanguagePicker by remember { mutableStateOf(false) }
+    if (showLanguagePicker) {
+        SettingsPickerScreen(
+            title = stringResource(R.string.settings_language),
+            options = listOf("en" to "English", "rw" to "Kinyarwanda", "fr" to "Français").map { (code, name) ->
+                PickerOption(name, locale == code) { AppLocalePreference.set(baseContext, code) }
+            },
+            onBack = { showLanguagePicker = false },
+        )
+        return
+    }
     var showTextScaleDialog by remember { mutableStateOf(false) }
     if (showTextScaleDialog) {
         val textScale by TextScalePreference.option.collectAsState()
@@ -255,16 +266,7 @@ fun SettingsScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .pressScaleClickable {
-                                // Real 3-way cycle (2026-08-15), widened from the
-                                // original EN/RW toggle when French (values-fr/) was
-                                // added as itunda's third real locale -- see
-                                // LoginScreen.kt's LanguageSwitcher doc comment for
-                                // the full account of this same fix made there.
-                                val locales = listOf("en", "rw", "fr")
-                                val next = locales[(locales.indexOf(locale).coerceAtLeast(0) + 1) % locales.size]
-                                AppLocalePreference.set(baseContext, next)
-                            }
+                            .pressScaleClickable { showLanguagePicker = true }
                             .padding(vertical = 14.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
