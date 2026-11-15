@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.components.ItundaArt
 import rw.itunda.core.designsystem.components.ItundaArtSet
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 
 /** Prototype Shop landing top: tabs, first-come card, quick actions and the recommended grid (demo data). */
@@ -37,7 +38,7 @@ private val protoItems = listOf(
 )
 
 @Composable
-fun ShopProtoHome() {
+fun ShopProtoHome(onOrders: () -> Unit = {}, onWishlist: () -> Unit = {}) {
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             ItundaArt("back", ItundaArtSet.Line, 24.dp, tint = Ids.colors.textPrimary)
@@ -67,11 +68,11 @@ fun ShopProtoHome() {
             Column(Modifier.padding(24.dp)) {
                 Text("500 first-come", color = Ids.colors.danger, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(6.dp))
-                Text("Wireless\nearphones", color = Ids.colors.textPrimary, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
-                Text("18,500 RWF", color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+                Text("Wireless\nearphones", color = Color(0xFF191F28), fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
+                Text("18,500 RWF", color = Color(0xFF191F28), fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
             }
             ItundaArt("celebrate", ItundaArtSet.Color, 120.dp, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 24.dp))
-            Text("Max 1 per day", color = Ids.colors.textTertiary, fontSize = 14.sp, modifier = Modifier.align(Alignment.BottomStart).padding(24.dp))
+            Text("Max 1 per day", color = Color(0xFF6B7684), fontSize = 14.sp, modifier = Modifier.align(Alignment.BottomStart).padding(24.dp))
             Box(
                 Modifier.align(Alignment.BottomEnd).padding(16.dp).clip(RoundedCornerShape(14.dp)).background(Color.Black.copy(alpha = 0.5f))
                     .padding(horizontal = 12.dp, vertical = 5.dp),
@@ -79,7 +80,8 @@ fun ShopProtoHome() {
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             listOf("Daily draw" to "celebrate", "Deals" to "money", "My orders" to "bag", "Rewards" to "gift", "Wishlist" to "heart").forEach { (label, art) ->
-                Column(Modifier.width(66.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                val go = when (label) { "My orders" -> onOrders; "Wishlist" -> onWishlist; else -> ({}) }
+                Column(Modifier.width(66.dp).pressScaleClickable(enabled = label == "My orders" || label == "Wishlist", onClick = go), horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(Modifier.size(60.dp).clip(RoundedCornerShape(20.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
                         ItundaArt(art, ItundaArtSet.Color, 32.dp)
                     }

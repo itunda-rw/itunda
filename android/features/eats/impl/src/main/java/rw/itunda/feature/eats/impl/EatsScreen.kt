@@ -356,6 +356,7 @@ internal fun OrderFoodContent(
     // Real fix (2026-08-25, direct user directive: "implant that into our designs
     // and apply it across our ecosystems", following the account ledger's own
     // shipped version) -- see ScrollPressTracker.kt's own doc comment.
+    var showMembership by remember { mutableStateOf(false) }
     val eatsListState = rememberLazyListState()
     val eatsTouchedKey = remember { mutableStateOf<Any?>(null) }
     LazyColumn(
@@ -363,8 +364,6 @@ internal fun OrderFoodContent(
         modifier = Modifier.fillMaxSize().trackScrollPressedKey(eatsListState, eatsTouchedKey),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
-        item { PlatformMembershipCard() }
-        item { EatsMembershipCard() }
         item {
             // Flat, horizontally-scrolling category strip (2026-07-24), same
             // Karrot/Toss-Shopping-style treatment as Hood's own nav rows --
@@ -428,8 +427,17 @@ internal fun OrderFoodContent(
             // itunda has no license or real source for. Additive: the text chip row
             // below still does the actual filtering; this is the same real
             // selectedCategory state, just a second, visually-matched way to reach it.
-            if (categories.isNotEmpty()) {
-                item { EatsCategoryIconRow(categories, selectedCategory) { c -> selectedCategory = if (c == selectedCategory) null else c } }
+            item { EatsPromoBanner() }
+            item {
+                EatsQuickActions(
+                    onFastest = { sortMode = if (sortMode == "delivery_time") null else "delivery_time" },
+                    onClub = { showMembership = !showMembership },
+                    onSaved = { view = OrderFoodView.FAVORITES },
+                )
+            }
+            if (showMembership) {
+                item { PlatformMembershipCard() }
+                item { EatsMembershipCard() }
             }
             item {
                 SearchAndCategoryChips(
