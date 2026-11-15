@@ -66,6 +66,7 @@ fun Grow31SavingsScreen(onBack: () -> Unit) {
     BackHandler(onBack = onBack)
     var mode by remember { mutableStateOf(Grow31Mode.LIST) }
     var selectedPlanId by remember { mutableStateOf<String?>(null) }
+    var chosenDaily by remember { mutableStateOf("") }
     var plans by remember { mutableStateOf<List<Grow31SavingsPlanDto>?>(null) }
     var listError by remember { mutableStateOf<String?>(null) }
     var refreshKey by remember { mutableStateOf(0) }
@@ -89,7 +90,7 @@ fun Grow31SavingsScreen(onBack: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize()) {
         val title = when {
             selectedPlanId != null -> "Plan detail"
-            mode == Grow31Mode.INTRO -> "31-day plan"
+            mode == Grow31Mode.INTRO -> ""
             mode == Grow31Mode.NEW -> "New 31-day plan"
             else -> "31-Day Savings"
         }
@@ -103,8 +104,8 @@ fun Grow31SavingsScreen(onBack: () -> Unit) {
 
         when {
             selectedPlanId != null -> Grow31DetailContent(planId = selectedPlanId!!, onChanged = { refreshKey++ })
-            mode == Grow31Mode.NEW -> Grow31CreateContent(onCreated = { mode = Grow31Mode.LIST; refreshKey++ })
-            mode == Grow31Mode.INTRO -> Grow31IntroContent(onContinue = { mode = Grow31Mode.NEW })
+            mode == Grow31Mode.NEW -> Grow31CreateContent(initialAmount = chosenDaily, onCreated = { mode = Grow31Mode.LIST; refreshKey++ })
+            mode == Grow31Mode.INTRO -> Grow31IntroContent(onContinue = { chosenDaily = it.toString(); mode = Grow31Mode.NEW })
             else -> LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp),
