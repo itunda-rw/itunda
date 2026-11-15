@@ -12,9 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CardGiftcard
-import androidx.compose.material3.Icon
+import rw.itunda.core.designsystem.itundaface.GiftThemeGlyph
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -82,7 +80,7 @@ internal fun PersonalRecommendationCard(item: rw.itunda.core.network.DiscoverIte
             modifier = Modifier.size(32.dp).clip(RoundedCornerShape(10.dp)).background(accentColor.copy(alpha = 0.18f)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Outlined.CardGiftcard, contentDescription = null, modifier = Modifier.size(18.dp), tint = accentColor)
+            GiftThemeGlyph(theme = null, size = 18.dp)
         }
         Spacer(modifier = Modifier.width(12.dp))
         Text(
