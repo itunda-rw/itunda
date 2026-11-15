@@ -20,8 +20,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
@@ -114,27 +112,27 @@ private fun IkiminaIntroContent(onContinue: () -> Unit) {
         content = {
             Text(
                 "A rotating savings group with people you trust",
-                color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp,
+                color = Ids.colors.textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp,
             )
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Everyone contributes the same fixed amount", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Everyone contributes the same fixed amount", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Text(
                     "Every member pays in the same amount, on the same weekly or monthly schedule you set when you create the group.",
-                    color = Ids.colors.textSecondary, fontSize = 13.sp,
+                    color = Ids.colors.textTertiary, fontSize = 15.sp,
                 )
             }
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("One member takes home the full pot each round", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("One member takes home the full pot each round", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Text(
                     "The payout rotates in a pre-agreed order until every member has been paid exactly once -- not itunda deciding who's next, the group's own real turn order.",
-                    color = Ids.colors.textSecondary, fontSize = 13.sp,
+                    color = Ids.colors.textTertiary, fontSize = 15.sp,
                 )
             }
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("You choose the size and schedule", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("You choose the size and schedule", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Text(
                     "Set a max member count and a weekly or monthly contribution cycle -- the group only starts once you're ready.",
-                    color = Ids.colors.textSecondary, fontSize = 13.sp,
+                    color = Ids.colors.textTertiary, fontSize = 15.sp,
                 )
             }
         },
@@ -150,7 +148,6 @@ private fun IkiminaCreateContent(onCreated: () -> Unit) {
     var contributionAmount by remember { mutableStateOf("") }
     var cycleFrequencyDays by remember { mutableStateOf(30) }
     var memberCap by remember { mutableStateOf("10") }
-    var frequencyMenuOpen by remember { mutableStateOf(false) }
     var creating by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
@@ -179,18 +176,20 @@ private fun IkiminaCreateContent(onCreated: () -> Unit) {
         content = {
             IdsTextField(value = name, onValueChange = { name = it }, label = "Group name (e.g. Umuryango)", modifier = Modifier.fillMaxWidth())
             IdsTextField(value = contributionAmount, onValueChange = { contributionAmount = it }, label = "Contribution per round (RWF)", modifier = Modifier.fillMaxWidth())
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Box(modifier = Modifier.weight(1f)) {
+            Text("How often?", color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                listOf("Weekly" to 7, "Monthly" to 30).forEach { (label, days) ->
+                    val on = cycleFrequencyDays == days
                     Box(
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                            .pressScaleClickable { frequencyMenuOpen = true }.padding(vertical = 14.dp, horizontal = 12.dp),
-                    ) { Text(if (cycleFrequencyDays == 7) "Weekly" else "Monthly", fontSize = 14.sp) }
-                    DropdownMenu(expanded = frequencyMenuOpen, onDismissRequest = { frequencyMenuOpen = false }) {
-                        DropdownMenuItem(text = { Text("Weekly") }, onClick = { cycleFrequencyDays = 7; frequencyMenuOpen = false })
-                        DropdownMenuItem(text = { Text("Monthly") }, onClick = { cycleFrequencyDays = 30; frequencyMenuOpen = false })
-                    }
+                        Modifier.weight(1f).height(48.dp).clip(RoundedCornerShape(16.dp))
+                            .background(if (on) Ids.colors.brand else Ids.colors.surfaceSoft)
+                            .pressScaleClickable { cycleFrequencyDays = days },
+                        contentAlignment = Alignment.Center,
+                    ) { Text(label, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = if (on) Ids.colors.textPrimary else Ids.colors.textTertiary) }
                 }
-                IdsTextField(value = memberCap, onValueChange = { memberCap = it }, label = "Max members", modifier = Modifier.weight(1f))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                IdsTextField(value = memberCap, onValueChange = { memberCap = it }, label = "Max members", modifier = Modifier.fillMaxWidth())
             }
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
         },
