@@ -17,6 +17,9 @@ import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsTheme
 import rw.itunda.feature.payments.impl.ContactUi
 import rw.itunda.feature.payments.impl.RecipientEntryScreen
+import rw.itunda.feature.payments.impl.TransferAmountScreen
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.onNodeWithText
 
 /** Send > "Send to" with the prototype's two sample contacts. */
 @RunWith(RobolectricTestRunner::class)
@@ -45,4 +48,16 @@ class SendScreenshotTest {
 
     @Test fun sendLight() = render(false, "send-light")
     @Test fun sendDark() = render(true, "send-dark")
+
+    @Test fun amountLight() {
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                Box(Modifier.fillMaxSize().background(Ids.colors.background)) {
+                    TransferAmountScreen("0788 000 214", onBack = {}, onConfirm = { _, _, _, _ -> }, availableBalance = 842_300.0)
+                }
+            }
+        }
+        rule.onNodeWithText("+5,000").performClick()
+        rule.onRoot().captureRoboImage("build/screenshots/send-amount-light.png")
+    }
 }
