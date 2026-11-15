@@ -32,7 +32,7 @@ import rw.itunda.core.designsystem.theme.Ids
 private data class ProtoItem(val name: String, val discount: Int, val price: String, val art: String)
 
 private val protoItems = listOf(
-    ProtoItem("Mountain coffee, 500 g", 19, "6,500 RWF", "basket"),
+    ProtoItem("Mountain coffee, 500 g", 19, "6,500 RWF", "market"),
     ProtoItem("Umuganda tee, cotton", 14, "9,000 RWF", "bag"),
 )
 

@@ -29,8 +29,9 @@ import rw.itunda.core.designsystem.theme.Ids
 @Composable
 fun EatsRestaurantHero(name: String, onBack: () -> Unit, meta: String = "15-25 min · Fee Free · Min 2,000") {
     Column(Modifier.fillMaxWidth()) {
-        Box(Modifier.fillMaxWidth().height(190.dp).background(Color(0xFFFFE6C7))) {
-            ItundaArt("bread", ItundaArtSet.Color, 96.dp, modifier = Modifier.align(Alignment.Center))
+        Box(Modifier.fillMaxWidth().height(200.dp).background(Color(0xFFFFE6C7))) {
+            Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(28.dp).clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)).background(Ids.colors.background))
+            ItundaArt("bread", ItundaArtSet.Color, 96.dp, modifier = Modifier.align(Alignment.Center).padding(bottom = 16.dp))
             ItundaArt("juice", ItundaArtSet.Color, 56.dp, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 48.dp, top = 24.dp))
             Box(
                 Modifier.padding(start = 10.dp, top = 12.dp).size(40.dp).clip(CircleShape).background(Color.White).pressScaleClickable(onClick = onBack),
@@ -38,8 +39,7 @@ fun EatsRestaurantHero(name: String, onBack: () -> Unit, meta: String = "15-25 m
             ) { ItundaArt("back", ItundaArtSet.Line, 22.dp, tint = Ids.colors.textPrimary) }
         }
         Column(
-            Modifier.fillMaxWidth().padding(top = 0.dp).clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)).background(Ids.colors.background)
-                .padding(horizontal = 24.dp, vertical = 20.dp),
+            Modifier.fillMaxWidth().background(Ids.colors.background).padding(horizontal = 4.dp, vertical = 4.dp),
         ) {
             Text(name, color = Ids.colors.textPrimary, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold)
             Spacer(Modifier.height(8.dp))
