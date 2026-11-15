@@ -1872,6 +1872,7 @@ fun ItundaAppScreen(
                         onOpenProperty = { showProperty = true },
                         onOpenInvest = { showInvest = true },
                         onOpenShop = { showShop = true },
+                        onOpenInvite = { homeContext.startActivity(android.content.Intent(homeContext, rw.itunda.app.miniapps.RewardTasksMiniAppActivity::class.java)) },
                         )
                     }
                     // Real, dedicated primary tab (2026-08-10, see ItundaTab's own doc
