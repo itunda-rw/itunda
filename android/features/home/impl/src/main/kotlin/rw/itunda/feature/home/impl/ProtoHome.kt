@@ -156,14 +156,14 @@ fun ProtoHomeContent(
                                 withStyle(SpanStyle(color = Ids.colors.textBrand)) { append("${copy.interest} $it") }
                             }
                         },
-                        action = copy.send, onAction = onSend,
+                        action = copy.send, onAction = onSend, onClick = onOpenBank,
                     )
                     Spacer(Modifier.height(34.dp))
                     AccountRow(
                         tile = { ItundaArt("wallet", ItundaArtSet.Color, 26.dp) },
                         amount = state.payBalance,
                         subtitle = buildAnnotatedString { append("itunda Pay") },
-                        action = copy.add, onAction = onAdd,
+                        action = copy.add, onAction = onAdd, onClick = onOpenPay,
                     )
                     Spacer(Modifier.height(22.dp))
                     Divider(color = Ids.colors.divider, thickness = 0.5.dp)
@@ -307,8 +307,8 @@ private fun AmountLine(amount: Double) {
 }
 
 @Composable
-private fun AccountRow(tile: @Composable () -> Unit, amount: Double, subtitle: androidx.compose.ui.text.AnnotatedString, action: String, onAction: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+private fun AccountRow(tile: @Composable () -> Unit, amount: Double, subtitle: androidx.compose.ui.text.AnnotatedString, action: String, onAction: () -> Unit, onClick: () -> Unit) {
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick), verticalAlignment = Alignment.CenterVertically) {
         IconTile(tile)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
