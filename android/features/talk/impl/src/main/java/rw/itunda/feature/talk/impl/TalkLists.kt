@@ -159,10 +159,17 @@ internal fun DirectMessagesList(
         }
     }
 
+    var showNewChat by remember { mutableStateOf(false) }
     LazyColumn(verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)) {
         item {
-            // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
-            // this screen's own main content, a lone form (docs/UI_UX_GUIDELINES.md §10).
+            Text(
+                if (showNewChat) "Hide new chat" else "New chat",
+                color = Ids.colors.textBrand, fontWeight = FontWeight.Bold, fontSize = 16.sp,
+                modifier = Modifier.pressScaleClickable { showNewChat = !showNewChat }.padding(vertical = 8.dp),
+            )
+        }
+        if (showNewChat) item {
+            // Flat form, shown on demand so the list matches the prototype's Messages screen.
             Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
                     Text("New chat", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Text("Choose a saved contact, or enter their phone number.", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp, bottom = 12.dp))
