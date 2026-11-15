@@ -19,6 +19,7 @@ import rw.itunda.core.network.Account
 import rw.itunda.core.network.MoneyActionResult
 import rw.itunda.feature.banking.impl.BankHubEntryPoint
 import rw.itunda.feature.banking.impl.Grow31IntroContent
+import rw.itunda.feature.credit.impl.LoansFindHero
 import rw.itunda.feature.wealth.impl.InvestIndexHeader
 import rw.itunda.feature.wealth.impl.InvestStartCard
 import androidx.compose.foundation.layout.Column
@@ -65,5 +66,12 @@ class BankScreenshotTest {
             }
         }
         rule.onRoot().captureRoboImage("build/screenshots/invest-light.png")
+    }
+
+    @Test fun loansLight() {
+        rule.setContent {
+            IdsTheme(darkTheme = false) { Box(Modifier.fillMaxSize().background(Ids.colors.background).padding(24.dp)) { LoansFindHero() } }
+        }
+        rule.onRoot().captureRoboImage("build/screenshots/loans-light.png")
     }
 }
