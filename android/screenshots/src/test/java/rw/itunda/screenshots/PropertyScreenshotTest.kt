@@ -16,6 +16,8 @@ import org.robolectric.annotation.GraphicsMode
 import rw.itunda.core.designsystem.theme.IdsTheme
 import rw.itunda.core.network.PropertyListingDto
 import rw.itunda.core.network.JobPostDto
+import rw.itunda.core.network.CommunityPostDto
+import rw.itunda.feature.community.impl.CommunityPostCard
 import rw.itunda.feature.jobs.impl.JobPostListRow
 import rw.itunda.feature.property.impl.PropertyListRow
 
@@ -59,5 +61,21 @@ class PropertyScreenshotTest {
             }
         }
         rule.onRoot().captureRoboImage("build/screenshots/jobs-rows.png")
+    }
+
+    @Test fun communityRows() {
+        fun c(id: String, cat: String, t: String, b: String, likes: Long, comments: Long) = CommunityPostDto(
+            id = id, authorId = "a", category = cat, title = t, body = b, status = "ACTIVE",
+            likeCount = likes, commentCount = comments, createdAt = "2026-11-14T08:00:00Z", neighborhood = "Remera",
+        )
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                Column(Modifier.padding(horizontal = 20.dp)) {
+                    CommunityPostCard(c("1", "general", "Umuganda this Saturday", "Umuganda this Saturday at 8. Bring your own gloves if you have them.", 22, 1), "Announcement", false, {}, {})
+                    CommunityPostCard(c("2", "general", "Reliable tailor?", "Where can I find a reliable tailor near Kimironko market? I need a school uniform fixed by Monday.", 4, 2), "Ask", false, {}, {})
+                }
+            }
+        }
+        rule.onRoot().captureRoboImage("build/screenshots/community-rows.png")
     }
 }

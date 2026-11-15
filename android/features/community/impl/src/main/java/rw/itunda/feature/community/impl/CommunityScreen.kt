@@ -9,6 +9,7 @@ import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -660,7 +661,7 @@ private fun NewCommunityPostForm(categories: List<CommunityCategoryDto>, onCreat
 }
 
 @Composable
-private fun CommunityPostCard(
+fun CommunityPostCard(
     post: CommunityPostDto, categoryLabel: String, isMine: Boolean, onOpen: () -> Unit, onRemoved: () -> Unit,
     joinedCount: Int = 0, joining: Boolean = false, onJoin: () -> Unit = {},
 ) {
@@ -669,17 +670,20 @@ private fun CommunityPostCard(
     val coroutineScope = rememberCoroutineScope()
 
     Card(
-        shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
+        shape = androidx.compose.ui.graphics.RectangleShape, colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpen),
     ) {
-        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(modifier = Modifier.padding(vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                // Same hyperlocal-neighborhood fix as Jobs/Property -- see
-                // [[project_itunda_full_ecosystem_polish]]. Neighborhood matters
-                // especially here: a Community post is explicitly a "your neighbors"
-                // product, not generic content.
-                val categoryAndLocation = listOfNotNull(categoryLabel, post.neighborhood, relativeTimeAgo(post.createdAt)).joinToString(" · ")
-                Text(categoryAndLocation, color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(36.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Color(0xFFE4F3E8)), contentAlignment = Alignment.Center) {
+                        Text(categoryLabel.take(1).uppercase(), color = Color(0xFF2E7D4F), fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    }
+                    Column(Modifier.padding(start = 10.dp)) {
+                        Text(categoryLabel, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text(listOfNotNull(post.neighborhood, relativeTimeAgo(post.createdAt)).joinToString(" · "), color = Ids.colors.textSecondary, fontSize = 12.sp)
+                    }
+                }
                 if (isMine) {
                     ListingActionButton("Remove", busy) {
                         busy = true
@@ -696,13 +700,13 @@ private fun CommunityPostCard(
                     }
                 }
             }
-            Text(post.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            Text(post.body, color = Ids.colors.textSecondary, fontSize = 13.sp, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            Text(post.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(post.body, color = Ids.colors.textPrimary, fontSize = 15.sp, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                HeartFilled(size = 12.dp)
-                Text("${post.likeCount} ·", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                SpeechBubbleGlyph(size = 12.dp)
-                Text("${post.commentCount}", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                HeartFilled(size = 16.dp)
+                Text("${post.likeCount}", color = Ids.colors.textSecondary, fontSize = 14.sp, modifier = Modifier.padding(end = 12.dp))
+                SpeechBubbleGlyph(size = 16.dp)
+                Text("${post.commentCount}", color = Ids.colors.textSecondary, fontSize = 14.sp)
             }
             if (!isMine && post.category == "question") {
                 ListingActionButton("Answer this question", busy, onClick = onOpen)
