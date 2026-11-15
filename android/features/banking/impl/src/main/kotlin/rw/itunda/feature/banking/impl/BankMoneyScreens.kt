@@ -53,7 +53,7 @@ private fun AmountInput(value: Long, onChange: (Long) -> Unit) {
 @Composable
 private fun AddChips(steps: List<Long>, onAdd: (Long) -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        steps.forEach { BankChip("+${rwf(it)}", false, { onAdd(it) }, Modifier.weight(1f)) }
+        steps.forEach { BankChip("+${rwf(it)}", false, { onAdd(it) }, Modifier.weight(1f), compact = true) }
     }
 }
 
