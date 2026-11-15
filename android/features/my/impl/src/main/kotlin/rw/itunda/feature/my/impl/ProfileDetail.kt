@@ -52,6 +52,9 @@ internal fun ProfileDetail(user: PublicUser, onBack: () -> Unit) {
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 18.dp, vertical = 8.dp)) {
                 FactRow("Phone", user.phoneNumber.let { if (it.length > 7) it.take(4) + " ••• " + it.takeLast(3) else it })
                 FactRow("Verification", if (user.kycVerified) "Verified" else "Not verified")
+                // Daily limit is a dummy until the limits endpoint exists; member-since comes from createdAt.
+                FactRow("Daily limit", "1,000,000 RWF")
+                FactRow("Member since", memberSince(user.createdAt))
             }
         }
     }
@@ -63,4 +66,13 @@ private fun FactRow(label: String, value: String) {
         Text(label, color = Ids.colors.textSecondary, fontSize = 15.sp)
         Text(value, color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
     }
+}
+
+private val monthNames = listOf("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")
+
+/** "2025-03-14T..." -> "March 2025"; falls back to the raw date prefix if it can't be parsed. */
+private fun memberSince(createdAt: String): String {
+    val year = createdAt.take(4)
+    val month = createdAt.drop(5).take(2).toIntOrNull()?.let { monthNames.getOrNull(it - 1) }
+    return if (month != null && year.length == 4) "$month $year" else createdAt.take(10)
 }
