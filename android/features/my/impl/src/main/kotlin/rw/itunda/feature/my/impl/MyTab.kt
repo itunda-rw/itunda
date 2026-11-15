@@ -249,7 +249,6 @@ fun MyEntryPoint(
                 Divider(color = Ids.colors.divider, thickness = 0.5.dp)
             }
         }
-        item { ProfilePhotoCard() }
     }
 }
 
