@@ -42,7 +42,7 @@ private val documentRows = listOf(ManageRow("📄", "Documents & letters", "Acco
 
 /** Prototype "Manage account": holder block with Copy number, then Account / Money / Documents rows (dummy). */
 @Composable
-internal fun BankManageScreen(onBack: () -> Unit) {
+internal fun BankManageScreen(onBack: () -> Unit, onOpen: (BankSub) -> Unit) {
     val clipboard = LocalClipboardManager.current
     Column(Modifier.fillMaxSize().background(Ids.colors.background)) {
         BankSubTopBar("Manage account", onBack)
@@ -52,7 +52,7 @@ internal fun BankManageScreen(onBack: () -> Unit) {
             Text("0214-3058-1980", color = Ids.colors.textTertiary, fontSize = 16.sp, modifier = Modifier.padding(top = 4.dp, bottom = 14.dp))
             BankChip("Copy number", false, { clipboard.setText(AnnotatedString("0214-3058-1980")) })
             Section("Account", accountRows)
-            Section("Money", moneyRows)
+            Section("Money", moneyRows, onOpen)
             Section("Documents", documentRows)
             Spacer(Modifier.height(24.dp))
         }
@@ -60,16 +60,20 @@ internal fun BankManageScreen(onBack: () -> Unit) {
 }
 
 @Composable
-private fun Section(title: String, rows: List<ManageRow>) {
+private fun Section(title: String, rows: List<ManageRow>, onOpen: (BankSub) -> Unit = {}) {
     Text(title, color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 28.dp, bottom = 6.dp))
     rows.forEach { r ->
-        Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.fillMaxWidth().then(if (r.title == "Limits & alerts") Modifier.pressScaleClickable { onOpen(BankSub.LIMITS) } else Modifier).padding(vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) { Text(r.emoji, fontSize = 18.sp) }
             Column(Modifier.weight(1f).padding(start = 14.dp)) {
                 Text(r.title, color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 Text(r.subtitle, color = Ids.colors.textTertiary, fontSize = 13.sp)
             }
             if (r.trailing.isNotEmpty()) Text(r.trailing, color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            if (r.title == "Limits & alerts") Text("  \u203A", color = Ids.colors.textTertiary, fontSize = 20.sp)
         }
     }
 }
