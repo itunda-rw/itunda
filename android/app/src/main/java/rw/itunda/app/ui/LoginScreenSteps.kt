@@ -346,6 +346,7 @@ internal fun PasswordStep(
     onPinCreated: (String) -> Unit,
     onPinConfirmed: (String) -> Unit,
     onPinEntered: (String) -> Unit,
+    onUseDifferentNumber: () -> Unit = {},
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
         if (attemptingPasswordless) {
@@ -389,9 +390,21 @@ internal fun PasswordStep(
             }
         } else {
             AccountPinPad(
-                headline = stringResource(R.string.login_headline_password_login),
+                headline = "Welcome back",
+                subtitle = "Enter your PIN to sign in",
                 errorMessage = errorMessage,
                 busy = isSubmitting,
+                leading = {
+                    Box(Modifier.size(52.dp).clip(CircleShape).background(Ids.colors.brand.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
+                        rw.itunda.core.designsystem.components.ItundaArt("shopkeeper", rw.itunda.core.designsystem.components.ItundaArtSet.Face, 40.dp)
+                    }
+                },
+                footer = {
+                    Text(
+                        "Use a different number", color = Ids.colors.textTertiary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.pressScaleClickable(onClick = onUseDifferentNumber).padding(vertical = 4.dp),
+                    )
+                },
                 onComplete = onPinEntered,
             )
         }

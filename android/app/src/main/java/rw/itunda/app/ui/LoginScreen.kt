@@ -434,10 +434,8 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                                             errorMessage = "That didn't match. Try again."
                                         }
                                     },
-                                    onPinEntered = { entered ->
-                                        password = entered
-                                        submit()
-                                    },
+                                    onPinEntered = { entered -> password = entered; submit() },
+                                    onUseDifferentNumber = { stage = AuthStage.PHONE },
                                 )
                             }
                         }
