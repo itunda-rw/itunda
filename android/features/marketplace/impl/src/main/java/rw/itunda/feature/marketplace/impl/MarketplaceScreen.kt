@@ -801,27 +801,11 @@ private fun ListingRow(
     // never leaks through.
     var displayedLikeCount by remember(listing.id, listing.likeCount) { mutableStateOf(listing.likeCount) }
     Column(modifier = Modifier.fillMaxWidth()) {
-            // Real Karrot list-row layout (2026-08-03, user-provided real 당근마켓
-            // screenshots, light + dark) -- corrects the 2026-07-24 comment this
-            // replaced, which claimed a large full-width hero photo led Karrot's real
-            // card and price came before title; neither holds up against the actual
-            // screenshots: every real row is a small square thumbnail beside the text,
-            // and the real order is title (bold) -> location/time (muted) -> price
-            // (bold, largest). The full-width hero-image version wasn't sourced from a
-            // real screenshot at the time it was written.
-            // Real fix (2026-08-25, direct user directive: "implant that into our
-            // designs and apply it across our ecosystems") -- matches Shop/Eats'
-            // own identical fix; see IdsInteractions.kt's pressScaleClickable doc
-            // comment for the full sourced account.
             Row(
                 modifier = Modifier.fillMaxWidth().pressScaleClickable(isScrollTouched = isScrollTouched, onClick = onOpen).padding(vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                // Real fix, 2026-08-03: was 96.dp -- a fresh real 당근마켓 screenshot
-                // (user-provided) measured the actual thumbnail at ~124dp square on an
-                // equivalent screen (326px of a 1080px-wide capture), notably more
-                // prominent than itunda's first pass.
-                Box(modifier = Modifier.size(124.dp).clip(RoundedCornerShape(12.dp))) {
+                Box(modifier = Modifier.size(84.dp).clip(RoundedCornerShape(14.dp))) {
                     if (listing.photoUrl != null) {
                         // SubcomposeAsyncImage, not AsyncImage (2026-07-24): plain AsyncImage
                         // renders nothing at all while loading or on a failed fetch -- a
@@ -874,7 +858,7 @@ private fun ListingRow(
                             color = Ids.colors.textPrimary,
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
-                            maxLines = 1,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
                         )
@@ -920,22 +904,20 @@ private fun ListingRow(
                     // same pattern this file's own CommunityPostCard-equivalent ❤️/💬
                     // counts already use, not a deviation from "themes stay common."
                     if (listing.price <= 0.0) {
-                        Text("Free 🧡", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text("Free 🧡", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     } else {
-                        Text(String.format(Locale.US, "%,.0f RWF", listing.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text(String.format(Locale.US, "%,.0f RWF", listing.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
                 }
             }
-            // Real like count (2026-08-03) -- matches a real 당근마켓 screenshot's
-            // bottom-right heart count on every row. Comment count is deliberately
-            // NOT shown alongside it (unlike the real reference) -- there is no real
-            // comment-thread feature on listings yet, and this app doesn't fabricate
-            // a count for a feature that doesn't exist.
             Row(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                if (!isMine && listing.price > 0.0) {
+                    Text("Safe pay", color = Ids.colors.textBrand, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                }
                 WishlistHeart(
                     favorited = liked,
                     size = 16.dp,
