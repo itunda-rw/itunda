@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -31,6 +30,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -42,8 +42,6 @@ import retrofit2.HttpException
 import rw.itunda.app.R
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.BankCardChip
-import rw.itunda.core.designsystem.components.CardContactlessGlyph
-import rw.itunda.core.designsystem.itundaface.LockGlyph
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.CardDto
 import rw.itunda.core.network.CardTransactionDto
@@ -367,9 +365,9 @@ fun CardScreen(onBack: () -> Unit) {
                             // identical contrast fix.
                             val onFront = if (!c.frozen && cardDesign.frontLight) Color(0xFF191F28) else Color.White
                             Card(
-                                shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
+                                shape = RoundedCornerShape(28.dp),
                                 colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-                                modifier = Modifier.fillMaxWidth().aspectRatio(1.586f),
+                                modifier = Modifier.fillMaxWidth().height(200.dp),
                             ) {
                                 Box(
                                     modifier = Modifier
@@ -384,31 +382,21 @@ fun CardScreen(onBack: () -> Unit) {
                                             ),
                                         ),
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .matchParentSize()
-                                            .background(
-                                                androidx.compose.ui.graphics.Brush.linearGradient(
-                                                    listOf(Color.White.copy(alpha = 0.18f), Color.Transparent),
-                                                ),
-                                            ),
-                                    )
-                                    Column(modifier = Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.SpaceBetween) {
-                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Column(modifier = Modifier.fillMaxSize().padding(22.dp), verticalArrangement = Arrangement.SpaceBetween) {
+                                        val statusLabel = when {
+                                            c.closedAt != null -> stringResource(R.string.card_status_closed)
+                                            c.lost -> stringResource(R.string.card_status_lost)
+                                            c.frozen -> stringResource(R.string.card_status_frozen)
+                                            else -> stringResource(R.string.card_status_active)
+                                        }
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                                             BankCardChip(size = 32.dp)
-                                            if (c.frozen) LockGlyph(size = 18.dp) else CardContactlessGlyph(size = 18.dp, tint = onFront.copy(alpha = 0.85f))
+                                            Text(
+                                                statusLabel, color = onFront, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold,
+                                                modifier = Modifier.background(onFront.copy(alpha = 0.18f), RoundedCornerShape(14.dp)).padding(horizontal = 12.dp, vertical = 6.dp),
+                                            )
                                         }
-                                        Column {
-                                            Text(stringResource(R.string.card_masked_label), color = onFront.copy(alpha = 0.85f), fontSize = 13.sp)
-                                            Text("•••• •••• •••• ${c.last4}", color = onFront, fontWeight = FontWeight.Bold, fontSize = 20.sp, letterSpacing = 2.sp)
-                                            val statusLabel = when {
-                                                c.closedAt != null -> stringResource(R.string.card_status_closed)
-                                                c.lost -> stringResource(R.string.card_status_lost)
-                                                c.frozen -> stringResource(R.string.card_status_frozen)
-                                                else -> stringResource(R.string.card_status_active)
-                                            }
-                                            Text(statusLabel, color = onFront.copy(alpha = 0.85f), fontSize = 12.sp)
-                                        }
+                                        Text("•••• •••• •••• ${c.last4}", color = onFront, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, letterSpacing = 1.sp)
                                     }
                                 }
                             }
