@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import rw.itunda.core.designsystem.components.AmountKeypadInput
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
@@ -115,9 +116,23 @@ fun PayDoneScreen(merchantName: String, onDone: () -> Unit) {
     Column(Modifier.fillMaxSize().background(Ids.colors.background).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Spacer(Modifier.weight(1f))
         Text("\u2705", fontSize = 56.sp)
-        Text("7,000 RWF to $merchantName", color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 16.dp))
+        Text("Sent to $merchantName", color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 16.dp))
         Text("Demo only \u2014 no money was moved.", color = Ids.colors.textTertiary, fontSize = 14.sp, modifier = Modifier.padding(top = 6.dp))
         Spacer(Modifier.weight(1f))
         PayPrimaryButton("Done", onClick = onDone)
+    }
+}
+
+/** Prototype amount entry for paying a friend: amount, funding line, keypad, Pay. */
+@Composable
+fun PayAmountScreen(recipient: String, onBack: () -> Unit, onPay: (Long) -> Unit) {
+    var digits by remember { mutableStateOf("") }
+    val amount = digits.toLongOrNull() ?: 0L
+    Column(Modifier.fillMaxSize().background(Ids.colors.background).padding(horizontal = 24.dp)) {
+        BackTopBar(recipient, onBack)
+        AmountKeypadInput(digits = digits, onDigitsChange = { digits = it }, helperText = "From itunda Pay \u00b7 120,500 RWF")
+        Spacer(Modifier.weight(1f))
+        PayPrimaryButton("Pay", enabled = amount > 0) { onPay(amount) }
+        Spacer(Modifier.height(16.dp))
     }
 }
