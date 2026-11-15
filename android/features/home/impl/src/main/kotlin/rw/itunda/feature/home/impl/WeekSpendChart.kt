@@ -74,6 +74,7 @@ internal fun ProtoWeekChart(days: List<DaySpend>, today: LocalDate = LocalDate.n
     val max = days.maxOf { it.amount }.coerceAtLeast(1.0)
     val day = days[selected.coerceIn(0, days.lastIndex)]
     val locale = LocalConfiguration.current.locales[0] ?: Locale.getDefault()
+    val todayLabel = when (locale.language) { "rw" -> "Uyu munsi"; "fr" -> "Aujourd’hui"; else -> "Today" }
 
     fun indexAt(x: Float) = ((x / widthPx) * days.size).toInt().coerceIn(0, days.lastIndex)
 
@@ -84,7 +85,7 @@ internal fun ProtoWeekChart(days: List<DaySpend>, today: LocalDate = LocalDate.n
                 color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f),
             )
             Text(
-                "${if (day.date == today) "Today · " else ""}${day.date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale)} ${day.date.dayOfMonth} ${day.date.month.getDisplayName(TextStyle.SHORT, locale)}",
+                "${if (day.date == today) "$todayLabel · " else ""}${day.date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale)} ${day.date.dayOfMonth} ${day.date.month.getDisplayName(TextStyle.SHORT, locale)}",
                 color = Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
             )
         }
@@ -113,7 +114,7 @@ internal fun ProtoWeekChart(days: List<DaySpend>, today: LocalDate = LocalDate.n
         Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
             days.forEachIndexed { i, d ->
                 Text(
-                    d.date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.ENGLISH),
+                    d.date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale),
                     color = if (i == selected) Ids.colors.textPrimary else Ids.colors.textSecondary,
                     fontSize = 13.sp, fontWeight = if (i == selected) FontWeight.ExtraBold else FontWeight.SemiBold,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
