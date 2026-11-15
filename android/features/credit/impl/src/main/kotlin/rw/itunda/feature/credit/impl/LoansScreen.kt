@@ -21,6 +21,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.draw.clip
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -91,6 +94,7 @@ fun LoansScreen(onBack: () -> Unit) {
     // just finished, even though `RepayLoanResponse.remaining` already tells us.
     var payoffMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
 
     suspend fun refresh() {
         try {
@@ -127,7 +131,7 @@ fun LoansScreen(onBack: () -> Unit) {
             onMine = { mode = LoansMode.MY_LOANS },
         )
         Spacer(Modifier.height(8.dp))
-        LazyColumn(Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        LazyColumn(Modifier.weight(1f).padding(horizontal = 20.dp), state = listState, verticalArrangement = Arrangement.spacedBy(12.dp)) {
             error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
             payoffMessage?.let { item { Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium) } }
             refinanceResult?.let { result ->
@@ -241,6 +245,13 @@ fun LoansScreen(onBack: () -> Unit) {
                     )
                 }
             }
+        }
+        if (mode == LoansMode.OFFERS) {
+            Box(
+                Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp).height(56.dp).clip(RoundedCornerShape(28.dp)).background(Ids.colors.brand)
+                    .pressScaleClickable { scope.launch { listState.animateScrollToItem(3) } },
+                contentAlignment = Alignment.Center,
+            ) { Text("Check your loan rate", color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold) }
         }
     }
 }
