@@ -37,6 +37,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
@@ -257,7 +259,7 @@ private fun HomeBar(hasUnread: Boolean, onOpenBank: () -> Unit, onOpenPay: () ->
         Spacer(Modifier.weight(1f))
         PayScanGlyph(30.dp, Ids.colors.textTertiary, Modifier.pressScaleClickable(onClick = onOpenPay))
         Spacer(Modifier.width(20.dp))
-        Box(Modifier.pressScaleClickable(onClick = onOpenNotifications).padding(end = 6.dp)) {
+        Box(Modifier.pressScaleClickable(onClick = onOpenNotifications).semantics { contentDescription = notificationsLabel }.padding(end = 6.dp)) {
             ItundaArt("bell", ItundaArtSet.Line, 28.dp, tint = Ids.colors.textTertiary)
             if (hasUnread) {
                 Box(Modifier.align(Alignment.TopEnd).size(9.dp).clip(CircleShape).background(Ids.colors.danger))
