@@ -32,6 +32,8 @@ dependencies {
     implementation(project(":features:home:impl"))
     implementation(project(":features:pay:impl"))
     implementation(project(":features:menu:impl"))
+    implementation(project(":features:talk:impl"))
+    implementation(project(":features:my:impl"))
 
     testImplementation(platform("androidx.compose:compose-bom:2024.02.00"))
     testImplementation(libs.junit4)
