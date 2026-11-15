@@ -78,6 +78,16 @@ internal class DemoInterceptor : Interceptor {
                 """{"success":true,"portfolio":{"totalValue":842000,"totalReturn":61200,"totalReturnPercent":7.84,"holdings":[
                     {"stockId":"s1","symbol":"BKG","name":"Bank of Kigali","shares":1200,"avgPrice":290,"currentPrice":312,"value":374400,"return":26400},
                     {"stockId":"s2","symbol":"MTNR","name":"MTN Rwandacell","shares":2200,"avgPrice":195,"currentPrice":212,"value":466400,"return":37400}]}}"""
+            path == "api/v1/savings/goals" ->
+                """{"success":true,"goals":[
+                    {"id":"g1","userId":"demo-user","accountId":"a2","name":"Rainy day","targetAmount":500000,"currentAmount":350000,
+                     "monthlyContribution":25000,"interestRate":5.0,"targetDate":"2027-03-01","category":"SAVINGS","status":"ACTIVE","color":"#34B68D"},
+                    {"id":"g2","userId":"demo-user","accountId":"a2","name":"New phone","targetAmount":300000,"currentAmount":90000,
+                     "monthlyContribution":15000,"interestRate":5.0,"targetDate":null,"category":"SAVINGS","status":"ACTIVE","color":"#8F89FF"}]}"""
+            path == "api/v1/savings/interest-jar" ->
+                """{"success":true,"jar":{"userId":"demo-user","accountId":"a2","balance":1462,"rate":2.8,"earnedThisMonth":212,"earnedTotal":1462}}"""
+            path == "api/v1/savings/round-up" -> """{"success":true,"settings":null}"""
+            path == "api/v1/mini-apps/catalog" -> """{"success":true,"miniApps":[],"page":0,"totalPages":1}"""
             path == "api/v1/weekly-savings/plans" -> """{"success":true,"plans":[]}"""
             path == "api/v1/accounts/linked" -> """{"success":true,"accounts":[]}"""
             path == "api/v1/p2p/auto-transfers" -> """{"success":true,"transfers":[]}"""
