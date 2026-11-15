@@ -125,7 +125,7 @@ HomeGridAction("gov",t.irembo,onBills,Modifier.weight(1f));HomeGridAction("recei
 }}}
 item{HomeSection(t.spending){
 HomeListRow("spending","${rwf(state.spentThisMonth)} RWF",t.spent,null,onOpenSpending)
-state.bill?.let{b->HomeListRow("bill",b.title,"${t.due} · ${rwf(b.amount)} RWF",null,onPayBill)}
+state.bill?.let{b->HomeListRow("bill",b.title,t.due,"${rwf(b.amount)} RWF",onPayBill)}
 }}
 item{HomeSection(t.forYou){
 HomeListRow("new-savings-goal",t.goal,t.goalHint,null,onSavings);HomeListRow("my-credit-score",t.credit,t.creditHint,t.view,onOpenCreditScore)
