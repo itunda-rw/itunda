@@ -162,7 +162,7 @@ private fun FundingCard(name: String, balance: String, onChange: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.brand.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
-            ItundaArt("wallet", ItundaArtSet.Color, 28.dp)
+            Icon(painterResource(rw.itunda.core.designsystem.R.drawable.itunda_mark), null, Modifier.size(24.dp), tint = Ids.colors.brand)
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
