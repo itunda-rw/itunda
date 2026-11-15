@@ -470,6 +470,7 @@ fun MarketplaceContent(
     // stays null (not emptyList) while blank so it never shadows the real view-based
     // feed above.
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    var categoryFilter by rememberSaveable { mutableStateOf<String?>(null) }
     var searchResults by remember { mutableStateOf<List<ListingDto>?>(null) }
     LaunchedEffect(searchQuery) {
         if (searchQuery.isBlank()) {
@@ -560,30 +561,9 @@ fun MarketplaceContent(
         state = marketplaceListState,
         modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal)
             .trackScrollPressedKey(marketplaceListState, marketplaceTouchedKey),
-        // Real fix, 2026-08-03: a real device screenshot showed the last-visible
-        // listing's own action row (Message seller/Make an offer) sitting directly
-        // under HoodTab's floating Write FAB, genuinely overlapping and unreadable.
-        // contentPadding (not a Modifier padding, which would just shrink the visible
-        // viewport permanently) so the list can still scroll its last item clear of
-        // the FAB. 96dp covers the real FAB's height (~48dp) plus its own 20dp margin
-        // plus slack.
         contentPadding = PaddingValues(top = Ids.layout.screenVertical, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
-        // No TabHeader here (2026-07-24, was `TabHeader("Hood")`): the bottom nav
-        // already highlights "Hood" and HoodTab's own Market/Life/Jobs/Home strip
-        // sits right above this screen, so a third "Hood" label was pure repeat
-        // noise, not information.
-        //
-        // Real fix, 2026-08-03, third correction same day: the Browse/Near me/
-        // Neighborhood chip row that used to render here is gone -- verified via
-        // search (a real 당근 FAQ result) that real Karrot has no such chip trio at
-        // all. The feed source is now auto-detected (see neighborhoodRefreshSignal's
-        // own doc comment) and neighborhoods are changed by tapping the neighborhood
-        // name in HoodTab's own top bar, not a chip here. This closes the "two
-        // stacked chip rows" gap for real, not just visually -- Hood's Market mode
-        // now has exactly one chip row (HoodTab's Market/Life/Jobs/Home), matching
-        // real Karrot.
         item {
             IdsTextField(
                 value = searchQuery,
@@ -591,6 +571,9 @@ fun MarketplaceContent(
                 label = "Search",
                 placeholder = "Search marketplace listings",
             )
+        }
+        if (!isSearching && view in setOf(HoodView.BROWSE, HoodView.NEARBY, HoodView.NEIGHBORHOOD) && !listings.isNullOrEmpty()) {
+            item { MarketplaceCategoryChips(listings!!.map { it.category }.distinct(), categoryFilter) { categoryFilter = it } }
         }
         if (!isSearching && recentlyViewedListings.isNotEmpty()) {
             item {
@@ -700,7 +683,7 @@ fun MarketplaceContent(
                 )
             }
         } else if (listings!!.isNotEmpty()) {
-            items(listings!!, key = { it.id }) { listing ->
+            items(listings!!.filter { categoryFilter == null || it.category == categoryFilter }, key = { it.id }) { listing ->
                 ListingRow(
                     listing = listing,
                     isMine = view == HoodView.MINE || listing.sellerId == currentUserId,
