@@ -102,7 +102,7 @@ internal fun ItundaBottomBar(selectedTab: ItundaTab, onSelect: (ItundaTab) -> Un
                         val ink = Ids.colors.textPrimary
                         val solid = selected && tab != ItundaTab.Pay && tab != ItundaTab.Explore
                         rw.itunda.core.designsystem.components.ItundaArt(
-                            name = if (solid) "${tabArt(tab)}-solid" else tabArt(tab),
+                            name = if (solid) "${tabArt(tab)}-solid" else if (tab == ItundaTab.Messages) "msg" else tabArt(tab),
                             set = if (solid) rw.itunda.core.designsystem.components.ItundaArtSet.Solid else rw.itunda.core.designsystem.components.ItundaArtSet.Line,
                             size = 26.dp,
                             tint = if (selected) ink else Ids.colors.textTertiary,
