@@ -65,4 +65,23 @@ class EatsScreenshotTest {
         }
         rule.onRoot().captureRoboImage("build/screenshots/eats-grid.png")
     }
+
+    @Test fun popularRail() {
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                Column(Modifier.fillMaxSize().background(Ids.colors.background).padding(20.dp)) {
+                    rw.itunda.feature.eats.impl.EatsPopularRail(
+                        listOf(
+                            rw.itunda.core.network.ShoppingMerchantDto("a", "Nyamirambo Grill", "Local", "2%", rating = 4.7, reviewCount = 512, deliveryTimeMinutes = 30),
+                            rw.itunda.core.network.ShoppingMerchantDto("b", "Remera Fries & Co.", "Fast food", "2%", rating = 4.4, reviewCount = 412, deliveryTimeMinutes = 20),
+                            rw.itunda.core.network.ShoppingMerchantDto("c", "Inka Fried Chicken", "Local", "2%", rating = 4.6, reviewCount = 389, deliveryTimeMinutes = 25),
+                        ),
+                        {},
+                    )
+                    rw.itunda.feature.eats.impl.EatsSectionHeader("Restaurants near you", 14)
+                }
+            }
+        }
+        rule.onRoot().captureRoboImage("build/screenshots/eats-popular.png")
+    }
 }

@@ -439,6 +439,8 @@ internal fun OrderFoodContent(
                 item { PlatformMembershipCard() }
                 item { EatsMembershipCard() }
             }
+            if (searchInput.isBlank() && selectedCategory == null && !restaurants.isNullOrEmpty()) item { EatsPopularRail(restaurants!!, ::openRestaurant) }
+            item { EatsSectionHeader("Restaurants near you", restaurants?.size) }
             item {
                 SearchAndCategoryChips(
                     searchInput = searchInput,
