@@ -113,6 +113,8 @@ fun HomeTab(
         onOpenInvite = onOpenInvite,
         onOpenProfile = onOpenIdentity,
         onOpenCreditScore = onOpenLoans,
+        onOpenProfile = onOpenIdentity,
+        onOpenCreditScore = onOpenLoans,
     )
 }
 
