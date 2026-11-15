@@ -28,14 +28,14 @@ import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 
 /** One offer card: white text on the brand gradient, with a big emoji on the right (prototype v1038). */
-internal data class ExploreOffer(val title: String, val subtitle: String, val emoji: String)
+internal data class ExploreOffer(val title: String, val subtitle: String, val art: String)
 
 // Placeholder offers until a real offers endpoint exists; they mirror the prototype's three
 // cards. Nothing here claims a real campaign, and tapping one does nothing yet.
 private val demoOffers = listOf(
-    ExploreOffer("Invite friends,\nget 10,000 RWF", "Share your code", "🎁"),
-    ExploreOffer("3% back when you\npay with itunda Pay", "Scan to pay and earn 3%", "💳"),
-    ExploreOffer("Save toward a goal\nwith Pockets", "Set a target and watch it fill", "🎯"),
+    ExploreOffer("Invite friends,\nget 10,000 RWF", "Share your code", "color/gift"),
+    ExploreOffer("3% back when you\npay with itunda Pay", "Scan to pay and earn 3%", "proto/card"),
+    ExploreOffer("Save toward a goal\nwith Pockets", "Set a target and watch it fill", "proto/pockets"),
 )
 
 /**
@@ -71,7 +71,7 @@ internal fun ExploreOffersCarousel(
                 Text(offer.title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 26.sp)
                 Text(offer.subtitle, color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp, bottom = 14.dp))
             }
-            Text(offer.emoji, fontSize = 56.sp, modifier = Modifier.align(Alignment.CenterEnd))
+            Box(Modifier.align(Alignment.CenterEnd)) { ExploreArt(offer.art, 84.dp) }
             Row(Modifier.align(Alignment.BottomStart), verticalAlignment = Alignment.CenterVertically) {
                 offers.indices.forEach { i ->
                     val on = i == pagerState.currentPage

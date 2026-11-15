@@ -23,6 +23,7 @@ firebaseBom = "33.5.1"
 [libraries]
 junit4 = { module = "junit:junit", version = "4.13.2" }
 robolectric = { module = "org.robolectric:robolectric", version = "4.14.1" }
+androidsvg = { module = "com.caverock:androidsvg-aar", version = "1.4" }
 roborazzi = { module = "io.github.takahirom.roborazzi:roborazzi", version = "1.43.0" }
 roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose", version = "1.43.0" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
