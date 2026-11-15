@@ -348,8 +348,6 @@ fun TalkTab(
             // they're always reachable regardless of the current filter. Neither is a
             // real conversation row (see ServiceChannelService.kt's own doc comment),
             // so they're rendered here rather than injected into `conversations`.
-            SyntheticTalkChannelRow("itunda", "Payments, security, and account updates", onClick = { showServiceChannel = true })
-            SyntheticTalkChannelRow("itunda AI", "Ask anything -- powered by a self-hosted model", onClick = { showAiChat = true })
             if (directFilter == TalkDirectFilter.CALLS) {
                 CallHistoryList(conversations = conversations)
             } else {
@@ -368,6 +366,10 @@ fun TalkTab(
                     archivedLoadingMore = archivedLoadingMore,
                     onLoadMore = ::loadMoreConversations,
                     onLoadMoreArchived = ::loadMoreArchivedConversations,
+                    footer = {
+                        SyntheticTalkChannelRow("itunda", "Payments, security, and account updates", onClick = { showServiceChannel = true })
+                        SyntheticTalkChannelRow("itunda AI", "Ask anything -- powered by a self-hosted model", onClick = { showAiChat = true })
+                    },
                 )
             }
         } else {
