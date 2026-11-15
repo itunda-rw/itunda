@@ -28,7 +28,7 @@ fun LoansFindHero(lowestRate: String? = null) {
         Text("Check your loan rate and limit in 1 minute", color = Ids.colors.textPrimary, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 33.sp)
         Spacer(Modifier.height(20.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatTile(Modifier.weight(1f), "Lowest rate on offer", lowestRate?.let { "$it%" } ?: "1.2% a month")
+            StatTile(Modifier.weight(1f), "Estimated minimum interest rate", lowestRate?.let { "$it%" } ?: "1.2% a month")
             StatTile(Modifier.weight(1f), "Approval rate", "72%")
         }
     }
