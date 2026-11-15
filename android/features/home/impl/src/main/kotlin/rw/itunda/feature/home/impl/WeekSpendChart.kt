@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -72,6 +73,7 @@ internal fun ProtoWeekChart(days: List<DaySpend>, today: LocalDate = LocalDate.n
     LaunchedEffect(Unit) { grow.animateTo(1f, tween(600)) }
     val max = days.maxOf { it.amount }.coerceAtLeast(1.0)
     val day = days[selected.coerceIn(0, days.lastIndex)]
+    val locale = LocalConfiguration.current.locales[0] ?: Locale.getDefault()
 
     fun indexAt(x: Float) = ((x / widthPx) * days.size).toInt().coerceIn(0, days.lastIndex)
 
@@ -82,7 +84,7 @@ internal fun ProtoWeekChart(days: List<DaySpend>, today: LocalDate = LocalDate.n
                 color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f),
             )
             Text(
-                "${if (day.date == today) "Today · " else ""}${day.date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.ENGLISH)} ${day.date.dayOfMonth} ${day.date.month.getDisplayName(TextStyle.SHORT, Locale.ENGLISH)}",
+                "${if (day.date == today) "Today · " else ""}${day.date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale)} ${day.date.dayOfMonth} ${day.date.month.getDisplayName(TextStyle.SHORT, locale)}",
                 color = Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
             )
         }
