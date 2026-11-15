@@ -49,6 +49,7 @@ dependencies {
     implementation(project(":features:credit:impl"))
     implementation(project(":features:marketplace:impl"))
     implementation(project(":features:property:impl"))
+    implementation(project(":features:jobs:impl"))
 
     testImplementation(platform("androidx.compose:compose-bom:2024.02.00"))
     testImplementation(libs.junit4)

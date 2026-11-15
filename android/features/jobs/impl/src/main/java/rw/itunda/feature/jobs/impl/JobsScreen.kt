@@ -499,6 +499,7 @@ private fun JobPostCard(
     posterTrustScore: Int? = null,
     currentUserId: String? = null,
 ) {
+    var expanded by androidx.compose.runtime.saveable.rememberSaveable(post.id) { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
@@ -513,21 +514,14 @@ private fun JobPostCard(
     )
     val payLabel = String.format(Locale.US, "%,.0f RWF", post.payAmount) + if (post.payType == "HOURLY") "/hr" else ""
 
-    // Real optional worker identification at mark-filled time (2026-07-24) -- see
-    // backend JobPostService.markFilled's own doc comment. Confirm with a phone
-    // number or Skip, either way the post completes.
     var markingFilled by remember { mutableStateOf(false) }
     var workerPhone by remember { mutableStateOf("") }
 
-    // Real post-transaction review with asymmetric public/private visibility
-    // (2026-07-24) -- see backend HoodReviewService's own doc comment.
     var showReviewSheet by remember { mutableStateOf(false) }
     var selectedGoodPoints by remember { mutableStateOf<Set<String>>(emptySet()) }
     var selectedUncomfortablePoints by remember { mutableStateOf<Set<String>>(emptySet()) }
     var submittingReview by remember { mutableStateOf(false) }
     var reviewSubmitted by remember { mutableStateOf(false) }
-    // Real read-back for the review above (item 192/198) -- see bank-mfe's
-    // HoodReviewResultView (item 192) for the full account.
     var hoodReviews by remember { mutableStateOf<List<rw.itunda.core.network.HoodReviewDto>?>(null) }
     LaunchedEffect(post.id, post.status, post.workerId, isMine) {
         if (isMine && post.status == "FILLED" && post.workerId != null) {
@@ -565,7 +559,12 @@ private fun JobPostCard(
     }
 
     Card(shape = androidx.compose.ui.graphics.RectangleShape, colors = CardDefaults.cardColors(containerColor = Color.Transparent), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(modifier = Modifier.padding(vertical = if (expanded) 14.dp else 0.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (!expanded) {
+                JobPostListRow(post, categoryLabel, relativeTimeAgo(post.createdAt), onOpen = { expanded = true }, trailing = {
+                    if (!isMine) WishlistHeart(favorited = favorited, size = 20.dp, modifier = Modifier.pressScaleClickable(enabled = !favoriteBusy) { onToggleFavorite() })
+                })
+            } else {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // Leads with the real hyperlocal neighborhood, same shape Hood's own
@@ -597,7 +596,7 @@ private fun JobPostCard(
                     Text(payLabel, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 }
             }
-            Text(post.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(post.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.pressScaleClickable { expanded = false })
             // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc
             // comment. Only shown for someone else's post -- a trust score about
             // yourself is meaningless here.
@@ -798,6 +797,7 @@ private fun JobPostCard(
                 myLocation?.let { loc ->
                     if (showRoute) RouteMiniMap(loc.first, loc.second, postLat, postLng, "You", post.title)
                 }
+            }
             }
         }
     }

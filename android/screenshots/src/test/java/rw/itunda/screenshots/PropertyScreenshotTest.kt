@@ -15,6 +15,8 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import rw.itunda.core.designsystem.theme.IdsTheme
 import rw.itunda.core.network.PropertyListingDto
+import rw.itunda.core.network.JobPostDto
+import rw.itunda.feature.jobs.impl.JobPostListRow
 import rw.itunda.feature.property.impl.PropertyListRow
 
 /** Property list rows with the prototype's sample listings. */
@@ -40,5 +42,22 @@ class PropertyScreenshotTest {
             }
         }
         rule.onRoot().captureRoboImage("build/screenshots/property-rows.png")
+    }
+
+    @Test fun jobRows() {
+        fun j(id: String, t: String, cat: String, pay: Double, type: String) = JobPostDto(
+            id = id, posterId = "p", category = cat, title = t, description = "", payType = type, payAmount = pay,
+            status = "OPEN", createdAt = "2026-11-14T08:00:00Z", neighborhood = "Kimironko",
+        )
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                Column(Modifier.padding(horizontal = 20.dp)) {
+                    JobPostListRow(j("1", "Barista helper", "Food", 5000.0, "DAILY"), "Food", "1 h ago") {}
+                    JobPostListRow(j("2", "Shop assistant", "Shop", 4000.0, "DAILY"), "Shop", "2 h ago") {}
+                    JobPostListRow(j("3", "Weekend tutor, maths", "Tutoring", 6000.0, "TASK"), "Tutoring", "Yesterday") {}
+                }
+            }
+        }
+        rule.onRoot().captureRoboImage("build/screenshots/jobs-rows.png")
     }
 }
