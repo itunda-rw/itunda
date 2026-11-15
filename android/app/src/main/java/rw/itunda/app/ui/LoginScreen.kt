@@ -293,7 +293,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
 
         val requiredTermsAccepted = terms.filter { it.required }.let { it.isNotEmpty() && it.all { t -> acceptedTermsIds.contains(t.id) } }
         val currentStepValid = when (stage) {
-            AuthStage.PHONE -> phoneNumber.isNotBlank()
+            AuthStage.PHONE -> isCompletePhone(phoneNumber)
             AuthStage.NOT_FOUND -> true
             AuthStage.NAME -> firstName.isNotBlank() && lastName.isNotBlank()
             AuthStage.TERMS -> requiredTermsAccepted
@@ -337,7 +337,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                         }
                     }
                     Spacer(modifier = Modifier.weight(1f))
-                    StepDots(total = stepCount, current = stepIndex)
+                    if (stage != AuthStage.PHONE) StepDots(total = stepCount, current = stepIndex)
                     Spacer(modifier = Modifier.weight(1f))
                     LanguageSwitcher(
                         locale = locale,
@@ -373,10 +373,6 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                     // button down to dock against the keyboard.
                     verticalArrangement = Arrangement.Top,
                 ) {
-                    if (stage == AuthStage.PHONE) {
-                        BrandMark()
-                        Spacer(modifier = Modifier.height(Ids.layout.sectionGap))
-                    }
 
                     // Real Toss reverse-stacking mechanism -- see this composable's own
                     // doc comment for the full sourced account. AnimatedContent is
@@ -500,6 +496,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                             enabled = currentStepValid,
                         )
                     }
+                    if (stage == AuthStage.PHONE) PhoneKeypad(phoneNumber) { phoneNumber = it }
                 }
             }
         }
