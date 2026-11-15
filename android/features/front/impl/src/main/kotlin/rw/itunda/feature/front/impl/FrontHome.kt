@@ -1,4 +1,4 @@
-package rw.itunda.feature.menu.impl
+package rw.itunda.feature.front.impl
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -48,7 +48,7 @@ private val frontPlaces = listOf(
 
 /** Prototype "Front" (order, pay and go) landing, demo data until the backend exists. */
 @Composable
-fun FrontHome(onBack: () -> Unit) {
+fun FrontEntryPoint(onBack: () -> Unit) {
     BackHandler(onBack = onBack)
     var eatHere by rememberSaveable { mutableStateOf(true) }
     Column(Modifier.fillMaxSize().background(Ids.colors.background).verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {

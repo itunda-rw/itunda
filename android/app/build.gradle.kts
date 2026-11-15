@@ -275,6 +275,7 @@ dependencies {
     implementation(project(":features:community:impl"))
     implementation(project(":features:shop:impl"))
     implementation(project(":features:eats:impl"))
+    implementation(project(":features:front:impl"))
     implementation(project(":features:talk:impl"))
     implementation(project(":features:maps:impl"))
     // Real content moved in 2026-09-02: LoansScreen.kt/CreditScoreScreen.kt/
