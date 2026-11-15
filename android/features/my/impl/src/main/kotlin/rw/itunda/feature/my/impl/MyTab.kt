@@ -61,6 +61,7 @@ fun MyEntryPoint(
     onSwitchToMarketplace: () -> Unit = {},
     onSwitchToJobs: () -> Unit = {},
     onSwitchToProperty: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
 ) {
     var profile by remember { mutableStateOf<rw.itunda.core.network.PublicUser?>(null) }
     LaunchedEffect(Unit) { try { profile = rw.itunda.core.network.NetworkClient.authApi.getProfile().user } catch (_: Exception) { } }
@@ -111,7 +112,14 @@ fun MyEntryPoint(
         modifier = Modifier.fillMaxSize().padding(start = Ids.layout.screenHorizontal, end = Ids.layout.screenHorizontal, top = Ids.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
-        item { Text("You", color = Ids.colors.textPrimary, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)) }
+        item {
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("You", color = Ids.colors.textPrimary, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
+                Box(Modifier.size(44.dp).clip(CircleShape).pressScaleClickable(onClick = onOpenSettings), contentAlignment = Alignment.Center) {
+                    rw.itunda.core.designsystem.components.ItundaArt("gear", rw.itunda.core.designsystem.components.ItundaArtSet.Line, 26.dp, tint = Ids.colors.textTertiary)
+                }
+            }
+        }
         profile?.let { u ->
             item {
                 Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
