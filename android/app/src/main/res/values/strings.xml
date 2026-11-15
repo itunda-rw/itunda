@@ -454,4 +454,5 @@
     <string name="account_manage_copy">Copy number</string>
     <string name="account_manage_share">Share</string>
     <string name="account_manage_copied">Account number copied</string>
+    <string name="settings_sign_out_others">Sign out all other devices</string>
 </resources>
