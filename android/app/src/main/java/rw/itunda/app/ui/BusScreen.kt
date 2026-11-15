@@ -111,7 +111,7 @@ private fun BusRideContent() {
     fun search() {
         coroutineScope.launch {
             try {
-                trips = NetworkClient.apiService.searchBusTrips(origin.trim().ifBlank { null }, destination.trim().ifBlank { null }).trips
+                trips = NetworkClient.apiService.searchBusTrips(origin.trim().ifBlank { null }, destination.trim().ifBlank { null }).trips.orEmpty()
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {
@@ -124,7 +124,7 @@ private fun BusRideContent() {
         coroutineScope.launch {
             try {
                 val res = NetworkClient.apiService.getMyBusBookings(page = 0)
-                myBookings = res.bookings
+                myBookings = res.bookings.orEmpty()
                 bookingsPage = 0
                 bookingsHasMore = res.page + 1 < res.totalPages
             } catch (_: Exception) {
@@ -139,7 +139,7 @@ private fun BusRideContent() {
         coroutineScope.launch {
             try {
                 val res = NetworkClient.apiService.getMyBusBookings(page = nextPage)
-                myBookings = myBookings + res.bookings
+                myBookings = myBookings + res.bookings.orEmpty()
                 bookingsPage = nextPage
                 bookingsHasMore = res.page + 1 < res.totalPages
             } catch (_: Exception) {
@@ -312,7 +312,7 @@ private fun BusOperateContent() {
     fun load() {
         coroutineScope.launch {
             try {
-                myTrips = NetworkClient.apiService.getMyBusTrips().trips
+                myTrips = NetworkClient.apiService.getMyBusTrips().trips.orEmpty()
             } catch (_: Exception) {
                 // Leave state as-is; next load may recover.
             }

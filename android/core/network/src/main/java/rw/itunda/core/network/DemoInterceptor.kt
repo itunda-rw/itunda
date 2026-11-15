@@ -82,6 +82,10 @@ internal class DemoInterceptor : Interceptor {
                 """{"success":true,"score":692,"factors":[],"computedAt":"2026-11-13T09:00:00Z"}"""
             path == "api/v1/credit-score/suggestions" ->
                 """{"success":true,"suggestions":[]}"""
+            path == "api/v1/bus/trips/search" ->
+                """{"success":true,"trips":[{"id":"bus-1","operatorUserId":"op-1","accountId":"acc-1","origin":"Nyabugogo","destination":"Musanze","departureTime":"2026-11-15T07:30:00Z","totalSeats":30,"availableSeats":12,"farePerSeat":3000,"createdAt":"2026-11-10T08:00:00Z"},{"id":"bus-2","operatorUserId":"op-1","accountId":"acc-1","origin":"Nyabugogo","destination":"Huye","departureTime":"2026-11-15T09:00:00Z","totalSeats":30,"availableSeats":8,"farePerSeat":2800,"createdAt":"2026-11-10T08:00:00Z"}]}"""
+            path == "api/v1/bus/trips/mine" -> """{"success":true,"trips":[]}"""
+            path == "api/v1/bus/bookings/my-history" -> """{"success":true,"bookings":[],"page":0,"totalPages":1}"""
             path == "api/v1/savings/goals" ->
                 """{"success":true,"goals":[
                     {"id":"g1","userId":"demo-user","accountId":"a2","name":"Rainy day","targetAmount":500000,"currentAmount":350000,
