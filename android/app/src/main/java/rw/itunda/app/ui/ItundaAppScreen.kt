@@ -1834,6 +1834,7 @@ fun ItundaAppScreen(
                         val homePrimaryAccount by viewModel.primaryAccount.collectAsState()
                         val homeProfile by viewModel.profile.collectAsState()
                         val homeIsRefreshing by viewModel.isRefreshing.collectAsState()
+                        val homeContext = androidx.compose.ui.platform.LocalContext.current
                         HomeEntryPoint(
                         discoverItems = homeDiscoverItems,
                         unreadNotificationCount = homeUnreadNotificationCount,
@@ -1843,24 +1844,14 @@ fun ItundaAppScreen(
                         isRefreshing = homeIsRefreshing,
                         onRetry = { viewModel.retry() },
                         onOpenPay = { selectedTab = ItundaTab.Pay },
+                        onOpenSend = { showTransferHub = true },
+                        onOpenBills = { homeContext.startActivity(android.content.Intent(homeContext, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java)) },
                         onOpenNotifications = { showNotificationsFeed = true },
                         onOpenOverview = { showOverview = true },
                         onOpenBank = { showBank = true },
                         onOpenIdentity = { showIdentity = true },
                         onOpenLoans = { showLoans = true },
-                        // Real fix (2026-08-14, direct user complaint: "when user click on
-                        // that itunda account is when they see itunda bank details that's
-                        // wrong bank details suppose to be accessed from bank not account
-                        // right"). AccountDetailScreen is a real Toss BANK account-detail
-                        // view (interest jar, Card/Manage, full ledger) -- same category of
-                        // mistake this file's own onOpenCreditScore/onOpenSpendingInsight/
-                        // autoTransferCount comments already document being caught and moved
-                        // off Home once before. Tapping "itunda Bank account" (renamed
-                        // 2026-08-23, see this row's own doc comment in
-                        // AccountSwitcherSheet) in the account switcher now goes to Bank
-                        // (its real home) instead of opening the ledger directly over Home;
-                        // Bank's own new account-account card below is what actually opens
-                        // AccountDetailScreen.
+                        // AccountDetailScreen is a Bank view, so the Home account switcher goes to Bank (2026-08-14 fix).
                         onOpenAccountDetail = { showBank = true },
                         // Real Naver-style Home redesign (2026-08-14, direct user
                         // reference: 5 real Naver Home screenshots -- search bar, weather/

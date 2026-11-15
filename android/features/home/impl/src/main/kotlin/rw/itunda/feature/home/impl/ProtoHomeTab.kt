@@ -25,6 +25,8 @@ internal fun ProtoHomeTab(
     unreadNotificationCount: Int,
     onOpenBank: () -> Unit,
     onOpenPay: () -> Unit,
+    onOpenSend: () -> Unit,
+    onOpenBills: () -> Unit,
     onOpenNotifications: () -> Unit,
     onOpenSavings: () -> Unit,
     onOpenCard: () -> Unit,
@@ -70,7 +72,7 @@ internal fun ProtoHomeTab(
         state = state,
         hasUnread = unreadNotificationCount > 0,
         onOpenBank = onOpenBank, onOpenPay = onOpenPay, onOpenNotifications = onOpenNotifications,
-        onSend = onOpenPay, onAdd = onOpenPay, onBills = onOpenPay, onCard = onOpenCard, onSavings = onOpenSavings,
-        onSeeAll = onOpenSeeAll, onInvite = {}, onOpenSpending = onOpenBank, onPayBill = onOpenPay, onOpenRewards = onOpenRewards,
+        onSend = onOpenSend, onAdd = onOpenPay, onBills = onOpenBills, onCard = onOpenCard, onSavings = onOpenSavings,
+        onSeeAll = onOpenSeeAll, onInvite = {}, onOpenSpending = onOpenBank, onPayBill = onOpenBills, onOpenRewards = onOpenRewards,
     )
 }
