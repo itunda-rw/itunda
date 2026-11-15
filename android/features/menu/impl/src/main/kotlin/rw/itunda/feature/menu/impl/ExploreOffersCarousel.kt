@@ -71,7 +71,7 @@ internal fun ExploreOffersCarousel(
                 Text(offer.title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 26.sp)
                 Text(offer.subtitle, color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp, bottom = 14.dp))
             }
-            Box(Modifier.align(Alignment.CenterEnd)) { ExploreArt(offer.art, 84.dp) }
+            Box(Modifier.align(Alignment.CenterEnd)) { ExploreArt(offer.art, 100.dp) }
             Row(Modifier.align(Alignment.BottomStart), verticalAlignment = Alignment.CenterVertically) {
                 offers.indices.forEach { i ->
                     val on = i == pagerState.currentPage
