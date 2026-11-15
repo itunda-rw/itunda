@@ -110,10 +110,7 @@ fun IkiminaScreen(onBack: () -> Unit) {
 private fun IkiminaIntroContent(onContinue: () -> Unit) {
     rw.itunda.core.designsystem.components.FixedBottomCta(
         content = {
-            Text(
-                "A rotating savings group with people you trust",
-                color = Ids.colors.textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp,
-            )
+            IkiminaIntroHeader()
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Everyone contributes the same fixed amount", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Text(
