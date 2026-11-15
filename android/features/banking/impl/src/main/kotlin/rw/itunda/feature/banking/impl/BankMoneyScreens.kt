@@ -52,8 +52,8 @@ private fun AmountInput(value: Long, onChange: (Long) -> Unit) {
 
 @Composable
 private fun AddChips(steps: List<Long>, onAdd: (Long) -> Unit) {
-    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        steps.forEach { BankChip("+${rwf(it)}", false, { onAdd(it) }) }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        steps.forEach { BankChip("+${rwf(it)}", false, { onAdd(it) }, Modifier.weight(1f)) }
     }
 }
 
@@ -110,8 +110,8 @@ internal fun BankSendScreen(onBack: () -> Unit) {
             )
             Text("${account.length}/10", color = Ids.colors.textTertiary, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
             BankSectionLabel("Amount")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(10_000L, 50_000L, 100_000L, 500_000L).forEach { BankChip("${rwf(it)} RWF", amount == it, { amount = it }) }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf(10_000L, 50_000L, 100_000L, 500_000L).forEach { BankChip("${rwf(it)} RWF", amount == it, { amount = it }, Modifier.weight(1f)) }
             }
             Row(Modifier.fillMaxWidth().padding(top = 28.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("Arrives", color = Ids.colors.textTertiary, fontSize = 15.sp)
