@@ -77,6 +77,41 @@ data class ProtoHomeState(
 
 private fun rwf(v: Double) = String.format(Locale.US, "%,.0f", v)
 
+private data class HomeCopy(
+    val interest: String, val send: String, val add: String, val bills: String,
+    val card: String, val savings: String, val seeAll: String, val inviteLead: String,
+    val inviteAmount: String, val dismiss: String, val spentIn: String, val due: String,
+    val pay: String, val earned: String, val pointsAndCoupons: String, val view: String,
+    val notifications: String,
+)
+
+private fun homeCopy(language: String) = when (language) {
+    "rw" -> HomeCopy(
+        interest = "+inyungu", send = "Ohereza", add = "Ongeramo",
+        bills = "Fagitire", card = "Ikarita", savings = "Kubika", seeAll = "Reba byose",
+        inviteLead = "Tumira inshuti ubone ", inviteAmount = "RWF 10,000", dismiss = "Ivanaho",
+        spentIn = "Wakoresheje muri", due = "Bigomba", pay = "Ishyura",
+        earned = "RWF wungutse", pointsAndCoupons = "Amanota na kuponi", view = "Reba",
+        notifications = "Amamenyesha",
+    )
+    "fr" -> HomeCopy(
+        interest = "+intérêts", send = "Envoyer", add = "Ajouter",
+        bills = "Factures", card = "Carte", savings = "Épargne", seeAll = "Tout voir",
+        inviteLead = "Invitez des amis, recevez ", inviteAmount = "10 000 RWF", dismiss = "Ignorer",
+        spentIn = "Dépensé en", due = "Échéance", pay = "Payer",
+        earned = "RWF gagnés", pointsAndCoupons = "Points et coupons", view = "Voir",
+        notifications = "Notifications",
+    )
+    else -> HomeCopy(
+        interest = "+interest", send = "Send", add = "Add",
+        bills = "Bills", card = "Card", savings = "Savings", seeAll = "See all",
+        inviteLead = "Invite friends, get ", inviteAmount = "10,000 RWF", dismiss = "Dismiss",
+        spentIn = "Spent in", due = "Due", pay = "Pay",
+        earned = "RWF earned", pointsAndCoupons = "Points and coupons", view = "View",
+        notifications = "Notifications",
+    )
+}
+
 private val PillShape = RoundedCornerShape(18.dp)
 
 @Composable
@@ -98,12 +133,14 @@ fun ProtoHomeContent(
     onOpenRewards: () -> Unit,
 ) {
     var inviteDismissed by remember { mutableStateOf(false) }
+    val language = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]?.language ?: "en"
+    val copy = homeCopy(language)
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(Ids.colors.surfaceSoft),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 15.dp, end = 15.dp, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { HomeBar(hasUnread, onOpenBank, onOpenPay, onOpenNotifications) }
+        item { HomeBar(hasUnread, onOpenBank, onOpenPay, onOpenNotifications, copy.notifications) }
         item {
             Card {
                 Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 36.dp)) {
@@ -114,28 +151,28 @@ fun ProtoHomeContent(
                             append("itunda Bank")
                             state.interestDays?.let {
                                 append(" ")
-                                withStyle(SpanStyle(color = Ids.colors.textBrand)) { append("+interest $it") }
+                                withStyle(SpanStyle(color = Ids.colors.textBrand)) { append("${copy.interest} $it") }
                             }
                         },
-                        action = "Send", onAction = onSend,
+                        action = copy.send, onAction = onSend,
                     )
                     Spacer(Modifier.height(34.dp))
                     AccountRow(
                         tile = { ItundaArt("wallet", ItundaArtSet.Color, 26.dp) },
                         amount = state.payBalance,
                         subtitle = buildAnnotatedString { append("itunda Pay") },
-                        action = "Add", onAction = onAdd,
+                        action = copy.add, onAction = onAdd,
                     )
                     Spacer(Modifier.height(22.dp))
                     Divider(color = Ids.colors.divider, thickness = 0.5.dp)
                     Row(Modifier.fillMaxWidth().heightIn(min = 49.dp), verticalAlignment = Alignment.CenterVertically) {
-                        ShortcutText("Bills", onBills)
+                        ShortcutText(copy.bills, onBills)
                         Spacer(Modifier.width(18.dp))
-                        ShortcutText("Card", onCard)
+                        ShortcutText(copy.card, onCard)
                         Spacer(Modifier.width(18.dp))
-                        ShortcutText("Savings", onSavings)
+                        ShortcutText(copy.savings, onSavings)
                         Spacer(Modifier.weight(1f))
-                        ShortcutText("See all", onSeeAll)
+                        ShortcutText(copy.seeAll, onSeeAll)
                     }
                 }
             }
@@ -154,14 +191,14 @@ fun ProtoHomeContent(
                         Spacer(Modifier.width(14.dp))
                         Text(
                             buildAnnotatedString {
-                                append("Invite friends, get ")
-                                withStyle(SpanStyle(color = Ids.colors.textBrand)) { append("10,000 RWF") }
+                                append(copy.inviteLead)
+                                withStyle(SpanStyle(color = Ids.colors.textBrand)) { append(copy.inviteAmount) }
                             },
                             color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold,
                             modifier = Modifier.weight(1f),
                         )
                         Icon(
-                            IdsIcons.Close, "Dismiss", Modifier.size(20.dp).pressScaleClickable { inviteDismissed = true },
+                            IdsIcons.Close, copy.dismiss, Modifier.size(20.dp).pressScaleClickable { inviteDismissed = true },
                             tint = Ids.colors.textPrimary,
                         )
                     }
@@ -174,7 +211,7 @@ fun ProtoHomeContent(
                     Row(Modifier.fillMaxWidth().clickable(onClick = onOpenSpending), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             AmountLine(state.spentThisMonth)
-                            Text("Spent in ${state.monthName}", color = Ids.colors.textSecondary, fontSize = 14.sp)
+                            Text("${copy.spentIn} ${state.monthName}", color = Ids.colors.textSecondary, fontSize = 14.sp)
                         }
                         Icon(IdsIcons.ChevronRight, null, Modifier.size(20.dp), tint = Ids.colors.textTertiary.copy(alpha = 0.7f))
                     }
@@ -186,9 +223,9 @@ fun ProtoHomeContent(
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(bill.title, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-                                Text("Due ${bill.due} · ${rwf(bill.amount)} RWF", color = Ids.colors.textSecondary, fontSize = 14.sp)
+                                Text("${copy.due} ${bill.due} · ${rwf(bill.amount)} RWF", color = Ids.colors.textSecondary, fontSize = 14.sp)
                             }
-                            Pill("Pay", onPayBill)
+                            Pill(copy.pay, onPayBill)
                         }
                     }
                 }
@@ -203,10 +240,10 @@ fun ProtoHomeContent(
                     IconTile { Text("⭐", fontSize = 20.sp) }
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("${rwf(state.earned)} RWF earned", color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-                        Text("Points and coupons", color = Ids.colors.textSecondary, fontSize = 14.sp)
+                        Text("${rwf(state.earned)} ${copy.earned}", color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                        Text(copy.pointsAndCoupons, color = Ids.colors.textSecondary, fontSize = 14.sp)
                     }
-                    Pill("View", onOpenRewards)
+                    Pill(copy.view, onOpenRewards)
                 }
             }
         }
@@ -214,7 +251,7 @@ fun ProtoHomeContent(
 }
 
 @Composable
-private fun HomeBar(hasUnread: Boolean, onOpenBank: () -> Unit, onOpenPay: () -> Unit, onOpenNotifications: () -> Unit) {
+private fun HomeBar(hasUnread: Boolean, onOpenBank: () -> Unit, onOpenPay: () -> Unit, onOpenNotifications: () -> Unit, notificationsLabel: String) {
     Row(Modifier.fillMaxWidth().height(78.dp).padding(start = 10.dp, top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
         IdsAppBarTitle(area = "bank", onClick = onOpenBank)
         Spacer(Modifier.weight(1f))
