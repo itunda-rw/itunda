@@ -47,7 +47,7 @@ internal val exploreSections = listOf(
     ExploreSection("Support", listOf(ExploreRow("chat", "Live chat", "Call support", "color/chat"), ExploreRow("report", "Report an issue with a transaction", "", "proto/report-a-problem"), ExploreRow("news", "Announcements", "", "color/bell"), ExploreRow("ussd", "USSD access", "Any phone", "faces/ussd-phone")))
 )
 
-private val quickTiles = listOf(Triple("bank", "color/bank", "Bank"), Triple("apps", "color/community", "Mini apps"), Triple("games", "color/celebrate", "Games"), Triple("verify", "color/verified", "Verify"))
+private val quickTiles = listOf(Triple("bank", "color/bank", "Bank"), Triple("apps", "color/community", "Mini apps"), Triple("games", "color/celebrate", "Games"), Triple("verify", "color/verify-ok", "Verify"))
 
 /** Draws an `<set>/<name>` reference from the itunda art library. */
 @Composable

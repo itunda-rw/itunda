@@ -33,7 +33,7 @@ internal data class ExploreOffer(val title: String, val subtitle: String, val ar
 // Placeholder offers until a real offers endpoint exists; they mirror the prototype's three
 // cards. Nothing here claims a real campaign, and tapping one does nothing yet.
 private val demoOffers = listOf(
-    ExploreOffer("Invite friends,\nget 10,000 RWF", "Share your code", "color/gift"),
+    ExploreOffer("Invite friends,\nget 10,000 RWF", "Share your code", "color/gift-white"),
     ExploreOffer("3% back when you\npay with itunda Pay", "Scan to pay and earn 3%", "proto/card"),
     ExploreOffer("Save toward a goal\nwith Pockets", "Set a target and watch it fill", "proto/pockets"),
 )
