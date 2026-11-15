@@ -152,9 +152,9 @@ fun MyEntryPoint(
                 FlatSection(
                     "",
                     listOf(
-                        FlatRow("Shared links", trailing = "${affiliateLinks.size}", glyph = { Text("📨", fontSize = 22.sp) }),
-                        FlatRow("Clicks", trailing = "$totalClicks", glyph = { Text("📊", fontSize = 22.sp) }),
-                        FlatRow("Earned", trailing = "${String.format(Locale.US, "%,.0f", totalEarned)} RWF", glyph = { Text("💵", fontSize = 22.sp) }),
+                        FlatRow("Shared links", trailing = "${affiliateLinks.size}", glyph = { ArtTile("send") }),
+                        FlatRow("Clicks", trailing = "$totalClicks", glyph = { ArtTile("chart") }),
+                        FlatRow("Earned", trailing = "${String.format(Locale.US, "%,.0f", totalEarned)} RWF", glyph = { ArtTile("money") }),
                     ),
                 )
             }
@@ -191,10 +191,10 @@ fun MyEntryPoint(
             FlatSection(
                 "",
                 listOf(
-                    FlatRow("Marketplace wishlist", trailing = "$favoriteListingsCount", glyph = { WishlistHeart(favorited = true, size = 28.dp) }, onClick = onSwitchToMarketplace),
-                    FlatRow("Jobs wishlist", trailing = "$favoriteJobPostsCount", glyph = { WishlistHeart(favorited = true, size = 28.dp) }, onClick = onSwitchToJobs),
-                    FlatRow("Property wishlist", trailing = "$favoritePropertyListingsCount", glyph = { WishlistHeart(favorited = true, size = 28.dp) }, onClick = onSwitchToProperty),
-                    FlatRow("Restaurant favorites", trailing = "$favoriteRestaurantsCount", glyph = { WishlistHeart(favorited = true, size = 28.dp) }, onClick = onSwitchToEats),
+                    FlatRow("Marketplace wishlist", trailing = "$favoriteListingsCount", glyph = { ArtTile("market", badge = true) }, onClick = onSwitchToMarketplace),
+                    FlatRow("Jobs wishlist", trailing = "$favoriteJobPostsCount", glyph = { ArtTile("briefcase", badge = true) }, onClick = onSwitchToJobs),
+                    FlatRow("Property wishlist", trailing = "$favoritePropertyListingsCount", glyph = { ArtTile("house", badge = true) }, onClick = onSwitchToProperty),
+                    FlatRow("Restaurant favorites", trailing = "$favoriteRestaurantsCount", glyph = { ArtTile("restaurant", badge = true) }, onClick = onSwitchToEats),
                 ),
             )
         }
@@ -202,9 +202,9 @@ fun MyEntryPoint(
             FlatSection(
                 "My listings",
                 listOf(
-                    FlatRow("Marketplace", trailing = "$myListingsCount", glyph = { PlaceMarket(size = 28.dp) }, onClick = onSwitchToMarketplace),
-                    FlatRow("Jobs posted", trailing = "$myJobPostsCount", glyph = { BriefcaseGlyph(size = 28.dp) }, onClick = onSwitchToJobs),
-                    FlatRow("Property listed", trailing = "$myPropertyListingsCount", glyph = { TravelHouse(size = 28.dp) }, onClick = onSwitchToProperty),
+                    FlatRow("Marketplace", trailing = "$myListingsCount", glyph = { ArtTile("market") }, onClick = onSwitchToMarketplace),
+                    FlatRow("Jobs posted", trailing = "$myJobPostsCount", glyph = { ArtTile("briefcase") }, onClick = onSwitchToJobs),
+                    FlatRow("Property listed", trailing = "$myPropertyListingsCount", glyph = { ArtTile("house") }, onClick = onSwitchToProperty),
                 ),
             )
         }
@@ -246,5 +246,16 @@ fun MyEntryPoint(
             }
         }
         item { ProfilePhotoCard() }
+    }
+}
+
+/** Prototype row glyph: 40dp soft tile with the illustrated icon; [badge] adds the small red heart. */
+@Composable
+private fun ArtTile(name: String, badge: Boolean = false) {
+    Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
+        rw.itunda.core.designsystem.components.ItundaArt(name, rw.itunda.core.designsystem.components.ItundaArtSet.Color, 28.dp)
+        if (badge) Box(Modifier.align(Alignment.BottomEnd).size(16.dp).clip(CircleShape).background(Ids.colors.danger), contentAlignment = Alignment.Center) {
+            rw.itunda.core.designsystem.components.ItundaArt("heartred", rw.itunda.core.designsystem.components.ItundaArtSet.Proto, 10.dp)
+        }
     }
 }
