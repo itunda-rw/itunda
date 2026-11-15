@@ -57,6 +57,8 @@ fun TransferHubEntryPoint(
     onSplitBill: () -> Unit,
     onOpenHistory: () -> Unit,
 ) {
+    var showSplit by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    if (showSplit) { SplitBillAmountScreen(onBack = { showSplit = false }, onContinue = onSplitBill); return }
     Column(modifier = Modifier.fillMaxSize().background(Ids.colors.background)) {
         BackTopBar("Transfer", onBack)
         Column(modifier = Modifier.padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
@@ -105,7 +107,7 @@ fun TransferHubEntryPoint(
                 icon = Icons.Outlined.Groups,
                 title = "Split a bill",
                 subtitle = "Settle up with friends in Talk",
-                onClick = onSplitBill,
+                onClick = { showSplit = true },
             )
             Spacer(Modifier.height(20.dp))
             Text(

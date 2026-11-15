@@ -13,6 +13,7 @@ import rw.itunda.core.designsystem.theme.IdsTheme
 import rw.itunda.feature.pay.impl.PayHub
 import rw.itunda.feature.pay.impl.ProtoPayContent
 import rw.itunda.feature.pay.impl.ProtoPayMode
+import rw.itunda.feature.pay.impl.SplitBillAmountScreen
 
 /** Pay > My code with the prototype's sample data. */
 @RunWith(RobolectricTestRunner::class)
@@ -40,5 +41,10 @@ class PayScreenshotTest {
     @Test fun hubLight() {
         rule.setContent { IdsTheme(darkTheme = false) { PayHub(onBack = {}, onFindStores = {}) } }
         rule.onRoot().captureRoboImage("build/screenshots/pay-hub-light.png")
+    }
+
+    @Test fun splitLight() {
+        rule.setContent { IdsTheme(darkTheme = false) { SplitBillAmountScreen(onBack = {}, onContinue = {}) } }
+        rule.onRoot().captureRoboImage("build/screenshots/pay-split-light.png")
     }
 }
