@@ -18,6 +18,7 @@ import org.robolectric.annotation.GraphicsMode
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsTheme
 import rw.itunda.feature.front.impl.FrontEntryPoint
+import rw.itunda.feature.front.impl.FrontTableFlow
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -32,5 +33,41 @@ class FrontScreenshotTest {
             }
         }
         rule.onRoot().captureRoboImage("build/screenshots/front-light.png")
+    }
+
+    @Test fun frontMenuLight() {
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                Box(Modifier.fillMaxSize().background(Ids.colors.background)) { FrontTableFlow({}, 0, mapOf("chicken" to 1, "chips" to 2)) }
+            }
+        }
+        rule.onRoot().captureRoboImage("build/screenshots/front-menu-light.png")
+    }
+
+    @Test fun frontBillLight() {
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                Box(Modifier.fillMaxSize().background(Ids.colors.background)) { FrontTableFlow({}, 1, mapOf("chicken" to 1, "chips" to 2)) }
+            }
+        }
+        rule.onRoot().captureRoboImage("build/screenshots/front-bill-light.png")
+    }
+
+    @Test fun frontPayLight() {
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                Box(Modifier.fillMaxSize().background(Ids.colors.background)) { FrontTableFlow({}, 2, mapOf("chicken" to 1, "chips" to 2)) }
+            }
+        }
+        rule.onRoot().captureRoboImage("build/screenshots/front-pay-light.png")
+    }
+
+    @Test fun frontDoneLight() {
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                Box(Modifier.fillMaxSize().background(Ids.colors.background)) { FrontTableFlow({}, 3, mapOf("chicken" to 1, "chips" to 2)) }
+            }
+        }
+        rule.onRoot().captureRoboImage("build/screenshots/front-done-light.png")
     }
 }

@@ -51,6 +51,11 @@ private val frontPlaces = listOf(
 fun FrontEntryPoint(onBack: () -> Unit) {
     BackHandler(onBack = onBack)
     var eatHere by rememberSaveable { mutableStateOf(true) }
+    var inTable by rememberSaveable { mutableStateOf(false) }
+    if (inTable) {
+        FrontTableFlow(onExit = { inTable = false })
+        return
+    }
     Column(Modifier.fillMaxSize().background(Ids.colors.background).verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(40.dp).pressScaleClickable(onClick = onBack), contentAlignment = Alignment.CenterStart) {
@@ -84,7 +89,7 @@ fun FrontEntryPoint(onBack: () -> Unit) {
         }
         Spacer(Modifier.height(12.dp))
         Row(
-            Modifier.padding(horizontal = 24.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 16.dp, vertical = 14.dp),
+            Modifier.padding(horizontal = 24.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Ids.colors.surfaceSoft).pressScaleClickable { inTable = true }.padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             ItundaArt("qr", ItundaArtSet.Line, 28.dp, tint = Ids.colors.textPrimary)
