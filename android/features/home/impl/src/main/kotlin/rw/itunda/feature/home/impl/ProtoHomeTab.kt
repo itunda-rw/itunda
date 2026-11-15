@@ -33,6 +33,7 @@ internal fun ProtoHomeTab(
     onOpenCard: () -> Unit,
     onOpenSeeAll: () -> Unit,
     onOpenRewards: () -> Unit,
+    onOpenInvite: () -> Unit,
 ) {
     val today = LocalDate.now()
     val locale = LocalConfiguration.current.locales[0] ?: Locale.getDefault()
@@ -75,6 +76,6 @@ internal fun ProtoHomeTab(
         hasUnread = unreadNotificationCount > 0,
         onOpenBank = onOpenBank, onOpenPay = onOpenPay, onOpenNotifications = onOpenNotifications,
         onSend = onOpenSend, onAdd = onOpenPay, onBills = onOpenBills, onCard = onOpenCard, onSavings = onOpenSavings,
-        onSeeAll = onOpenSeeAll, onInvite = {}, onOpenSpending = onOpenBank, onPayBill = onOpenBills, onOpenRewards = onOpenRewards,
+        onSeeAll = onOpenSeeAll, onInvite = onOpenInvite, onOpenSpending = onOpenBank, onPayBill = onOpenBills, onOpenRewards = onOpenRewards,
     )
 }
