@@ -1,6 +1,7 @@
 package rw.itunda.feature.my.impl
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
