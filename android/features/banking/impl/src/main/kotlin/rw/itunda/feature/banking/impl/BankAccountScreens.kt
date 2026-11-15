@@ -160,9 +160,12 @@ internal fun BankPocketsScreen(onBack: () -> Unit) {
 /** Hub row opening Pockets. */
 @Composable
 internal fun BankPocketsRow(count: Int, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().pressScaleClickable(onClick = onClick).padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text("Pockets", color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-        Text("$count", color = Ids.colors.textTertiary, fontSize = 15.sp)
+    Row(Modifier.fillMaxWidth().pressScaleClickable(onClick = onClick).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(32.dp).clip(CircleShape).background(Ids.colors.chip), contentAlignment = Alignment.Center) {
+            Text("\uD83D\uDCB0", fontSize = 16.sp)
+        }
+        Text("Pockets", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f).padding(start = 10.dp))
+        Text("$count", color = Ids.colors.textSecondary, fontSize = 13.sp)
         Text("  ›", color = Ids.colors.textTertiary, fontSize = 20.sp)
     }
 }

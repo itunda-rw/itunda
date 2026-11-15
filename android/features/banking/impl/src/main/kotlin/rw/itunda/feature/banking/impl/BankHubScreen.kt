@@ -276,6 +276,7 @@ fun BankHubEntryPoint(
                 }
                 androidx.compose.material3.HorizontalDivider(color = Ids.colors.divider, thickness = 0.5.dp)
             }
+            item { BankComingUp() }
             if (recommendationItems.isNotEmpty()) {
                 item {
                     ShellSection(
