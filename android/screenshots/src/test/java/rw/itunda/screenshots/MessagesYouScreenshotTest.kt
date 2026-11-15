@@ -37,4 +37,18 @@ class MessagesYouScreenshotTest {
         rule.waitUntil(10_000) { rule.onAllNodesWithText("Aline Uwase").fetchSemanticsNodes().isNotEmpty() }
         rule.onRoot().captureRoboImage("build/screenshots/you-light.png")
     }
+
+    @Test fun messagesDark() {
+        NetworkClient.demoMode = true
+        rule.setContent { IdsTheme(darkTheme = true) { TalkEntryPoint(null, {}, { _, _, _ -> }) } }
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Patrick H.").fetchSemanticsNodes().isNotEmpty() }
+        rule.onRoot().captureRoboImage("build/screenshots/messages-dark.png")
+    }
+
+    @Test fun youDark() {
+        NetworkClient.demoMode = true
+        rule.setContent { IdsTheme(darkTheme = true) { MyEntryPoint(onBack = {}) } }
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Aline Uwase").fetchSemanticsNodes().isNotEmpty() }
+        rule.onRoot().captureRoboImage("build/screenshots/you-dark.png")
+    }
 }
