@@ -184,6 +184,18 @@ android {
         )
     }
 
+    // One committed debug keystore (public password, debug-only) so every CI build is signed with the
+    // same key; with CI's random per-run debug key, installing a newer APK over an older one fails
+    // with "App not installed" (signature mismatch).
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug-shared.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             // Real Toss-parity performance/security fix (2026-08-09): this was `false` with a
