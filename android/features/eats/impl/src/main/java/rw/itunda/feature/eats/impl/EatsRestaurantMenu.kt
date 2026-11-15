@@ -124,6 +124,7 @@ internal fun RestaurantMenuView(
             } else if (menu.isEmpty()) {
                 item { EmptyState("This restaurant hasn't added menu items yet — check back soon.", icon = Icons.Outlined.RestaurantMenu) }
             } else {
+                item { Text("Popular", color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)) }
                 items(menu, key = { it.id }) { p ->
                     val hasOptions = p.optionGroups.isNotEmpty()
                     val simpleKey = eatsCartKey(p.id, emptyList())
@@ -131,63 +132,19 @@ internal fun RestaurantMenuView(
                     val isExpanded = expandedProductId == p.id
                     val allGroupsChosen = p.optionGroups.all { !it.required || !pendingChoices[it.id].isNullOrEmpty() }
                     Column(
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(Ids.colors.surface).padding(16.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                     ) {
-                        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            // Real Coupang Eats-style photo-forward menu card (2026-08-12,
-                            // direct user screenshot) -- the real reference shows every
-                            // menu item as a photo card with a real discount badge, not a
-                            // plain text row. Uses MerchantProductDto's own already-real
-                            // imageUrl/discountPercent/originalPrice fields (Shop's own
-                            // Deals rail already relies on the same fields), no new
-                            // backend data needed.
-                            Box {
-                                MenuItemThumb(p.imageUrl, size = 64.dp)
-                                val discountPercent = p.discountPercent
-                                if (discountPercent != null && discountPercent > 0) {
-                                    StatusBadge("$discountPercent%", tint = Ids.colors.danger, modifier = Modifier.align(Alignment.TopStart).padding(2.dp))
-                                } else if (p.isBestSeller) {
-                                    // Real "Best seller" badge (2026-08-28) -- a genuine,
-                                    // derived signal (real gross order count per product,
-                                    // see backend ShoppingController.bestSellerProductIds'
-                                    // own doc comment), not fabricated marketing copy.
-                                    StatusBadge("Best seller", tint = Ids.colors.brand, modifier = Modifier.align(Alignment.TopStart).padding(2.dp))
-                                }
-                            }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(p.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(String.format(Locale.US, "%,.0f RWF", p.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                    val originalPrice = p.originalPrice
-                                    if (originalPrice != null && originalPrice > p.price) {
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            String.format(Locale.US, "%,.0f RWF", originalPrice),
-                                            color = Ids.colors.textTertiary,
-                                            fontSize = 11.sp,
-                                            textDecoration = TextDecoration.LineThrough,
-                                        )
-                                    }
-                                }
-                                if (hasOptions) {
-                                    Text("Options required", color = Ids.colors.textSecondary, fontSize = 11.sp)
-                                }
-                            }
-                            if (hasOptions) {
-                                Box(
-                                    modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).pressScaleClickable { toggleExpand(p.id) }.padding(horizontal = 12.dp, vertical = 8.dp),
-                                ) {
-                                    Text(if (isExpanded) "Close" else "Choose options", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                }
-                            } else {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    QtyButton("-") { if (simpleQty > 0) setSimpleQty(p.id, simpleQty - 1) }
-                                    Text(simpleQty.toString(), modifier = Modifier.width(28.dp), textAlign = TextAlign.Center, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
-                                    QtyButton("+") { setSimpleQty(p.id, simpleQty + 1) }
-                                }
-                            }
-                        }
+                        EatsMenuItemRow(
+                            name = p.name,
+                            description = p.description,
+                            price = String.format(Locale.US, "%,.0f RWF", p.price),
+                            originalPrice = p.originalPrice?.takeIf { it > p.price }?.let { String.format(Locale.US, "%,.0f RWF", it) },
+                            imageUrl = p.imageUrl,
+                            qty = simpleQty,
+                            optionsHint = if (hasOptions) (if (isExpanded) "Tap + to close options" else "Options required — tap + to choose") else null,
+                            onAdd = { if (hasOptions) toggleExpand(p.id) else setSimpleQty(p.id, simpleQty + 1) },
+                            onMinus = { if (simpleQty > 0) setSimpleQty(p.id, simpleQty - 1) },
+                        )
                         if (hasOptions && isExpanded) {
                             Column(modifier = Modifier.padding(top = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 p.optionGroups.forEach { group ->

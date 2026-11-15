@@ -17,6 +17,8 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsTheme
+import androidx.compose.foundation.layout.Column
+import rw.itunda.feature.eats.impl.EatsMenuItemRow
 import rw.itunda.feature.eats.impl.EatsRestaurantHero
 
 @RunWith(RobolectricTestRunner::class)
@@ -32,5 +34,18 @@ class EatsScreenshotTest {
             }
         }
         rule.onRoot().captureRoboImage("build/screenshots/eats-restaurant-light.png")
+    }
+
+    @Test fun menuRows() {
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                Column(Modifier.fillMaxSize().background(Ids.colors.background).padding(20.dp)) {
+                    EatsMenuItemRow("Croissant", "Buttery, baked this morning", "1,200 RWF", null, null, 0, null, {}, {})
+                    EatsMenuItemRow("Mandazi, 6 pieces", "Sweet fried dough", "1,000 RWF", null, null, 2, null, {}, {})
+                    EatsMenuItemRow("Fruit juice", null, "1,800 RWF", "2,200 RWF", null, 0, "Options required — tap + to choose", {}, {})
+                }
+            }
+        }
+        rule.onRoot().captureRoboImage("build/screenshots/eats-menu-rows.png")
     }
 }
