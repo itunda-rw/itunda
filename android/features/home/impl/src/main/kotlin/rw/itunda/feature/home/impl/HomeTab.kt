@@ -91,6 +91,7 @@ fun HomeTab(
     onOpenInvite: () -> Unit = {},
     onOpenProfile: () -> Unit = {},
     onOpenSpending: () -> Unit = {},
+    onOpenCreditScore: () -> Unit = {},
 ) {
     // Real, minimal usage signal (2026-08-10) -- see the "itunda: the wedge, not the
     // mirror" strategy memo, recommendation (ii), and rw.itunda.core.network.
@@ -115,7 +116,7 @@ fun HomeTab(
         onOpenInvite = onOpenInvite,
         onOpenProfile = onOpenProfile,
         onOpenSpending = onOpenSpending,
-        onOpenCreditScore = onOpenLoans,
+        onOpenCreditScore = onOpenCreditScore,
     )
 }
 
@@ -153,6 +154,7 @@ fun HomeEntryPoint(
     onOpenInvite: () -> Unit = {},
     onOpenProfile: () -> Unit = {},
     onOpenSpending: () -> Unit = {},
+    onOpenCreditScore: () -> Unit = {},
 ) {
     HomeTab(
         discoverItems = discoverItems,
@@ -180,5 +182,6 @@ fun HomeEntryPoint(
         onOpenInvite = onOpenInvite,
         onOpenProfile = onOpenProfile,
         onOpenSpending = onOpenSpending,
+        onOpenCreditScore = onOpenCreditScore,
     )
 }
