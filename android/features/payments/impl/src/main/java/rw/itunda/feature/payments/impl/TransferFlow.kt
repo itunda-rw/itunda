@@ -145,10 +145,7 @@ fun RecipientEntryScreen(
             .background(Ids.colors.background)
     ) {
         FlowTopBar(onBack)
-        rw.itunda.core.designsystem.components.IdsProgressStepper(
-            activeStepIndex = activeStepIndex, steps = TRANSFER_STEP_LABELS,
-            modifier = Modifier.padding(horizontal = Ids.layout.screenHorizontal),
-        )
+        Text("Send to", color = Ids.colors.textPrimary, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp))
         RecipientTabRow(selected = tab, onSelect = { tab = it })
 
         when (tab) {
@@ -165,20 +162,20 @@ fun RecipientEntryScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Ids.colors.chip)
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Ids.colors.surfaceSoft)
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(IdsIcons.Search, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(IdsIcons.Search, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(22.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
                         BasicTextField(
                             value = searchQuery,
                             onValueChange = { searchQuery = it },
-                            textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 15.sp),
+                            textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 18.sp),
                             cursorBrush = androidx.compose.ui.graphics.SolidColor(Ids.colors.brand),
                             modifier = Modifier.fillMaxWidth().semantics { contentDescription = searchDescription },
-                            decorationBox = { inner -> if (searchQuery.isEmpty()) Text(searchPlaceholder, color = Ids.colors.textTertiary, fontSize = 15.sp); inner() },
+                            decorationBox = { inner -> if (searchQuery.isEmpty()) Text(searchPlaceholder, color = Ids.colors.textTertiary, fontSize = 18.sp); inner() },
                         )
                     }
                     Spacer(modifier = Modifier.height(24.dp))
