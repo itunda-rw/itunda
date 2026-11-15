@@ -1875,6 +1875,7 @@ fun ItundaAppScreen(
                         onOpenInvite = { homeContext.startActivity(android.content.Intent(homeContext, rw.itunda.app.miniapps.RewardTasksMiniAppActivity::class.java)) },
                         onOpenProfile = { selectedTab = ItundaTab.You },
                         onOpenSpending = { showSpending = true },
+                        onOpenCreditScore = { showCreditScore = true },
                         )
                     }
                     // Real, dedicated primary tab (2026-08-10, see ItundaTab's own doc
