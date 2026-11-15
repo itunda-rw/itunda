@@ -31,6 +31,7 @@ private val partners = listOf(
     LoanPartner("M", Color(0xFF1FA67A), "Mortgage loan", "Buy or build a home. Terms up to 20 years, rates shown before you apply."),
     LoanPartner("R", Color(0xFF2F9E8F), "Refinance", "Move a loan from another lender to a lower rate."),
     LoanPartner("L", Color(0xFF3B82F6), "Manage other loans", "See loans from other lenders in one place."),
+    LoanPartner("\uD83C\uDF89", Color.Transparent, "Events", "Exclusively at itunda: preferential rates from our partners."),
 )
 
 /** Prototype "Find loan" partner list: tap a row to open its one-line explanation (dummy copy). */
@@ -44,7 +45,7 @@ fun LoansFindPartners() {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(p.tint), contentAlignment = Alignment.Center) {
-                    Text(p.badge, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
+                    Text(p.badge, color = Color.White, fontSize = if (p.tint == Color.Transparent) 24.sp else 16.sp, fontWeight = FontWeight.ExtraBold)
                 }
                 Text(p.title, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).padding(start = 14.dp))
                 Text(if (open == i) "⌃" else "⌄", color = Ids.colors.textTertiary, fontSize = 18.sp)

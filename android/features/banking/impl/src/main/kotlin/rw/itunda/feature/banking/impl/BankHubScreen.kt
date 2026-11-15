@@ -218,7 +218,7 @@ fun BankHubEntryPoint(
             BankHubHeader(
                 title = stringResource(R.string.bank_title), accountNumber = primaryAccount.accountNumber,
                 balance = rememberCountUp(primaryAccount.balance), currency = primaryAccount.currency,
-                onBack = onBack, onOpenAccountDetail = { bankSub = BankSub.ACCOUNT }, onDeposit = { bankSub = BankSub.DEPOSIT }, onSend = { bankSub = BankSub.SEND },
+                onBack = onBack, onOpenAccountDetail = { bankSub = BankSub.ACCOUNT }, onDeposit = { bankSub = BankSub.DEPOSIT }, onSend = { bankSub = BankSub.SEND }, onSettings = { bankSub = BankSub.MANAGE },
             )
         } else {
             Row(modifier = Modifier.fillMaxWidth().padding(20.dp)) { BackTopBar(title = stringResource(R.string.bank_title), onBack = onBack) }

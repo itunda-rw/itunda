@@ -37,13 +37,17 @@ internal fun BankHubHeader(
     onOpenAccountDetail: () -> Unit,
     onDeposit: () -> Unit,
     onSend: () -> Unit,
+    onSettings: () -> Unit = {},
 ) {
     Column(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(40.dp).pressScaleClickable(onClick = onBack), contentAlignment = Alignment.CenterStart) {
                 ItundaArt("back", ItundaArtSet.Line, 24.dp, tint = Ids.colors.textPrimary)
             }
-            Text(title, color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+            Text(title, color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
+            Box(Modifier.size(40.dp).pressScaleClickable(onClick = onSettings), contentAlignment = Alignment.CenterEnd) {
+                ItundaArt("gear", ItundaArtSet.Line, 26.dp, tint = Ids.colors.textPrimary)
+            }
         }
         Column(Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpenAccountDetail).padding(horizontal = 24.dp, vertical = 8.dp)) {
             Text("$title ••${accountNumber.takeLast(4)}", color = Ids.colors.textTertiary, fontSize = 14.sp)
