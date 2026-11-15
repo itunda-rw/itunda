@@ -137,6 +137,7 @@ fun SaccoScreen(onBack: () -> Unit) {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
+        val firstTime = (sharesHeld ?: BigDecimal.ZERO).signum() == 0
         BackTopBar(title = "SACCO shares", onBack = onBack)
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -162,7 +163,7 @@ fun SaccoScreen(onBack: () -> Unit) {
                     )
                 }
             }
-            item {
+            if (!firstTime) item {
                 Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 20.dp, vertical = 4.dp)) {
                     Row(Modifier.fillMaxWidth().height(52.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text("Share price", color = Ids.colors.textTertiary, fontSize = 15.sp, modifier = Modifier.weight(1f))
@@ -172,7 +173,7 @@ fun SaccoScreen(onBack: () -> Unit) {
             }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    listOf(1, 5).forEachIndexed { i, n ->
+                    (if (firstTime) listOf(1) else listOf(1, 5)).forEachIndexed { i, n ->
                         Box(
                             modifier = Modifier.weight(1f).clip(RoundedCornerShape(16.dp))
                                 .background(if (i == 0) Ids.colors.brand else Ids.colors.surfaceSoft)
@@ -180,12 +181,12 @@ fun SaccoScreen(onBack: () -> Unit) {
                                 .padding(vertical = 16.dp),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text(if (busy) "…" else "Buy $n", color = if (i == 0) Ids.colors.textPrimary else Ids.colors.textBrand, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text(if (busy) "…" else if (firstTime) "Buy my first share" else "Buy $n", color = if (i == 0) Ids.colors.textPrimary else Ids.colors.textBrand, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         }
                     }
                 }
             }
-            item {
+            if (!firstTime) item {
                 Text(
                     "Redeem 1 share", color = Ids.colors.textBrand, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.pressScaleClickable(enabled = !busy) { amount = SHARE_PRICE.toString(); redeem() }.padding(vertical = 4.dp),

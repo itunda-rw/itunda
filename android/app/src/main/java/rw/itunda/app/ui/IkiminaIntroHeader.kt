@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -47,5 +48,16 @@ fun IkiminaIntroHeader() {
             modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 2.dp),
         )
         Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+fun IkiminaBenefit(emoji: String, title: String, body: String) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.Top) {
+        Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) { Text(emoji, fontSize = 18.sp) }
+        Column(Modifier.padding(start = 14.dp)) {
+            Text(title, color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(body, color = Ids.colors.textTertiary, fontSize = 14.sp, modifier = Modifier.padding(top = 2.dp))
+        }
     }
 }

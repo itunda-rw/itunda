@@ -111,27 +111,9 @@ private fun IkiminaIntroContent(onContinue: () -> Unit) {
     rw.itunda.core.designsystem.components.FixedBottomCta(
         content = {
             IkiminaIntroHeader()
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Everyone contributes the same fixed amount", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Text(
-                    "Every member pays in the same amount, on the same weekly or monthly schedule you set when you create the group.",
-                    color = Ids.colors.textTertiary, fontSize = 15.sp,
-                )
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("One member takes home the full pot each round", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Text(
-                    "The payout rotates in a pre-agreed order until every member has been paid exactly once -- not itunda deciding who's next, the group's own real turn order.",
-                    color = Ids.colors.textTertiary, fontSize = 15.sp,
-                )
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("You choose the size and schedule", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Text(
-                    "Set a max member count and a weekly or monthly contribution cycle -- the group only starts once you're ready.",
-                    color = Ids.colors.textTertiary, fontSize = 15.sp,
-                )
-            }
+            IkiminaBenefit("\uD83D\uDECD", "Everyone pays, everyone gets a turn", "Each member takes the pot once. You see the order before you join.")
+            IkiminaBenefit("\uD83D\uDD14", "Remind members in one tap", "See who has not paid and send a reminder.")
+            IkiminaBenefit("\u2705", "Clear for everyone", "Dues and the payout order are always in view for the whole group.")
         },
         cta = {
             rw.itunda.core.designsystem.components.IdsButton(text = "Continue", onClick = onContinue)
