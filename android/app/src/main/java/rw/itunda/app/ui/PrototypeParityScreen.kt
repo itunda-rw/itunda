@@ -38,7 +38,7 @@ fun PrototypeParityScreen(modifier: Modifier = Modifier) {
         } else {
             backPending.value = true
             webView.evaluateJavascript(
-                \"\"\"
+                """
                 (function() {
                   try {
                     const layer = document.getElementById('layer');
@@ -51,7 +51,7 @@ fun PrototypeParityScreen(modifier: Modifier = Modifier) {
                     return 'exit';
                   }
                 })();
-                \"\"\".trimIndent(),
+                """.trimIndent(),
             ) { result ->
                 backPending.value = false
                 if (result?.contains("exit") == true) activity.finish()
