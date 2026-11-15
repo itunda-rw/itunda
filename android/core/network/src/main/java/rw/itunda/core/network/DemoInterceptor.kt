@@ -124,7 +124,7 @@ internal class DemoInterceptor : Interceptor {
     }
 
     private companion object {
-        const val OK = """{"success":true}"""
+        const val OK = DEMO_EMPTY_BODY
 
         const val USER = """{"id":"demo-user","phoneNumber":"+250788123456","email":"aline@example.com","firstName":"Aline",
             "lastName":"Uwase","kycVerified":true,"creditScore":742,"createdAt":"2025-06-01T09:00:00Z","neighborhood":"Kimironko",
