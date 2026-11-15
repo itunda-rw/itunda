@@ -29,6 +29,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation(project(":core:designsystem"))
     implementation(project(":core:network"))
+    implementation(project(":features:home:impl"))
 
     testImplementation(platform("androidx.compose:compose-bom:2024.02.00"))
     testImplementation(libs.junit4)
