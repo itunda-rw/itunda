@@ -405,15 +405,15 @@ fun CardScreen(onBack: () -> Unit) {
                             if (c.lost || c.closedAt != null) {
                                 CardActionButton(stringResource(R.string.card_get_new_card), enabled = !busy) { reissue() }
                             } else {
-                                CardActionButton(if (c.frozen) stringResource(R.string.card_unfreeze) else stringResource(R.string.card_freeze), enabled = !busy) { toggleFreeze() }
+                                // Prototype action row: Freeze and PIN side by side as soft tiles.
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    CardActionTile(if (c.frozen) stringResource(R.string.card_unfreeze) else stringResource(R.string.card_freeze), !busy, Modifier.weight(1f)) { toggleFreeze() }
+                                    CardActionTile(if (c.pinSet) stringResource(R.string.card_change_pin) else stringResource(R.string.card_set_pin), !busy, Modifier.weight(1f)) { showPinForm = !showPinForm }
+                                }
                             }
                         }
                         item {
-                            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth()) {
-                                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Row(modifier = Modifier.fillMaxWidth().pressScaleClickable(enabled = !busy && c.closedAt == null) { showPinForm = !showPinForm }, horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text(if (c.pinSet) stringResource(R.string.card_change_pin) else stringResource(R.string.card_set_pin), color = Ids.colors.textPrimary, fontSize = 14.sp)
-                                    }
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     if (showPinForm) {
                                         Text(
                                             stringResource(R.string.card_pin_form_subtitle),
@@ -424,7 +424,6 @@ fun CardScreen(onBack: () -> Unit) {
                                         IdsTextField(value = pinPasswordInput, onValueChange = { pinPasswordInput = it }, label = stringResource(R.string.card_current_password_label), isPassword = true, modifier = Modifier.fillMaxWidth())
                                         CardActionButton(if (busy) "…" else stringResource(R.string.card_save_pin), enabled = !busy) { setPin() }
                                     }
-                                }
                             }
                         }
                         pinSuccess.let { if (it) item { Text(pinSavedMessage, color = Ids.colors.success, fontSize = 12.sp) } }
