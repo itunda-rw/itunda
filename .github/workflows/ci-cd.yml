@@ -30,6 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       mobile: ${{ steps.filter.outputs.mobile }}
+      web: ${{ steps.filter.outputs.web }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -43,6 +44,17 @@ jobs:
               - 'packages/saronite/**'
               - 'packages/brick-codegen/**'
               - 'scripts/ios-silo-boundary-check.py'
+            web:
+              - 'package.json'
+              - 'yarn.lock'
+              - '.yarnrc.yml'
+              - 'tsconfig.json'
+              - 'packages/shared-utils/**'
+              - 'packages/design-tokens/**'
+              - 'packages/design-system-web/**'
+              - 'packages/itunda-pay-widget/**'
+              - 'services/micro-frontends/**'
+              - 'services/api-gateway/**'
 
   # Root Yarn workspace: packages/shared-utils, services/micro-frontends/*, services/api-gateway
   lint-and-typecheck:
@@ -106,7 +118,8 @@ jobs:
   root-workspace-build:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [lint-and-typecheck]
+    needs: [changed-files]
+    if: github.event_name == 'workflow_dispatch' || needs.changed-files.outputs.web == 'true'
     steps:
       - uses: actions/checkout@v4
 
