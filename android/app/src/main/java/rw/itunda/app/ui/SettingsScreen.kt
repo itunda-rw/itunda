@@ -162,75 +162,30 @@ fun SettingsScreen(
         if (!isLoadingSettings) pullToRefreshState.endRefresh()
     }
 
-    // Real theme picker, relocated (2026-08-12) -- previously its own "Display" card
-    // with an always-visible 3-way selector; the real screenshot shows "Theme &
-    // vibration" as a plain row in the first card, so the same real, working
-    // ThemePreference selector now opens as a dialog from that row instead.
+    // Theme and text size open as full-screen pickers (prototype), applying on tap.
     var showThemeDialog by remember { mutableStateOf(false) }
     if (showThemeDialog) {
         val themeMode by ThemePreference.mode.collectAsState()
-        AlertDialog(
-            onDismissRequest = { showThemeDialog = false },
-            title = { Text(stringResource(R.string.settings_theme_vibration)) },
-            text = {
-                Column {
-                    listOf(
-                        ThemeMode.SYSTEM to stringResource(R.string.settings_theme_system),
-                        ThemeMode.LIGHT to stringResource(R.string.settings_theme_light),
-                        ThemeMode.DARK to stringResource(R.string.settings_theme_dark),
-                    ).forEach { (mode, label) ->
-                        val selected = themeMode == mode
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .pressScaleClickable { ThemePreference.set(mode) }
-                                .padding(vertical = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(label, color = Ids.colors.textPrimary, fontSize = 15.sp)
-                            if (selected) Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.brand)
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showThemeDialog = false }) { Text(stringResource(R.string.settings_confirm)) }
-            },
+        SettingsPickerScreen(
+            title = stringResource(R.string.settings_theme_vibration),
+            options = listOf(
+                ThemeMode.SYSTEM to stringResource(R.string.settings_theme_system),
+                ThemeMode.LIGHT to stringResource(R.string.settings_theme_light),
+                ThemeMode.DARK to stringResource(R.string.settings_theme_dark),
+            ).map { (mode, label) -> PickerOption(label, themeMode == mode) { ThemePreference.set(mode) } },
+            onBack = { showThemeDialog = false },
         )
+        return
     }
-
-    // Real Uber Simple Mode-style text-scale accessibility picker (2026-08-15) --
-    // see docs/DESIGN_REFERENCES.md Section 69 and TextScalePreference's own doc
-    // comment. Same dialog-from-a-row shape as the theme picker directly above.
     var showTextScaleDialog by remember { mutableStateOf(false) }
     if (showTextScaleDialog) {
         val textScale by TextScalePreference.option.collectAsState()
-        AlertDialog(
-            onDismissRequest = { showTextScaleDialog = false },
-            title = { Text(stringResource(R.string.settings_text_size)) },
-            text = {
-                Column {
-                    TextScaleOption.values().forEach { option ->
-                        val selected = textScale == option
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .pressScaleClickable { TextScalePreference.set(option) }
-                                .padding(vertical = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(option.label, color = Ids.colors.textPrimary, fontSize = (15 * option.multiplier).sp)
-                            if (selected) Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.brand)
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showTextScaleDialog = false }) { Text(stringResource(R.string.settings_confirm)) }
-            },
+        SettingsPickerScreen(
+            title = stringResource(R.string.settings_text_size),
+            options = TextScaleOption.values().map { o -> PickerOption(o.label, textScale == o, 17f * o.multiplier) { TextScalePreference.set(o) } },
+            onBack = { showTextScaleDialog = false },
         )
+        return
     }
 
     Box(Modifier.fillMaxSize().nestedScroll(pullToRefreshState.nestedScrollConnection)) {
