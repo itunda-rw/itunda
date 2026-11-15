@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -103,8 +106,11 @@ fun ProtoHomeContent(
     ) {
         item { HomeBar(hasUnread, onOpenBank, onOpenPay, onOpenNotifications) }
         item {
-            Card {
-                Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 34.dp)) {
+            Card(Modifier.drawBehind {
+                drawRect(Brush.radialGradient(listOf(Color(0xFF8F89FF).copy(alpha = 0.22f), Color.Transparent), center = Offset(size.width, 0f), radius = size.width * 0.8f))
+                drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color(0xFF8F89FF).copy(alpha = 0.10f)), startY = size.height * 0.7f, endY = size.height))
+            }) {
+                Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 36.dp)) {
                     AccountRow(
                         tile = { Icon(painterResource(rw.itunda.core.designsystem.R.drawable.itunda_mark), null, Modifier.size(22.dp), tint = Ids.colors.brand) },
                         amount = state.bankBalance,
@@ -117,14 +123,14 @@ fun ProtoHomeContent(
                         },
                         action = "Send", onAction = onSend,
                     )
-                    Spacer(Modifier.height(32.dp))
+                    Spacer(Modifier.height(34.dp))
                     AccountRow(
-                        tile = { Icon(Icons.Outlined.AccountBalanceWallet, null, Modifier.size(22.dp), tint = Ids.colors.brand) },
+                        tile = { WalletGlyph() },
                         amount = state.payBalance,
                         subtitle = buildAnnotatedString { append("itunda Pay") },
                         action = "Add", onAction = onAdd,
                     )
-                    Spacer(Modifier.height(24.dp))
+                    Spacer(Modifier.height(22.dp))
                     Divider(color = Ids.colors.divider, thickness = 0.5.dp)
                     Row(Modifier.fillMaxWidth().heightIn(min = 49.dp), verticalAlignment = Alignment.CenterVertically) {
                         ShortcutText("Bills", onBills)
@@ -146,10 +152,10 @@ fun ProtoHomeContent(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Box(
-                            Modifier.size(52.dp).clip(RoundedCornerShape(16.dp)).background(Ids.colors.brand.copy(alpha = 0.14f)),
+                            Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(Brush.linearGradient(listOf(Color(0xFFEEEDFF), Color(0xFFC9C5FF)))),
                             contentAlignment = Alignment.Center,
-                        ) { Icon(Icons.Outlined.CardGiftcard, null, Modifier.size(28.dp), tint = Ids.colors.brand) }
-                        Spacer(Modifier.width(20.dp))
+                        ) { Text("🎁", fontSize = 24.sp) }
+                        Spacer(Modifier.width(14.dp))
                         Text(
                             buildAnnotatedString {
                                 append("Invite friends, get ")
@@ -159,7 +165,7 @@ fun ProtoHomeContent(
                             modifier = Modifier.weight(1f),
                         )
                         Icon(
-                            IdsIcons.Close, "Dismiss", Modifier.size(24.dp).pressScaleClickable { inviteDismissed = true },
+                            IdsIcons.Close, "Dismiss", Modifier.size(20.dp).pressScaleClickable { inviteDismissed = true },
                             tint = Ids.colors.textPrimary,
                         )
                     }
@@ -174,7 +180,7 @@ fun ProtoHomeContent(
                             AmountLine(state.spentThisMonth)
                             Text("Spent in ${state.monthName}", color = Ids.colors.textSecondary, fontSize = 14.sp)
                         }
-                        Icon(IdsIcons.ChevronRight, null, Modifier.size(24.dp), tint = Ids.colors.textTertiary)
+                        Icon(IdsIcons.ChevronRight, null, Modifier.size(20.dp), tint = Ids.colors.textTertiary.copy(alpha = 0.7f))
                     }
                     ProtoWeekChart(state.week, today = state.today)
                     state.bill?.let { bill ->
@@ -213,7 +219,7 @@ fun ProtoHomeContent(
 
 @Composable
 private fun HomeBar(hasUnread: Boolean, onOpenBank: () -> Unit, onOpenPay: () -> Unit, onOpenNotifications: () -> Unit) {
-    Row(Modifier.fillMaxWidth().height(78.dp).padding(start = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().height(78.dp).padding(start = 10.dp, top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
         IdsAppBarTitle(area = "bank", onClick = onOpenBank)
         Spacer(Modifier.weight(1f))
         Icon(
@@ -231,8 +237,18 @@ private fun HomeBar(hasUnread: Boolean, onOpenBank: () -> Unit, onOpenPay: () ->
 }
 
 @Composable
-private fun Card(content: @Composable () -> Unit) {
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Ids.colors.surface)) { content() }
+private fun Card(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Ids.colors.surface).then(modifier)) { content() }
+}
+
+@Composable
+private fun WalletGlyph() {
+    androidx.compose.foundation.Canvas(Modifier.size(24.dp)) {
+        val u = size.width / 24f
+        drawRoundRect(Color(0xFFFFC83D), Offset(4 * u, 3 * u), androidx.compose.ui.geometry.Size(13 * u, 8 * u), androidx.compose.ui.geometry.CornerRadius(3 * u))
+        drawRoundRect(Color(0xFF7B74F5), Offset(2 * u, 7 * u), androidx.compose.ui.geometry.Size(20 * u, 14 * u), androidx.compose.ui.geometry.CornerRadius(4 * u))
+        drawCircle(Color(0xFFFFC83D), 2 * u, Offset(17 * u, 14 * u))
+    }
 }
 
 @Composable
