@@ -60,7 +60,7 @@ fun EatsRestaurantTile(
 ) {
     Column(modifier.pressScaleClickable(onClick = onOpen)) {
         Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(24.dp)).background(tileTints[tintIndex.mod(tileTints.size)])) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { ItundaArt(eatsCategoryArt(category), ItundaArtSet.Proto, 72.dp) }
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { ItundaArt(eatsCategoryArt(category), ItundaArtSet.Color, 72.dp) }
             if (tag != null) {
                 Text(tag, color = Color(0xFF191F28), fontSize = 12.sp, fontWeight = FontWeight.Bold,
                     modifier = Modifier.align(Alignment.TopStart).padding(10.dp).clip(RoundedCornerShape(12.dp)).background(Color.White).padding(horizontal = 10.dp, vertical = 5.dp))
