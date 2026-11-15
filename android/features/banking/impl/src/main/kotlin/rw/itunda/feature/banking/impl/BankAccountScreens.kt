@@ -45,6 +45,7 @@ internal fun BankAccountScreen(onBack: () -> Unit, onOpen: (BankSub) -> Unit) {
     Column(Modifier.fillMaxSize().background(Ids.colors.background)) {
         BankSubTopBar("", onBack) {
             Text("Statement", color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.pressScaleClickable { onOpen(BankSub.STATEMENT) }.padding(8.dp))
+            Text("Manage", color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.pressScaleClickable { onOpen(BankSub.MANAGE) }.padding(8.dp))
             Text("Move", color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.pressScaleClickable { onOpen(BankSub.MOVE) }.padding(8.dp))
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
@@ -124,13 +125,15 @@ internal fun BankPocketsScreen(onBack: () -> Unit) {
     val pockets = remember {
         mutableStateListOf(Pocket("Interest jar", "🪴", 0), Pocket("Emergency fund", "🔒", 50_000), Pocket("School fees", "🎓", 120_000, 300_000))
     }
+    var open by remember { mutableStateOf<Pocket?>(null) }
+    open?.let { BankPocketDetail(it.name, it.emoji, it.amount) { open = null }; return }
     Column(Modifier.fillMaxSize().background(Ids.colors.background)) {
         BankSubTopBar("", onBack)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
             Text("Total in pockets", color = Ids.colors.textTertiary, fontSize = 14.sp)
             Text("${rwf(pockets.sumOf { it.amount })} RWF", color = Ids.colors.textPrimary, fontSize = 34.sp, fontWeight = FontWeight.ExtraBold)
             pockets.forEach { p ->
-                Row(Modifier.fillMaxWidth().padding(top = 22.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().pressScaleClickable { open = p }.padding(top = 22.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(48.dp).clip(CircleShape).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) { Text(p.emoji, fontSize = 22.sp) }
                     Column(Modifier.weight(1f).padding(start = 14.dp)) {
                         Text(p.name, color = Ids.colors.textTertiary, fontSize = 13.sp)
@@ -174,5 +177,6 @@ fun BankSubOverlay(sub: BankSub?, onClose: () -> Unit, onOpen: (BankSub) -> Unit
         BankSub.MOVE -> BankMoveScreen { onClose() }
         BankSub.STATEMENT -> BankStatementScreen { onClose() }
         BankSub.POCKETS -> BankPocketsScreen(onClose)
+        BankSub.MANAGE -> BankManageScreen(onClose)
     }
 }
