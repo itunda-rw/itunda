@@ -105,7 +105,7 @@ LazyColumn(Modifier.fillMaxSize().background(Ids.colors.background),contentPaddi
 item{HomeProtoHeader(hasUnread,onOpenBank,onOpenPay,onOpenNotifications,t.notifications)}
 item{HomeAccountsCard(state.bankBalance,state.payBalance,state.interestDays,onOpenBank,onOpenPay,onSend,onAdd,onBills,onCard,onSavings,onSeeAll)}
 if(inviteShown) item{HomeInviteBanner(onInvite){inviteShown=false}}
-item{Column(Modifier.fillMaxWidth().padding(horizontal=24.dp).padding(top=8.dp)){
+item{Column(Modifier.fillMaxWidth().padding(horizontal=24.dp).padding(top=24.dp)){
 Row(Modifier.fillMaxWidth().clickable(onClick=onOpenSpending),verticalAlignment=Alignment.CenterVertically){
 Column(Modifier.weight(1f)){
 Row(verticalAlignment=Alignment.Bottom){Text(homeRwf(state.spentThisMonth),color=Ids.colors.textPrimary,fontSize=24.sp,fontWeight=FontWeight.ExtraBold);Text(" RWF",color=Ids.colors.textSecondary,fontSize=14.sp,modifier=Modifier.padding(bottom=3.dp))}
