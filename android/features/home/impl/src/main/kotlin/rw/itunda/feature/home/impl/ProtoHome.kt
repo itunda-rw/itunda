@@ -76,7 +76,7 @@ data class ProtoHomeState(
     val today: java.time.LocalDate = java.time.LocalDate.now(),
 )
 
-private fun rwf(v: Double) = String.format(Locale.US, "%,.0f", v)
+internal fun rwf(v: Double) = String.format(Locale.US, "%,.0f", v)
 
 private data class HomeCopy(
     val bank:String,val pay:String,val send:String,val add:String,val quick:String,val scan:String,val bills:String,val airtime:String,
