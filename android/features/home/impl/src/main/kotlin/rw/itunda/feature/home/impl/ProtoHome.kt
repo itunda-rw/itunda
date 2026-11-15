@@ -83,12 +83,12 @@ private data class HomeCopy(
     val bank:String,val pay:String,val send:String,val add:String,val quick:String,val scan:String,val bills:String,val airtime:String,
     val services:String,val irembo:String,val taxes:String,val electricity:String,val water:String,val school:String,val spending:String,
     val spent:String,val due:String,val forYou:String,val goal:String,val goalHint:String,val credit:String,val creditHint:String,
-    val view:String,val status:String,val profile:String,
+    val view:String,val status:String,val profile:String,val notifications:String,
 )
 private fun homeCopy(language:String)=when(language){
-"rw"->HomeCopy("itunda Bank","itunda Pay","Ohereza","Ongeraho","Ibikorwa byihuse","Sikana wishyure","Ishyura fagitire","Igihe cyo guhamagara","Serivisi zo mu Rwanda","Irembo","Imisoro ya RRA","Amashanyarazi","Amazi","Amafaranga y'ishuri","Imikoreshereze","Yakoreshejwe muri iki gihe","Birishyurwa vuba","Byagenewe wowe","Tangira intego yawe yo kuzigama","Hitamo amafaranga n'igihe uzayageraho","Amanota y'inguzanyo","Reba amanota yawe ku buntu","Reba","MTN MoMo na Airtel Money birakora neza","Umwirondoro")
-"fr"->HomeCopy("itunda Bank","itunda Pay","Envoyer","Ajouter","Actions rapides","Scanner pour payer","Payer les factures","Crédit téléphonique","Services au Rwanda","Irembo","Impôts RRA","Électricité","Eau","Frais scolaires","Dépenses","Dépensé pendant cette période","À payer prochainement","Pour vous","Créez votre premier objectif d’épargne","Choisissez un montant et une date cible","Votre score de crédit","Vérification gratuite avec vos données alternatives","Voir","MTN MoMo et Airtel Money fonctionnent normalement","Profil")
-else->HomeCopy("itunda Bank","itunda Pay","Send","Add","Quick actions","Scan to pay","Pay bills","Airtime","Rwanda services","Irembo","RRA taxes","REG electricity","WASAC water","School fees","Spending","Spent this period, mostly on food","Upcoming, due Friday","For you","Start your first savings goal","A target and a date make saving easier","My credit score","Free check, alternative data","View","MTN MoMo and Airtel Money are working normally","Profile")
+"rw"->HomeCopy("itunda Bank","itunda Pay","Ohereza","Ongeraho","Ibikorwa byihuse","Sikana wishyure","Ishyura fagitire","Igihe cyo guhamagara","Serivisi zo mu Rwanda","Irembo","Imisoro ya RRA","Amashanyarazi","Amazi","Amafaranga y'ishuri","Imikoreshereze","Yakoreshejwe muri iki gihe","Birishyurwa vuba","Byagenewe wowe","Tangira intego yawe yo kuzigama","Hitamo amafaranga n'igihe uzayageraho","Amanota y'inguzanyo","Reba amanota yawe ku buntu","Reba","MTN MoMo na Airtel Money birakora neza","Umwirondoro","Amamenyesha")
+"fr"->HomeCopy("itunda Bank","itunda Pay","Envoyer","Ajouter","Actions rapides","Scanner pour payer","Payer les factures","Crédit téléphonique","Services au Rwanda","Irembo","Impôts RRA","Électricité","Eau","Frais scolaires","Dépenses","Dépensé pendant cette période","À payer prochainement","Pour vous","Créez votre premier objectif d’épargne","Choisissez un montant et une date cible","Votre score de crédit","Vérification gratuite avec vos données alternatives","Voir","MTN MoMo et Airtel Money fonctionnent normalement","Profil","Notifications")
+else->HomeCopy("itunda Bank","itunda Pay","Send","Add","Quick actions","Scan to pay","Pay bills","Airtime","Rwanda services","Irembo","RRA taxes","REG electricity","WASAC water","School fees","Spending","Spent this period, mostly on food","Upcoming, due Friday","For you","Start your first savings goal","A target and a date make saving easier","My credit score","Free check, alternative data","View","MTN MoMo and Airtel Money are working normally","Profile","Notifications")
 }
 
 @Composable
@@ -101,7 +101,7 @@ onOpenProfile:()->Unit,onOpenCreditScore:()->Unit,
 val language=androidx.compose.ui.platform.LocalConfiguration.current.locales[0]?.language?:"en"
 val t=homeCopy(language)
 LazyColumn(Modifier.fillMaxSize().background(Ids.colors.background),contentPadding=androidx.compose.foundation.layout.PaddingValues(bottom=96.dp)){
-item{HomeHeader(onOpenProfile,t.profile)}
+item{HomeHeader(hasUnread,onOpenNotifications,onOpenProfile,t.notifications,t.profile)}
 item{Row(Modifier.fillMaxWidth().padding(horizontal=24.dp).padding(top=12.dp),verticalAlignment=Alignment.CenterVertically){
 Box(Modifier.size(8.dp).clip(CircleShape).background(Ids.colors.success));Spacer(Modifier.width(8.dp));Text(t.status,color=Ids.colors.textSecondary,fontSize=13.sp)
 }}
@@ -132,11 +132,16 @@ HomeListRow("new-savings-goal",t.goal,t.goalHint,null,onSavings);HomeListRow("my
 }}
 }
 }
-@Composable private fun HomeHeader(onOpenProfile:()->Unit,profileLabel:String){
-Row(Modifier.fillMaxWidth().padding(start=24.dp,end=16.dp,top=20.dp),verticalAlignment=Alignment.CenterVertically){
+@Composable private fun HomeHeader(hasUnread:Boolean,onOpenNotifications:()->Unit,onOpenProfile:()->Unit,notificationsLabel:String,profileLabel:String){
+Row(Modifier.fillMaxWidth().padding(start=24.dp,end=24.dp,top=20.dp),verticalAlignment=Alignment.CenterVertically){
 Icon(painterResource(rw.itunda.core.designsystem.R.drawable.itunda_mark),null,Modifier.size(40.dp),tint=Ids.colors.brand)
 Spacer(Modifier.width(8.dp));Text("itunda",color=Ids.colors.textPrimary,fontSize=20.sp,fontWeight=FontWeight.ExtraBold,letterSpacing=(-0.5).sp)
-Spacer(Modifier.weight(1f));Box(Modifier.size(44.dp).clickable(onClick=onOpenProfile).semantics{contentDescription=profileLabel},contentAlignment=Alignment.Center){ItundaArt("user",ItundaArtSet.Line,24.dp)}
+Spacer(Modifier.weight(1f))
+Box(Modifier.size(44.dp).clickable(onClick=onOpenNotifications).semantics{contentDescription=notificationsLabel},contentAlignment=Alignment.Center){
+ItundaArt("bell",ItundaArtSet.Line,24.dp)
+if(hasUnread) Box(Modifier.align(Alignment.TopEnd).padding(top=8.dp,end=8.dp).size(8.dp).clip(CircleShape).background(Ids.colors.danger))
+}
+Box(Modifier.size(44.dp).clickable(onClick=onOpenProfile).semantics{contentDescription=profileLabel},contentAlignment=Alignment.Center){ItundaArt("user",ItundaArtSet.Line,24.dp)}
 }
 }
 @Composable private fun HomeSection(title:String,content:@Composable()->Unit){
