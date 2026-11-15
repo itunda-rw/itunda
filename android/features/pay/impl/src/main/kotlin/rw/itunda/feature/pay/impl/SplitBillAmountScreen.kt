@@ -41,13 +41,11 @@ fun SplitBillAmountScreen(onBack: () -> Unit, onContinue: () -> Unit) {
         BackTopBar("Split a bill", onBack)
         Column(Modifier.weight(1f).padding(horizontal = Ids.layout.screenHorizontal)) {
             Text("How much was the bill?", color = Ids.colors.textTertiary, fontSize = 14.sp)
-            AmountKeypadInput(digits = digits, onDigitsChange = { digits = it })
-            listOf("You", "Friend").forEachIndexed { i, who ->
-                Row(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                    Text(who, color = Ids.colors.textTertiary, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                    Text(String.format(Locale.US, "%,d RWF", if (i == 0) total - half else half), color = Ids.colors.textTertiary, fontSize = 14.sp)
-                }
-            }
+            AmountKeypadInput(
+                digits = digits,
+                onDigitsChange = { digits = it },
+                helperText = String.format(Locale.US, "You %,d RWF  ·  Friend %,d RWF", total - half, half),
+            )
         }
         Box(
             Modifier.fillMaxWidth().padding(horizontal = Ids.layout.screenHorizontal, vertical = 12.dp).height(56.dp).clip(RoundedCornerShape(16.dp))
