@@ -140,6 +140,8 @@ fun EmptyState(
     // results) that has no real action stays exactly as plain as before.
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
+    // Allows feature screens to use their canonical ItundaFace artwork instead of a stock icon.
+    iconContent: (@Composable () -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
@@ -150,7 +152,8 @@ fun EmptyState(
             modifier = Modifier.size(56.dp).clip(CircleShape).background(Ids.colors.surfaceSoft),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = Ids.colors.textSecondary)
+            if (iconContent != null) iconContent()
+            else Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = Ids.colors.textSecondary)
         }
         Text(message, color = Ids.colors.textSecondary, fontSize = 14.sp, textAlign = TextAlign.Center)
         if (actionLabel != null && onAction != null) {

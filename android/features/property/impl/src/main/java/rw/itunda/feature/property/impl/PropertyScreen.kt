@@ -26,13 +26,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.HomeWork
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -76,6 +71,7 @@ import rw.itunda.core.designsystem.components.relativeTimeAgo
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import rw.itunda.core.designsystem.itundaface.TravelHouse
 import rw.itunda.core.designsystem.itundaface.WishlistHeart
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.CreatePropertyListingRequest
@@ -450,7 +446,7 @@ fun PropertyContent(
                         PropertyView.SAVED -> ""
                         PropertyView.VALUATION -> ""
                     },
-                    icon = Icons.Outlined.HomeWork,
+                    iconContent = { TravelHouse(size = 24.dp) },
                     // Real fix (2026-08-15): the copy above told the user to "try
                     // Browse", but there was never any way to actually reach it -- this
                     // was plain Text, not even the shared EmptyState. See
@@ -722,8 +718,8 @@ private fun PropertyListingCard(
     }
     val ownershipStatus = submittedOwnershipStatus ?: listing.ownershipVerificationStatus
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Card(shape = androidx.compose.ui.graphics.RectangleShape, colors = CardDefaults.cardColors(containerColor = Color.Transparent), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
