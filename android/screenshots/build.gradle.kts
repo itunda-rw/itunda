@@ -43,6 +43,7 @@ dependencies {
     implementation(project(":features:shop:impl"))
     implementation(project(":features:eats:impl"))
     implementation(project(":features:front:impl"))
+    implementation(project(":features:ride:impl"))
     implementation(project(":features:banking:impl"))
     implementation(project(":features:wealth:impl"))
     implementation(project(":features:credit:impl"))
