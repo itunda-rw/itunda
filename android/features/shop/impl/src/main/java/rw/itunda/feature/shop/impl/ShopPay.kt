@@ -223,28 +223,16 @@ fun PayAMerchantSection(
     // own tap-to-reveal already established for the customer's own code.
     var payMode by remember { mutableStateOf(PayMerchantMode.SCAN) }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        FacePaySettingsCard(enrolled = facePayEnrolled, onChanged = ::loadFacePayStatus)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            listOf(PayMerchantMode.SCAN to "Scan QR", PayMerchantMode.CODE to "Pay by code", PayMerchantMode.STATIC_QR to "Merchant ID").forEach { (mode, label) ->
-                val active = payMode == mode
-                Text(
-                    label, fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                    color = if (active) androidx.compose.ui.graphics.Color.White else Ids.colors.textPrimary,
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(999.dp))
-                        .background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft)
-                        .pressScaleClickable { payMode = mode }
-                        .padding(vertical = 10.dp),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                )
-            }
-        }
+        if (payMode != PayMerchantMode.SCAN) ScanPills(listOf("Back to scan" to { payMode = PayMerchantMode.SCAN }))
         when (payMode) {
-            PayMerchantMode.SCAN -> PayByScanCard(deviceStepUpHost = deviceStepUpHost, facePayEnrolled = facePayEnrolled ?: false, onPaid = { paymentResult = it })
+            PayMerchantMode.SCAN -> {
+                PayByScanCard(deviceStepUpHost = deviceStepUpHost, facePayEnrolled = facePayEnrolled ?: false, onPaid = { paymentResult = it })
+                ScanPills(listOf("Till number" to { payMode = PayMerchantMode.CODE }, "Merchant ID" to { payMode = PayMerchantMode.STATIC_QR }))
+            }
             PayMerchantMode.CODE -> PayByCodeCard(deviceStepUpHost = deviceStepUpHost, facePayEnrolled = facePayEnrolled ?: false, onPaid = { paymentResult = it })
             PayMerchantMode.STATIC_QR -> PayByStaticQrCard(onPaid = { paymentResult = it })
         }
+        FacePaySettingsCard(enrolled = facePayEnrolled, onChanged = ::loadFacePayStatus)
     }
 }
 

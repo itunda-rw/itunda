@@ -2,6 +2,7 @@ package rw.itunda.feature.pay.impl
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -42,6 +43,7 @@ import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.components.generatePayQrBitmap
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.theme.IdsTheme
 
 enum class ProtoPayMode(val label: String) { SCAN("Scan"), MY_CODE("My code"), TAP("Tap") }
 
@@ -60,6 +62,8 @@ fun ProtoPayContent(
     onReceive: () -> Unit,
     scanContent: @Composable () -> Unit,
 ) {
+    // Scan is the prototype's one dark screen: force the dark token set for it only.
+    IdsTheme(darkTheme = mode == ProtoPayMode.SCAN || isSystemInDarkTheme()) {
     Column(Modifier.fillMaxSize().background(Ids.colors.surface).padding(horizontal = 20.dp)) {
         Row(Modifier.fillMaxWidth().height(78.dp).padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             IdsAppBarTitle(area = "pay", onClick = onOpenPay)
@@ -75,11 +79,13 @@ fun ProtoPayContent(
         Spacer(Modifier.height(16.dp))
         when (mode) {
             ProtoPayMode.MY_CODE -> MyCode(qrContent, secondsLeft, fundingName, fundingBalance, onReceive)
-            else -> Box(Modifier.weight(1f).fillMaxWidth()) { scanContent() }
+            ProtoPayMode.TAP -> ProtoPayTap(secondsLeft, fundingName, fundingBalance)
+            ProtoPayMode.SCAN -> Box(Modifier.weight(1f).fillMaxWidth()) { scanContent() }
         }
-        if (mode == ProtoPayMode.MY_CODE) Spacer(Modifier.weight(1f))
-        FundingCard(fundingName, fundingBalance, onChangeFunding)
+        if (mode != ProtoPayMode.SCAN) Spacer(Modifier.weight(1f))
+        if (mode != ProtoPayMode.SCAN) FundingCard(fundingName, fundingBalance, onChangeFunding)
         Spacer(Modifier.height(12.dp))
+    }
     }
 }
 
