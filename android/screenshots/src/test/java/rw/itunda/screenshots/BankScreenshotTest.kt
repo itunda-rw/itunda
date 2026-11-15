@@ -20,6 +20,7 @@ import rw.itunda.core.network.MoneyActionResult
 import rw.itunda.feature.banking.impl.BankHubEntryPoint
 import rw.itunda.feature.banking.impl.Grow31IntroContent
 import rw.itunda.feature.credit.impl.LoansFindHero
+import rw.itunda.feature.credit.impl.LoansFindPartners
 import rw.itunda.feature.banking.impl.BankSub
 import rw.itunda.feature.banking.impl.BankSubOverlay
 import rw.itunda.feature.credit.impl.CreditScoreBody
@@ -74,7 +75,7 @@ class BankScreenshotTest {
 
     @Test fun loansLight() {
         rule.setContent {
-            IdsTheme(darkTheme = false) { Box(Modifier.fillMaxSize().background(Ids.colors.background).padding(24.dp)) { LoansFindHero() } }
+            IdsTheme(darkTheme = false) { Box(Modifier.fillMaxSize().background(Ids.colors.background).padding(24.dp)) { Column { LoansFindHero(); LoansFindPartners() } } }
         }
         rule.onRoot().captureRoboImage("build/screenshots/loans-light.png")
     }

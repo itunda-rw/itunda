@@ -150,6 +150,7 @@ fun LoansScreen(onBack: () -> Unit) {
             }
             if (mode == LoansMode.OFFERS) {
                 item { LoansFindHero(offers?.minOfOrNull { it.interestRate }?.toString()) }
+                item { LoansFindPartners() }
                 lenders?.let { currentLenders ->
                     item {
                         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
