@@ -143,7 +143,7 @@ if(hasUnread) Box(Modifier.align(Alignment.TopEnd).padding(top=8.dp,end=8.dp).si
 Box(Modifier.size(44.dp).clickable(onClick=onOpenProfile).semantics{contentDescription=profileLabel},contentAlignment=Alignment.Center){ItundaArt("user",ItundaArtSet.Line,24.dp)}
 }
 }
-@Composable private fun HomeSection(title:String,content:@Composable()->Unit){
+@Composable private fun HomeSection(title:String,content: @Composable () -> Unit){
 Column(Modifier.fillMaxWidth().padding(horizontal=24.dp).padding(top=32.dp)){Text(title,color=Ids.colors.textPrimary,fontSize=18.sp,fontWeight=FontWeight.ExtraBold,modifier=Modifier.padding(bottom=8.dp));content()}
 }
 @Composable private fun HomeGridAction(name:String,label:String,onClick:()->Unit,modifier:Modifier=Modifier){
@@ -210,7 +210,7 @@ private fun AccountRow(tile: @Composable () -> Unit, amount: Double, subtitle: a
 @Composable
 private fun Pill(label: String, onClick: () -> Unit) {
     Box(
-        Modifier.height(44.dp).widthIn(min = 64.dp).clip(PillShape).background(Ids.colors.brand.copy(alpha = 0.14f)).pressScaleClickable(onClick = onClick).padding(horizontal = 16.dp),
+        Modifier.height(44.dp).widthIn(min = 64.dp).clip(RoundedCornerShape(50)).background(Ids.colors.brand.copy(alpha = 0.14f)).pressScaleClickable(onClick = onClick).padding(horizontal = 16.dp),
         contentAlignment = Alignment.Center,
     ) { Text(label, color = Ids.colors.textBrand, fontSize = 14.sp, fontWeight = FontWeight.Bold) }
 }
