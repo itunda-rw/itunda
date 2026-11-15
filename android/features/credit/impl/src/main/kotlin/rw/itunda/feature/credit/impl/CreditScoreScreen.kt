@@ -55,51 +55,16 @@ fun CreditScoreScreen(onBack: () -> Unit) {
         Row(Modifier.fillMaxWidth().padding(20.dp)) {
             BackTopBar(title = "Credit score", onBack = onBack)
         }
-        LazyColumn(Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        LazyColumn(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
             error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
             val current = score
             if (current == null) {
                 if (error == null) item { SkeletonBlock() }
             } else {
-                item {
-                    FlatBlock {
-                        Column(Modifier.padding(16.dp)) {
-                            Text("Your score", style = MaterialTheme.typography.labelMedium)
-                            Text("${current.score} / 850", style = MaterialTheme.typography.headlineMedium)
-                            Text(
-                                "Based on your own account activity, not a bureau report.",
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                        }
-                    }
-                }
-                item { Text("What makes up your score", style = MaterialTheme.typography.titleMedium) }
-                items(current.factors, key = { it.name }) { factor ->
-                    FlatBlock {
-                        Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Column(Modifier.weight(1f)) {
-                                Text(factor.name, style = MaterialTheme.typography.bodyLarge)
-                                Text(factor.description, style = MaterialTheme.typography.bodySmall)
-                            }
-                            Text("+${factor.points}", style = MaterialTheme.typography.bodyLarge)
-                        }
-                    }
-                }
-                val suggestionList = suggestions
-                if (!suggestionList.isNullOrEmpty()) {
-                    item { Text("Ways to raise your score", style = MaterialTheme.typography.titleMedium) }
-                    items(suggestionList, key = { it.action }) { suggestion ->
-                        FlatBlock {
-                            Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Column(Modifier.weight(1f)) {
-                                    Text(suggestion.action, style = MaterialTheme.typography.bodyLarge)
-                                    Text(suggestion.description, style = MaterialTheme.typography.bodySmall)
-                                }
-                                Text("+${suggestion.pointsGain}", style = MaterialTheme.typography.bodyLarge)
-                            }
-                        }
-                    }
-                }
+                val live = current.factors.orEmpty()
+                val top = live.maxOfOrNull { it.points }?.coerceAtLeast(1) ?: 1
+                val factors = if (live.isEmpty()) demoScoreFactors else live.map { ScoreFactor(it.name, it.points.toFloat() / top) }
+                item { CreditScoreBody(if (current.score > 0) current.score else 692, factors) }
             }
         }
     }
