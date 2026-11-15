@@ -37,7 +37,7 @@ class HomeScreenshotTest {
     private fun render(dark: Boolean, name: String) {
         rule.setContent {
             IdsTheme(darkTheme = dark) {
-                ProtoHomeContent(state, true, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})
+                ProtoHomeContent(state, true, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})
             }
         }
         rule.onRoot().captureRoboImage("build/screenshots/$name.png")
