@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -52,6 +53,12 @@ internal fun BankHubHeader(
                 Text(" $currency", color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(bottom = 3.dp))
             }
         }
+        Text(
+            "Interest 1,462 $currency so far", color = Ids.colors.textBrand, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 24.dp),
+        )
+        Spacer(Modifier.height(16.dp))
+        RecentActivity()
         Spacer(Modifier.height(16.dp))
         Row(Modifier.padding(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Box(
@@ -64,5 +71,28 @@ internal fun BankHubHeader(
             ) { Text("Send", color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold) }
         }
         Spacer(Modifier.height(20.dp))
+    }
+}
+
+// Dummy recent activity, as in the prototype, until the hub reads real transactions.
+private data class RecentRow(val date: String, val emoji: String, val name: String, val amount: String, val incoming: Boolean)
+
+private val recentRows = listOf(
+    RecentRow("12 Nov", "\uD83D\uDE0A", "Amina K.", "+25,000 RWF", true),
+    RecentRow("", "\uD83C\uDFE0", "Rent", "\u2212150,000 RWF", false),
+    RecentRow("", "\uD83D\uDE42", "Jean Paul", "\u221230,000 RWF", false),
+)
+
+@Composable
+private fun RecentActivity() {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        recentRows.forEach { r ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(r.date, color = Ids.colors.textTertiary, fontSize = 14.sp, modifier = Modifier.width(52.dp))
+                Text(r.emoji, fontSize = 20.sp)
+                Text(r.name, color = Ids.colors.textPrimary, fontSize = 16.sp, modifier = Modifier.weight(1f).padding(start = 10.dp))
+                Text(r.amount, color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+        }
     }
 }
