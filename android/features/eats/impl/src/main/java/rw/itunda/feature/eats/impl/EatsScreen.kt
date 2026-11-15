@@ -503,12 +503,8 @@ internal fun OrderFoodContent(
                     )
                 }
             } else {
-                items(restaurants!!, key = { it.merchantId }) { m ->
-                    RestaurantCard(
-                        m, isFavorite = m.merchantId in favoriteIds, favoriteBusy = favoritingId == m.merchantId,
-                        onOpen = { openRestaurant(m) }, onToggleFavorite = { toggleFavorite(m.merchantId) },
-                        isScrollTouched = eatsTouchedKey.value == m.merchantId,
-                    )
+                items(restaurants!!.chunked(2), key = { row -> row.first().merchantId }) { row ->
+                    EatsRestaurantGridRow(row, favoriteIds, onOpen = { openRestaurant(it) }, onToggleFavorite = { toggleFavorite(it.merchantId) })
                 }
             }
         }

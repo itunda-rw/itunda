@@ -48,4 +48,21 @@ class EatsScreenshotTest {
         }
         rule.onRoot().captureRoboImage("build/screenshots/eats-menu-rows.png")
     }
+
+    @Test fun restaurantGrid() {
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                Column(Modifier.fillMaxSize().background(Ids.colors.background).padding(20.dp)) {
+                    rw.itunda.feature.eats.impl.EatsRestaurantGridRow(
+                        listOf(
+                            rw.itunda.core.network.ShoppingMerchantDto("a", "Kigali Bakery", "Bakery", "2%", rating = 4.8, reviewCount = 320, deliveryTimeMinutes = 20, participatesInEatsMembership = true),
+                            rw.itunda.core.network.ShoppingMerchantDto("b", "Inka Fried Chicken", "Local", "2%", rating = 4.6, reviewCount = 389, deliveryTimeMinutes = 25, minOrderAmount = 1000.0, maxDiscountPercent = 20),
+                        ),
+                        setOf("a"), {}, {},
+                    )
+                }
+            }
+        }
+        rule.onRoot().captureRoboImage("build/screenshots/eats-grid.png")
+    }
 }
