@@ -18,8 +18,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalance
-import androidx.compose.material.icons.outlined.AccountBalanceWallet
-import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
@@ -40,6 +38,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
 import rw.itunda.core.designsystem.components.IdsAppBarTitle
+import rw.itunda.core.designsystem.components.ItundaArt
+import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.components.IdsIconButton
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
@@ -141,10 +141,10 @@ private fun AccountSwitcherSheet(onDismiss: () -> Unit, onOpenOverview: () -> Un
                 modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpenAccount).padding(horizontal = 18.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Outlined.AccountBalanceWallet, contentDescription = null, modifier = Modifier.size(22.dp), tint = Ids.colors.brand)
+                ItundaArt("wallet", ItundaArtSet.Line, size = 22.dp, tint = Ids.colors.brand)
                 Spacer(modifier = Modifier.width(12.dp))
                 Text("itunda Bank account", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                Icon(Icons.Outlined.CheckCircle, contentDescription = stringResource(R.string.home_current_account), modifier = Modifier.size(18.dp), tint = Ids.colors.brand)
+                ItundaArt("check", ItundaArtSet.Line, size = 18.dp, tint = Ids.colors.brand)
             }
             when {
                 linkedAccounts == null -> {}
