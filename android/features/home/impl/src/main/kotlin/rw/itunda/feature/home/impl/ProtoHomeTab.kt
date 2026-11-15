@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalConfiguration
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
@@ -34,11 +35,12 @@ internal fun ProtoHomeTab(
     onOpenRewards: () -> Unit,
 ) {
     val today = LocalDate.now()
+    val locale = LocalConfiguration.current.locales[0] ?: Locale.getDefault()
     var state by remember {
         mutableStateOf(
             ProtoHomeState(
                 bankBalance = 0.0, payBalance = 0.0, interestDays = null, spentThisMonth = 0.0,
-                monthName = today.month.getDisplayName(TextStyle.FULL, Locale.ENGLISH),
+                monthName = today.month.getDisplayName(TextStyle.FULL, locale),
                 week = weekSpend(emptyList(), "", today), bill = null, earned = 0.0,
             ),
         )
