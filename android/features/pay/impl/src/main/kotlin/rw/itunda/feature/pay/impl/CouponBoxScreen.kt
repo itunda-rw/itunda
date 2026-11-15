@@ -109,8 +109,9 @@ fun CouponBoxScreen(onBack: () -> Unit, onBrowseMerchants: () -> Unit) {
         } else if (tab == CouponTab.RECEIVED) {
             if (received.isEmpty()) {
                 Column(Modifier.fillMaxWidth().padding(top = 48.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    EmptyState(message = stringResource(R.string.pay_coupons_empty_title))
-                    Text(stringResource(R.string.pay_coupons_empty_subtitle), color = Ids.colors.textSecondary, fontSize = 13.sp)
+                    Text("\uD83C\uDFAB", fontSize = 56.sp)
+                    Text(stringResource(R.string.pay_coupons_empty_title), color = Ids.colors.textPrimary, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 16.dp, bottom = 6.dp))
+                    Text(stringResource(R.string.pay_coupons_empty_subtitle), color = Ids.colors.textSecondary, fontSize = 14.sp)
                     Spacer(Modifier.height(16.dp))
                     IdsButton(text = stringResource(R.string.pay_coupons_find_new), onClick = onBrowseMerchants)
                 }

@@ -18,6 +18,7 @@ import rw.itunda.feature.pay.impl.PayPointsScreen
 import rw.itunda.feature.pay.impl.PayDoneScreen
 import rw.itunda.feature.pay.impl.PaySettingsScreen
 import rw.itunda.feature.pay.impl.PayAmountScreen
+import rw.itunda.feature.pay.impl.AddMoneyScreen
 import rw.itunda.feature.pay.impl.PayHub
 import rw.itunda.feature.pay.impl.ProtoPayContent
 import rw.itunda.feature.pay.impl.ProtoPayMode
@@ -69,4 +70,9 @@ class PayScreenshotTest {
     @Test fun settings() = shot("settings") { PaySettingsScreen({}) }
     @Test fun amount() = shot("amount") { PayAmountScreen("Amina K.", {}, {}) }
     @Test fun scanChips() = render(false, "pay-scan-chips-light", ProtoPayMode.SCAN)
+    @Test fun topUp() = shot("topup") {
+        val bank = rw.itunda.core.network.Account("b", "u", "0001", "itunda Bank", null, "SAVINGS", 842300.0, 842300.0, "RWF", true)
+        val pay = rw.itunda.core.network.Account("p", "u", "0002", "itunda Pay", null, "PAY", 120500.0, 120500.0, "RWF", true)
+        AddMoneyScreen(pay, listOf(bank), {}, {})
+    }
 }
