@@ -121,7 +121,6 @@ internal fun HomeMoneyOverview(
                 modifier = Modifier.padding(bottom = 4.dp),
             )
         }
-        WeekSpendChart(week, hidden)
         Spacer(modifier = Modifier.height(12.dp))
         rwfAccounts.sortedByDescending { it.balance }.take(3).forEach { account ->
             MoneyRow(
