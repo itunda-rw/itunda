@@ -76,7 +76,7 @@ data class ProtoHomeState(
     val today: java.time.LocalDate = java.time.LocalDate.now(),
 )
 
-internal fun rwf(v: Double) = String.format(Locale.US, "%,.0f", v)
+internal fun homeRwf(v: Double) = String.format(Locale.US, "%,.0f", v)
 
 private data class HomeCopy(
     val bank:String,val pay:String,val send:String,val add:String,val quick:String,val scan:String,val bills:String,val airtime:String,
@@ -107,13 +107,13 @@ if(inviteShown) item{HomeInviteBanner(onInvite){inviteShown=false}}
 item{Column(Modifier.fillMaxWidth().padding(horizontal=24.dp).padding(top=8.dp)){
 Row(Modifier.fillMaxWidth().clickable(onClick=onOpenSpending),verticalAlignment=Alignment.CenterVertically){
 Column(Modifier.weight(1f)){
-Row(verticalAlignment=Alignment.Bottom){Text(rwf(state.spentThisMonth),color=Ids.colors.textPrimary,fontSize=24.sp,fontWeight=FontWeight.ExtraBold);Text(" RWF",color=Ids.colors.textSecondary,fontSize=14.sp,modifier=Modifier.padding(bottom=3.dp))}
+Row(verticalAlignment=Alignment.Bottom){Text(homeRwf(state.spentThisMonth),color=Ids.colors.textPrimary,fontSize=24.sp,fontWeight=FontWeight.ExtraBold);Text(" RWF",color=Ids.colors.textSecondary,fontSize=14.sp,modifier=Modifier.padding(bottom=3.dp))}
 Text("Spent in ${state.monthName}",color=Ids.colors.textSecondary,fontSize=15.sp)}
 ItundaArt("chev",ItundaArtSet.Line,18.dp,tint=Ids.colors.textTertiary)}
 Spacer(Modifier.height(16.dp));ProtoWeekChart(state.week,state.today)
 }}
-state.bill?.let{b->item{HomeRow("bill",b.title,"Due ${b.due} · ${rwf(b.amount)} RWF","Pay",onPayBill)}}
-item{HomeRow("gift","${rwf(state.earned)} RWF earned","Points and coupons","View",onOpenRewards)}
+state.bill?.let{b->item{HomeRow("bill",b.title,"Due ${b.due} · ${homeRwf(b.amount)} RWF","Pay",onPayBill)}}
+item{HomeRow("gift","${homeRwf(state.earned)} RWF earned","Points and coupons","View",onOpenRewards)}
 item{HomeSectionHeader("Pockets","See all",onSavings)}
 item{HomeRow("school-fees","School fees","120,000 RWF","Top up",onSavings)}
 item{HomeRow("lock","Emergency fund","50,000 RWF","Top up",onSavings)}

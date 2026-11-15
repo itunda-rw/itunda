@@ -65,7 +65,7 @@ private fun HomeBalanceRow(art: String, amount: Double, label: String, extra: St
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(rwf(amount), color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+                Text(homeRwf(amount), color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
                 Text(" RWF", color = Ids.colors.textSecondary, fontSize = 14.sp, modifier = Modifier.padding(bottom = 2.dp))
             }
             Row { Text(label, color = Ids.colors.textSecondary, fontSize = 14.sp); if (extra != null) Text(" $extra", color = Ids.colors.textBrand, fontSize = 14.sp) }
