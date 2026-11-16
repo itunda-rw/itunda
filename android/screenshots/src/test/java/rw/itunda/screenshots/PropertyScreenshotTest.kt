@@ -1,5 +1,6 @@
 package rw.itunda.screenshots
 
+import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
@@ -77,5 +78,20 @@ class PropertyScreenshotTest {
             }
         }
         rule.onRoot().captureRoboImage("build/screenshots/community-rows.png")
+    }
+
+    @Test fun communityDetail() {
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                Column(Modifier.fillMaxSize().background(Ids.colors.background).padding(20.dp)) {
+                    rw.itunda.feature.community.impl.CommunityPostHeader("Claire U.", "Remera · 1 h", "Ask")
+                    Text("Does anyone know a good plumber in Remera? Our tap has been leaking all week.", Modifier.padding(top = 10.dp))
+                    Text("Replies · 2", Modifier.padding(top = 24.dp))
+                    rw.itunda.feature.community.impl.CommunityReplyRow("Jean P.", "Try the plumber near Remera market, he came the same day for me.")
+                    rw.itunda.feature.community.impl.CommunityReplyRow("Sandrine K.", "I can send you his number.")
+                }
+            }
+        }
+        rule.onRoot().captureRoboImage("build/screenshots/community-detail.png")
     }
 }
