@@ -73,6 +73,11 @@ class EatsScreenshotTest {
                     rw.itunda.feature.eats.impl.EatsSearchHeader("", {}, listOf("Brochette", "Chicken", "Pizza", "Burgers"), null, {})
                     rw.itunda.feature.eats.impl.EatsPromoBanner(Modifier.padding(top = 14.dp))
                     rw.itunda.feature.eats.impl.EatsQuickActions({}, {}, {}, Modifier.padding(top = 14.dp))
+                    androidx.compose.foundation.layout.Row(Modifier.padding(top = 14.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
+                        rw.itunda.feature.eats.impl.EatsSortChip("Fastest", null, true) {}
+                        rw.itunda.feature.eats.impl.EatsSortChip("Top rated", null, false) {}
+                        rw.itunda.feature.eats.impl.EatsSortChip("Max discount", null, false) {}
+                    }
                 }
             }
         }

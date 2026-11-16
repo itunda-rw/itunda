@@ -110,18 +110,20 @@ internal fun EatsCategoryIconRow(categories: List<String>, selectedCategory: Str
 @Composable
 internal fun EatsSortChip(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector?, active: Boolean, onClick: () -> Unit) {
     Row(
-        modifier = Modifier.pressScaleClickable(onClick = onClick),
+        modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(if (active) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
+            .pressScaleClickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
-            Icon(icon, contentDescription = null, tint = if (active) Ids.colors.brand else Ids.colors.textSecondary, modifier = Modifier.size(16.dp))
+            Icon(icon, contentDescription = null, tint = if (active) Ids.colors.background else Ids.colors.textSecondary, modifier = Modifier.size(16.dp))
             Spacer(modifier = Modifier.width(4.dp))
         }
         Text(
             label,
-            color = if (active) Ids.colors.brand else Ids.colors.textSecondary,
-            fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
-            fontSize = 13.sp,
+            color = if (active) Ids.colors.background else Ids.colors.textSecondary,
+            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp,
+            maxLines = 1, softWrap = false,
         )
     }
 }

@@ -197,9 +197,9 @@ internal fun OrderFoodContent(
                 val res = NetworkClient.apiService.getShoppingMerchants(
                     category = selectedCategory, businessType = "RESTAURANT", q = searchInput.trim().ifBlank { null },
                     buyerLat = browseLocation?.first, buyerLng = browseLocation?.second,
-                    sortBy = sortMode,
+                    sortBy = sortMode?.takeIf { it != "rating" },
                 )
-                if (res.success) restaurants = res.merchants
+                if (res.success) restaurants = if (sortMode == "rating") res.merchants.sortedByDescending { it.rating ?: 0.0 } else res.merchants
                 error = null
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
@@ -456,12 +456,13 @@ internal fun OrderFoodContent(
             // "Discount"/"Low min order" are real, always-available signals adapting
             // the reference's own quick-filter chip row.
             item {
-                Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (browseLocation != null) {
                         EatsSortChip("Fastest", Icons.Outlined.Bolt, active = sortMode == "delivery_time") {
                             sortMode = if (sortMode == "delivery_time") null else "delivery_time"
                         }
                     }
+                    EatsSortChip("Top rated", null, active = sortMode == "rating") { sortMode = if (sortMode == "rating") null else "rating" }
                     EatsSortChip("Max discount", null, active = sortMode == "discount") { sortMode = if (sortMode == "discount") null else "discount" }
                     EatsSortChip("Low min order", null, active = sortMode == "min_order") { sortMode = if (sortMode == "min_order") null else "min_order" }
                 }
