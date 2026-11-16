@@ -530,8 +530,8 @@ fun CommunityContent(
 // raw ISO string on any parse failure, never a fabricated date.
 private fun formatMeetupDate(iso: String): String = try {
     val instant = java.time.Instant.parse(iso)
-    val local = instant.atZone(java.time.ZoneOffset.UTC)
-    "%04d-%02d-%02d %02d:%02d".format(local.year, local.monthValue, local.dayOfMonth, local.hour, local.minute)
+    val local = instant.atZone(java.time.ZoneId.of("Africa/Kigali"))
+    "${local.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.ENGLISH)} %02d:%02d".format(local.hour, local.minute)
 } catch (e: Exception) {
     iso
 }
@@ -739,7 +739,7 @@ fun CommunityPostCard(
                 } else {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         ListingActionButton("View meetup", busy, onClick = onOpen)
-                        ListingActionButton(if (joining) "Joining…" else "참여하기 · $joinedCount joined", joining, filled = true, onClick = onJoin)
+                        ListingActionButton(if (joining) "Joining…" else "Join · $joinedCount going", joining, filled = true, onClick = onJoin)
                     }
                 }
             }
