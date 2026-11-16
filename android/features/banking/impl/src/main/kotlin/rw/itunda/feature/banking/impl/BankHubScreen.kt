@@ -375,6 +375,7 @@ fun BankHubEntryPoint(
                         add(ShellRow("12-month deposit", "", "$BANK_HUB_UPFRONT_DEPOSIT_ANNUAL_RATE%", Icons.Outlined.Lock, AccentPurple, onClick = onOpenUpfrontDeposit, caption = "12 months"))
                         add(ShellRow("SACCO shares", "", "6%", Icons.Outlined.AccountBalance, AccentPurple, onClick = onOpenSacco, caption = "dividend"))
                         add(ShellRow("Investments", "", ">", Icons.Outlined.TrendingUp, AccentTeal, onClick = onOpenInvest))
+                        add(ShellRow("School fees", "", "40%", Icons.Outlined.School, AccentTeal, onClick = { bankSub = BankSub.POCKETS }))
                     }
                 )
             }

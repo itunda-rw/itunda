@@ -8,6 +8,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollTo
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -57,6 +59,31 @@ class BankScreenshotTest {
         }
         rule.onRoot().captureRoboImage("build/screenshots/bank-light.png")
     }
+
+    private fun hubScrolled(target: String, name: String) {
+        val account = Account("a1", "u1", "00001980", "itunda Bank", null, "SAVINGS", 842300.0, 842300.0, "RWF", true)
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                Box(Modifier.fillMaxSize().background(Ids.colors.background)) {
+                    BankHubEntryPoint(
+                        primaryAccount = account, savingsGoals = emptyList(), interestJar = null, roundUpSettings = null, spendingInsight = null,
+                        onSetRoundUpSettings = { _, _, _, _ -> MoneyActionResult.Success("") },
+                        onCreateSavingsGoal = { _, _, _, _ -> MoneyActionResult.Success("") },
+                        onBack = {}, onDepositToGoal = { _, _ -> }, onWithdrawFromGoal = { _, _, _ -> }, onClaimInterest = {},
+                        onOpenSacco = {}, onOpenIkimina = {}, onOpenMotoOwnership = {}, onOpenHarvestAdvance = {}, onOpenLoans = {},
+                        onOpenInvest = {}, onOpenWeeklySavings = {}, onOpenGrow31Savings = {}, onOpenUpfrontDeposit = {},
+                        onOpenVupLoan = {}, onOpenStudentLoan = {},
+                    )
+                }
+            }
+        }
+        rule.onNodeWithText(target).performScrollTo()
+        rule.onRoot().captureRoboImage("build/screenshots/bank-hub-$name.png")
+    }
+
+    @Test fun hubSavings() = hubScrolled("School fees", "savings")
+    @Test fun hubLoans() = hubScrolled("Moto-Taxi Ownership", "loans")
+    @Test fun hubServices() = hubScrolled("Report a problem", "services")
 
     @Test fun grow31Light() {
         rule.setContent {

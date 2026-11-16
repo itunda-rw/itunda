@@ -154,7 +154,7 @@ internal fun BankBudgetScreen(onBack: () -> Unit) {
             Text(if (budget == 0L) "Set a monthly budget to see how much is left." else "${rwf((budget - spent).coerceAtLeast(0))} RWF left of ${rwf(budget)}", color = Ids.colors.textTertiary, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
             Text("Monthly budget", color = Ids.colors.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 28.dp, bottom = 10.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf(0L, 100_000L, 300_000L, 500_000L, 1_000_000L).forEach { v -> BankChip(if (v == 0L) "None" else rwf(v), budget == v, { budget = v }, Modifier.weight(1f), compact = true) }
+                listOf(0L, 100_000L, 300_000L, 500_000L, 1_000_000L).forEach { v -> BankChip(when (v) { 0L -> "None"; 1_000_000L -> "1M"; else -> "${v / 1000}K" }, budget == v, { budget = v }, Modifier.weight(1f), compact = true) }
             }
             Row(Modifier.fillMaxWidth().padding(top = 20.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("Alert me at 80% of my budget", Modifier.weight(1f), color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
