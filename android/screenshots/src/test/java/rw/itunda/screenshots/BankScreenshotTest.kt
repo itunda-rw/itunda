@@ -119,8 +119,8 @@ class BankScreenshotTest {
         rule.onRoot().captureRoboImage("build/screenshots/score-light.png")
     }
 
-    private fun sub(sub: BankSub, name: String) {
-        rule.setContent { IdsTheme(darkTheme = false) { BankSubOverlay(sub, onClose = {}, onOpen = {}) } }
+    private fun sub(sub: BankSub, name: String, dark: Boolean = false) {
+        rule.setContent { IdsTheme(darkTheme = dark) { Box(Modifier.fillMaxSize().background(Ids.colors.background)) { BankSubOverlay(sub, onClose = {}, onOpen = {}) } } }
         rule.onRoot().captureRoboImage("build/screenshots/bank-$name.png")
     }
 
@@ -139,4 +139,10 @@ class BankScreenshotTest {
     @Test fun subPockets() = sub(BankSub.POCKETS, "pockets")
     @Test fun subManage() = sub(BankSub.MANAGE, "manage")
     @Test fun subLimits() = sub(BankSub.LIMITS, "limits")
+    @Test fun darkAccount() = sub(BankSub.ACCOUNT, "dark-account", dark = true)
+    @Test fun darkSend() = sub(BankSub.SEND, "dark-send", dark = true)
+    @Test fun darkPockets() = sub(BankSub.POCKETS, "dark-pockets", dark = true)
+    @Test fun darkCards() = sub(BankSub.CARDS, "dark-cards", dark = true)
+    @Test fun darkManage() = sub(BankSub.MANAGE, "dark-manage", dark = true)
+    @Test fun darkLimits() = sub(BankSub.LIMITS, "dark-limits", dark = true)
 }
