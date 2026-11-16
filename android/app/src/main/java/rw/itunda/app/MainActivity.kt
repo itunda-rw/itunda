@@ -229,7 +229,15 @@ class MainActivity : FragmentActivity() {
                             }
                             is SessionState.LoggedOut -> {
                                 AppUnlockState.unlockedThisProcess = false
-                                LoginScreen(onLoggedIn = {})
+                                if (BuildConfig.DEBUG) {
+                                    // UI/UX preview mode: let debug builds open the canonical
+                                    // v1038 consumer prototype without a backend session.
+                                    // This is intentionally debug-only; release builds retain
+                                    // the real login gate and never receive this bypass.
+                                    PrototypeParityScreen()
+                                } else {
+                                    LoginScreen(onLoggedIn = {})
+                                }
                             }
                         }
                         // Real Toss TDS Toast component, mounted once at the true app
