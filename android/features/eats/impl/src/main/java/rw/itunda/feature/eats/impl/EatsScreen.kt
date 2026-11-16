@@ -50,7 +50,6 @@ import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
-import rw.itunda.core.designsystem.components.SearchAndCategoryChips
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.DineInOrderDto
@@ -428,10 +427,9 @@ internal fun OrderFoodContent(
             // below still does the actual filtering; this is the same real
             // selectedCategory state, just a second, visually-matched way to reach it.
             item {
-                SearchAndCategoryChips(
+                EatsSearchHeader(
                     searchInput = searchInput,
                     onSearchChange = { searchInput = it },
-                    placeholder = "Search restaurants",
                     categories = categories,
                     selectedCategory = selectedCategory,
                     onSelectCategory = { c -> selectedCategory = if (c == selectedCategory) null else c },

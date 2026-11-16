@@ -66,6 +66,22 @@ class EatsScreenshotTest {
         rule.onRoot().captureRoboImage("build/screenshots/eats-grid.png")
     }
 
+    private fun header(dark: Boolean, name: String) {
+        rule.setContent {
+            IdsTheme(darkTheme = dark) {
+                Column(Modifier.fillMaxSize().background(Ids.colors.background).padding(20.dp)) {
+                    rw.itunda.feature.eats.impl.EatsSearchHeader("", {}, listOf("Brochette", "Chicken", "Pizza", "Burgers"), null, {})
+                    rw.itunda.feature.eats.impl.EatsPromoBanner(Modifier.padding(top = 14.dp))
+                    rw.itunda.feature.eats.impl.EatsQuickActions({}, {}, {}, Modifier.padding(top = 14.dp))
+                }
+            }
+        }
+        rule.onRoot().captureRoboImage("build/screenshots/eats-$name.png")
+    }
+
+    @Test fun headerLight() = header(false, "header-light")
+    @Test fun headerDark() = header(true, "header-dark")
+
     @Test fun popularRail() {
         rule.setContent {
             IdsTheme(darkTheme = false) {
