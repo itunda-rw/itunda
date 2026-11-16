@@ -123,8 +123,14 @@ fun PrototypeParityScreen(modifier: Modifier = Modifier) {
                                 if (!root || !root.innerHTML.trim()) throw new Error('v1038 consumer app did not render #phone #view');
                                 return JSON.stringify({status:'rendered', title:document.title, viewport:innerWidth+'x'+innerHeight, screen:root.querySelector('.screen')?.id || null});
                               } catch (e) {
+                                const detail = String(e && (e.message || e) || 'Unknown startup error');
                                 console.error('Itunda v1038 startup failed', e && e.stack || e);
-                                return 'startup failed: ' + String(e);
+                                const root = document.querySelector('#phone #view');
+                                const target = root || document.body;
+                                target.innerHTML = '<div style="min-height:100vh;box-sizing:border-box;padding:32px 24px;background:#fff;color:#16181D;font:16px/1.5 system-ui,sans-serif"><div style="font-size:22px;font-weight:750;margin:12px 0">Itunda could not open</div><p style="color:#596273">The consumer screen did not finish starting. Reload this screen to try again.</p><p style="font-size:12px;color:#8A3440;overflow-wrap:anywhere"></p><button onclick="location.reload()" style="margin-top:16px;border:0;border-radius:14px;background:#8F89FF;color:#fff;padding:14px 20px;font:inherit;font-weight:700">Reload screen</button></div>';
+                                const message = target.querySelector('p:last-of-type');
+                                if (message) message.textContent = detail;
+                                return 'startup failed: ' + detail;
                               }
                             })();
                             """.trimIndent(),
