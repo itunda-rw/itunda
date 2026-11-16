@@ -63,7 +63,7 @@ fun CreditScoreBody(score: Int, factors: List<ScoreFactor>) {
     Text("What shapes your score", color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
     factors.forEach { FactorBar(it) }
     Spacer(Modifier.height(28.dp))
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Ids.colors.surfaceSoft).padding(20.dp)) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Ids.colors.brand.copy(alpha = 0.12f)).padding(20.dp)) {
         Text("Tip", color = Ids.colors.textTertiary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(6.dp))
         Text(

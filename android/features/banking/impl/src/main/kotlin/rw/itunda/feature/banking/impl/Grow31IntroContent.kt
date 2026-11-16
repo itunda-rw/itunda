@@ -66,8 +66,14 @@ fun Grow31IntroContent(onContinue: (dailyAmount: Long) -> Unit) {
                 }
             }
             Text(
-                "$TERM_DAYS days × ${String.format(Locale.US, "%,d", daily)} = ${String.format(Locale.US, "%,d", daily * TERM_DAYS)} RWF",
-                color = Ids.colors.textTertiary, fontSize = 14.sp,
+                androidx.compose.ui.text.buildAnnotatedString {
+                    append("$TERM_DAYS days × ${String.format(Locale.US, "%,d", daily)} = ")
+                    pushStyle(androidx.compose.ui.text.SpanStyle(color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold))
+                    append("${String.format(Locale.US, "%,d", daily * TERM_DAYS)} RWF")
+                    pop()
+                    append(" · itunda Bank balance 842,300 RWF")
+                },
+                color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 20.sp,
             )
         },
         cta = { IdsButton(text = "Next", onClick = { onContinue(daily) }) },
