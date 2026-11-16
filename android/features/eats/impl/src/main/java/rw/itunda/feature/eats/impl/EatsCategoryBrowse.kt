@@ -108,7 +108,7 @@ internal fun EatsCategoryIconRow(categories: List<String>, selectedCategory: Str
 // Real Baemin/Coupang Eats-style sort chip (itunda Eats redesign, 2026-08-28) --
 // see EatsScreen.kt's own sortMode doc comment for the full account.
 @Composable
-internal fun EatsSortChip(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector?, active: Boolean, onClick: () -> Unit) {
+fun EatsSortChip(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector?, active: Boolean, onClick: () -> Unit) {
     Row(
         modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(if (active) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
             .pressScaleClickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 10.dp),
