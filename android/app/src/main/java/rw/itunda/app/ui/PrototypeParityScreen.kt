@@ -108,15 +108,20 @@ fun PrototypeParityScreen(modifier: Modifier = Modifier) {
                             """
                             (function() {
                               try {
-                                if (typeof S !== 'undefined' && typeof render === 'function') {
-                                  S.auth = true;
-                                  S.stack = [];
-                                  S.tab = 'home';
-                                  render('fade-none');
+                                // The prototype keeps its app state in top-level lexical bindings.
+                                // Enter through its own public shortcut so the call runs in the
+                                // same document scope as S and render(), rather than trying to
+                                // reach those lexical bindings from Android's JS evaluator.
+                                if (typeof window.obSkip === 'function') {
+                                  window.obSkip();
+                                } else if (typeof window.loginOk === 'function') {
+                                  window.loginOk();
+                                } else {
+                                  throw new Error('v1038 prototype startup hook is unavailable');
                                 }
                                 const root = document.querySelector('#phone #view');
                                 if (!root || !root.innerHTML.trim()) throw new Error('v1038 consumer app did not render #phone #view');
-                                return JSON.stringify({status:'rendered', title:document.title, viewport:innerWidth+'x'+innerHeight});
+                                return JSON.stringify({status:'rendered', title:document.title, viewport:innerWidth+'x'+innerHeight, screen:root.querySelector('.screen')?.id || null});
                               } catch (e) {
                                 console.error('Itunda v1038 startup failed', e && e.stack || e);
                                 return 'startup failed: ' + String(e);
