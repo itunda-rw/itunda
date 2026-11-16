@@ -780,7 +780,7 @@ data class ConversationSummaryDto(
     val lastMessagePreview: String?,
     val unreadCount: Int,
     val quiet: Boolean = false,
-    val source: String? = null, // chat origin: "market", "jobs", "homes", "neighbours"; null = plain chat
+    val source: String? = null, val neighborhood: String? = null, // chat origin: "market"/"jobs"/"homes"/"neighbours" (null = plain) + other party's neighbourhood
     val pinnedMessageId: String? = null,
     // Real recoverable archive (2026-08-05), private-to-me like quiet -- see backend ConversationPreference.archived.
     val archived: Boolean = false,

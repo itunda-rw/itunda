@@ -76,14 +76,18 @@ internal fun ProtoChatRow(conversation: ConversationSummaryDto, online: Boolean,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(48.dp), contentAlignment = Alignment.BottomEnd) {
-            ChatFace(conversation.otherUserName, 48)
+            val sourceArt = when (conversation.source) { "market" -> "bike"; "jobs" -> "bag"; "homes" -> "house"; else -> null }
+            if (sourceArt != null) {
+                Box(Modifier.size(48.dp).clip(CircleShape).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) { ItundaArt(sourceArt, ItundaArtSet.Color, 28.dp) }
+                Box(Modifier.size(18.dp).clip(CircleShape).background(Ids.colors.background).padding(2.dp), contentAlignment = Alignment.Center) { ItundaArt("user", ItundaArtSet.Line, 12.dp, tint = Ids.colors.textTertiary) }
+            } else ChatFace(conversation.otherUserName, 48)
             if (online) Box(Modifier.size(12.dp).clip(CircleShape).background(Ids.colors.background).padding(2.dp).clip(CircleShape).background(Ids.colors.success))
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(conversation.otherUserName, color = Ids.colors.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                Text("  ${chatTimeLabel(conversation.lastMessageAt)}", color = Ids.colors.textTertiary, fontSize = 15.sp, maxLines = 1)
+                Text("  ${listOfNotNull(conversation.neighborhood, chatTimeLabel(conversation.lastMessageAt)).joinToString(" · ")}", color = Ids.colors.textTertiary, fontSize = 14.sp, maxLines = 1)
             }
             Text(
                 conversation.lastMessagePreview ?: "No messages yet",
