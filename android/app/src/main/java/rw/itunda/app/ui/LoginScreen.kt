@@ -125,7 +125,7 @@ private enum class AuthStage { PHONE, NOT_FOUND, NAME, TERMS, PASSWORD }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun LoginScreen(onLoggedIn: () -> Unit) {
+fun LoginScreen(onLoggedIn: () -> Unit, onSkipLogin: (() -> Unit)? = null) {
     val baseContext = LocalContext.current
     val locale by AppLocalePreference.locale.collectAsState()
     val isImeVisible = WindowInsets.isImeVisible
@@ -335,6 +335,11 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                     Spacer(modifier = Modifier.weight(1f))
                     StepDots(total = stepCount, current = stepIndex)
                     Spacer(modifier = Modifier.weight(1f))
+                    if (onSkipLogin != null) {
+                        TextButton(onClick = onSkipLogin) {
+                            Text("Skip login", color = Ids.colors.textPrimary)
+                        }
+                    }
                     LanguageSwitcher(
                         locale = locale,
                         onLocaleChange = { next -> AppLocalePreference.set(baseContext, next) },
