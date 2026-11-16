@@ -17,6 +17,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -71,12 +74,14 @@ internal fun BankDepositScreen(onBack: () -> Unit) {
             Text("Free and instant.", color = Ids.colors.textTertiary, fontSize = 14.sp)
             Spacer(Modifier.height(16.dp))
             AddChips(listOf(10_000, 20_000, 50_000, 100_000)) { amount += it }
-            BankSectionLabel("From")
+            Text("From", color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 24.dp, bottom = 10.dp))
             listOf("MTN MoMo" to Color(0xFFFFCC00), "Airtel Money" to Color(0xFFE4262B)).forEachIndexed { i, (name, c) ->
                 Row(Modifier.fillMaxWidth().pressScaleClickable { from = i }.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(36.dp).clip(CircleShape).background(c))
                     Text(name, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f).padding(start = 16.dp))
-                    Box(Modifier.size(24.dp).clip(CircleShape).background(if (from == i) Ids.colors.brand else Ids.colors.surfaceSoft))
+                    Box(Modifier.size(24.dp).clip(CircleShape).background(if (from == i) Ids.colors.brand else Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(14.dp), tint = if (from == i) Color.White else Ids.colors.textTertiary)
+                    }
                 }
             }
         }
@@ -98,7 +103,7 @@ internal fun BankSendScreen(onBack: () -> Unit) {
             BankSectionLabel("Bank")
             banks.chunked(2).forEachIndexed { r, pair ->
                 Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    pair.forEachIndexed { c, b -> BankChip(b, bank == r * 2 + c, { bank = r * 2 + c }, Modifier.weight(1f)) }
+                    pair.forEachIndexed { c, b -> BankChip(b, bank == r * 2 + c, { bank = r * 2 + c }, Modifier.weight(1f), art = "bank") }
                 }
             }
             BankSectionLabel("Account number")

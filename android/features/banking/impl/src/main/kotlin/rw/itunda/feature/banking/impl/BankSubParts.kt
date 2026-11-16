@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -48,19 +49,24 @@ internal fun BankSubTopBar(title: String, onBack: () -> Unit, trailing: @Composa
 internal fun BankSubCta(label: String, enabled: Boolean = true, onClick: () -> Unit) {
     Box(
         Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp).height(56.dp).clip(RoundedCornerShape(16.dp))
-            .background(if (enabled) Ids.colors.brand else Ids.colors.brand.copy(alpha = 0.3f))
+            .background(if (enabled) Ids.colors.brand else Ids.colors.brand.copy(alpha = 0.12f))
             .then(if (enabled) Modifier.pressScaleClickable(onClick = onClick) else Modifier),
         contentAlignment = Alignment.Center,
-    ) { Text(label, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold) }
+    ) { Text(label, color = if (enabled) Ids.colors.textPrimary else Ids.colors.brand.copy(alpha = 0.7f), fontSize = 17.sp, fontWeight = FontWeight.ExtraBold) }
 }
 
 @Composable
-internal fun BankChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, compact: Boolean = false) {
+internal fun BankChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, compact: Boolean = false, art: String? = null) {
     Box(
         modifier.clip(RoundedCornerShape(50)).background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
             .pressScaleClickable(onClick = onClick).padding(horizontal = if (compact) 4.dp else 12.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center,
-    ) { Text(label, color = if (selected) Ids.colors.background else Ids.colors.textPrimary, fontSize = if (compact) 12.sp else 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false) }
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (art != null) { ItundaArt(art, ItundaArtSet.Color, 22.dp); Spacer(Modifier.width(8.dp)) }
+            Text(label, color = if (selected) Ids.colors.background else Ids.colors.textPrimary, fontSize = if (compact) 12.sp else 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+        }
+    }
 }
 
 @Composable
