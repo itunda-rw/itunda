@@ -70,8 +70,8 @@ internal fun BankChip(label: String, selected: Boolean, onClick: () -> Unit, mod
 }
 
 @Composable
-internal fun BankSectionLabel(text: String) {
-    Text(text, color = Ids.colors.textTertiary, fontSize = 14.sp, modifier = Modifier.padding(top = 24.dp, bottom = 10.dp))
+internal fun BankSectionLabel(text: String, strong: Boolean = false) {
+    Text(text, color = if (strong) Ids.colors.textPrimary else Ids.colors.textTertiary, fontSize = 14.sp, fontWeight = if (strong) FontWeight.Bold else null, modifier = Modifier.padding(top = 24.dp, bottom = 10.dp))
 }
 
 /** Local confirmation shown after a dummy action, so every flow ends somewhere. */

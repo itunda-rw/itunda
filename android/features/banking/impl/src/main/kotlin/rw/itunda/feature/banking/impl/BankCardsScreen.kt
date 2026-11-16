@@ -40,7 +40,7 @@ internal fun BankCardRow(onClick: () -> Unit) {
 private class CardRow(val name: String, val balance: String, val from: Color, val to: Color)
 
 private val cardRows = listOf(
-    CardRow("itunda Pay Money", "120,000 RWF", Color(0xFF3DF58A), Color(0xFF06A845)),
+    CardRow("itunda Pay Money", "120,500 RWF", Color(0xFF3DF58A), Color(0xFF06A845)),
     CardRow("itunda Bank", "842,300 RWF", Color(0xFFA9A5FF), Color(0xFF4B43C9)),
 )
 
@@ -52,9 +52,12 @@ internal fun BankCardsScreen(onBack: () -> Unit) {
         Column(Modifier.padding(horizontal = 24.dp).padding(top = 8.dp)) {
             cardRows.forEach { c ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.width(44.dp).height(30.dp).clip(RoundedCornerShape(7.dp)).background(Brush.linearGradient(listOf(c.from, c.to))))
+                    Box(Modifier.width(64.dp).height(40.dp).clip(RoundedCornerShape(8.dp)).background(Brush.linearGradient(listOf(c.from, c.to))).padding(7.dp)) {
+                        Box(Modifier.width(12.dp).height(8.dp).clip(RoundedCornerShape(2.dp)).background(Color.White.copy(alpha = 0.45f)))
+                        Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp)).background(Color.White.copy(alpha = 0.3f)))
+                    }
                     Column(Modifier.weight(1f).padding(start = 14.dp)) {
-                        Text(c.name, color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text(c.name, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
                         Text(c.balance, color = Ids.colors.textTertiary, fontSize = 13.sp)
                     }
                 }

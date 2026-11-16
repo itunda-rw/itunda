@@ -19,6 +19,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -141,7 +142,7 @@ internal fun BankMoveScreen(onBack: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 AccountBox("From", from, Modifier.weight(1f))
                 Box(Modifier.size(44.dp).clip(CircleShape).background(Ids.colors.surfaceSoft).pressScaleClickable { flip = !flip }, contentAlignment = Alignment.Center) {
-                    Text("⇄", color = Ids.colors.textBrand, fontSize = 20.sp)
+                    Icon(Icons.Filled.Sync, contentDescription = "Swap accounts", modifier = Modifier.size(22.dp), tint = Ids.colors.brand)
                 }
                 AccountBox("To", to, Modifier.weight(1f))
             }

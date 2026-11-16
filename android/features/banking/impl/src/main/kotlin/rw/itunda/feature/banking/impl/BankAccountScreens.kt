@@ -111,9 +111,9 @@ internal fun BankStatementScreen(onBack: () -> Unit) {
         BankSubTopBar("", onBack)
         Column(Modifier.weight(1f).padding(horizontal = 24.dp)) {
             Text("Choose a period\nand format.", color = Ids.colors.textPrimary, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 38.sp)
-            BankSectionLabel("Period")
+            BankSectionLabel("Period", strong = true)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { periods.forEachIndexed { i, p -> BankChip(p, period == i, { period = i }, Modifier.weight(if (i == 1) 1.2f else 1f)) } }
-            BankSectionLabel("Format")
+            BankSectionLabel("Format", strong = true)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { formats.forEachIndexed { i, f -> BankChip(f, format == i, { format = i }) } }
         }
         BankSubCta("Download") { done = true }
@@ -132,27 +132,36 @@ internal fun BankPocketsScreen(onBack: () -> Unit) {
     Column(Modifier.fillMaxSize().background(Ids.colors.background)) {
         BankSubTopBar("", onBack)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
-            Text("Total in pockets", color = Ids.colors.textTertiary, fontSize = 14.sp)
-            Text("${rwf(pockets.sumOf { it.amount })} RWF", color = Ids.colors.textPrimary, fontSize = 34.sp, fontWeight = FontWeight.ExtraBold)
+            Text("Total in pockets", color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(rwf(pockets.sumOf { it.amount }), color = Ids.colors.textPrimary, fontSize = 36.sp, fontWeight = FontWeight.ExtraBold)
+                Text(" RWF", color = Ids.colors.textTertiary, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 6.dp, bottom = 5.dp))
+            }
             pockets.forEach { p ->
                 Row(Modifier.fillMaxWidth().pressScaleClickable { open = p }.padding(top = 22.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(48.dp).clip(CircleShape).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) { Text(p.emoji, fontSize = 22.sp) }
+                    Box(Modifier.size(52.dp).clip(CircleShape).background(Ids.colors.brand.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
+                        val art = when (p.name) { "Interest jar" -> "interest-jar"; "School fees" -> "school-fees"; else -> null }
+                        if (art != null) ItundaArt(art, ItundaArtSet.Color, 28.dp) else Text(p.emoji, fontSize = 22.sp)
+                    }
                     Column(Modifier.weight(1f).padding(start = 14.dp)) {
                         Text(p.name, color = Ids.colors.textTertiary, fontSize = 13.sp)
-                        Text("${rwf(p.amount)} RWF", color = Ids.colors.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(rwf(p.amount), color = Ids.colors.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            Text(" RWF", color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 1.dp))
+                        }
                         p.goal?.let { g ->
                             Spacer(Modifier.height(6.dp))
                             Box(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(Ids.colors.divider)) {
                                 Box(Modifier.fillMaxWidth((p.amount.toFloat() / g).coerceIn(0f, 1f)).height(6.dp).background(Ids.colors.brand))
                             }
-                            Text("${(p.amount * 100 / g)}% of ${rwf(g)} RWF", color = Ids.colors.textTertiary, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+                            Text("${(p.amount * 100 / g)}% of ${rwf(g)} RWF", color = Ids.colors.textTertiary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
                         }
                     }
                 }
             }
-            Row(Modifier.padding(top = 28.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth().padding(top = 28.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("Trip" to "✈️", "Phone" to "📱", "Custom" to "✨").forEach { (n, e) ->
-                    BankChip("+ $n", false, { if (pockets.none { it.name == n }) pockets.add(Pocket(n, e, 0)) })
+                    BankChip("+ $n", false, { if (pockets.none { it.name == n }) pockets.add(Pocket(n, e, 0)) }, Modifier.weight(1f))
                 }
             }
         }
