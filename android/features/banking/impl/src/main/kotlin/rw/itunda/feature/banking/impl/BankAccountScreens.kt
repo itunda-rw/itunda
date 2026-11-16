@@ -32,6 +32,7 @@ import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.components.ItundaArt
 import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.theme.IdsIcons
 
 private data class Tx(val day: String, val name: String, val time: String, val amount: String, val after: String, val incoming: Boolean)
 
@@ -46,31 +47,59 @@ private val demoTx = listOf(
 internal fun BankAccountScreen(onBack: () -> Unit, onOpen: (BankSub) -> Unit) {
     Column(Modifier.fillMaxSize().background(Ids.colors.background)) {
         BankSubTopBar("", onBack) {
-            Text("Statement", color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.pressScaleClickable { onOpen(BankSub.STATEMENT) }.padding(8.dp))
-            Text("Manage", color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.pressScaleClickable { onOpen(BankSub.MANAGE) }.padding(8.dp))
-            Text("Move", color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.pressScaleClickable { onOpen(BankSub.MOVE) }.padding(8.dp))
+            AccountAction("card", "Card") { onOpen(BankSub.CARDS) }
+            AccountAction("receipt-rw", "Statement") { onOpen(BankSub.STATEMENT) }
+            AccountAction("gear", "Manage") { onOpen(BankSub.MANAGE) }
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             Column(Modifier.padding(horizontal = 24.dp)) {
                 Text("itunda Bank 0214-3058-1980", color = Ids.colors.textTertiary, fontSize = 14.sp)
                 Text("842,300 RWF", color = Ids.colors.textPrimary, fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(vertical = 6.dp))
-                Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().pressScaleClickable { onOpen(BankSub.MANAGE) }.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(40.dp).clip(CircleShape).background(Ids.colors.brand.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) { Text("⚡", fontSize = 18.sp) }
                     Column(Modifier.padding(start = 14.dp)) {
                         Text("Interest so far 1,462 RWF", color = Ids.colors.textTertiary, fontSize = 13.sp)
                         Text("Interest is added every day", color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     }
+                    Spacer(Modifier.weight(1f))
+                    androidx.compose.material3.Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
                 }
             }
             Spacer(Modifier.height(20.dp))
             Box(Modifier.fillMaxWidth().height(8.dp).background(Ids.colors.surfaceSoft))
             Column(Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
-                BankChip("All", true, {})
-                demoTx.forEach { t ->
+                var filter by remember { mutableStateOf(0) }
+                var menu by remember { mutableStateOf(false) }
+                var searching by remember { mutableStateOf(false) }
+                var query by remember { mutableStateOf("") }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Box {
+                        Row(Modifier.pressScaleClickable { menu = true }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(listOf("All", "Money in", "Money out")[filter], color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+                            androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.KeyboardArrowDown, contentDescription = null, tint = Ids.colors.textPrimary, modifier = Modifier.size(20.dp))
+                        }
+                        androidx.compose.material3.DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                            listOf("All", "Money in", "Money out").forEachIndexed { i, l -> androidx.compose.material3.DropdownMenuItem(text = { Text(l) }, onClick = { filter = i; menu = false }) }
+                        }
+                    }
+                    Spacer(Modifier.weight(1f))
+                    Box(Modifier.size(44.dp).clip(CircleShape).background(Ids.colors.surfaceSoft).pressScaleClickable { searching = !searching; if (!searching) query = "" }, contentAlignment = Alignment.Center) {
+                        ItundaArt("search", ItundaArtSet.Line, 20.dp, tint = Ids.colors.textPrimary)
+                    }
+                }
+                if (searching) {
+                    androidx.compose.foundation.text.BasicTextField(
+                        value = query, onValueChange = { query = it }, singleLine = true,
+                        textStyle = androidx.compose.ui.text.TextStyle(color = Ids.colors.textPrimary, fontSize = 16.sp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 10.dp).clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft).padding(12.dp),
+                        decorationBox = { inner -> if (query.isEmpty()) Text("Search activity", color = Ids.colors.textTertiary, fontSize = 16.sp) else inner() },
+                    )
+                }
+                demoTx.filter { (filter == 0 || (filter == 1) == it.incoming) && it.name.contains(query, ignoreCase = true) }.forEach { t ->
                     Text(t.day, color = Ids.colors.textTertiary, fontSize = 14.sp, modifier = Modifier.padding(top = 22.dp, bottom = 10.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
-                            Text(if (t.incoming) "↓" else "➤", color = Ids.colors.textBrand, fontSize = 18.sp)
+                            if (t.incoming) ItundaArt("cash-in", ItundaArtSet.Color, 28.dp) else ItundaArt("send", ItundaArtSet.Line, 22.dp, tint = Ids.colors.textBrand)
                         }
                         Column(Modifier.weight(1f).padding(start = 14.dp)) {
                             Text(t.name, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
@@ -88,6 +117,14 @@ internal fun BankAccountScreen(onBack: () -> Unit, onOpen: (BankSub) -> Unit) {
             CtaHalf("Fill", false, Modifier.weight(1f)) { onOpen(BankSub.DEPOSIT) }
             CtaHalf("Send", true, Modifier.weight(1f)) { onOpen(BankSub.SEND) }
         }
+    }
+}
+
+@Composable
+private fun AccountAction(art: String, label: String, onClick: () -> Unit) {
+    Row(Modifier.pressScaleClickable(onClick = onClick).padding(horizontal = 6.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        ItundaArt(art, ItundaArtSet.Line, 18.dp, tint = Ids.colors.textSecondary)
+        Text(label, color = Ids.colors.textSecondary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 4.dp))
     }
 }
 
