@@ -55,7 +55,8 @@ internal data class ShellRow(
 /** Prototype art tile for the hub's known rows; null falls back to the Material icon. */
 private fun shellArtFor(title: String): String? = when {
     title.startsWith("Interest jar", true) -> "interest-jar"
-    title.startsWith("26-week") || title.startsWith("31-day") -> "savings-31"
+    title.startsWith("26-week") -> "svc-26-week-savings"
+    title.startsWith("31-day") -> "savings-31"
     title.startsWith("12-month") -> "deposit-12"
     title.contains("SACCO", true) -> "sacco"
     title.startsWith("Investments") -> "investments"
@@ -90,7 +91,7 @@ internal fun ShellSection(title: String, rows: List<ShellRow>) {
                 val art = row.art ?: shellArtFor(row.title)
                 if (art != null) {
                     Box(Modifier.size(40.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
-                        ItundaArt(art, ItundaArtSet.Color, 26.dp)
+                        if (art == "svc-26-week-savings") ItundaArt(art, ItundaArtSet.Orig, 26.dp) else ItundaArt(art, ItundaArtSet.Color, 26.dp)
                     }
                 } else Box(modifier = Modifier.size(38.dp).clip(CircleShape).background(row.iconColor), contentAlignment = Alignment.Center) {
                     Icon(row.icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.White)
@@ -112,6 +113,7 @@ internal fun ShellSection(title: String, rows: List<ShellRow>) {
                         Text(row.action, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textSecondary)
                         if (row.caption.isNotEmpty()) Text(row.caption, fontSize = 12.sp, color = Ids.colors.textTertiary)
                     }
+                    if (row.onClick != null) Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
                 } else if (row.action.isNotBlank()) {
                     IdsButton(row.action, onClick = row.onClick ?: {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
                 }
