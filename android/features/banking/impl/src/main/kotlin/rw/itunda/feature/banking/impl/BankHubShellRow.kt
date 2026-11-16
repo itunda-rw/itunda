@@ -23,6 +23,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.ItundaArt
+import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.pressScaleClickable
@@ -45,7 +47,30 @@ internal data class ShellRow(
     val onClick: (() -> Unit)? = null,
     val secondaryAction: String? = null,
     val onSecondaryClick: (() -> Unit)? = null,
+    val caption: String = "",
+    val art: String? = null,
+    val badge: String? = null,
 )
+
+/** Prototype art tile for the hub's known rows; null falls back to the Material icon. */
+private fun shellArtFor(title: String): String? = when {
+    title.startsWith("Interest jar", true) -> "interest-jar"
+    title.startsWith("26-week") || title.startsWith("31-day") -> "savings-31"
+    title.startsWith("12-month") -> "deposit-12"
+    title.contains("SACCO", true) -> "sacco"
+    title.startsWith("Investments") -> "investments"
+    title.startsWith("School fees") -> "school-fees"
+    title.startsWith("Youth") -> "youth"
+    title.startsWith("Group") -> "group-accounts"
+    title.contains("Ikimina", true) -> "ikimina"
+    title.startsWith("New savings goal") -> "savings-goal"
+    title.startsWith("Round-up", true) || title.startsWith("Round up", true) -> "round-up"
+    title.startsWith("Get a loan") -> "loan"
+    title.startsWith("Student loan") -> "student-loan"
+    title.startsWith("VUP") -> "vup"
+    title.startsWith("Credit score", true) -> "credit-score"
+    else -> null
+}
 
 @Composable
 internal fun ShellSection(title: String, rows: List<ShellRow>) {
@@ -62,24 +87,31 @@ internal fun ShellSection(title: String, rows: List<ShellRow>) {
                     .padding(vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .background(row.iconColor),
-                    contentAlignment = Alignment.Center
-                ) {
+                val art = row.art ?: shellArtFor(row.title)
+                if (art != null) {
+                    Box(Modifier.size(40.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
+                        ItundaArt(art, ItundaArtSet.Color, 26.dp)
+                    }
+                } else Box(modifier = Modifier.size(38.dp).clip(CircleShape).background(row.iconColor), contentAlignment = Alignment.Center) {
                     Icon(row.icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.White)
                 }
                 Spacer(modifier = Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(row.title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(row.title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
+                        if (row.badge != null) Text(row.badge, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.success, modifier = Modifier.padding(start = 8.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp)).background(Ids.colors.success.copy(alpha = 0.14f)).padding(horizontal = 8.dp, vertical = 3.dp))
+                    }
                     if (row.subtitle.isNotEmpty()) {
                         Text(row.subtitle, fontSize = 14.sp, color = Ids.colors.textSecondary)
                     }
                 }
                 if (row.action == ">") {
                     Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
+                } else if (row.caption.isNotEmpty() || (row.action.isNotBlank() && row.action.any { it.isDigit() })) {
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(row.action, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textSecondary)
+                        if (row.caption.isNotEmpty()) Text(row.caption, fontSize = 12.sp, color = Ids.colors.textTertiary)
+                    }
                 } else if (row.action.isNotBlank()) {
                     IdsButton(row.action, onClick = row.onClick ?: {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
                 }

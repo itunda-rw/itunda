@@ -23,16 +23,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.components.pressScaleClickable
+import rw.itunda.core.designsystem.components.ItundaArt
+import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.theme.Ids
 
 /** Hub row opening Manage cards. */
 @Composable
 internal fun BankCardRow(onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().pressScaleClickable(onClick = onClick).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(32.dp).clip(CircleShape).background(Ids.colors.chip), contentAlignment = Alignment.Center) {
-            Box(Modifier.width(18.dp).height(12.dp).clip(RoundedCornerShape(3.dp)).background(Ids.colors.brand))
-        }
-        Text("Card", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f).padding(start = 10.dp))
+        Box(Modifier.size(40.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) { ItundaArt("card", ItundaArtSet.Color, 26.dp) }
+        Text("Card", color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f).padding(start = 14.dp))
         Text("  ›", color = Ids.colors.textTertiary, fontSize = 20.sp)
     }
 }

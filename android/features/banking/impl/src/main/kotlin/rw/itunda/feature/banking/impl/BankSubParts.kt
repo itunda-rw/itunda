@@ -28,7 +28,7 @@ import rw.itunda.core.designsystem.theme.Ids
 import java.util.Locale
 
 /** The itunda Bank sub-screens that open over the hub. Dummy data throughout until the backend lands. */
-enum class BankSub { ACCOUNT, DEPOSIT, SEND, MOVE, STATEMENT, POCKETS, MANAGE, LIMITS, CARDS }
+enum class BankSub { ACCOUNT, DEPOSIT, SEND, MOVE, STATEMENT, POCKETS, MANAGE, LIMITS, CARDS, PAYEES, SCHEDULED, BUDGET, CASES, DOCS, DETAILS }
 
 internal fun rwf(n: Long): String = String.format(Locale.US, "%,d", n)
 

@@ -29,6 +29,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.components.pressScaleClickable
+import rw.itunda.core.designsystem.components.ItundaArt
+import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.theme.Ids
 
 private data class Tx(val day: String, val name: String, val time: String, val amount: String, val after: String, val incoming: Boolean)
@@ -161,17 +163,15 @@ internal fun BankPocketsScreen(onBack: () -> Unit) {
 @Composable
 internal fun BankPocketsRow(count: Int, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().pressScaleClickable(onClick = onClick).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(32.dp).clip(CircleShape).background(Ids.colors.chip), contentAlignment = Alignment.Center) {
-            Text("\uD83D\uDCB0", fontSize = 16.sp)
-        }
-        Text("Pockets", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f).padding(start = 10.dp))
+        Box(Modifier.size(40.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) { ItundaArt("pockets", ItundaArtSet.Color, 26.dp) }
+        Text("Pockets", color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f).padding(start = 14.dp))
         Text("$count", color = Ids.colors.textSecondary, fontSize = 13.sp)
         Text("  ›", color = Ids.colors.textTertiary, fontSize = 20.sp)
     }
 }
 
 @Composable
-fun BankSubOverlay(sub: BankSub?, onClose: () -> Unit, onOpen: (BankSub) -> Unit) {
+fun BankSubOverlay(sub: BankSub?, onClose: () -> Unit, onOpen: (BankSub) -> Unit, onAutoTransfers: () -> Unit = {}) {
     when (sub) {
         null -> Unit
         BankSub.ACCOUNT -> BankAccountScreen(onClose, onOpen)
@@ -180,8 +180,14 @@ fun BankSubOverlay(sub: BankSub?, onClose: () -> Unit, onOpen: (BankSub) -> Unit
         BankSub.MOVE -> BankMoveScreen { onClose() }
         BankSub.STATEMENT -> BankStatementScreen { onClose() }
         BankSub.POCKETS -> BankPocketsScreen(onClose)
-        BankSub.MANAGE -> BankManageScreen(onClose, onOpen)
+        BankSub.MANAGE -> BankManageScreen(onClose, onOpen, onAutoTransfers)
         BankSub.LIMITS -> BankLimitsScreen { onOpen(BankSub.MANAGE) }
         BankSub.CARDS -> BankCardsScreen(onClose)
+        BankSub.PAYEES -> BankPayeesScreen(onClose)
+        BankSub.SCHEDULED -> BankScheduledScreen(onClose)
+        BankSub.BUDGET -> BankBudgetScreen(onClose)
+        BankSub.CASES -> BankCasesScreen(onClose)
+        BankSub.DOCS -> BankDocsScreen(onClose, onOpen)
+        BankSub.DETAILS -> BankDetailsScreen(onClose)
     }
 }

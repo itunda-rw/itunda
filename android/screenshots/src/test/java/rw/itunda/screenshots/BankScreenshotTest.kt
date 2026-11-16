@@ -97,6 +97,12 @@ class BankScreenshotTest {
 
     @Test fun subAccount() = sub(BankSub.ACCOUNT, "account")
     @Test fun subDeposit() = sub(BankSub.DEPOSIT, "deposit")
+    @Test fun subPayees() = sub(BankSub.PAYEES, "payees")
+    @Test fun subScheduled() = sub(BankSub.SCHEDULED, "scheduled")
+    @Test fun subBudget() = sub(BankSub.BUDGET, "budget")
+    @Test fun subCases() = sub(BankSub.CASES, "cases")
+    @Test fun subDocs() = sub(BankSub.DOCS, "docs")
+    @Test fun subDetails() = sub(BankSub.DETAILS, "details")
     @Test fun subSend() = sub(BankSub.SEND, "send")
     @Test fun subMove() = sub(BankSub.MOVE, "move")
     @Test fun subCards() = sub(BankSub.CARDS, "cards")

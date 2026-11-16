@@ -25,14 +25,15 @@ internal fun BankComingUp() {
     Column(Modifier.fillMaxWidth().padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Coming up", color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(44.dp).clip(CircleShape).background(Ids.colors.chip), contentAlignment = Alignment.Center) {
-                Text("\uD83E\uDD1D", fontSize = 20.sp)
+            Box(Modifier.size(44.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
+                rw.itunda.core.designsystem.components.ItundaArt("ikimina", rw.itunda.core.designsystem.components.ItundaArtSet.Color, 28.dp)
             }
             Column(Modifier.weight(1f).padding(start = 14.dp)) {
                 Text("Umurenge Savers", color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Medium)
                 Text("Due Fri 20 Nov", color = Ids.colors.textTertiary, fontSize = 13.sp)
             }
-            Text("10,000 RWF", color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text("10,000", color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text(" RWF", color = Ids.colors.textTertiary, fontSize = 11.sp)
         }
     }
 }
