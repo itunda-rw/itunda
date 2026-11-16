@@ -15,6 +15,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -76,7 +78,7 @@ internal fun BankAccountScreen(onBack: () -> Unit, onOpen: (BankSub) -> Unit) {
                     Box {
                         Row(Modifier.pressScaleClickable { menu = true }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(listOf("All", "Money in", "Money out")[filter], color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
-                            androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.KeyboardArrowDown, contentDescription = null, tint = Ids.colors.textPrimary, modifier = Modifier.size(20.dp))
+                            androidx.compose.material3.Icon(Icons.Filled.KeyboardArrowDown, contentDescription = null, tint = Ids.colors.textPrimary, modifier = Modifier.size(20.dp))
                         }
                         androidx.compose.material3.DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                             listOf("All", "Money in", "Money out").forEachIndexed { i, l -> androidx.compose.material3.DropdownMenuItem(text = { Text(l) }, onClick = { filter = i; menu = false }) }
