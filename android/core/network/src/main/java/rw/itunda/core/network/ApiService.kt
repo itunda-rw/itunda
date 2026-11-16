@@ -1099,7 +1099,7 @@ data class SendEmoticonRequest(val emoticonId: String)
 // Real 동네생활-style community board (2026-07-19) -- see rw.itunda.community.web.CommunityController.
 data class CommunityCategoryDto(val id: String, val label: String)
 data class CommunityPostDto(
-    val id: String, val authorId: String, val category: String, val title: String, val body: String,
+    val id: String, val authorId: String, val authorName: String? = null, val category: String, val title: String, val body: String,
     val status: String, val likeCount: Long, val commentCount: Long, val createdAt: String,
     val latitude: Double? = null, val longitude: Double? = null,
     // groupConversationId added 2026-07-24 -- see backend CommunityPost.kt's own doc

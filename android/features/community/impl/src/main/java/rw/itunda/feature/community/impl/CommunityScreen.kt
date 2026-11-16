@@ -680,7 +680,7 @@ fun CommunityPostCard(
                         rw.itunda.core.designsystem.components.ItundaArt("community", rw.itunda.core.designsystem.components.ItundaArtSet.Color, 28.dp)
                     }
                     Column(Modifier.padding(start = 10.dp)) {
-                        Text(categoryLabel, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text(post.authorName ?: categoryLabel, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         Text(listOfNotNull(post.neighborhood, relativeTimeAgo(post.createdAt)).joinToString(" · "), color = Ids.colors.textSecondary, fontSize = 12.sp)
                     }
                 }
@@ -700,7 +700,6 @@ fun CommunityPostCard(
                     }
                 } else HoodReportAction(targetType = "COMMUNITY_POST", targetId = post.id, asMenu = true)
             }
-            Text(post.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Text(post.body, color = Ids.colors.textPrimary, fontSize = 15.sp, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 HeartFilled(size = 16.dp)
@@ -708,15 +707,15 @@ fun CommunityPostCard(
                 SpeechBubbleGlyph(size = 16.dp)
                 Text("${post.commentCount}", color = Ids.colors.textSecondary, fontSize = 14.sp)
             }
-            if (!isMine && post.category == "question") {
-                ListingActionButton("Answer this question", busy, onClick = onOpen)
-            } else if (post.category == "meetup") {
+            if (post.category == "meetup") {
                 // Real 당근모임-style structured date/capacity (2026-07-25) -- see
                 // backend CommunityPost.eventDate/capacity's own doc comment.
                 val eventDate = post.eventDate
                 if (eventDate != null) {
-                    val capacityLabel = post.capacity?.let { " · $joinedCount/$it" } ?: ""
-                    Text("🗓️ ${formatMeetupDate(eventDate)}$capacityLabel", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                    Column(Modifier.fillMaxWidth().background(Ids.colors.surfaceSoft, RoundedCornerShape(12.dp)).padding(horizontal = 14.dp, vertical = 10.dp)) {
+                        Text(formatMeetupDate(eventDate), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text("${listOfNotNull(post.neighborhood).joinToString()}${if (post.neighborhood != null) " · " else ""}$joinedCount going${post.capacity?.let { " of $it" } ?: ""}", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                    }
                 }
                 // Real AI-generated 모임 summary (2026-08-28) -- see backend
                 // HoodAiSummaryService's own doc comment. Never shown without this

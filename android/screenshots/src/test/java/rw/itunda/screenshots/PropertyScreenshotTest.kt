@@ -66,7 +66,7 @@ class PropertyScreenshotTest {
 
     @Test fun communityRows() {
         fun c(id: String, cat: String, t: String, b: String, likes: Long, comments: Long) = CommunityPostDto(
-            id = id, authorId = "a", category = cat, title = t, body = b, status = "ACTIVE",
+            id = id, authorId = "a", authorName = if (id == "1") "Aline N." else "Diane K.", category = cat, title = t, body = b, status = "ACTIVE",
             likeCount = likes, commentCount = comments, createdAt = "2026-11-14T08:00:00Z", neighborhood = "Remera",
         )
         rule.setContent {
@@ -74,6 +74,7 @@ class PropertyScreenshotTest {
                 Column(Modifier.padding(horizontal = 20.dp)) {
                     CommunityPostCard(c("1", "general", "Umuganda this Saturday", "Umuganda this Saturday at 8. Bring your own gloves if you have them.", 22, 1), "Announcement", false, {}, {})
                     CommunityPostCard(c("2", "general", "Reliable tailor?", "Where can I find a reliable tailor near Kimironko market? I need a school uniform fixed by Monday.", 4, 2), "Ask", false, {}, {})
+                    CommunityPostCard(c("3", "meetup", "Umuganda", "Umuganda this Saturday at 8. Bring your own gloves.", 22, 1).copy(eventDate = "2026-11-14T06:00:00Z", capacity = 60), "Event", false, {}, {}, joinedCount = 46)
                 }
             }
         }
