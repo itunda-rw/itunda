@@ -427,6 +427,16 @@ internal fun OrderFoodContent(
             // itunda has no license or real source for. Additive: the text chip row
             // below still does the actual filtering; this is the same real
             // selectedCategory state, just a second, visually-matched way to reach it.
+            item {
+                SearchAndCategoryChips(
+                    searchInput = searchInput,
+                    onSearchChange = { searchInput = it },
+                    placeholder = "Search restaurants",
+                    categories = categories,
+                    selectedCategory = selectedCategory,
+                    onSelectCategory = { c -> selectedCategory = if (c == selectedCategory) null else c },
+                )
+            }
             item { EatsPromoBanner() }
             item {
                 EatsQuickActions(
@@ -441,16 +451,6 @@ internal fun OrderFoodContent(
             }
             if (searchInput.isBlank() && selectedCategory == null && !restaurants.isNullOrEmpty()) item { EatsPopularRail(restaurants!!, ::openRestaurant) }
             item { EatsSectionHeader("Restaurants near you", restaurants?.size) }
-            item {
-                SearchAndCategoryChips(
-                    searchInput = searchInput,
-                    onSearchChange = { searchInput = it },
-                    placeholder = "Search restaurants",
-                    categories = categories,
-                    selectedCategory = selectedCategory,
-                    onSelectCategory = { c -> selectedCategory = if (c == selectedCategory) null else c },
-                )
-            }
             // Real Baemin/Coupang Eats-style sort chip row (itunda Eats redesign,
             // 2026-08-28) -- "Fastest delivery" only shown once a real browseLocation
             // exists (the sort is a no-op without one, see
@@ -460,7 +460,7 @@ internal fun OrderFoodContent(
             item {
                 Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     if (browseLocation != null) {
-                        EatsSortChip("Fastest delivery", Icons.Outlined.Bolt, active = sortMode == "delivery_time") {
+                        EatsSortChip("Fastest", Icons.Outlined.Bolt, active = sortMode == "delivery_time") {
                             sortMode = if (sortMode == "delivery_time") null else "delivery_time"
                         }
                     }
