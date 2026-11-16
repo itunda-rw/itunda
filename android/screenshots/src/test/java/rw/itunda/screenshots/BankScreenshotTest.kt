@@ -9,7 +9,9 @@ import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollToNode
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -77,7 +79,7 @@ class BankScreenshotTest {
                 }
             }
         }
-        rule.onNodeWithText(target).performScrollTo()
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText(target))
         rule.onRoot().captureRoboImage("build/screenshots/bank-hub-$name.png")
     }
 
