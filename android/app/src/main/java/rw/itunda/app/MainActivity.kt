@@ -52,6 +52,7 @@ private object AppUnlockState {
 // below it -- see core/identity/NIDABiometricAuth.kt. FragmentActivity itself
 // still supports Compose's setContent{} directly, no separate host needed.
 class MainActivity : FragmentActivity() {
+    private var debugPreviewRequested by mutableStateOf(false)
     private var mapDeepLinkRequested by mutableStateOf(false)
     private var mapSearchFromDeepLink by mutableStateOf<String?>(null)
     private var mapSharedFolderFromDeepLink by mutableStateOf<Pair<String, String>?>(null)
@@ -229,7 +230,16 @@ class MainActivity : FragmentActivity() {
                             }
                             is SessionState.LoggedOut -> {
                                 AppUnlockState.unlockedThisProcess = false
-                                LoginScreen(onLoggedIn = {})
+                                if (BuildConfig.DEBUG && debugPreviewRequested) {
+                                    PrototypeParityScreen()
+                                } else {
+                                    LoginScreen(
+                                        onLoggedIn = {},
+                                        onSkipLogin = if (BuildConfig.DEBUG) {
+                                            { debugPreviewRequested = true }
+                                        } else null,
+                                    )
+                                }
                             }
                         }
                         // Real Toss TDS Toast component, mounted once at the true app
