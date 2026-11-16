@@ -676,8 +676,8 @@ fun CommunityPostCard(
         Column(modifier = Modifier.padding(vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(36.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Color(0xFFE4F3E8)), contentAlignment = Alignment.Center) {
-                        Text(categoryLabel.take(1).uppercase(), color = Color(0xFF2E7D4F), fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Box(Modifier.size(40.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Color(0xFFE4F3E8)), contentAlignment = Alignment.Center) {
+                        rw.itunda.core.designsystem.components.ItundaArt("community", rw.itunda.core.designsystem.components.ItundaArtSet.Color, 28.dp)
                     }
                     Column(Modifier.padding(start = 10.dp)) {
                         Text(categoryLabel, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
@@ -698,7 +698,7 @@ fun CommunityPostCard(
                             }
                         }
                     }
-                }
+                } else HoodReportAction(targetType = "COMMUNITY_POST", targetId = post.id, asMenu = true)
             }
             Text(post.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Text(post.body, color = Ids.colors.textPrimary, fontSize = 15.sp, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
@@ -743,9 +743,6 @@ fun CommunityPostCard(
                         ListingActionButton(if (joining) "Joining…" else "참여하기 · $joinedCount joined", joining, filled = true, onClick = onJoin)
                     }
                 }
-            }
-            if (!isMine) {
-                HoodReportAction(targetType = "COMMUNITY_POST", targetId = post.id)
             }
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
         }
