@@ -83,7 +83,7 @@ class PropertyScreenshotTest {
     @Test fun communityDetail() {
         rule.setContent {
             IdsTheme(darkTheme = false) {
-                Column(Modifier.fillMaxSize().background(Ids.colors.background).padding(20.dp)) {
+                Column(Modifier.padding(20.dp)) {
                     rw.itunda.feature.community.impl.CommunityPostHeader("Claire U.", "Remera · 1 h", "Ask")
                     Text("Does anyone know a good plumber in Remera? Our tap has been leaking all week.", Modifier.padding(top = 10.dp))
                     Text("Replies · 2", Modifier.padding(top = 24.dp))
