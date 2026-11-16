@@ -92,7 +92,7 @@ internal fun ProtoChatRow(conversation: ConversationSummaryDto, online: Boolean,
             Text(
                 conversation.lastMessagePreview ?: "No messages yet",
                 color = if (unread) Ids.colors.textPrimary else Ids.colors.textTertiary,
-                fontSize = 16.sp, fontWeight = if (unread) FontWeight.Bold else FontWeight.Normal,
+                fontSize = 15.sp, fontWeight = if (unread) FontWeight.Bold else FontWeight.Normal,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
         }
@@ -108,7 +108,7 @@ internal fun ProtoChatRow(conversation: ConversationSummaryDto, online: Boolean,
 @OptIn(ExperimentalFoundationApi::class)
 /** Filter chips under the Messages header: the selected one is solid ink, the rest soft grey. */
 @Composable
-internal fun <T> ProtoChips(options: List<Pair<T, String>>, selected: T, onSelect: (T) -> Unit, modifier: Modifier = Modifier) {
+internal fun <T> ProtoChips(options: List<Pair<T, String>>, selected: T, onSelect: (T) -> Unit, modifier: Modifier = Modifier, hasDot: (T) -> Boolean = { false }) {
     Row(modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(bottom = 8.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
         options.forEach { (value, label) ->
             val on = value == selected
@@ -118,7 +118,10 @@ internal fun <T> ProtoChips(options: List<Pair<T, String>>, selected: T, onSelec
                     .combinedClickable(onClick = { onSelect(value) }).padding(horizontal = 20.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(label, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = if (on) Ids.colors.background else Ids.colors.textTertiary)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(label, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = if (on) Ids.colors.background else Ids.colors.textTertiary)
+                    if (hasDot(value) && !on) Box(Modifier.padding(start = 6.dp).size(6.dp).clip(CircleShape).background(Ids.colors.brand))
+                }
             }
         }
     }

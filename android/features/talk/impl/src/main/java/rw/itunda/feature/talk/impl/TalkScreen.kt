@@ -327,10 +327,11 @@ fun TalkTab(
         if (view == TalkView.DIRECT) { ProtoSearchField(chatQuery, { chatQuery = it }); Spacer(Modifier.height(12.dp)) }
         // One chip row (prototype): All / Unread / Calls filter the direct list, Groups / Friends switch view.
         ProtoChips(
-            TalkDirectFilter.entries.map { (TalkView.DIRECT to it) to it.label } +
+            TalkDirectFilter.entries.map { (TalkView.DIRECT to it) to (if (it == TalkDirectFilter.UNREAD) "Unread · ${conversations.orEmpty().count { c -> c.unreadCount > 0 }}" else it.label) } +
                 listOf((TalkView.GROUPS to TalkDirectFilter.ALL) to "Groups", (TalkView.FRIENDS to TalkDirectFilter.ALL) to "Friends"),
             view to (if (view == TalkView.DIRECT) directFilter else TalkDirectFilter.ALL),
             { (v, f) -> view = v; directFilter = f },
+            hasDot = { (_, f) -> f.source != null && conversations.orEmpty().any { c -> c.source == f.source && c.unreadCount > 0 } },
         )
         if (view == TalkView.FRIENDS) {
             FriendsView(
@@ -367,6 +368,7 @@ fun TalkTab(
                     footer = {
                         SyntheticTalkChannelRow("itunda", "Payments, security, and account updates", onClick = { showServiceChannel = true })
                         SyntheticTalkChannelRow("itunda AI", "Ask anything -- powered by a self-hosted model", onClick = { showAiChat = true })
+                        Text("Hold a chat to pin, mute or archive.", color = Ids.colors.textTertiary, fontSize = 13.sp, modifier = Modifier.padding(vertical = 16.dp))
                     },
                 )
             }
