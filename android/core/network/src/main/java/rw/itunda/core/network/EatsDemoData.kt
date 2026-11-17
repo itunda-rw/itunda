@@ -53,14 +53,14 @@ internal object EatsDemoData {
     }
 
     private val orderItems = """[{"id":"item-1","orderId":"EA-7207","productId":"p1","productName":"Croissant","unitPrice":1200,"quantity":2}]"""
-    fun orderDetail(): String = """{"success":true,"order":\${orderJson()},"items":$orderItems}"""
+    fun orderDetail(): String = """{"success":true,"order":${orderJson()},"items":$orderItems}"""
     fun placeOrder(): String {
         hasPlacedOrder = true
         orderStatus = "PLACED"
         return orderDetail()
     }
     fun myOrders(): String = if (hasPlacedOrder) {
-        """{"success":true,"orders":[\${orderJson()}],"page":0,"totalPages":1,"totalElements":1}"""
+        """{"success":true,"orders":[${orderJson()}],"page":0,"totalPages":1,"totalElements":1}"""
     } else {
         """{"success":true,"orders":[],"page":0,"totalPages":0,"totalElements":0}"""
     }
