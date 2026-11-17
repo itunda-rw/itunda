@@ -58,9 +58,9 @@ internal fun EatsTrackingOrderSummary(
                     Text(String.format(Locale.US, "%,.0f", item.unitPrice * item.quantity), color = palette.secondary, fontSize = 15.sp)
                 }
             }
-            if (!order.deliveryNotes.isNullOrBlank()) {
+            order.deliveryNotes?.takeIf { it.isNotBlank() }?.let { notes ->
                 Text("Your note", color = palette.secondary, fontSize = 13.sp, modifier = Modifier.padding(top = 16.dp))
-                Text(order.deliveryNotes, color = palette.primary, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+                Text(notes, color = palette.primary, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
             }
             Text("Paid with", color = palette.secondary, fontSize = 13.sp, modifier = Modifier.padding(top = 14.dp))
             Text("itunda Pay", color = palette.primary, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp))
