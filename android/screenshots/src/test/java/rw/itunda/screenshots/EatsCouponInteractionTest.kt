@@ -23,13 +23,13 @@ import rw.itunda.feature.eats.impl.EatsBrowseState
 class EatsCouponInteractionTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
 
-    @Test fun couponCardAppliesAndUpdatesShortcut() {
+    @Test fun couponCardAppliesAndUpdatesSummary() {
         val state = EatsBrowseState()
         rule.setContent { EatsBrowseTestSurface(state) }
         rule.onNodeWithContentDescription("Coupons").performClick()
         rule.onAllNodesWithText("Use")[1].performClick()
         assertEquals("EATS20", state.selectedCoupon)
-        rule.onNodeWithText("Coupons ✓").assertExists()
+        rule.onNodeWithText("EATS20 ✓", substring = true).assertExists()
     }
 
     @Test fun freeDeliveryCouponClosesAndRejectsPickup() {
