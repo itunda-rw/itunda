@@ -234,10 +234,7 @@ class EatsScreenshotTest {
         val state = rw.itunda.feature.eats.impl.EatsBrowseState()
         rule.setContent {
             IdsTheme(darkTheme = false) {
-                Column {
-                    rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
-                    rw.itunda.feature.eats.impl.EatsQuickActions({}, { state.showCoupons = true }, {}, {})
-                }
+                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
             }
         }
 
