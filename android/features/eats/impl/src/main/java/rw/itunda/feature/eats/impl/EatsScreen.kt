@@ -334,6 +334,7 @@ internal fun OrderFoodContent(
             confirmedDineInOrder = confirmedDineInOrder,
             selectedRestaurant = selectedRestaurant,
             pickupInitially = browseState.isPickup,
+            deliveryAddress = browseState.address,
             showCheckout = showCheckout,
             menu = menu,
             cart = cart,
