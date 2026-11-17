@@ -86,6 +86,7 @@ internal class EatsBrowseState {
     var isPickup by mutableStateOf(false)
     var selectedCoupon by mutableStateOf<String?>(null)
     var address by mutableStateOf("Kimironko, KG 11 Ave")
+    var savedAddresses by mutableStateOf(listOf("Kimironko, KG 11 Ave", "Kacyiru, KG 7 Ave"))
     var cartRestaurant by mutableStateOf<ShoppingMerchantDto?>(null)
 }
 
@@ -103,8 +104,8 @@ internal fun EatsBrowseHeader(
     onCartClick: () -> Unit,
 ) {
     var showCoupons by remember { mutableStateOf(false) }
-    var editAddress by remember { mutableStateOf(false) }
-    var addressDraft by remember(state.address) { mutableStateOf(state.address) }
+    var showAddressSheet by remember { mutableStateOf(false) }
+    var newAddress by remember { mutableStateOf("") }
     val context = LocalContext.current
 
     Column(modifier = Modifier.background(Ids.colors.background)) {
@@ -116,7 +117,7 @@ internal fun EatsBrowseHeader(
             Row(
                 modifier = Modifier.weight(1f).height(44.dp)
                     .semantics { contentDescription = "Change delivery address" }
-                    .pressScaleClickable { addressDraft = state.address; editAddress = true },
+                    .pressScaleClickable { newAddress = ""; showAddressSheet = true },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -199,26 +200,55 @@ internal fun EatsBrowseHeader(
         }
     }
 
-    if (editAddress) {
-        AlertDialog(
-            onDismissRequest = { editAddress = false },
-            title = { Text("Delivery address") },
-            text = {
-                IdsTextField(
-                    value = addressDraft,
-                    onValueChange = { addressDraft = it },
-                    label = "Address",
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = addressDraft.isNotBlank(),
-                    onClick = { state.address = addressDraft.trim(); editAddress = false },
-                ) { Text("Save") }
-            },
-            dismissButton = { TextButton(onClick = { editAddress = false }) { Text("Cancel") } },
-        )
+    if (showAddressSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showAddressSheet = false },
+            containerColor = Ids.colors.surface,
+            contentColor = Ids.colors.textPrimary,
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = 28.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text("Delivery address", color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+                state.savedAddresses.forEachIndexed { index, savedAddress ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().pressScaleClickable {
+                            state.address = savedAddress
+                            showAddressSheet = false
+                        }.padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(listOf("Home", "Work").getOrElse(index) { "Other" }, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
+                            Text(savedAddress, color = Ids.colors.textSecondary, fontSize = 13.sp)
+                        }
+                        androidx.compose.material3.RadioButton(
+                            selected = state.address == savedAddress,
+                            onClick = { state.address = savedAddress; showAddressSheet = false },
+                        )
+                    }
+                }
+                if (state.savedAddresses.size < 5) {
+                    IdsTextField(
+                        value = newAddress,
+                        onValueChange = { newAddress = it.take(40) },
+                        label = "Street or landmark, e.g. Remera, KG 5 Ave",
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    TextButton(
+                        enabled = newAddress.isNotBlank(),
+                        onClick = {
+                            state.savedAddresses = state.savedAddresses + newAddress.trim()
+                            state.address = newAddress.trim()
+                            showAddressSheet = false
+                        },
+                    ) { Text("Add and use") }
+                }
+                TextButton(onClick = { showAddressSheet = false }) { Text("Close") }
+                Text("Sample addresses for this prototype.", color = Ids.colors.textTertiary, fontSize = 12.sp)
+            }
+        }
     }
 
     if (showCoupons) {
