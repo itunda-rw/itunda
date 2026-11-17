@@ -443,7 +443,7 @@ internal fun OrderFoodContent(
                 )
             }
             item { EatsPromoBanner(browseState.isPickup, browseState.selectedCoupon == "FREEDEL", { browseState.selectedCoupon = "FREEDEL" }) }
-            if (searchInput.isBlank() && selectedCategory == null && !restaurants.isNullOrEmpty()) item { EatsPopularRail(restaurants!!, ::openRestaurant) }
+            if (searchInput.isBlank() && selectedCategory == null && !restaurants.isNullOrEmpty()) item { EatsPopularRail(restaurants!!, ::openRestaurant, isPickup = browseState.isPickup) }
             item { EatsSectionHeader("Restaurants near you", restaurants?.size) }
             // Real Baemin/Coupang Eats-style sort chip row (itunda Eats redesign,
             // 2026-08-28) -- "Fastest delivery" only shown once a real browseLocation
@@ -501,7 +501,7 @@ internal fun OrderFoodContent(
                 }
             } else {
                 items(restaurants!!.chunked(2), key = { row -> row.first().merchantId }) { row ->
-                    EatsRestaurantGridRow(row, favoriteIds, onOpen = { openRestaurant(it) }, onToggleFavorite = { toggleFavorite(it.merchantId) })
+                    EatsRestaurantGridRow(row, favoriteIds, onOpen = { openRestaurant(it) }, onToggleFavorite = { toggleFavorite(it.merchantId) }, isPickup = browseState.isPickup)
                 }
             }
         }
