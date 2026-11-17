@@ -152,7 +152,7 @@ fun EatsBrowseHeader(
             {
                 val code = if (state.isPickup) "EATS20" else "FREEDEL"
                 state.selectedCoupon = code
-                Toast.makeText(context, "Code " + code + " saved. It applies at checkout.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Code " + code + " saved for checkout.", Toast.LENGTH_SHORT).show()
             },
             Modifier.padding(horizontal = 24.dp).padding(top = 10.dp),
         )
@@ -170,7 +170,7 @@ fun EatsBrowseHeader(
         onSelect = { code ->
             state.selectedCoupon = code
             state.showCoupons = false
-            Toast.makeText(context, "Code " + code + " saved. It applies at checkout.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Code " + code + " saved for checkout.", Toast.LENGTH_SHORT).show()
         },
         onRemove = {
             state.selectedCoupon = null
