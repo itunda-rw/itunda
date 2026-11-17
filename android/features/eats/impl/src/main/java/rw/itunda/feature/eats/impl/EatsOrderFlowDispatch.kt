@@ -61,6 +61,7 @@ internal fun EatsOrderFlowDispatch(
                 cart = cart,
                 onBack = onMenuBack,
                 onCheckout = onCheckoutRequested,
+                isPickup = pickupInitially,
             )
         }
         return true
