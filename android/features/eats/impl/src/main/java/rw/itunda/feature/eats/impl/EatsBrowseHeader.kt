@@ -82,7 +82,7 @@ private fun EatsQuickAction(art: String, label: String, onClick: () -> Unit) {
 
 
 /** State shared by the Eats browse header and checkout entry point. */
-internal class EatsBrowseState {
+class EatsBrowseState {
     var isPickup by mutableStateOf(false)
     var selectedCoupon by mutableStateOf<String?>(null)
     var address by mutableStateOf("Kimironko, KG 11 Ave")
@@ -96,7 +96,7 @@ internal fun rememberEatsBrowseState(): EatsBrowseState = remember { EatsBrowseS
 /** Native Compose version of the v1038 Eats address, orders, cart, search and fulfillment header. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun EatsBrowseHeader(
+fun EatsBrowseHeader(
     state: EatsBrowseState,
     searchInput: String,
     cartCount: Int,
@@ -301,7 +301,7 @@ private fun EatsFulfillmentChoice(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun EatsCouponsSheet(
+fun EatsCouponsSheet(
     isPickup: Boolean,
     selectedCoupon: String?,
     onDismiss: () -> Unit,
