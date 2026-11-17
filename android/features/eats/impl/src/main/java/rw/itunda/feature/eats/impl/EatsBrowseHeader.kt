@@ -237,7 +237,11 @@ fun EatsBrowseHeader(
             isPickup = state.isPickup,
             selectedCoupon = state.selectedCoupon,
             onDismiss = { state.showCoupons = false },
-            onSelect = { code -> state.selectedCoupon = code; state.showCoupons = false },
+            onSelect = { code ->
+                state.selectedCoupon = code
+                state.showCoupons = false
+                Toast.makeText(context, "Code $code saved. It applies at checkout.", Toast.LENGTH_SHORT).show()
+            },
         )
     }
 }
