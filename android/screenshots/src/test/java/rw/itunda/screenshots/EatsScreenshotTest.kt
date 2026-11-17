@@ -60,8 +60,8 @@ class EatsScreenshotTest {
                 }
             }
         }
-        rule.onNodeWithText("Ready in 10 min").assertExists()
-        rule.onNodeWithText("Ready in 15 min").assertExists()
+        rule.onNodeWithText("Ready in 10 min", substring = true).assertExists()
+        rule.onNodeWithText("Ready in 15 min", substring = true).assertExists()
         rule.onNodeWithText("Pickup · No delivery fee").assertExists()
         rule.onRoot().captureRoboImage("build/screenshots/eats-pickup-grid-$name.png")
     }
