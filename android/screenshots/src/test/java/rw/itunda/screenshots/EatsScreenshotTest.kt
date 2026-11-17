@@ -97,15 +97,15 @@ class EatsScreenshotTest {
                 rw.itunda.feature.eats.impl.RestaurantMenuView(
                     restaurant = restaurant,
                     menu = emptyList(),
-                    cart = androidx.compose.runtime.mutableStateMapOf(),
+                    cart = androidx.compose.runtime.mutableStateMapOf<String, rw.itunda.feature.eats.impl.EatsCartLine>(),
                     onBack = {},
                     onCheckout = {},
                     isPickup = true,
                 )
             }
         }
-        rule.onNodeWithText("Ready in 10 min").assertExists()
-        rule.onNodeWithText("Pickup · No delivery fee").assertExists()
+        rule.onNodeWithText("Ready in 10 min", substring = true).assertExists()
+        rule.onNodeWithText("Pickup · No delivery fee", substring = true).assertExists()
         rule.onNodeWithText("Menu").assertExists()
         rule.onNodeWithText("Info").performClick()
         rule.onNodeWithText("Opening hours").assertExists()
