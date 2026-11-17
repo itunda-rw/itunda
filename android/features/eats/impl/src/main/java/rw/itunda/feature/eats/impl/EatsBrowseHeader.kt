@@ -50,13 +50,18 @@ internal fun rememberEatsBrowseState(): EatsBrowseState = remember { EatsBrowseS
 
 @Composable
 internal fun EatsModeSwitch(isPickup: Boolean, onModeChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
-    Row(modifier.height(38.dp).clip(RoundedCornerShape(16.dp)).background(Ids.colors.surfaceSoft).padding(3.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        modifier.height(38.dp).clip(RoundedCornerShape(16.dp)).background(Ids.colors.surfaceSoft).padding(3.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         listOf(false to "Delivery", true to "Pickup").forEach { (pickup, label) ->
             val selected = isPickup == pickup
             Box(
-                modifier = Modifier.weight(1f).height(32.dp).clip(RoundedCornerShape(13.dp))
+                modifier = Modifier.height(32.dp).clip(RoundedCornerShape(13.dp))
                     .background(if (selected) Ids.colors.background else Color.Transparent)
-                    .semantics { contentDescription = label }.pressScaleClickable { onModeChange(pickup) },
+                    .semantics { contentDescription = label }.pressScaleClickable { onModeChange(pickup) }
+                    .padding(horizontal = 10.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(label, color = if (selected) Ids.colors.textPrimary else Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
