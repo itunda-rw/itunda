@@ -95,7 +95,9 @@ function safe(value) {
 }
 
 async function applyState(page, state) {
+  const payload = { ...state, defaultOrder: order(!!state.pickup, 'On the way') };
   await page.evaluate((s) => {
+    const stackByScreen = { shop: ['shop'], erest: ['shop', 'erest'], echeck: ['shop', 'erest', 'echeck'], etrack: ['etrack'], eorders: ['shop', 'eorders'] };
     const layer = document.getElementById('layer');
     if (layer) layer.innerHTML = '';
     S.tab = 'home';
@@ -137,15 +139,12 @@ async function applyState(page, state) {
     S.eipf = [];
     S.eiad = [];
     S.ecancel = !!s.cancelled;
-    S.e2cat = s.category || 'All';
-    S.e2sort = s.sort || 'fast';
-    S.e2flt = Object.assign({ open: 0, top: 0, near: 0, fav: 0 }, s.filters || {});
     S.cpn = [];
     S.cpIn = '';
     S.cpUsed = {};
     S.lang = 'en';
     if (s.orders) S.orders = s.orders;
-    else if (s.screen === 'etrack') S.orders = [order(!!s.pickup, 'On the way')];
+    else if (s.screen === 'etrack') S.orders = [s.defaultOrder];
     else S.orders = [];
     S.scart = {};
     S.oN = null;
@@ -156,7 +155,7 @@ async function applyState(page, state) {
       if (typeof fn !== 'function') throw new Error('Prototype action not found: ' + action.fn);
       fn(...(action.args || []));
     }
-  }, state);
+  }, payload);
   await page.waitForTimeout(180);
 }
 
