@@ -389,4 +389,18 @@ class EatsScreenshotTest {
         rule.onRoot().captureRoboImage("build/screenshots/eats-browse-pickup-light.png")
     }
 
+    @Test fun couponCountReflectsFulfillmentMode() {
+        val state = rw.itunda.feature.eats.impl.EatsBrowseState()
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
+            }
+        }
+        rule.onNodeWithText("2 available").assertExists()
+        rule.onNodeWithContentDescription("Pickup").performClick()
+        rule.onNodeWithText("1 available").assertExists()
+        rule.onNodeWithContentDescription("Delivery").performClick()
+        rule.onNodeWithText("2 available").assertExists()
+    }
+
 }
