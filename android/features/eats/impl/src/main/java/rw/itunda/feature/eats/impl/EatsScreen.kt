@@ -73,8 +73,6 @@ import java.io.IOException
 // a single-slice extraction). Deliver's own DeliverContent stays in
 // EatsDeliver.kt, unaffected by this split.
 
-internal enum class EatsMode { ORDER, DELIVER }
-
 internal enum class OrderFoodView { BROWSE, FAVORITES, ORDERS, GROUP }
 
 @Composable
@@ -364,18 +362,13 @@ internal fun OrderFoodContent(
     val eatsTouchedKey = remember { mutableStateOf<Any?>(null) }
     Column(modifier = Modifier.fillMaxSize()) {
         EatsBrowseHeader(
-            state = browseState,
-            searchInput = searchInput,
-            cartCount = cart.values.sumOf { it.quantity },
-            onSearchChange = { searchInput = it },
-            onOrdersClick = { view = OrderFoodView.ORDERS },
-            onCartClick = { selectedRestaurant = browseState.cartRestaurant; showCheckout = true },
+            browseState, searchInput, cart.values.sumOf { it.quantity }, { searchInput = it },
+            { view = OrderFoodView.ORDERS }, { selectedRestaurant = browseState.cartRestaurant; showCheckout = true },
         )
         LazyColumn(
-        state = eatsListState,
-        modifier = Modifier.weight(1f).padding(horizontal = Ids.layout.screenHorizontal).trackScrollPressedKey(eatsListState, eatsTouchedKey),
-        verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
-    ) {
+            state = eatsListState, modifier = Modifier.weight(1f).padding(horizontal = Ids.layout.screenHorizontal).trackScrollPressedKey(eatsListState, eatsTouchedKey),
+            verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
+        ) {
         item {
             // Flat, horizontally-scrolling category strip (2026-07-24), same
             // Karrot/Toss-Shopping-style treatment as Hood's own nav rows --
