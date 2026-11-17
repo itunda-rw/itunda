@@ -54,7 +54,7 @@ fun EatsPromoBanner(modifier: Modifier = Modifier) {
     ) {
         Column(Modifier.weight(1f)) {
             Text("Free delivery on your first order", color = Color(0xFF191F28), fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
-            Text("Code FREEDEL, auto-applied", color = Color(0xFF4E5968), fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
+            Text("Delivery only · Code FREEDEL", color = Color(0xFF4E5968), fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
         }
         ItundaArt("gift", ItundaArtSet.Color, 48.dp)
     }
