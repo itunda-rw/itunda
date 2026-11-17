@@ -30,6 +30,16 @@ import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.network.ShoppingMerchantDto
 
+/** Fallback art for category-driven surfaces that do not have a restaurant-specific illustration. */
+fun eatsCategoryArt(category: String?): String = when (category?.lowercase()) {
+    "bakery" -> "bread"
+    "cafe", "coffee" -> "coffee"
+    "local" -> "brochette"
+    "dessert" -> "juice"
+    "fries", "fast food" -> "chips"
+    else -> "restaurant"
+}
+
 /** The two-column v1038 restaurant card: square illustration, tag, save affordance and compact facts. */
 @Composable
 fun EatsRestaurantTile(

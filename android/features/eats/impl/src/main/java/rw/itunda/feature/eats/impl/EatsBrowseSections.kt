@@ -157,6 +157,6 @@ private fun EatsShortcut(
         ) {
             ItundaArt(art, artSet, artSize)
         }
-        Text(label, color = palette.primary, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        Text(label, color = palette.primary, fontSize = 13.sp, lineHeight = 18.2.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.padding(top = 6.dp))
     }
 }

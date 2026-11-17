@@ -48,18 +48,19 @@ fun EatsSearchHeader(
     onSelectCategory: (String?) -> Unit,
     showSearch: Boolean = true,
 ) {
+    val palette = eatsPrototypePalette()
     Column {
         if (showSearch) Row(
-            Modifier.fillMaxWidth().height(46.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 14.dp),
+            Modifier.fillMaxWidth().height(46.dp).clip(RoundedCornerShape(14.dp)).background(palette.surfaceSoft).padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ItundaArt("search", ItundaArtSet.Line, 20.dp, tint = Ids.colors.textTertiary)
+            ItundaArt("search", ItundaArtSet.Line, 20.dp, tint = palette.secondary)
             Box(Modifier.padding(start = 10.dp)) {
                 if (searchInput.isEmpty()) Text("Search restaurants", color = Ids.colors.textTertiary, fontSize = 16.sp)
                 BasicTextField(
                     value = searchInput, onValueChange = onSearchChange, singleLine = true,
-                    textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 16.sp),
-                    cursorBrush = SolidColor(Ids.colors.brand),
+                    textStyle = TextStyle(color = palette.primary, fontSize = 16.sp),
+                    cursorBrush = SolidColor(palette.accent),
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -75,11 +76,11 @@ fun EatsSearchHeader(
                 listOf<String?>(null).plus(categories).forEach { c ->
                     val on = c == selectedCategory
                     Box(
-                        Modifier.height(44.dp).clip(RoundedCornerShape(14.dp)).background(if (on) Color(0xFF191F28) else Color.Transparent)
+                        Modifier.height(44.dp).clip(RoundedCornerShape(14.dp)).background(if (on) palette.selected else Color.Transparent)
                             .pressScaleClickable { onSelectCategory(c) }.padding(horizontal = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(c ?: "All", color = if (on) Color.White else Ids.colors.textSecondary, fontSize = 16.sp, fontWeight = if (on) FontWeight.ExtraBold else FontWeight.Bold, maxLines = 1, softWrap = false)
+                        Text(c ?: "All", color = if (on) palette.selectedText else palette.secondary, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                     }
                 }
                 }

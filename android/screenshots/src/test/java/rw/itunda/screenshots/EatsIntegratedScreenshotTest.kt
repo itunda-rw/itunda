@@ -38,7 +38,7 @@ class EatsIntegratedScreenshotTest {
             }
         }
         rule.waitUntil(10_000) {
-            rule.onAllNodesWithText("Restaurants near you").fetchSemanticsNodes().isNotEmpty()
+            rule.onAllNodesWithText("Kigali Bakery").fetchSemanticsNodes().isNotEmpty()
         }
     }
 
@@ -71,7 +71,7 @@ class EatsIntegratedScreenshotTest {
     @Test fun browseSearchBakeryLight() {
         show(false)
         rule.onNodeWithContentDescription("Search restaurants").performTextInput("bakery")
-        rule.waitUntil(10_000) { rule.onAllNodesWithText("Sweet Tooth Cakes").fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Nyamirambo Grill").fetchSemanticsNodes().isEmpty() }
         capture("eats-prototype-browse-search-bakery-light")
     }
 
@@ -86,14 +86,14 @@ class EatsIntegratedScreenshotTest {
         show(false)
         rule.onNodeWithText("Open now").performScrollTo()
         rule.onNodeWithText("Open now").performClick()
-        rule.waitForIdle()
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Gisozi Street Kitchen").fetchSemanticsNodes().isEmpty() }
         capture("eats-prototype-browse-open-now-light")
     }
 
     @Test fun browseSavedLight() {
         show(false)
         rule.onNodeWithContentDescription("Saved").performClick()
-        rule.waitForIdle()
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("2").fetchSemanticsNodes().isNotEmpty() }
         capture("eats-prototype-browse-saved-light")
     }
 
