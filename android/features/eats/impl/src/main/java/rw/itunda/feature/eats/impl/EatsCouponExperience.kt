@@ -104,18 +104,18 @@ private fun EatsCouponCard(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, color = Color(0xFF191F28), fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
-            Text("$description · $code", color = Color(0xFF3B4350), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Text(title, color = Color(0xFF191F28), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text("$description · $code", color = Color(0xFF3B4350), fontSize = 13.sp)
         }
         Box(
-            modifier = Modifier.height(32.dp).clip(RoundedCornerShape(12.dp))
-                .background(if (selected) Color(0xFF59616D) else Color(0xE6191F28))
+            modifier = Modifier.height(40.dp).clip(RoundedCornerShape(20.dp))
+                .background(Ids.colors.textPrimary)
                 .semantics { contentDescription = if (selected) "Saved" else "Use" }
                 .pressScaleClickable(enabled = !selected, onClick = onUse)
-                .padding(horizontal = 12.dp, vertical = 5.dp),
+                .padding(horizontal = 18.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(if (selected) "Saved" else "Use", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+            Text(if (selected) "Saved" else "Use", color = Ids.colors.background, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }
