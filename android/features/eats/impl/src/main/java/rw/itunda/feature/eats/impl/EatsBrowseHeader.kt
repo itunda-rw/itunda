@@ -327,7 +327,7 @@ fun EatsCouponsSheet(
     onDismiss: () -> Unit,
     onSelect: (String) -> Unit,
 ) {
-    var blockedMessage by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = Ids.colors.surface,
@@ -339,13 +339,16 @@ fun EatsCouponsSheet(
         ) {
             Text("Your coupons", color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
             EatsCouponCard("Free delivery", "First order, delivery only", "FREEDEL", Color(0xFFFFE08A), selectedCoupon == "FREEDEL") {
-                if (isPickup) blockedMessage = "Free delivery only applies to delivery orders."
-                else onSelect("FREEDEL")
+                if (isPickup) {
+                    onDismiss()
+                    Toast.makeText(context, "Free delivery only applies to delivery orders.", Toast.LENGTH_SHORT).show()
+                } else {
+                    onSelect("FREEDEL")
+                }
             }
             EatsCouponCard("20% off", "Up to 2,000 RWF off your meal", "EATS20", Color(0xFFCFE8FF), selectedCoupon == "EATS20") {
                 onSelect("EATS20")
             }
-            blockedMessage?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
         }
     }
 }
