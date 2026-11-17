@@ -94,6 +94,7 @@ internal class EatsBrowseState {
 internal fun rememberEatsBrowseState(): EatsBrowseState = remember { EatsBrowseState() }
 
 /** Native Compose version of the v1038 Eats address, orders, cart, search and fulfillment header. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun EatsBrowseHeader(
     state: EatsBrowseState,
