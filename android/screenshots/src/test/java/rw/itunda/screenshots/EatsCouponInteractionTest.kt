@@ -14,8 +14,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import rw.itunda.core.designsystem.theme.IdsTheme
-import rw.itunda.feature.eats.impl.EatsBrowseHeader
 import rw.itunda.feature.eats.impl.EatsBrowseState
 
 @RunWith(RobolectricTestRunner::class)
@@ -26,7 +24,7 @@ class EatsCouponInteractionTest {
 
     @Test fun typedCouponCodeAppliesAndUpdatesShortcut() {
         val state = EatsBrowseState()
-        rule.setContent { IdsTheme(darkTheme = false) { EatsBrowseHeader(state, "", 0, {}, {}, {}) } }
+        rule.setContent { EatsBrowseTestSurface(state) }
         rule.onNodeWithContentDescription("Coupons").performClick()
         rule.onNodeWithContentDescription("Promo code").performTextInput("EATS20")
         rule.onNodeWithText("Apply").performClick()
@@ -36,7 +34,7 @@ class EatsCouponInteractionTest {
 
     @Test fun freeDeliveryCodeIsRejectedForPickup() {
         val state = EatsBrowseState().apply { isPickup = true }
-        rule.setContent { IdsTheme(darkTheme = false) { EatsBrowseHeader(state, "", 0, {}, {}, {}) } }
+        rule.setContent { EatsBrowseTestSurface(state) }
         rule.onNodeWithContentDescription("Coupons").performClick()
         rule.onNodeWithContentDescription("Promo code").performTextInput("FREEDEL")
         rule.onNodeWithText("Apply").performClick()
@@ -46,7 +44,7 @@ class EatsCouponInteractionTest {
 
     @Test fun removingAppliedCouponClearsIt() {
         val state = EatsBrowseState().apply { selectedCoupon = "EATS20" }
-        rule.setContent { IdsTheme(darkTheme = false) { EatsBrowseHeader(state, "", 0, {}, {}, {}) } }
+        rule.setContent { EatsBrowseTestSurface(state) }
         rule.onNodeWithContentDescription("Coupons").performClick()
         rule.onNodeWithText("Remove").performClick()
         assertNull(state.selectedCoupon)
