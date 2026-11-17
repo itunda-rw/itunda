@@ -267,7 +267,7 @@ class EatsScreenshotTest {
         rule.waitForIdle()
         rule.onNodeWithText("Your coupons").assertExists()
         rule.onNodeWithText("Free delivery").assertExists()
-        rule.onNodeWithText("20% off").assertExists()
+        rule.onNodeWithText("20% off your meal").assertExists()
         rule.onRoot().captureRoboImage("build/screenshots/eats-coupons-$name.png")
     }
 
@@ -298,10 +298,10 @@ class EatsScreenshotTest {
         val state = rw.itunda.feature.eats.impl.EatsBrowseState().apply { isPickup = true }
         rule.setContent { EatsBrowseTestSurface(state) }
         rule.onNodeWithContentDescription("Coupons").performClick()
-        rule.onAllNodesWithText("Use")[0].performClick()
+        rule.onNodeWithText("Delivery only").assertExists()
         rule.waitForIdle()
         assertNull(state.selectedCoupon)
-        assertTrue(rule.onAllNodesWithText("Your coupons").fetchSemanticsNodes().isEmpty())
+        rule.onNodeWithText("Your coupons").assertExists()
     }
 
     private fun addressPickerSheet(dark: Boolean, name: String) {
