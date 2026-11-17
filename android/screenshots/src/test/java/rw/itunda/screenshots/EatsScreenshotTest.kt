@@ -176,7 +176,9 @@ class EatsScreenshotTest {
         }
         rule.onNodeWithContentDescription("Coupons").performClick()
         rule.onAllNodesWithText("Use")[0].performClick()
-        rule.onNodeWithText("Free delivery only applies to delivery orders.").assertExists()
+        rule.waitForIdle()
+        assertNull(state.selectedCoupon)
+        rule.onNodeWithText("Your coupons").assertDoesNotExist()
     }
 
     private fun addressPickerSheet(dark: Boolean, name: String) {
