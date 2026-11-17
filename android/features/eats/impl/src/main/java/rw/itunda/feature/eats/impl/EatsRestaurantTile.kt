@@ -57,7 +57,6 @@ fun EatsRestaurantTile(
     onOpen: () -> Unit,
     onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier,
-    isPickup: Boolean = false,
 ) {
     Column(modifier.pressScaleClickable(onClick = onOpen)) {
         Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(24.dp)).background(tileTints[tintIndex.mod(tileTints.size)])) {
@@ -84,7 +83,7 @@ fun EatsRestaurantTile(
 
 /** One row of the 2-column restaurant grid; a lone trailing restaurant keeps its half-width slot. */
 @Composable
-fun EatsRestaurantGridRow(row: List<ShoppingMerchantDto>, favoriteIds: Set<String>, onOpen: (ShoppingMerchantDto) -> Unit, onToggleFavorite: (ShoppingMerchantDto) -> Unit) {
+fun EatsRestaurantGridRow(row: List<ShoppingMerchantDto>, favoriteIds: Set<String>, onOpen: (ShoppingMerchantDto) -> Unit, onToggleFavorite: (ShoppingMerchantDto) -> Unit, isPickup: Boolean = false) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         row.forEach { m ->
             val discount = m.maxDiscountPercent?.takeIf { it > 0 }
