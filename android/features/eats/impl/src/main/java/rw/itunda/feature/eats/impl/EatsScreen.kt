@@ -22,11 +22,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Bolt
-import androidx.compose.material.icons.outlined.Coffee
-import androidx.compose.material.icons.outlined.Restaurant
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -461,7 +456,7 @@ internal fun OrderFoodContent(
             item {
                 Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (browseLocation != null) {
-                        EatsSortChip("Fastest", Icons.Outlined.Bolt, active = sortMode == "delivery_time") {
+                        EatsSortChip("Fastest", null, active = sortMode == "delivery_time") {
                             sortMode = if (sortMode == "delivery_time") null else "delivery_time"
                         }
                     }
@@ -502,8 +497,7 @@ internal fun OrderFoodContent(
                         // no restaurant has joined yet, not something the reader is missing
                         // a step on, matching docs/COPY_VOICE.md's "when the cause is
                         // someone else's, say so honestly" rule.
-                        if (selectedCategory != null || searchInput.isNotBlank()) "No restaurants match your search — try a different category or search term." else "No restaurants registered yet — check back once restaurants in your area join itunda Eats.",
-                        icon = Icons.Outlined.Restaurant,
+                        if (selectedCategory != null || searchInput.isNotBlank()) "No restaurants match your search — try a different category or search term." else "No restaurants registered yet — check back once restaurants in your area join itunda Eats."
                     )
                 }
             } else {
