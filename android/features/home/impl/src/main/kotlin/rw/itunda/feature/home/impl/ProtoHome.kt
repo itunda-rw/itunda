@@ -114,18 +114,18 @@ ItundaArt("chev",ItundaArtSet.Line,18.dp,tint=Ids.colors.textTertiary)}
 Spacer(Modifier.height(16.dp));ProtoWeekChart(state.week,state.today)
 }}
 state.bill?.let{b->item{HomeRow("bill",b.title,"Due ${b.due} · ${homeRwf(b.amount)} RWF","Pay",onPayBill)}}
-item{HomeRow("gift","${homeRwf(state.earned)} RWF earned","Points and coupons","View",onOpenRewards)}
+item{HomeRow("star-duo","${homeRwf(state.earned)} RWF earned","Points and coupons","View",onOpenRewards,ItundaArtSet.Duo)}
 item{HomeSectionHeader("Pockets","See all",onSavings)}
 item{HomeRow("school-fees","School fees","120,000 RWF","Top up",onSavings)}
 item{HomeRow("lock","Emergency fund","50,000 RWF","Top up",onSavings)}
 item{HomeSectionHeader("Around you",null){}}
-item{HomeNavRow("market","Kigali Roast","Cafe · open till 20:00 · 3 min walk"){}}
-item{HomeNavRow("restaurant","Eats","Free delivery on your first order"){}}
-item{HomeNavRow("moto","Home","About 24 min by bus · leave now"){}}
+item{HomeNavRow("market","Kigali Roast","Cafe · open till 20:00 · 3 min walk")}
+item{HomeNavRow("restaurant","Eats","Free delivery on your first order")}
+item{HomeNavRow("moto","Home","About 24 min by bus · leave now")}
 item{HomeSectionHeader("Recent activity","See all",onSeeAll)}
 item{HomeActivityRow("receive","Amina K.","Received · Yesterday","+25,000 RWF",null)}
 item{HomeActivityRow("transit","Kigali Bus Services","Paid · Tuesday","−300 RWF","+9 earned")}
-item{HomeSettingsButton{}}
+item{HomeSettingsButton(onOpenProfile)}
 }
 }
 @Composable private fun HomeHeader(hasUnread:Boolean,onOpenNotifications:()->Unit,onOpenProfile:()->Unit,notificationsLabel:String,profileLabel:String){

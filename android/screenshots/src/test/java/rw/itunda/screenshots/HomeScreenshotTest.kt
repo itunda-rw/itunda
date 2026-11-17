@@ -2,6 +2,7 @@ package rw.itunda.screenshots
 
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performScrollToNode
 import com.github.takahirom.roborazzi.captureRoboImage
 import java.time.LocalDate
 import org.junit.Rule
@@ -43,6 +44,14 @@ class HomeScreenshotTest {
         rule.onRoot().captureRoboImage("build/screenshots/$name.png")
     }
 
+    private fun renderLower(dark: Boolean, name: String) {
+        rule.setContent { IdsTheme(darkTheme = dark) { ProtoHomeContent(state, true, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}) } }
+        rule.onNode(androidx.compose.ui.test.hasScrollAction()).performScrollToNode(androidx.compose.ui.test.hasText("Home settings"))
+        rule.onRoot().captureRoboImage("build/screenshots/$name.png")
+    }
+
+    @Test fun homeLowerLight() = renderLower(false, "home-lower-light")
+    @Test fun homeLowerDark() = renderLower(true, "home-lower-dark")
     @Test fun homeLight() = render(false, "home-light")
     @Test fun homeDark() = render(true, "home-dark")
 }

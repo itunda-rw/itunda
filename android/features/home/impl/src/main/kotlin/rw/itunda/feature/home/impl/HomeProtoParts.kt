@@ -114,9 +114,9 @@ internal fun HomeInviteBanner(onInvite: () -> Unit, onDismiss: () -> Unit) {
 }
 
 @Composable
-internal fun HomeRow(art: String, title: String, subtitle: String, action: String, onAction: () -> Unit) {
+internal fun HomeRow(art: String, title: String, subtitle: String, action: String, onAction: () -> Unit, artSet: ItundaArtSet = ItundaArtSet.Proto) {
     Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(44.dp).clip(RoundedCornerShape(16.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) { ItundaArt(art, ItundaArtSet.Proto, 28.dp) }
+        Box(Modifier.size(44.dp).clip(RoundedCornerShape(16.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) { ItundaArt(art, artSet, 28.dp) }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(title, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
@@ -135,15 +135,15 @@ internal fun HomeSectionHeader(title: String, action: String?, onAction: () -> U
 }
 
 @Composable
-internal fun HomeNavRow(art: String, title: String, subtitle: String, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 24.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+internal fun HomeNavRow(art: String, title: String, subtitle: String, onClick: (() -> Unit)? = null) {
+    Row(Modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(horizontal = 24.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(44.dp).clip(RoundedCornerShape(16.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) { ItundaArt(art, ItundaArtSet.Proto, 28.dp) }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(title, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
             Text(subtitle, color = Ids.colors.textSecondary, fontSize = 14.sp)
         }
-        ItundaArt("chev", ItundaArtSet.Line, 16.dp, tint = Ids.colors.textTertiary)
+        if (onClick != null) ItundaArt("chev", ItundaArtSet.Line, 16.dp, tint = Ids.colors.textTertiary)
     }
 }
 
