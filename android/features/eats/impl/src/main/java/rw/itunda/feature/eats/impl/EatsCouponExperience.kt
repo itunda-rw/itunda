@@ -56,18 +56,22 @@ fun EatsCouponsSheet(
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         containerColor = Ids.colors.background,
         contentColor = Ids.colors.textPrimary,
+        dragHandle = null,
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = 24.dp, top = 32.dp, end = 24.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
                 "Your coupons",
                 color = Ids.colors.textPrimary,
                 fontSize = 22.sp,
+                lineHeight = 30.sp,
                 fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier.padding(bottom = 2.dp),
             )
             EatsCouponCard(
                 title = "Free delivery",
