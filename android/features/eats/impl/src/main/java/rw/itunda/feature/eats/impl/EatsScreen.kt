@@ -383,7 +383,7 @@ internal fun OrderFoodContent(
             onFastestClick = {
                 view = OrderFoodView.BROWSE
                 if (browseLocation == null) Toast.makeText(locationContext, "Enable location to sort by fastest delivery", Toast.LENGTH_SHORT).show()
-                else sortMode = if (sortMode == "delivery_time") null else "delivery_time"
+                else sortMode = "delivery_time"
             },
             onSavedClick = { view = if (view == OrderFoodView.FAVORITES) OrderFoodView.BROWSE else OrderFoodView.FAVORITES },
         )
