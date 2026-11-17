@@ -112,7 +112,7 @@ fun EatsBrowseHeader(
             Row(
                 modifier = Modifier.weight(1f).height(44.dp)
                     .semantics { contentDescription = "Change delivery address" }
-                    .pressScaleClickable { newAddress = ""; showAddressSheet = true }
+                    .pressScaleClickable { showAddressSheet = true }
                     .padding(horizontal = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
