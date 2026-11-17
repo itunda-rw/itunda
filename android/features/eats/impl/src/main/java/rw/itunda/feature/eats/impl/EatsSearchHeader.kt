@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,7 +32,7 @@ import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 
-/** Prototype Eats search: soft rounded pill with a search icon, then big bold category tabs (selected = dark filled). */
+/** Prototype Eats search: soft rounded pill with a search icon, then big bold category tabs (selected = soft filled). */
 @Composable
 fun EatsSearchHeader(
     searchInput: String,
@@ -62,7 +62,7 @@ fun EatsSearchHeader(
             Spacer(Modifier.height(if (showSearch) 14.dp else 4.dp))
             BoxWithConstraints(Modifier.fillMaxWidth()) {
                 Row(
-                    Modifier.offset(x = (-24).dp).width(maxWidth + 48.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+                    Modifier.offset(x = (-24).dp).requiredWidth(maxWidth + 48.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
