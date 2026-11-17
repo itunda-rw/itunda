@@ -44,6 +44,15 @@ class HomeScreenshotTest {
         rule.onRoot().captureRoboImage("build/screenshots/$name.png")
     }
 
+    private fun renderMid(dark: Boolean, name: String) {
+        rule.setContent { IdsTheme(darkTheme = dark) { ProtoHomeContent(state, true, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}) } }
+        rule.onNode(androidx.compose.ui.test.hasScrollAction()).performScrollToNode(androidx.compose.ui.test.hasText("School fees"))
+        rule.onRoot().captureRoboImage("build/screenshots/$name.png")
+    }
+
+    @Test fun homeMidLight() = renderMid(false, "home-mid-light")
+    @Test fun homeMidDark() = renderMid(true, "home-mid-dark")
+
     private fun renderLower(dark: Boolean, name: String) {
         rule.setContent { IdsTheme(darkTheme = dark) { ProtoHomeContent(state, true, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}) } }
         rule.onNode(androidx.compose.ui.test.hasScrollAction()).performScrollToNode(androidx.compose.ui.test.hasText("Home settings"))

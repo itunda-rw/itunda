@@ -88,7 +88,7 @@ internal fun ProtoWeekChart(days: List<DaySpend>, today: LocalDate = LocalDate.n
             )
             Text(
                 "${if (day.date == today) "$todayLabel · " else ""}${day.date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale)} ${day.date.dayOfMonth} ${day.date.month.getDisplayName(TextStyle.SHORT, locale)}",
-                color = p.mu, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 3.dp),
+                color = p.mu, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 2.dp),
             )
         }
         Row(
