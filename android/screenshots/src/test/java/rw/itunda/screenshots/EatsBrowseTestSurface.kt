@@ -24,13 +24,11 @@ internal fun EatsBrowseTestSurface(
     onSearchChange: (String) -> Unit = {},
     onOrdersClick: () -> Unit = {},
     onCartClick: () -> Unit = {},
-    onFastestClick: () -> Unit = {},
-    onSavedClick: () -> Unit = {},
 ) {
     IdsTheme(darkTheme = darkTheme) {
         Column(Modifier.fillMaxSize().background(Ids.colors.background)) {
             EatsBrowseHeader(state, searchInput, cartCount, onSearchChange, onOrdersClick, onCartClick)
-            Column(Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
+            Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
                 EatsDeliveryPickupRow(state)
                 EatsSearchHeader(
                     searchInput = searchInput,
@@ -40,7 +38,7 @@ internal fun EatsBrowseTestSurface(
                     onSelectCategory = {},
                     showSearch = false,
                 )
-                EatsBrowseOffers(state, onFastestClick, onSavedClick)
+                EatsBrowseOffers(state)
             }
         }
     }
