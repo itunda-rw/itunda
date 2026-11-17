@@ -358,7 +358,6 @@ internal fun OrderFoodContent(
     // Real fix (2026-08-25, direct user directive: "implant that into our designs
     // and apply it across our ecosystems", following the account ledger's own
     // shipped version) -- see ScrollPressTracker.kt's own doc comment.
-    var showMembership by remember { mutableStateOf(false) }
     val eatsListState = rememberLazyListState()
     val eatsTouchedKey = remember { mutableStateOf<Any?>(null) }
     Column(modifier = Modifier.fillMaxSize()) {
@@ -444,18 +443,6 @@ internal fun OrderFoodContent(
                 )
             }
             item { EatsPromoBanner(browseState.isPickup, browseState.selectedCoupon == "FREEDEL", { browseState.selectedCoupon = "FREEDEL" }) }
-            item {
-                EatsQuickActions(
-                    onFastest = { sortMode = if (sortMode == "delivery_time") null else "delivery_time" },
-                    onCoupons = { browseState.showCoupons = true },
-                    onClub = { showMembership = !showMembership },
-                    onSaved = { view = OrderFoodView.FAVORITES },
-                )
-            }
-            if (showMembership) {
-                item { PlatformMembershipCard() }
-                item { EatsMembershipCard() }
-            }
             if (searchInput.isBlank() && selectedCategory == null && !restaurants.isNullOrEmpty()) item { EatsPopularRail(restaurants!!, ::openRestaurant) }
             item { EatsSectionHeader("Restaurants near you", restaurants?.size) }
             // Real Baemin/Coupang Eats-style sort chip row (itunda Eats redesign,
