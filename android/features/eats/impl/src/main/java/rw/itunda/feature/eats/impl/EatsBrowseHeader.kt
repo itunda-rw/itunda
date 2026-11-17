@@ -61,12 +61,12 @@ internal fun EatsModeSwitch(isPickup: Boolean, onModeChange: (Boolean) -> Unit, 
             val selected = isPickup == pickup
             Box(
                 modifier = Modifier.height(32.dp).clip(RoundedCornerShape(13.dp))
-                    .background(if (selected) Ids.colors.background else Color.Transparent)
+                    .background(if (selected) Color(0xFF191F28) else Color.Transparent)
                     .semantics { contentDescription = label }.pressScaleClickable { onModeChange(pickup) }
                     .padding(horizontal = 10.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(label, color = if (selected) Ids.colors.textPrimary else Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(label, color = if (selected) Color.White else Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
         }
     }

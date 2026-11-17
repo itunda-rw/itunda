@@ -39,18 +39,18 @@ fun EatsPopularRail(restaurants: List<ShoppingMerchantDto>, onOpen: (ShoppingMer
     val top = restaurants.filter { it.rating != null }.sortedByDescending { (it.rating ?: 0.0) * (it.reviewCount + 1) }.take(5)
     if (top.isEmpty()) return
     Column(modifier) {
-        Text("Popular this week", color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 8.dp, bottom = 12.dp))
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        Text("Popular this week", color = Ids.colors.textPrimary, fontSize = 19.sp, lineHeight = 27.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 18.dp, bottom = 16.dp))
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             top.forEachIndexed { i, m ->
-                Column(Modifier.width(150.dp).pressScaleClickable(onClick = { onOpen(m) })) {
-                    Box(Modifier.fillMaxWidth().aspectRatio(1.15f).clip(RoundedCornerShape(22.dp)).background(railTints[i % railTints.size])) {
-                        Text("${i + 1}", color = Color(0xFF191F28), fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, fontStyle = FontStyle.Italic, modifier = Modifier.padding(start = 14.dp, top = 8.dp))
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { ItundaArt(eatsCategoryArt(m.category), ItundaArtSet.Color, 56.dp) }
+                Column(Modifier.width(148.dp).pressScaleClickable(onClick = { onOpen(m) })) {
+                    Box(Modifier.width(132.dp).height(99.dp).clip(RoundedCornerShape(20.dp)).background(railTints[i % railTints.size])) {
+                        Text("${i + 1}", color = Color(0xFF191F28), fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, fontStyle = FontStyle.Italic, modifier = Modifier.padding(start = 8.dp, top = 2.dp))
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { ItundaArt(eatsCategoryArt(m.category), ItundaArtSet.Color, 60.dp) }
                     }
-                    Text(m.businessName, color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
+                    Text(m.businessName, color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 2, lineHeight = 19.sp, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
                     Text(
-                        listOfNotNull(m.rating?.let { String.format(Locale.US, "★ %.1f (%d)", it, m.reviewCount) }, m.deliveryTimeMinutes?.let { minutes -> if (isPickup) "Ready in ${maxOf(10, minutes - 10)} min" else "$minutes min" }).joinToString(" · "),
-                        color = Ids.colors.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                        listOfNotNull(m.rating?.let { String.format(Locale.US, "%.1f (%d)", it, m.reviewCount) }, m.deliveryTimeMinutes?.let { minutes -> if (isPickup) "Ready in ${maxOf(10, minutes - 10)} min" else "$minutes min" }).joinToString(" · "),
+                        color = Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
                     )
                 }
             }
@@ -61,8 +61,8 @@ fun EatsPopularRail(restaurants: List<ShoppingMerchantDto>, onOpen: (ShoppingMer
 /** Section title with a trailing count, as in the prototype's "Restaurants near you  14". */
 @Composable
 fun EatsSectionHeader(title: String, count: Int?, modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, Modifier.weight(1f), color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+    Row(modifier.fillMaxWidth().height(60.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(title, Modifier.weight(1f), color = Ids.colors.textPrimary, fontSize = 19.sp, lineHeight = 27.sp, fontWeight = FontWeight.ExtraBold)
         if (count != null) Text("$count", color = Ids.colors.textSecondary, fontSize = 14.sp)
     }
 }

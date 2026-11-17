@@ -32,7 +32,13 @@ import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 
-/** Prototype Eats search: soft rounded pill with a search icon, then big bold category tabs (selected = soft filled). */
+/** The exact category order shown by the v1038 Eats browse surface. */
+internal val EATS_PROTOTYPE_CATEGORIES = listOf(
+    "Brochette", "Chicken", "Pizza", "Burgers", "Local", "Chips",
+    "Bakery", "Coffee", "Juice", "Healthy", "Dessert",
+)
+
+/** Prototype Eats search: soft rounded pill with a search icon, then bold category tabs. */
 @Composable
 fun EatsSearchHeader(
     searchInput: String,
@@ -69,11 +75,11 @@ fun EatsSearchHeader(
                 listOf<String?>(null).plus(categories).forEach { c ->
                     val on = c == selectedCategory
                     Box(
-                        Modifier.height(44.dp).clip(RoundedCornerShape(14.dp)).background(if (on) Ids.colors.surfaceSoft else Color.Transparent)
+                        Modifier.height(44.dp).clip(RoundedCornerShape(14.dp)).background(if (on) Color(0xFF191F28) else Color.Transparent)
                             .pressScaleClickable { onSelectCategory(c) }.padding(horizontal = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(c ?: "All", color = if (on) Ids.colors.textPrimary else Ids.colors.textSecondary, fontSize = 16.sp, fontWeight = if (on) FontWeight.ExtraBold else FontWeight.Bold, maxLines = 1, softWrap = false)
+                        Text(c ?: "All", color = if (on) Color.White else Ids.colors.textSecondary, fontSize = 16.sp, fontWeight = if (on) FontWeight.ExtraBold else FontWeight.Bold, maxLines = 1, softWrap = false)
                     }
                 }
                 }
