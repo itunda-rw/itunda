@@ -20,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,7 +38,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.ItundaArt
 import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.components.pressScaleClickable
@@ -76,7 +74,12 @@ class EatsBrowseState {
     var isPickup by mutableStateOf(false)
     var selectedCoupon by mutableStateOf<String?>(null)
     var address by mutableStateOf("Kimironko, KG 11 Ave")
-    var savedAddresses by mutableStateOf(listOf("Kimironko, KG 11 Ave", "Kacyiru, KG 7 Ave"))
+    var savedAddresses by mutableStateOf(
+        listOf(
+            EatsSavedAddress("Home", "Kimironko, KG 11 Ave"),
+            EatsSavedAddress("Work", "Kacyiru, KG 7 Ave"),
+        ),
+    )
     var cartRestaurant by mutableStateOf<ShoppingMerchantDto?>(null)
     var showCoupons by mutableStateOf(false)
 }
@@ -96,7 +99,6 @@ fun EatsBrowseHeader(
     onCartClick: () -> Unit,
 ) {
     var showAddressSheet by remember { mutableStateOf(false) }
-    var newAddress by remember { mutableStateOf("") }
     val context = LocalContext.current
     val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
 
@@ -108,7 +110,7 @@ fun EatsBrowseHeader(
         ) {
             EatsHeaderIcon("Back", "back") { backDispatcher?.onBackPressed() }
             Row(
-                modifier = Modifier.weight(1f).height(48.dp)
+                modifier = Modifier.weight(1f).height(44.dp)
                     .semantics { contentDescription = "Change delivery address" }
                     .pressScaleClickable { newAddress = ""; showAddressSheet = true }
                     .padding(horizontal = 6.dp),
@@ -219,7 +221,7 @@ fun EatsBrowseHeader(
                 Text("Coupons", color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Text(" · 2 available", color = Ids.colors.textPrimary, fontSize = 14.sp)
                 state.selectedCoupon?.let {
-                    Text(" · $it ✓", color = Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(" · $it ✓", color = Ids.colors.textPrimary, fontSize = 14.sp)
                 }
             }
             ItundaArt("chev", ItundaArtSet.Line, 16.dp, tint = Ids.colors.textTertiary)
@@ -227,54 +229,7 @@ fun EatsBrowseHeader(
     }
 
     if (showAddressSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showAddressSheet = false },
-            containerColor = Ids.colors.surface,
-            contentColor = Ids.colors.textPrimary,
-        ) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = 28.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text("Delivery address", color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
-                state.savedAddresses.forEachIndexed { index, savedAddress ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().pressScaleClickable {
-                            state.address = savedAddress
-                            showAddressSheet = false
-                        }.padding(vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(listOf("Home", "Work").getOrElse(index) { "Other" }, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
-                            Text(savedAddress, color = Ids.colors.textSecondary, fontSize = 13.sp)
-                        }
-                        androidx.compose.material3.RadioButton(
-                            selected = state.address == savedAddress,
-                            onClick = { state.address = savedAddress; showAddressSheet = false },
-                        )
-                    }
-                }
-                if (state.savedAddresses.size < 5) {
-                    IdsTextField(
-                        value = newAddress,
-                        onValueChange = { newAddress = it.take(40) },
-                        label = "Street or landmark, e.g. Remera, KG 5 Ave",
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    TextButton(
-                        enabled = newAddress.isNotBlank(),
-                        onClick = {
-                            state.savedAddresses = state.savedAddresses + newAddress.trim()
-                            state.address = newAddress.trim()
-                            showAddressSheet = false
-                        },
-                    ) { Text("Add and use") }
-                }
-                TextButton(onClick = { showAddressSheet = false }) { Text("Close") }
-                Text("Sample addresses for this prototype.", color = Ids.colors.textTertiary, fontSize = 12.sp)
-            }
-        }
+        EatsAddressPickerSheet(state = state, onDismiss = { showAddressSheet = false })
     }
 
     if (state.showCoupons) {
@@ -347,7 +302,11 @@ fun EatsCouponsSheet(
             modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("Your coupons", color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+            Text(
+                "Your coupons",
+                color = Ids.colors.textPrimary,
+                style = TextStyle(fontSize = 22.sp, lineHeight = 30.sp, letterSpacing = (-0.5).sp, fontWeight = FontWeight.ExtraBold),
+            )
             EatsCouponCard("Free delivery", "First order, delivery only", "FREEDEL", Color(0xFFFFE08A), selectedCoupon == "FREEDEL") {
                 if (isPickup) {
                     onDismiss()

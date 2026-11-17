@@ -12,6 +12,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Assert.assertTrue
@@ -320,11 +321,58 @@ class EatsScreenshotTest {
         }
         rule.onNodeWithContentDescription("Change delivery address").performClick()
         rule.waitForIdle()
+        rule.onNodeWithText("Your rider will go to the address you pick.").assertExists()
+        rule.onNodeWithText("Add a new address").assertExists()
+        rule.onNodeWithText("Use this address").assertExists()
         rule.onRoot().captureRoboImage("build/screenshots/eats-address-picker-$name.png")
+    }
+
+    private fun addressPickerForm(dark: Boolean, name: String) {
+        rule.activity.actionBar?.hide()
+        val state = rw.itunda.feature.eats.impl.EatsBrowseState()
+        rule.setContent {
+            IdsTheme(darkTheme = dark) {
+                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
+            }
+        }
+        rule.onNodeWithContentDescription("Change delivery address").performClick()
+        rule.onNodeWithText("Add a new address").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Street or landmark").assertExists()
+        rule.onRoot().captureRoboImage("build/screenshots/eats-address-form-$name.png")
     }
 
     @Test fun addressPickerSheetLight() = addressPickerSheet(false, "light")
     @Test fun addressPickerSheetDark() = addressPickerSheet(true, "dark")
+    @Test fun addressPickerFormLight() = addressPickerForm(false, "light")
+    @Test fun addressPickerFormDark() = addressPickerForm(true, "dark")
+
+    @Test fun addressPickerAppliesSelectedAddress() {
+        val state = rw.itunda.feature.eats.impl.EatsBrowseState()
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
+            }
+        }
+        rule.onNodeWithContentDescription("Change delivery address").performClick()
+        rule.onNodeWithText("Work").performClick()
+        rule.onNodeWithText("Use this address").performClick()
+        rule.onNodeWithText("Kacyiru, KG 7 Ave").assertExists()
+    }
+
+    @Test fun addressPickerSavesNewAddress() {
+        val state = rw.itunda.feature.eats.impl.EatsBrowseState()
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
+            }
+        }
+        rule.onNodeWithContentDescription("Change delivery address").performClick()
+        rule.onNodeWithText("Add a new address").performClick()
+        rule.onNodeWithContentDescription("Street or landmark").performTextInput("Remera, KG 5 Ave")
+        rule.onNodeWithText("Save and use").performClick()
+        rule.onNodeWithText("Remera, KG 5 Ave").assertExists()
+    }
 
     @Test fun browseHeaderPickupDark() {
         val state = rw.itunda.feature.eats.impl.EatsBrowseState().apply { isPickup = true }
