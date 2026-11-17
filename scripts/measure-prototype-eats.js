@@ -303,11 +303,12 @@ async function capture(page, state, theme, height, scrollTop) {
             const root = document.getElementById('sc');
             return Math.max(0, root.scrollHeight - root.clientHeight);
           });
+          // At phone height, capture the top, middle and bottom of every scrollable
+          // state. The tall viewport remains the complete-content reference; these
+          // three viewport captures make clipped/overlapping sticky elements visible.
           let positions = [0];
-          if (height === 844 && state.screen === 'shop' && state.id === 'browse-default') {
+          if (height === 844 && maxScroll > 0) {
             positions = [0, Math.round(maxScroll / 2), maxScroll];
-          } else if (height === 844 && ['erest', 'echeck', 'etrack', 'eorders'].includes(state.screen)) {
-            positions = [0, maxScroll];
           }
           positions = [...new Set(positions)];
           for (const top of positions) await capture(page, state, theme, height, top);
