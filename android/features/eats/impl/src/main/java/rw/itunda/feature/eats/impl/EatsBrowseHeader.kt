@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -45,26 +46,43 @@ import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 
-/** Prototype Eats promo strip: yellow card with a gift. Fixed light colours so text stays readable in dark mode. */
+/** Prototype Eats promo strip: tappable delivery-only offer with fixed contrast-safe art. */
 @Composable
-fun EatsPromoBanner(modifier: Modifier = Modifier) {
+fun EatsPromoBanner(
+    isPickup: Boolean,
+    selected: Boolean,
+    onSelectCoupon: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
     Row(
-        modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color(0xFFFFE08A)).padding(horizontal = 18.dp, vertical = 16.dp),
+        modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color(0xFFFFE08A))
+            .pressScaleClickable {
+                if (isPickup) Toast.makeText(context, "Free delivery only applies to delivery orders.", Toast.LENGTH_SHORT).show()
+                else onSelectCoupon()
+            }.padding(horizontal = 18.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
             Text("Free delivery on your first order", color = Color(0xFF191F28), fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
-            Text("Delivery only · Code FREEDEL", color = Color(0xFF4E5968), fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
+            Text(if (selected) "Code FREEDEL saved" else "Delivery only · Code FREEDEL", color = Color(0xFF4E5968), fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
         }
         ItundaArt("gift", ItundaArtSet.Color, 48.dp)
     }
 }
 
-/** Prototype quick-action row: round tinted tile with art, label below. */
+/** Prototype quick-action row: four round tinted tiles with exact Itunda artwork. */
 @Composable
-fun EatsQuickActions(onFastest: () -> Unit, onClub: () -> Unit, onSaved: () -> Unit, modifier: Modifier = Modifier) {
+fun EatsQuickActions(
+    onFastest: () -> Unit,
+    onCoupons: () -> Unit,
+    onClub: () -> Unit,
+    onSaved: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
         EatsQuickAction("moto", "Fastest", onFastest)
+        EatsQuickAction("voucher", "Coupons", onCoupons)
         EatsQuickAction("gift", "Eats Club", onClub)
         EatsQuickAction("heart", "Saved", onSaved)
     }
@@ -72,14 +90,16 @@ fun EatsQuickActions(onFastest: () -> Unit, onClub: () -> Unit, onSaved: () -> U
 
 @Composable
 private fun EatsQuickAction(art: String, label: String, onClick: () -> Unit) {
-    Column(Modifier.pressScaleClickable(onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        Modifier.semantics { contentDescription = label }.pressScaleClickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         Box(Modifier.size(56.dp).clip(RoundedCornerShape(20.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
             ItundaArt(art, ItundaArtSet.Color, 30.dp)
         }
         Text(label, color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp))
     }
 }
-
 
 /** State shared by the Eats browse header and checkout entry point. */
 class EatsBrowseState {
@@ -88,12 +108,13 @@ class EatsBrowseState {
     var address by mutableStateOf("Kimironko, KG 11 Ave")
     var savedAddresses by mutableStateOf(listOf("Kimironko, KG 11 Ave", "Kacyiru, KG 7 Ave"))
     var cartRestaurant by mutableStateOf<ShoppingMerchantDto?>(null)
+    var showCoupons by mutableStateOf(false)
 }
 
 @Composable
 internal fun rememberEatsBrowseState(): EatsBrowseState = remember { EatsBrowseState() }
 
-/** Native Compose version of the v1038 Eats address, orders, cart, search and fulfillment header. */
+/** Native Compose version of the v1038 Eats search, address and fulfillment header. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EatsBrowseHeader(
@@ -104,30 +125,35 @@ fun EatsBrowseHeader(
     onOrdersClick: () -> Unit,
     onCartClick: () -> Unit,
 ) {
-    var showCoupons by remember { mutableStateOf(false) }
     var showAddressSheet by remember { mutableStateOf(false) }
     var newAddress by remember { mutableStateOf("") }
     val context = LocalContext.current
+    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
 
-    Column(modifier = Modifier.background(Ids.colors.background)) {
+    Column(modifier = Modifier.fillMaxWidth().background(Ids.colors.background)) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 10.dp, bottom = 6.dp),
+            modifier = Modifier.fillMaxWidth().height(58.dp).padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
+            EatsHeaderIcon("Back", "back") { backDispatcher?.onBackPressed() }
             Row(
-                modifier = Modifier.weight(1f).height(44.dp)
-                    .semantics { contentDescription = "Change delivery address" }
-                    .pressScaleClickable { newAddress = ""; showAddressSheet = true },
+                modifier = Modifier.weight(1f).height(44.dp).clip(RoundedCornerShape(14.dp))
+                    .background(Ids.colors.surfaceSoft).padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                ItundaArt("pin", ItundaArtSet.Line, 22.dp, tint = Ids.colors.textBrand)
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(if (state.isPickup) "Pickup near" else "Deliver to", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                    Text(state.address, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+                ItundaArt("search", ItundaArtSet.Line, 20.dp, tint = Ids.colors.textTertiary)
+                Box(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
+                    if (searchInput.isEmpty()) Text("Search restaurants", color = Ids.colors.textTertiary, fontSize = 14.sp)
+                    BasicTextField(
+                        value = searchInput,
+                        onValueChange = onSearchChange,
+                        singleLine = true,
+                        textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 14.sp),
+                        cursorBrush = SolidColor(Ids.colors.brand),
+                        modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Search restaurants" },
+                    )
                 }
-                ItundaArt("chev", ItundaArtSet.Line, 16.dp, tint = Ids.colors.textSecondary)
             }
             EatsHeaderIcon("Orders", "receipt-rw", onOrdersClick)
             Box {
@@ -149,56 +175,30 @@ fun EatsBrowseHeader(
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).height(46.dp)
-                .clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft)
-                .padding(horizontal = 14.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).height(44.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ItundaArt("search", ItundaArtSet.Line, 20.dp, tint = Ids.colors.textTertiary)
-            Box(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
-                if (searchInput.isEmpty()) Text("Search restaurants or dishes", color = Ids.colors.textTertiary, fontSize = 15.sp)
-                BasicTextField(
-                    value = searchInput,
-                    onValueChange = onSearchChange,
-                    singleLine = true,
-                    textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 15.sp),
-                    cursorBrush = SolidColor(Ids.colors.brand),
-                    modifier = Modifier.fillMaxWidth(),
-                )
+            Row(
+                modifier = Modifier.weight(1f).semantics { contentDescription = "Change delivery address" }
+                    .pressScaleClickable { newAddress = ""; showAddressSheet = true },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(state.address.substringBefore(","), color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                ItundaArt("chev", ItundaArtSet.Line, 16.dp, tint = Ids.colors.textTertiary)
             }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            EatsFulfillmentChoice("Delivery", "To your door", "scooter", !state.isPickup, Modifier.weight(1f)) {
-                state.isPickup = false
+            Row(
+                modifier = Modifier.height(38.dp).clip(RoundedCornerShape(20.dp))
+                    .background(Ids.colors.surfaceSoft).padding(3.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                EatsModeChoice("Delivery", !state.isPickup) { state.isPickup = false }
+                EatsModeChoice("Pickup", state.isPickup) {
+                    state.isPickup = true
+                    if (state.selectedCoupon == "FREEDEL") state.selectedCoupon = null
+                }
             }
-            EatsFulfillmentChoice("Pickup", "No delivery fee", "bag", state.isPickup, Modifier.weight(1f)) {
-                state.isPickup = true
-                if (state.selectedCoupon == "FREEDEL") state.selectedCoupon = null
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp)
-                .height(48.dp).clip(RoundedCornerShape(14.dp))
-                .border(1.dp, Ids.colors.divider, RoundedCornerShape(14.dp))
-                .pressScaleClickable { showCoupons = true }
-                .semantics { contentDescription = "Coupons" }
-                .padding(horizontal = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            ItundaArt("tag", ItundaArtSet.Line, 22.dp, tint = Ids.colors.textBrand)
-            Spacer(Modifier.width(10.dp))
-            Text("Coupons", color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            Text(" · 2 available", color = Ids.colors.textSecondary, fontSize = 14.sp)
-            state.selectedCoupon?.let {
-                Text(" · $it ✓", color = Ids.colors.success, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            }
-            Spacer(Modifier.weight(1f))
-            ItundaArt("chev", ItundaArtSet.Line, 16.dp, tint = Ids.colors.textTertiary)
         }
     }
 
@@ -253,13 +253,27 @@ fun EatsBrowseHeader(
         }
     }
 
-    if (showCoupons) {
+    if (state.showCoupons) {
         EatsCouponsSheet(
             isPickup = state.isPickup,
             selectedCoupon = state.selectedCoupon,
-            onDismiss = { showCoupons = false },
-            onSelect = { code -> state.selectedCoupon = code; showCoupons = false },
+            onDismiss = { state.showCoupons = false },
+            onSelect = { code -> state.selectedCoupon = code; state.showCoupons = false },
         )
+    }
+}
+
+@Composable
+private fun EatsModeChoice(label: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier.height(32.dp).clip(RoundedCornerShape(16.dp))
+            .background(if (selected) Ids.colors.textPrimary else Color.Transparent)
+            .semantics { contentDescription = label }
+            .pressScaleClickable(onClick = onClick)
+            .padding(horizontal = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, color = if (selected) Ids.colors.background else Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
     }
 }
 
