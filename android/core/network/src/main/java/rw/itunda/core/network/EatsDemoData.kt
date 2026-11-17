@@ -41,4 +41,33 @@ internal object EatsDemoData {
 
     val categories: String = """{"success":true,"categories":["Brochette","Chicken","Pizza","Burgers","Local","Chips","Bakery","Coffee","Juice","Healthy","Dessert"]}"""
     val favorites: String = """{"success":true,"favorites":[{"restaurantId":"m1","businessName":"Kigali Bakery","category":"Bakery","favoritedAt":"2026-11-01T09:00:00Z"},{"restaurantId":"m2","businessName":"Nyamirambo Grill","category":"Brochette","favoritedAt":"2026-11-02T09:00:00Z"}],"page":0,"totalPages":1,"totalElements":2}"""
+    private var hasPlacedOrder = false
+    private var orderStatus = "PLACED"
+
+    private fun orderJson(): String {
+        val hasRider = orderStatus in setOf("RIDER_ASSIGNED", "PICKED_UP", "DELIVERED")
+        val riderIdJson = if (hasRider) "\"rider-1\"" else "null"
+        val riderNameJson = if (hasRider) "\"Jean Claude\"" else "null"
+        val eta = if (hasRider) 8 else 20
+        return """{"id":"EA-7207","buyerId":"demo-buyer","restaurantId":"m1","riderId":$riderIdJson,"deliveryAddress":"Kimironko, KG 11 Ave","itemsSubtotal":2400,"deliveryFee":0,"platformFee":0,"totalAmount":2400,"promotionDiscount":0,"transactionId":"demo-txn-7207","deliveryPayoutTransactionId":null,"status":"$orderStatus","createdAt":"2026-11-17T14:00:00Z","updatedAt":"2026-11-17T14:00:00Z","deliveryLatitude":-1.95,"deliveryLongitude":30.12,"distanceKm":1.2,"deliveryNotes":"Leave it at the door","riderName":$riderNameJson,"estimatedArrivalMinutes":$eta,"tipAmount":null}"""
+    }
+
+    private val orderItems = """[{"id":"item-1","orderId":"EA-7207","productId":"p1","productName":"Croissant","unitPrice":1200,"quantity":2}]"""
+    fun orderDetail(): String = """{"success":true,"order":\${orderJson()},"items":$orderItems}"""
+    fun placeOrder(): String {
+        hasPlacedOrder = true
+        orderStatus = "PLACED"
+        return orderDetail()
+    }
+    fun myOrders(): String = if (hasPlacedOrder) {
+        """{"success":true,"orders":[\${orderJson()}],"page":0,"totalPages":1,"totalElements":1}"""
+    } else {
+        """{"success":true,"orders":[],"page":0,"totalPages":0,"totalElements":0}"""
+    }
+    fun cancelOrder(): String {
+        orderStatus = "CANCELLED"
+        return orderDetail()
+    }
+    fun review(): String = """{"success":true,"review":{"id":"review-demo","orderId":"EA-7207","restaurantId":"m1","riderId":"rider-1","restaurantRating":5,"riderRating":5,"comment":null,"createdAt":"2026-11-17T14:30:00Z"}}"""
+
 }

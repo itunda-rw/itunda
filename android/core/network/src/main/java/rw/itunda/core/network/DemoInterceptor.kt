@@ -39,7 +39,12 @@ internal class DemoInterceptor : Interceptor {
                     """{"message":"ok","user":$USER,"accessToken":"demo-access","refreshToken":"demo-refresh"}"""
                 "api/v1/merchant/pay/customer-code" ->
                     """{"success":true,"code":"ITUNDA-DEMO-${'$'}{System.currentTimeMillis() / 5000}","expiresAt":"${'$'}{java.time.Instant.now().plusSeconds(60)}"}"""
-                else -> OK
+                "api/v1/eats/orders" -> EatsDemoData.placeOrder()
+                else -> when {
+                    path.startsWith("api/v1/eats/orders/") && path.endsWith("/cancel") -> EatsDemoData.cancelOrder()
+                    path.startsWith("api/v1/eats/orders/") && path.endsWith("/review") -> EatsDemoData.review()
+                    else -> OK
+                }
             }
         }
         if (method != "GET") return OK
@@ -50,7 +55,9 @@ internal class DemoInterceptor : Interceptor {
             path == "api/v1/p2p/scam-reports/mine" -> """{"success":true,"reports":[]}"""
             path == "api/v1/merchant/reviews/my-reviews" -> """{"success":true,"reviews":[]}"""
             path == "api/v1/messages/presence" -> """{"success":true,"presence":{"u-c1":true,"u-c2":true}}"""
-            path == "api/v1/orders/my-orders" || path == "api/v1/eats/orders/my-orders" -> """{"success":true,"orders":[]}"""
+            path == "api/v1/orders/my-orders" -> """{"success":true,"orders":[]}"""
+            path == "api/v1/eats/orders/my-orders" -> EatsDemoData.myOrders()
+            path.startsWith("api/v1/eats/orders/") -> EatsDemoData.orderDetail()
             path == "api/v1/messages/contacts" -> """{"success":true,"contacts":[{"userId":"u-c2","name":"Amina K."},{"userId":"u-c1","name":"Patrick H."},{"userId":"u-e1","name":"Eric M."}]}"""
             path == "api/v1/messages/contacts/birthdays-today" -> """{"success":true,"contacts":[]}"""
             path.startsWith("api/v1/messages/conversations/") && path.endsWith("/messages") ->

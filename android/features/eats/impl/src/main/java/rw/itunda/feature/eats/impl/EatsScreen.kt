@@ -70,7 +70,7 @@ import java.io.IOException
 // a single-slice extraction). Deliver's own DeliverContent stays in
 // EatsDeliver.kt, unaffected by this split.
 
-internal enum class OrderFoodView { BROWSE, ORDERS, GROUP }
+internal enum class OrderFoodView { BROWSE, ORDERS, GROUP, TRACKING }
 
 @Composable
 internal fun OrderFoodContent(
@@ -92,6 +92,7 @@ internal fun OrderFoodContent(
     val cart = remember { mutableStateMapOf<String, EatsCartLine>() }
     var showCheckout by remember { mutableStateOf(false) }
     var confirmedOrder by remember { mutableStateOf<EatsOrderDto?>(null) }
+    var selectedOrder by remember { mutableStateOf<EatsOrderDto?>(null) }
     var confirmedDineInOrder by remember { mutableStateOf<DineInOrderDto?>(null) }
     var reorderingId by remember { mutableStateOf<String?>(null) }
     var reorderError by remember { mutableStateOf<String?>(null) }
@@ -301,9 +302,10 @@ internal fun OrderFoodContent(
             menu = menu,
             cart = cart,
             deviceStepUpHost = deviceStepUpHost,
-            onOrderConfirmationDone = {
+            onOrderConfirmationDone = { order ->
                 confirmedOrder = null; selectedRestaurant = null; menu = null
-                cart.clear(); browseState.cartRestaurant = null; showCheckout = false; view = OrderFoodView.ORDERS
+                cart.clear(); browseState.cartRestaurant = null; showCheckout = false
+                selectedOrder = order; view = OrderFoodView.TRACKING
             },
             onDineInConfirmationDone = {
                 confirmedDineInOrder = null; selectedRestaurant = null; menu = null
@@ -327,6 +329,15 @@ internal fun OrderFoodContent(
     val eatsListState = rememberLazyListState()
     val eatsTouchedKey = remember { mutableStateOf<Any?>(null) }
     Column(modifier = Modifier.fillMaxSize()) {
+        if (view == OrderFoodView.TRACKING && selectedOrder != null) {
+            EatsTrackingScreen(
+                order = selectedOrder!!,
+                restaurant = allRestaurants?.firstOrNull { it.merchantId == selectedOrder!!.restaurantId },
+                onBack = { selectedOrder = null; view = OrderFoodView.ORDERS },
+                onDone = { selectedOrder = null; view = OrderFoodView.ORDERS },
+                modifier = Modifier.weight(1f),
+            )
+        } else {
         EatsBrowseHeader(
             state = browseState,
             searchInput = searchInput,
@@ -341,7 +352,7 @@ internal fun OrderFoodContent(
         ) {
         if (view == OrderFoodView.ORDERS) {
             item {
-                MyEatsOrdersView(onReorder = ::handleReorder, reorderingId = reorderingId, restaurants = allRestaurants)
+                MyEatsOrdersView(onReorder = ::handleReorder, onTrack = { selectedOrder = it; view = OrderFoodView.TRACKING }, reorderingId = reorderingId, restaurants = allRestaurants)
                 val reorderErr = reorderError
                 if (reorderErr != null) {
                     Spacer(Modifier.height(8.dp))
@@ -373,6 +384,7 @@ internal fun OrderFoodContent(
                     browseFilters.sortMode = "delivery_time"
                 },
             )
+        }
         }
         }
     }

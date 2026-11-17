@@ -27,7 +27,7 @@ internal fun EatsOrderFlowDispatch(
     menu: List<MerchantProductDto>?,
     cart: SnapshotStateMap<String, EatsCartLine>,
     deviceStepUpHost: @Composable (Boolean, () -> Unit, suspend () -> Unit) -> Unit,
-    onOrderConfirmationDone: () -> Unit,
+    onOrderConfirmationDone: (EatsOrderDto) -> Unit,
     onDineInConfirmationDone: () -> Unit,
     onCheckoutBack: () -> Unit,
     onOrderPlaced: (EatsOrderDto) -> Unit,
@@ -37,7 +37,7 @@ internal fun EatsOrderFlowDispatch(
     onGroupOrder: () -> Unit = {},
 ): Boolean {
     if (confirmedOrder != null) {
-        EatsOrderConfirmationView(confirmedOrder, onDone = onOrderConfirmationDone)
+        EatsOrderConfirmationView(confirmedOrder, onDone = { onOrderConfirmationDone(confirmedOrder) })
         return true
     }
     if (confirmedDineInOrder != null) {

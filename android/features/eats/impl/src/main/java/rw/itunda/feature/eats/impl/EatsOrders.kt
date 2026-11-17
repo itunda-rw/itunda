@@ -140,6 +140,7 @@ internal fun EatsOrderRow(
 @Composable
 internal fun MyEatsOrdersView(
     onReorder: (EatsOrderDto) -> Unit,
+    onTrack: (EatsOrderDto) -> Unit,
     reorderingId: String?,
     restaurants: List<ShoppingMerchantDto>?,
 ) {
@@ -234,6 +235,9 @@ internal fun MyEatsOrdersView(
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 allOrders.forEach { o ->
                     EatsOrderRow(o, restaurant = restaurants?.find { it.merchantId == o.restaurantId }) {
+                        if (o.status !in setOf("DELIVERED", "CANCELLED")) {
+                            ListingActionButton("Track order", false) { onTrack(o) }
+                        }
                         if (o.status == "PLACED") {
                             Box(
                                 modifier = Modifier
