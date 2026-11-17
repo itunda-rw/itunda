@@ -44,6 +44,29 @@ class EatsScreenshotTest {
         rule.onRoot().captureRoboImage("build/screenshots/eats-restaurant-light.png")
     }
 
+    private fun pickupGrid(dark: Boolean, name: String) {
+        rule.setContent {
+            IdsTheme(darkTheme = dark) {
+                Column(Modifier.fillMaxSize().background(Ids.colors.background).padding(20.dp)) {
+                    rw.itunda.feature.eats.impl.EatsRestaurantGridRow(
+                        listOf(
+                            rw.itunda.core.network.ShoppingMerchantDto("a", "Kigali Bakery", "Bakery", "2%", rating = 4.8, reviewCount = 320, deliveryTimeMinutes = 20, participatesInEatsMembership = true),
+                            rw.itunda.core.network.ShoppingMerchantDto("b", "Inka Fried Chicken", "Local", "2%", rating = 4.6, reviewCount = 389, deliveryTimeMinutes = 25, minOrderAmount = 1000.0, maxDiscountPercent = 20),
+                        ),
+                        emptySet(), {}, {}, isPickup = true,
+                    )
+                }
+            }
+        }
+        rule.onNodeWithText("Ready in 10 min").assertExists()
+        rule.onNodeWithText("Ready in 15 min").assertExists()
+        rule.onNodeWithText("Pickup · No delivery fee").assertExists()
+        rule.onRoot().captureRoboImage("build/screenshots/eats-pickup-grid-$name.png")
+    }
+
+    @Test fun pickupGridLight() = pickupGrid(false, "light")
+    @Test fun pickupGridDark() = pickupGrid(true, "dark")
+
     @Test fun menuRows() {
         rule.setContent {
             IdsTheme(darkTheme = false) {
