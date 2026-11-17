@@ -135,6 +135,23 @@ class EatsScreenshotTest {
     @Test fun browseHeaderLight() = browseHeader(false, "light")
     @Test fun browseHeaderDark() = browseHeader(true, "dark")
 
+    @Test fun headerCouponEntryOpensSheet() {
+        val state = rw.itunda.feature.eats.impl.EatsBrowseState()
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
+            }
+        }
+
+        rule.onNodeWithText("Deliver to").assertExists()
+        rule.onNodeWithText("Search restaurants or dishes").assertExists()
+        rule.onNodeWithText("To your door").assertExists()
+        rule.onNodeWithText("No delivery fee").assertExists()
+        rule.onNodeWithContentDescription("Coupons").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Your coupons").assertExists()
+    }
+
     private fun couponsSheet(dark: Boolean, name: String) {
         rule.setContent {
             IdsTheme(darkTheme = dark) {
