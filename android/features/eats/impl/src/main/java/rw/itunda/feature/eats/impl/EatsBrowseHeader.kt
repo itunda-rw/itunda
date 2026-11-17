@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import android.widget.Toast
 import androidx.compose.foundation.border
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.TextButton
@@ -33,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -344,8 +344,14 @@ private fun EatsCouponCard(
             Text(title, color = Color(0xFF191F28), fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Text("$description · $code", color = Color(0xFF191F28), fontSize = 13.sp)
         }
-        TextButton(onClick = onClick, enabled = !selected) {
-            Text(if (selected) "Saved" else "Use", color = Color(0xFF191F28), fontWeight = FontWeight.Bold)
+        Box(
+            modifier = Modifier.clip(RoundedCornerShape(18.dp))
+                .background(Ids.colors.textPrimary).alpha(if (selected) 0.45f else 1f)
+                .pressScaleClickable(enabled = !selected, onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(if (selected) "Saved" else "Use", color = Ids.colors.background, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         }
     }
 }
