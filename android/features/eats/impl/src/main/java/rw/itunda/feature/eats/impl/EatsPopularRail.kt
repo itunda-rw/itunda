@@ -35,7 +35,7 @@ private val railTints = listOf(Color(0xFFFFDDD4), Color(0xFFFFF0B8), Color(0xFFF
 
 /** "Popular this week": top restaurants by rating x reviews, numbered, in a horizontal rail. Hidden when nothing is rated. */
 @Composable
-fun EatsPopularRail(restaurants: List<ShoppingMerchantDto>, onOpen: (ShoppingMerchantDto) -> Unit, modifier: Modifier = Modifier) {
+fun EatsPopularRail(restaurants: List<ShoppingMerchantDto>, onOpen: (ShoppingMerchantDto) -> Unit, modifier: Modifier = Modifier, isPickup: Boolean = false) {
     val top = restaurants.filter { it.rating != null }.sortedByDescending { (it.rating ?: 0.0) * (it.reviewCount + 1) }.take(5)
     if (top.isEmpty()) return
     Column(modifier) {
@@ -49,7 +49,7 @@ fun EatsPopularRail(restaurants: List<ShoppingMerchantDto>, onOpen: (ShoppingMer
                     }
                     Text(m.businessName, color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
                     Text(
-                        listOfNotNull(m.rating?.let { String.format(Locale.US, "★ %.1f (%d)", it, m.reviewCount) }, m.deliveryTimeMinutes?.let { "$it min" }).joinToString(" · "),
+                        listOfNotNull(m.rating?.let { String.format(Locale.US, "★ %.1f (%d)", it, m.reviewCount) }, m.deliveryTimeMinutes?.let { minutes -> if (isPickup) "Ready in ${maxOf(10, minutes - 10)} min" else "$minutes min" }).joinToString(" · "),
                         color = Ids.colors.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
                     )
                 }
