@@ -314,6 +314,12 @@ internal fun MenuItemThumb(imageUrl: String?, size: androidx.compose.ui.unit.Dp)
     }
 }
 
+// Gson may bypass Kotlin constructors, leaving defaulted collection fields null when
+// older API payloads omit them. Normalize both levels before menu/cart UI reads them.
+internal fun MerchantProductDto.eatsOptionGroups() = optionGroups.orEmpty().map { group ->
+    group.copy(choices = group.choices.orEmpty())
+}
+
 // Real, human-readable summary of a resolved cart line's selected options -- mirrors
 // the backend's own EatsOrderService.buildSelectedOptionsJson, but purely for display;
 // pricing always comes from the real menu item + real choice deltas, never this string.
