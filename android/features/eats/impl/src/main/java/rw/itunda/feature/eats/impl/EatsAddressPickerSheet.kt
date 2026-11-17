@@ -94,7 +94,7 @@ internal fun EatsAddressPickerSheet(state: EatsBrowseState, onDismiss: () -> Uni
             Text(
                 "Delivery address",
                 color = Ids.colors.textPrimary,
-                style = TextStyle(fontSize = 26.sp, lineHeight = 34.sp, fontWeight = FontWeight.ExtraBold),
+                style = TextStyle(fontSize = 26.sp, lineHeight = 34.sp, letterSpacing = (-0.5).sp, fontWeight = FontWeight.ExtraBold),
             )
             Text(
                 "Your rider will go to the address you pick.",
@@ -133,7 +133,7 @@ internal fun EatsAddressPickerSheet(state: EatsBrowseState, onDismiss: () -> Uni
                             }
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    saved.label,
+                                    if (saved.label == "Other") saved.address.substringBefore(',').trim() else saved.label,
                                     color = Ids.colors.textPrimary,
                                     fontSize = 17.sp,
                                     fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Medium,
@@ -189,7 +189,7 @@ internal fun EatsAddressPickerSheet(state: EatsBrowseState, onDismiss: () -> Uni
                         }
                     }
                     Text("Street or landmark", color = Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 14.dp, bottom = 6.dp))
-                    EatsAddressInput(newAddress, { newAddress = it.take(60) }, "e.g. Remera, KG 5 Ave", "Street or landmark")
+                    EatsAddressInput(newAddress, { newAddress = it.take(40) }, "e.g. Remera, KG 5 Ave", "Street or landmark")
                     Text("Note for the rider (optional)", color = Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 14.dp, bottom = 6.dp))
                     EatsAddressInput(newNote, { newNote = it.take(60) }, "Gate colour, floor, who to ask for", "Note for the rider (optional)")
                 }
