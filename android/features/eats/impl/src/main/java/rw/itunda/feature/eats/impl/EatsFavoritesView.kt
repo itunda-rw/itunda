@@ -12,10 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.Storefront
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,6 +36,8 @@ import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.itundaface.WishlistHeart
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.components.ItundaArt
+import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.network.FavoriteRestaurantDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.superAppErrorMessage
@@ -119,7 +117,7 @@ internal fun FavoriteRestaurantsView(onOpen: (FavoriteRestaurantDto) -> Unit, on
     when {
         error != null -> ErrorCard(error!!, onRetry = ::load)
         favorites == null -> SkeletonBlock()
-        favorites!!.isEmpty() -> EmptyState("No favorite restaurants yet. Tap the heart on a restaurant to save it here.", icon = Icons.Outlined.FavoriteBorder)
+        favorites!!.isEmpty() -> EmptyState("No favorite restaurants yet. Tap the heart on a restaurant to save it here.")
         else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             favorites!!.forEach { f ->
                 Row(
@@ -132,7 +130,7 @@ internal fun FavoriteRestaurantsView(onOpen: (FavoriteRestaurantDto) -> Unit, on
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.Storefront, contentDescription = null, modifier = Modifier.size(20.dp), tint = Ids.colors.brand)
+                        ItundaArt("restaurant", ItundaArtSet.Color, 20.dp)
                     }
                     Spacer(modifier = Modifier.width(14.dp))
                     Column(modifier = Modifier.weight(1f)) {
