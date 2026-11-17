@@ -165,7 +165,7 @@ internal fun OrderFoodContent(
                     buyerLat = browseLocation?.first, buyerLng = browseLocation?.second,
                     sortBy = when (browseFilters.sortMode) { "delivery_time" -> "delivery_time"; "rating" -> "rating"; "free_delivery" -> "free_delivery"; "nearest" -> "distance"; else -> null },
                 )
-                if (res.success) restaurants = when (sortMode) {
+                if (res.success) restaurants = when (browseFilters.sortMode) {
                     "rating" -> res.merchants.sortedByDescending { it.rating ?: 0.0 }
                     "free_delivery" -> res.merchants.sortedBy { it.toEatsPrototypeRestaurant().deliveryFeeRwf }
                     "nearest" -> res.merchants.sortedBy { it.distanceKm ?: Double.MAX_VALUE }

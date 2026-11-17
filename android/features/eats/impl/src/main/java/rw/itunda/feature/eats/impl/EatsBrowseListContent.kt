@@ -124,7 +124,7 @@ internal fun LazyListScope.eatsBrowseItems(
                 }
             }
         }
-        else -> items(visible.chunked(2), key = { row -> row.first().merchantId }) { row ->
+        else -> items(visible!!.chunked(2), key = { row -> row.first().merchantId }) { row ->
             Column(Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
                 EatsRestaurantGridRow(
                     row = row,
