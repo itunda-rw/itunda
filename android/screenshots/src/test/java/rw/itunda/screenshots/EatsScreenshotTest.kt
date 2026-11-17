@@ -436,6 +436,7 @@ class EatsScreenshotTest {
         rule.onNodeWithContentDescription("Coupons").performClick()
         rule.onAllNodesWithText("Use")[1].performClick()
         assertTrue(state.selectedCoupon == "EATS20")
+        rule.onNodeWithText("EATS20", substring = true).assertExists()
     }
 
     @Test fun fulfillmentAndCouponStateStayConsistent() {
