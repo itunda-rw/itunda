@@ -306,7 +306,6 @@ internal fun RestaurantMenuView(
             }
         }
     }
-        }
     }
 }
 
