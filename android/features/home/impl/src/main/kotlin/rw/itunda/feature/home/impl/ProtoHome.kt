@@ -86,14 +86,15 @@ onInvite:()->Unit,onOpenSpending:()->Unit,onPayBill:()->Unit,onOpenRewards:()->U
 onOpenProfile:()->Unit,onOpenCreditScore:()->Unit,onOpenShop:()->Unit,onOpenTransit:()->Unit,
 ){
 val p=homePalette()
+var inviteShown by androidx.compose.runtime.saveable.rememberSaveable{androidx.compose.runtime.mutableStateOf(true)}
 val bellLabel=when(androidx.compose.ui.platform.LocalConfiguration.current.locales[0]?.language){"rw"->"Amamenyesha";"fr"->"Notifications";else->"Notifications"}
 // Every vertical gap below is the prototype's measured card spacing: cards sit 12dp apart.
 androidx.compose.material3.ProvideTextStyle(androidx.compose.ui.text.TextStyle(fontFamily=rw.itunda.core.designsystem.theme.PretendardFontFamily,lineHeightStyle=androidx.compose.ui.text.style.LineHeightStyle(androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,androidx.compose.ui.text.style.LineHeightStyle.Trim.None),platformStyle=androidx.compose.ui.text.PlatformTextStyle(includeFontPadding=false))){
 LazyColumn(Modifier.fillMaxSize().background(Ids.colors.background),contentPadding=androidx.compose.foundation.layout.PaddingValues(bottom=96.dp)){
 item{HomeProtoHeader(hasUnread,onOpenBank,onOpenPay,onOpenNotifications,bellLabel)}
 item{Spacer(Modifier.height(12.dp));HomeAccountsCard(state.bankBalance,state.payBalance,state.interestDays,onOpenBank,onOpenPay,onSend,onAdd,onBills,onCard,onSavings,onSeeAll)}
-item{Spacer(Modifier.height(12.dp));HomeInviteBanner(onInvite)}
-item{Spacer(Modifier.height(12.dp+6.dp));HomeSpendingRow(state.spentThisMonth,state.monthName,onOpenSpending);ProtoWeekChart(state.week,state.today)}
+if(inviteShown)item{Spacer(Modifier.height(12.dp));HomeInviteBanner(onInvite){inviteShown=false}}
+item{Spacer(Modifier.height(if(inviteShown)0.dp else 18.dp));HomeSpendingRow(state.spentThisMonth,state.monthName,onOpenSpending);ProtoWeekChart(state.week,state.today)}
 state.bill?.let{b->item{Spacer(Modifier.height(6.dp));HomeRow({ItundaArt("bill",ItundaArtSet.Proto,20.7.dp)},b.title,"Due ${b.due} · ${homeRwf(b.amount)} RWF","Pay",onPayBill);Spacer(Modifier.height(8.dp))}}
 item{Spacer(Modifier.height(12.dp+6.dp));HomeRow({ItundaArt("star-solid",ItundaArtSet.Solid,18.dp,tint=Color(0xFFFFC83D))},"${homeRwf(state.earned)} RWF earned","Points and coupons","View",onOpenRewards);Spacer(Modifier.height(8.dp))}
 item{Spacer(Modifier.height(18.dp));HomeSectionHeader("Pockets","See all",onSavings)}

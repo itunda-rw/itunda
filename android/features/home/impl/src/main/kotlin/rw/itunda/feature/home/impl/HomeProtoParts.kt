@@ -39,6 +39,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import rw.itunda.core.designsystem.components.ItundaArt
 import rw.itunda.core.designsystem.components.ItundaArtSet
 
@@ -159,8 +160,10 @@ internal fun HomeAccountsCard(
 }
 
 @Composable
-internal fun HomeInviteBanner(onInvite: () -> Unit) {
+internal fun HomeInviteBanner(onInvite: () -> Unit, onDismiss: () -> Unit) {
     val p = homePalette()
+    // 88dp item = 70dp card + the 18dp gap below it, so the overhanging "×" stays inside this item's hit bounds.
+    Box(Modifier.fillMaxWidth().height(88.dp).zIndex(1f)) {
     Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 8.dp).clickable(onClick = onInvite), verticalAlignment = Alignment.CenterVertically) {
         HomeTile(48.dp) { ItundaArt("gift", ItundaArtSet.Proto, 18.5.dp) }
         Spacer(Modifier.width(14.dp))
@@ -168,6 +171,15 @@ internal fun HomeInviteBanner(onInvite: () -> Unit) {
             buildAnnotatedString { append("Invite friends, get "); withStyle(SpanStyle(color = p.lk)) { append("10,000 RWF") } },
             color = p.text, fontSize = 16.sp, fontWeight = FontWeight.Bold, lineHeight = 22.sp, letterSpacing = (-0.3).sp,
         )
+    }
+    // The prototype's dismiss "×" is a target at x=342 whose glyph centre is 73dp below the card top (it overhangs the card).
+    Box(Modifier.align(Alignment.TopEnd).padding(top = 58.dp, end = 4.dp).size(width = 44.dp, height = 30.dp).clickable(onClick = onDismiss).semantics { contentDescription = "Dismiss" }, contentAlignment = Alignment.Center) {
+        Canvas(Modifier.size(12.dp)) {
+            val st = 2.dp.toPx()
+            drawLine(p.tt, Offset(0f, 0f), Offset(size.width, size.height), st, StrokeCap.Round)
+            drawLine(p.tt, Offset(size.width, 0f), Offset(0f, size.height), st, StrokeCap.Round)
+        }
+    }
     }
 }
 
@@ -180,10 +192,10 @@ internal fun HomeSpendingRow(amount: Double, month: String, onClick: () -> Unit)
             HomeAmountLine(homeRwf(amount), 32)
             Text("Spent in $month", color = p.mu, fontSize = 14.sp, lineHeight = 21.sp)
         }
-        Canvas(Modifier.padding(end = 6.dp).size(8.dp)) {
+        Canvas(Modifier.padding(end = 6.dp).size(width = 9.dp, height = 13.dp)) {
             val s = 2.dp.toPx()
-            drawLine(p.tt.copy(alpha = 0.6f), Offset(0f, 0f), Offset(size.width, size.height / 2), s, StrokeCap.Butt)
-            drawLine(p.tt.copy(alpha = 0.6f), Offset(size.width, size.height / 2), Offset(0f, size.height), s, StrokeCap.Butt)
+            drawLine(p.tt.copy(alpha = 0.6f), Offset(0f, 0f), Offset(size.width, size.height / 2), s, StrokeCap.Round)
+            drawLine(p.tt.copy(alpha = 0.6f), Offset(size.width, size.height / 2), Offset(0f, size.height), s, StrokeCap.Round)
         }
     }
 }
@@ -253,7 +265,7 @@ internal fun HomeNavRow(art: String, title: String, subtitle: String, onClick: (
             Spacer(Modifier.height(3.dp))
             HText(subtitle, p.mu, 14, FontWeight.Normal, lh = 21, ls = -0.2f)
         }
-        if (onClick != null) ItundaArt("chev", ItundaArtSet.Line, 16.dp, tint = p.tt)
+        if (onClick != null) ItundaArt("chev", ItundaArtSet.Line, 16.dp, tint = p.tt.copy(alpha = 0.6f))
     }
 }
 
