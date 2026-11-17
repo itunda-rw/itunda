@@ -84,8 +84,8 @@ private val eatsPrototypeById = EATS_PROTOTYPE_RESTAURANTS.associateBy { it.merc
 fun ShoppingMerchantDto.toEatsPrototypeRestaurant(): EatsPrototypeRestaurant =
     eatsPrototypeById[merchantId] ?: EatsPrototypeRestaurant(
         merchant = this,
-        categories = listOf(category),
-        subtitle = category,
+        categories = listOfNotNull(category),
+        subtitle = category.orEmpty(),
         rating = rating ?: 4.5,
         reviews = reviewCount.toInt(),
         distanceKm = distanceKm ?: 1.0,
