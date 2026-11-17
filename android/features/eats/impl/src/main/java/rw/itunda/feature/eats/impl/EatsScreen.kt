@@ -397,17 +397,7 @@ internal fun OrderFoodContent(
             }
         } else if (view == OrderFoodView.FAVORITES) {
             item {
-                EatsBrowseOffers(
-                    state = browseState,
-                    onFastestClick = {
-                        view = OrderFoodView.BROWSE
-                        if (browseLocation == null) Toast.makeText(locationContext, "Enable location to sort by fastest delivery", Toast.LENGTH_SHORT).show()
-                        else sortMode = "delivery_time"
-                    },
-                    onSavedClick = { view = OrderFoodView.BROWSE },
-                    showPromo = false,
-                    savedSelected = true,
-                )
+                EatsBrowseOffers(state = browseState, showPromo = false)
             }
             item {
                 FavoriteRestaurantsView(
@@ -433,14 +423,7 @@ internal fun OrderFoodContent(
                         onSelectCategory = { c -> selectedCategory = if (c == selectedCategory) null else c },
                         showSearch = false,
                     )
-                    EatsBrowseOffers(
-                        state = browseState,
-                        onFastestClick = {
-                            if (browseLocation == null) Toast.makeText(locationContext, "Enable location to sort by fastest delivery", Toast.LENGTH_SHORT).show()
-                            else sortMode = "delivery_time"
-                        },
-                        onSavedClick = { view = OrderFoodView.FAVORITES },
-                    )
+                    EatsBrowseOffers(state = browseState)
                 }
             }
             if (searchInput.isBlank() && selectedCategory == null && !restaurants.isNullOrEmpty()) item { EatsPopularRail(restaurants!!, ::openRestaurant, isPickup = browseState.isPickup) }

@@ -251,7 +251,7 @@ class EatsScreenshotTest {
         rule.setContent { EatsBrowseTestSurface(state) }
 
         rule.onNodeWithText("Kimironko").assertExists()
-        rule.onNodeWithText("Search restaurants").assertExists()
+        rule.onNodeWithText("Search restaurants or dishes").assertExists()
         rule.onNodeWithContentDescription("Delivery").assertExists()
         rule.onNodeWithContentDescription("Pickup").assertExists()
         rule.onNodeWithContentDescription("Coupons").performClick()
@@ -391,7 +391,7 @@ class EatsScreenshotTest {
 
         rule.onNodeWithContentDescription("Orders").performClick()
         rule.onNodeWithContentDescription("Cart").performClick()
-        rule.onNodeWithContentDescription("Search restaurants").performTextInput("pizza")
+        rule.onNodeWithContentDescription("Search restaurants or dishes").performTextInput("pizza")
 
         assertTrue(ordersOpened)
         assertTrue(cartOpened)
@@ -404,7 +404,7 @@ class EatsScreenshotTest {
         rule.onNodeWithContentDescription("Coupons").performClick()
         rule.onAllNodesWithText("Use")[1].performClick()
         assertEquals("EATS20", state.selectedCoupon)
-        rule.onNodeWithText("Coupons ✓").assertExists()
+        rule.onNodeWithText("EATS20 ✓", substring = true).assertExists()
     }
 
     @Test fun fulfillmentAndCouponStateStayConsistent() {
