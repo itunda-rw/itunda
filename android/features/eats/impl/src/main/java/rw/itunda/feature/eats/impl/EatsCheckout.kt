@@ -318,7 +318,7 @@ internal fun DineInOrderConfirmationView(order: DineInOrderDto, onDone: () -> Un
 // the pre-existing, unaffected case. Two lines for the same productId with DIFFERENT
 // choiceIds are genuinely distinct cart entries (e.g. a Regular and a Large of the same
 // burger, side by side) -- closes docs/DESIGN_REFERENCES.md's Eats recommendation #6.
-internal data class EatsCartLine(val productId: String, val quantity: Int, val choiceIds: List<String> = emptyList())
+data class EatsCartLine(val productId: String, val quantity: Int, val choiceIds: List<String> = emptyList())
 
 internal fun eatsCartKey(productId: String, choiceIds: List<String>): String =
     if (choiceIds.isEmpty()) productId else "$productId::${choiceIds.sorted().joinToString(",")}"
