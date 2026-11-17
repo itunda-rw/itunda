@@ -171,7 +171,7 @@ internal fun EatsBrowseHeader(
             modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 14.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            EatsFulfillmentChoice("Delivery", "To your door", "mbike", !state.isPickup, Modifier.weight(1f)) {
+            EatsFulfillmentChoice("Delivery", "To your door", "scooter", !state.isPickup, Modifier.weight(1f)) {
                 state.isPickup = false
             }
             EatsFulfillmentChoice("Pickup", "No delivery fee", "bag", state.isPickup, Modifier.weight(1f)) {
