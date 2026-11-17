@@ -397,6 +397,35 @@ class EatsScreenshotTest {
         assertTrue(!state.isPickup)
     }
 
+    @Test fun topBarActionsAndSearchAreInteractive() {
+        val state = rw.itunda.feature.eats.impl.EatsBrowseState().apply {
+            cartRestaurant = rw.itunda.core.network.ShoppingMerchantDto(
+                merchantId = "a",
+                businessName = "Kigali Bakery",
+                category = "Bakery",
+                cashbackRate = "2%",
+            )
+        }
+        var ordersOpened = false
+        var cartOpened = false
+        var query = ""
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                rw.itunda.feature.eats.impl.EatsBrowseHeader(
+                    state, query, 1, { query = it }, { ordersOpened = true }, { cartOpened = true },
+                )
+            }
+        }
+
+        rule.onNodeWithContentDescription("Orders").performClick()
+        rule.onNodeWithContentDescription("Cart").performClick()
+        rule.onNodeWithContentDescription("Search restaurants").performTextInput("pizza")
+
+        assertTrue(ordersOpened)
+        assertTrue(cartOpened)
+        assertEquals("pizza", query)
+    }
+
     @Test fun couponCanBeSaved() {
         val state = rw.itunda.feature.eats.impl.EatsBrowseState()
         rule.setContent {
