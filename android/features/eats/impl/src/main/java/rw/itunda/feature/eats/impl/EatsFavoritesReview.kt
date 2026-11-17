@@ -17,10 +17,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.RateReview
-import rw.itunda.core.designsystem.theme.IdsIcons
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +39,8 @@ import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsTextField
+import rw.itunda.core.designsystem.components.ItundaArt
+import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.components.StarGold
 import rw.itunda.core.designsystem.components.StarRatingRow
 import rw.itunda.core.designsystem.theme.Ids
@@ -147,7 +145,7 @@ internal fun RestaurantRatingBadge(restaurantId: String, initiallyExpanded: Bool
                     }
                 },
             ) {
-                Icon(IdsIcons.Star, contentDescription = null, tint = StarGold, modifier = Modifier.size(14.dp))
+                ItundaArt("star", ItundaArtSet.Line, 14.dp, tint = StarGold)
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(String.format(Locale.US, "%.1f (%d)", r.average ?: 0.0, r.count), color = Ids.colors.textSecondary, fontSize = 13.sp)
             }
@@ -156,7 +154,7 @@ internal fun RestaurantRatingBadge(restaurantId: String, initiallyExpanded: Bool
                 if (list == null) {
                     Text("Loading reviews…", color = Ids.colors.textSecondary, fontSize = 12.sp)
                 } else if (list.isEmpty()) {
-                    EmptyState("No written reviews yet — be the first to share how it went.", icon = Icons.Outlined.RateReview)
+                    EmptyState("No written reviews yet — be the first to share how it went.")
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.padding(top = 4.dp)) {
                         list.forEach { rv ->
