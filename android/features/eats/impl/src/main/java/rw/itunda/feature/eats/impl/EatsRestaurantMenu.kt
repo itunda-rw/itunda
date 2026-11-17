@@ -69,6 +69,8 @@ fun RestaurantMenuView(
     onBack: () -> Unit,
     onCheckout: () -> Unit,
     isPickup: Boolean = false,
+    onModeChange: (EatsCheckoutMode) -> Unit = {},
+    onGroupOrder: () -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
     // Real menu-options selection UI (2026-07-21, v1: required single-select only) --
@@ -129,6 +131,14 @@ fun RestaurantMenuView(
         }.joinToString(" · ").ifBlank { if (isPickup) "Pickup · No delivery fee" else "Delivery" }
         EatsRestaurantHero(restaurant.businessName, onBack, meta = heroMeta, category = restaurant.category, photoUrl = restaurant.photoUrl)
         if (selectedTab != "Reviews") RestaurantRatingBadge(restaurant.merchantId)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            EatsModeSwitch(isPickup, { pickup -> onModeChange(if (pickup) EatsCheckoutMode.PICKUP else EatsCheckoutMode.DELIVERY) }, Modifier.weight(1f))
+            Text("Group order ›", color = Ids.colors.textBrand, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.pressScaleClickable(onClick = onGroupOrder))
+        }
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(24.dp),
