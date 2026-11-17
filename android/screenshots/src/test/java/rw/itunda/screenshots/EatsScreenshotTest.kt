@@ -80,6 +80,41 @@ class EatsScreenshotTest {
         rule.onRoot().captureRoboImage("build/screenshots/eats-menu-rows.png")
     }
 
+    @Test fun restaurantMenuHasPrototypeTabsAndPickupMeta() {
+        val restaurant = rw.itunda.core.network.ShoppingMerchantDto(
+            merchantId = "a",
+            businessName = "Kigali Bakery",
+            category = "Bakery",
+            cashbackRate = "2%",
+            distanceKm = 1.2,
+            deliveryTimeMinutes = 20,
+            phoneNumber = "0788 000 101",
+            openingHours = "06:30 – 20:00",
+            minOrderAmount = 2000.0,
+        )
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                rw.itunda.feature.eats.impl.RestaurantMenuView(
+                    restaurant = restaurant,
+                    menu = emptyList(),
+                    cart = androidx.compose.runtime.mutableStateMapOf(),
+                    onBack = {},
+                    onCheckout = {},
+                    isPickup = true,
+                )
+            }
+        }
+        rule.onNodeWithText("Ready in 10 min").assertExists()
+        rule.onNodeWithText("Pickup · No delivery fee").assertExists()
+        rule.onNodeWithText("Menu").assertExists()
+        rule.onNodeWithText("Info").performClick()
+        rule.onNodeWithText("Opening hours").assertExists()
+        rule.onNodeWithText("06:30 – 20:00").assertExists()
+        rule.onNodeWithText("Reviews").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Reviews").assertExists()
+    }
+
     @Test fun restaurantGrid() {
         rule.setContent {
             IdsTheme(darkTheme = false) {
