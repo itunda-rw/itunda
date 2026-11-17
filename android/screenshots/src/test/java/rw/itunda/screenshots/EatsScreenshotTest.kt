@@ -76,8 +76,8 @@ class EatsScreenshotTest {
             IdsTheme(darkTheme = dark) {
                 Column(Modifier.fillMaxSize().background(Ids.colors.background).padding(20.dp)) {
                     rw.itunda.feature.eats.impl.EatsSearchHeader("", {}, listOf("Brochette", "Chicken", "Pizza", "Burgers"), null, {})
-                    rw.itunda.feature.eats.impl.EatsPromoBanner(Modifier.padding(top = 14.dp))
-                    rw.itunda.feature.eats.impl.EatsQuickActions({}, {}, {}, Modifier.padding(top = 14.dp))
+                    rw.itunda.feature.eats.impl.EatsPromoBanner(false, false, {}, Modifier.padding(top = 14.dp))
+                    rw.itunda.feature.eats.impl.EatsQuickActions({}, {}, {}, {}, Modifier.padding(top = 14.dp))
                     androidx.compose.foundation.layout.Row(Modifier.padding(top = 14.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
                         rw.itunda.feature.eats.impl.EatsSortChip("Fastest", null, true) {}
                         rw.itunda.feature.eats.impl.EatsSortChip("Top rated", null, false) {}
@@ -152,7 +152,10 @@ class EatsScreenshotTest {
         state.isPickup = true
         rule.setContent {
             IdsTheme(darkTheme = false) {
-                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
+                Column {
+                    rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
+                    rw.itunda.feature.eats.impl.EatsQuickActions({}, { state.showCoupons = true }, {}, {})
+                }
             }
         }
         rule.onNodeWithContentDescription("Coupons").performClick()
