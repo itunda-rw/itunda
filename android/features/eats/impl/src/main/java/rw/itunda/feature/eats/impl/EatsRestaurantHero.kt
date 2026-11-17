@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -24,15 +25,49 @@ import rw.itunda.core.designsystem.components.ItundaArt
 import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
+import androidx.compose.ui.layout.ContentScale
 
-/** Prototype restaurant page top: peach hero with back button, rounded sheet, name and meta (demo meta line). */
+/** Restaurant hero uses the merchant photo when available, otherwise category-matched Itunda artwork. */
 @Composable
-fun EatsRestaurantHero(name: String, onBack: () -> Unit, meta: String = "15-25 min · Fee Free · Min 2,000") {
+fun EatsRestaurantHero(
+    name: String,
+    onBack: () -> Unit,
+    meta: String = "15-25 min · Fee Free · Min 2,000",
+    category: String? = null,
+    photoUrl: String? = null,
+) {
+    val heroTint = when (category?.lowercase()) {
+        "bakery" -> Color(0xFFFFE6C7)
+        "cafe", "coffee" -> Color(0xFFDDF3E4)
+        "local" -> Color(0xFFFFDDD4)
+        "dessert" -> Color(0xFFFFF0B8)
+        "fries", "fast food" -> Color(0xFFE6DDF7)
+        else -> Color(0xFFE6DDF7)
+    }
     Column(Modifier.fillMaxWidth()) {
-        Box(Modifier.fillMaxWidth().height(200.dp).background(Color(0xFFFFE6C7))) {
+        Box(Modifier.fillMaxWidth().height(200.dp).background(heroTint)) {
+            if (!photoUrl.isNullOrBlank()) {
+                SubcomposeAsyncImage(
+                    model = photoUrl,
+                    contentDescription = "$name restaurant",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    when (painter.state) {
+                        is coil.compose.AsyncImagePainter.State.Success -> SubcomposeAsyncImageContent()
+                        else -> Box(Modifier.fillMaxSize().background(heroTint), contentAlignment = Alignment.Center) {
+                            ItundaArt(eatsCategoryArt(category), ItundaArtSet.Color, 104.dp)
+                        }
+                    }
+                }
+            } else {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    ItundaArt(eatsCategoryArt(category), ItundaArtSet.Color, 104.dp)
+                }
+            }
             Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(28.dp).clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)).background(Ids.colors.background))
-            ItundaArt("bread", ItundaArtSet.Color, 96.dp, modifier = Modifier.align(Alignment.Center).padding(bottom = 16.dp))
-            ItundaArt("juice", ItundaArtSet.Color, 56.dp, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 48.dp, top = 24.dp))
             Box(
                 Modifier.padding(start = 10.dp, top = 12.dp).size(40.dp).clip(CircleShape).background(Color.White).pressScaleClickable(onClick = onBack),
                 contentAlignment = Alignment.Center,
