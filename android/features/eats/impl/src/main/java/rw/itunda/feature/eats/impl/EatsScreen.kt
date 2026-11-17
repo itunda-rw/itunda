@@ -73,6 +73,8 @@ import java.io.IOException
 // a single-slice extraction). Deliver's own DeliverContent stays in
 // EatsDeliver.kt, unaffected by this split.
 
+internal enum class EatsMode { ORDER, DELIVER }
+
 internal enum class OrderFoodView { BROWSE, FAVORITES, ORDERS, GROUP }
 
 @Composable
