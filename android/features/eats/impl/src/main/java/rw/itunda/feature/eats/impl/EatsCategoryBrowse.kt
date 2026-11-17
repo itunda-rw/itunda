@@ -319,12 +319,12 @@ internal fun MenuItemThumb(imageUrl: String?, size: androidx.compose.ui.unit.Dp)
 // pricing always comes from the real menu item + real choice deltas, never this string.
 internal fun eatsOptionsSummary(item: MerchantProductDto, choiceIds: List<String>): String {
     if (choiceIds.isEmpty()) return ""
-    val names = item.optionGroups.flatMap { it.choices }.filter { it.id in choiceIds }.map { it.name }
+    val names = item.eatsOptionGroups().flatMap { it.choices }.filter { it.id in choiceIds }.map { it.name }
     return if (names.isEmpty()) "" else " (${names.joinToString(", ")})"
 }
 
 internal fun eatsLineUnitPrice(item: MerchantProductDto, choiceIds: List<String>): Double {
-    val delta = item.optionGroups.flatMap { it.choices }.filter { it.id in choiceIds }.sumOf { it.priceDelta }
+    val delta = item.eatsOptionGroups().flatMap { it.choices }.filter { it.id in choiceIds }.sumOf { it.priceDelta }
     return item.price + delta
 }
 

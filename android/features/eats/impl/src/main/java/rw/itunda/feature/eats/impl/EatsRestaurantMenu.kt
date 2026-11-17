@@ -110,7 +110,7 @@ fun RestaurantMenuView(
     }
 
     fun addConfiguredToCart(item: MerchantProductDto) {
-        val groups = item.optionGroups
+        val groups = item.eatsOptionGroups()
         if (groups.any { it.required && pendingChoices[it.id].isNullOrEmpty() }) return
         val choiceIds = groups.flatMap { pendingChoices[it.id] ?: emptyList() }
         val key = eatsCartKey(item.id, choiceIds)
@@ -189,11 +189,12 @@ fun RestaurantMenuView(
             } else {
                 item { Text("Popular", color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)) }
                 items(menu, key = { it.id }) { p ->
-                    val hasOptions = p.optionGroups.isNotEmpty()
+                    val optionGroups = p.eatsOptionGroups()
+                    val hasOptions = optionGroups.isNotEmpty()
                     val simpleKey = eatsCartKey(p.id, emptyList())
                     val simpleQty = if (hasOptions) 0 else (cart[simpleKey]?.quantity ?: 0)
                     val isExpanded = expandedProductId == p.id
-                    val allGroupsChosen = p.optionGroups.all { !it.required || !pendingChoices[it.id].isNullOrEmpty() }
+                    val allGroupsChosen = optionGroups.all { !it.required || !pendingChoices[it.id].isNullOrEmpty() }
                     Column(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                     ) {
@@ -210,7 +211,7 @@ fun RestaurantMenuView(
                         )
                         if (hasOptions && isExpanded) {
                             Column(modifier = Modifier.padding(top = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                p.optionGroups.forEach { group ->
+                                optionGroups.forEach { group ->
                                     val selectedIds = pendingChoices[group.id] ?: emptyList()
                                     // Real optional/multi-select labels (2026-08-28) -- honest
                                     // about what this group actually requires, matching its own
