@@ -115,6 +115,69 @@ class EatsScreenshotTest {
         rule.onNodeWithText("Reviews").assertExists()
     }
 
+    @Test fun eatsCheckoutDeliveryShowsRiderRequestsAndMinimumOrder() {
+        val restaurant = rw.itunda.core.network.ShoppingMerchantDto(
+            merchantId = "a", businessName = "Kigali Bakery", category = "Bakery",
+            cashbackRate = "2%", minOrderAmount = 5000.0,
+        )
+        val item = rw.itunda.core.network.MerchantProductDto(
+            id = "item", merchantId = "a", name = "Croissant", price = 2000.0,
+            active = true, createdAt = "2026-01-01",
+        )
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                rw.itunda.feature.eats.impl.EatsCheckoutView(
+                    restaurant = restaurant,
+                    cart = androidx.compose.runtime.mutableStateMapOf("item" to rw.itunda.feature.eats.impl.EatsCartLine("item", 1)),
+                    menu = listOf(item),
+                    initialMode = rw.itunda.feature.eats.impl.EatsCheckoutMode.DELIVERY,
+                    savedCoupon = "EATS20",
+                    onBack = {},
+                    onOrderPlaced = {},
+                    onDineInOrderPlaced = {},
+                    deviceStepUpHost = { _, _, _ -> },
+                )
+            }
+        }
+        rule.onNodeWithText("Saved coupon").assertExists()
+        rule.onNodeWithText("EATS20").assertExists()
+        rule.onNodeWithText("Request for the rider").assertExists()
+        rule.onNodeWithText("Leave at the door").assertExists()
+        rule.onNodeWithText("Hand it to me").assertExists()
+        rule.onNodeWithText("Call when nearby").assertExists()
+        rule.onNodeWithText("Add 3,000 RWF more to reach the minimum order.").assertExists()
+        rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-delivery.png")
+    }
+
+    @Test fun eatsCheckoutPickupShowsSavedCoupon() {
+        val restaurant = rw.itunda.core.network.ShoppingMerchantDto(
+            merchantId = "a", businessName = "Kigali Bakery", category = "Bakery", cashbackRate = "2%",
+        )
+        val item = rw.itunda.core.network.MerchantProductDto(
+            id = "item", merchantId = "a", name = "Croissant", price = 2000.0,
+            active = true, createdAt = "2026-01-01",
+        )
+        rule.setContent {
+            IdsTheme(darkTheme = true) {
+                rw.itunda.feature.eats.impl.EatsCheckoutView(
+                    restaurant = restaurant,
+                    cart = androidx.compose.runtime.mutableStateMapOf("item" to rw.itunda.feature.eats.impl.EatsCartLine("item", 1)),
+                    menu = listOf(item),
+                    initialMode = rw.itunda.feature.eats.impl.EatsCheckoutMode.PICKUP,
+                    savedCoupon = "EATS20",
+                    onBack = {},
+                    onOrderPlaced = {},
+                    onDineInOrderPlaced = {},
+                    deviceStepUpHost = { _, _, _ -> },
+                )
+            }
+        }
+        rule.onNodeWithText("Saved coupon").assertExists()
+        rule.onNodeWithText("EATS20").assertExists()
+        rule.onNodeWithText("No delivery fee -- collect your order at the restaurant once it's ready").assertExists()
+        rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-pickup-dark.png")
+    }
+
     @Test fun restaurantGrid() {
         rule.setContent {
             IdsTheme(darkTheme = false) {
