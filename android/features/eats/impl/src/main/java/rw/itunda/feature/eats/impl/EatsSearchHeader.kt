@@ -33,7 +33,7 @@ import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 
 /** The exact category order shown by the v1038 Eats browse surface. */
-internal val EATS_PROTOTYPE_CATEGORIES = listOf(
+val EATS_PROTOTYPE_CATEGORIES = listOf(
     "Brochette", "Chicken", "Pizza", "Burgers", "Local", "Chips",
     "Bakery", "Coffee", "Juice", "Healthy", "Dessert",
 )
