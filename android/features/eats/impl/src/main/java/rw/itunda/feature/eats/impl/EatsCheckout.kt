@@ -2,6 +2,7 @@ package rw.itunda.feature.eats.impl
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -65,6 +67,7 @@ internal fun EatsCheckoutView(
     menu: List<MerchantProductDto>,
     initialMode: EatsCheckoutMode = EatsCheckoutMode.DELIVERY,
     initialAddress: String = "",
+    savedCoupon: String? = null,
     onBack: () -> Unit,
     onOrderPlaced: (EatsOrderDto) -> Unit,
     onDineInOrderPlaced: (DineInOrderDto) -> Unit,
@@ -76,6 +79,7 @@ internal fun EatsCheckoutView(
     var addressLatitude by remember { mutableStateOf<Double?>(null) }
     var addressLongitude by remember { mutableStateOf<Double?>(null) }
     var deliveryNotes by remember { mutableStateOf("") }
+    var requestForRider by remember { mutableStateOf("Leave at the door") }
     // Real 배민오더-style table/QR ordering (2026-07-25) -- the table number a buyer
     // reads off the physical tag/QR at their table. See DineInOrder.kt's own doc
     // comment for why this is free text rather than a validated table registry.
@@ -93,7 +97,9 @@ internal fun EatsCheckoutView(
     val total = lines.sumOf { (p, line) -> eatsLineUnitPrice(p, line.choiceIds) * line.quantity }
     // The prototype never allows an empty cart to reach payment. Also protects
     // against stale menu entries disappearing between browse and checkout.
-    val canSubmit = lines.isNotEmpty() && when (mode) {
+    val minimumOrder = restaurant.minOrderAmount ?: 0.0
+    val shortOfMinimum = total < minimumOrder
+    val canSubmit = lines.isNotEmpty() && !shortOfMinimum && when (mode) {
         EatsCheckoutMode.DELIVERY -> address.isNotBlank()
         EatsCheckoutMode.PICKUP -> true
         EatsCheckoutMode.DINE_IN -> tableNumber.isNotBlank()
@@ -108,7 +114,7 @@ internal fun EatsCheckoutView(
                 deliveryAddress = address.trim(),
                 deliveryLatitude = addressLatitude,
                 deliveryLongitude = addressLongitude,
-                deliveryNotes = deliveryNotes.trim().ifBlank { null },
+                deliveryNotes = listOfNotNull(requestForRider, deliveryNotes.trim().ifBlank { null }).joinToString(" · ").ifBlank { null },
             ),
         )
         if (res.success) onOrderPlaced(res.order)
@@ -158,6 +164,24 @@ internal fun EatsCheckoutView(
                     Text(String.format(Locale.US, "%,.0f RWF", total), color = Ids.colors.textPrimary, fontSize = 14.sp)
                 }
             }
+            if (savedCoupon != null) {
+                item {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Saved coupon", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                        Text(savedCoupon, color = Ids.colors.textBrand, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+            if (shortOfMinimum) {
+                item {
+                    Text(
+                        "Add ${String.format(Locale.US, "%,.0f", minimumOrder - total)} RWF more to reach the minimum order.",
+                        color = Ids.colors.danger,
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
+            }
             item { Spacer(modifier = Modifier.height(14.dp)) }
             item {
                 Row(
@@ -185,6 +209,32 @@ internal fun EatsCheckoutView(
             if (mode == EatsCheckoutMode.DELIVERY) {
                 item { Text("Plus a real delivery fee, added at checkout", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp)) }
                 item {
+                    Column(modifier = Modifier.padding(top = 10.dp)) {
+                        Text("Request for the rider", color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            listOf("Leave at the door", "Hand it to me", "Call when nearby").forEach { option ->
+                                val selected = requestForRider == option
+                                Box(
+                                    modifier = Modifier.clip(RoundedCornerShape(18.dp))
+                                        .background(if (selected) Ids.colors.pressed else Ids.colors.surfaceSoft)
+                                        .pressScaleClickable { requestForRider = option }
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                ) {
+                                    Text(
+                                        option,
+                                        color = if (selected) Ids.colors.textBrand else Ids.colors.textPrimary,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                item {
                     AddressAutocompleteField(
                         address = address,
                         onAddressChange = { address = it; addressLatitude = null; addressLongitude = null },
@@ -202,7 +252,7 @@ internal fun EatsCheckoutView(
                     IdsTextField(
                         value = deliveryNotes,
                         onValueChange = { if (it.length <= 500) deliveryNotes = it },
-                        label = "Delivery notes (optional) -- e.g. Leave at the gate",
+                        label = "Additional delivery notes (optional)",
                         modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                     )
                 }
