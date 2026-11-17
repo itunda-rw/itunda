@@ -73,11 +73,13 @@ fun EatsBrowseOffers(
     state: EatsBrowseState,
     onFastestClick: () -> Unit,
     onSavedClick: () -> Unit,
+    showPromo: Boolean = true,
+    savedSelected: Boolean = false,
 ) {
     var showClubSheet by remember { mutableStateOf(false) }
     val context = LocalContext.current
     Column(modifier = Modifier.fillMaxWidth()) {
-        EatsPromoBanner(
+        if (showPromo) EatsPromoBanner(
             state.isPickup,
             state.selectedCoupon != null,
             {
@@ -97,7 +99,7 @@ fun EatsBrowseOffers(
                 "voucher", ItundaArtSet.Color, 34.dp, { state.showCoupons = true }, Modifier.weight(1f), "Coupons",
             )
             EatsShortcut("Eats Club", "gift", ItundaArtSet.Color, 34.dp, { showClubSheet = true }, Modifier.weight(1f))
-            EatsShortcut("Saved", "heartred", ItundaArtSet.Proto, 28.dp, onSavedClick, Modifier.weight(1f))
+            EatsShortcut("Saved", "heartred", ItundaArtSet.Proto, 28.dp, onSavedClick, Modifier.weight(1f), selected = savedSelected)
         }
     }
     if (state.showCoupons) EatsCouponsSheet(
@@ -135,13 +137,14 @@ private fun EatsShortcut(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     accessibilityLabel: String = label,
+    selected: Boolean = false,
 ) {
     Column(
         modifier.semantics { contentDescription = accessibilityLabel }.pressScaleClickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
-            Modifier.size(56.dp).clip(RoundedCornerShape(20.dp)).background(Ids.colors.surfaceSoft),
+            Modifier.size(56.dp).clip(RoundedCornerShape(20.dp)).background(if (selected) Ids.colors.pressed else Ids.colors.surfaceSoft),
             contentAlignment = Alignment.Center,
         ) {
             ItundaArt(art, artSet, artSize)
