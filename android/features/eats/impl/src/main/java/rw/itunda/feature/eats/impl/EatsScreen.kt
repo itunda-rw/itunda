@@ -1,6 +1,7 @@
 package rw.itunda.feature.eats.impl
 
 import android.Manifest
+import android.widget.Toast
 import android.content.pm.PackageManager
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.pressScaleClickable
@@ -359,6 +360,10 @@ internal fun OrderFoodContent(
             onDineInOrderPlaced = { order -> confirmedDineInOrder = order },
             onMenuBack = { selectedRestaurant = null },
             onCheckoutRequested = { showCheckout = true },
+            onGroupOrder = {
+                selectedRestaurant = null; menu = null; cart.clear()
+                browseState.cartRestaurant = null; showCheckout = false; view = OrderFoodView.GROUP
+            },
         )
     ) return
 
@@ -369,41 +374,22 @@ internal fun OrderFoodContent(
     val eatsTouchedKey = remember { mutableStateOf<Any?>(null) }
     Column(modifier = Modifier.fillMaxSize()) {
         EatsBrowseHeader(
-            browseState, searchInput, cart.values.sumOf { it.quantity }, { searchInput = it },
-            { view = OrderFoodView.ORDERS }, { selectedRestaurant = browseState.cartRestaurant; showCheckout = true },
+            state = browseState,
+            searchInput = searchInput,
+            cartCount = cart.values.sumOf { it.quantity },
+            onSearchChange = { searchInput = it },
+            onOrdersClick = { view = if (view == OrderFoodView.ORDERS) OrderFoodView.BROWSE else OrderFoodView.ORDERS },
+            onCartClick = { selectedRestaurant = browseState.cartRestaurant; showCheckout = true },
+            onFastestClick = {
+                if (browseLocation == null) Toast.makeText(locationContext, "Enable location to sort by fastest delivery", Toast.LENGTH_SHORT).show()
+                else sortMode = if (sortMode == "delivery_time") null else "delivery_time"
+            },
+            onSavedClick = { view = if (view == OrderFoodView.FAVORITES) OrderFoodView.BROWSE else OrderFoodView.FAVORITES },
         )
         LazyColumn(
             state = eatsListState, modifier = Modifier.weight(1f).padding(horizontal = Ids.layout.screenHorizontal).trackScrollPressedKey(eatsListState, eatsTouchedKey),
             verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
         ) {
-        item {
-            // Flat, horizontally-scrolling category strip (2026-07-24), same
-            // Karrot/Toss-Shopping-style treatment as Hood's own nav rows --
-            // replacing a filled-pill segmented control.
-            Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
-            ) {
-                listOf(OrderFoodView.BROWSE to "Restaurants", OrderFoodView.FAVORITES to "Favorites", OrderFoodView.ORDERS to "My orders", OrderFoodView.GROUP to "Order together").forEach { (v, label) ->
-                    val selected = v == view
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.pressScaleClickable { view = v }) {
-                        Text(
-                            label,
-                            color = if (selected) Ids.colors.textPrimary else Ids.colors.textSecondary,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                            fontSize = 15.sp,
-                            modifier = Modifier.padding(top = 8.dp, bottom = 6.dp),
-                        )
-                        Box(
-                            modifier = Modifier
-                                .height(2.dp)
-                                .width(18.dp)
-                                .background(if (selected) Ids.colors.brand else Color.Transparent, RoundedCornerShape(1.dp)),
-                        )
-                    }
-                }
-            }
-        }
         if (view == OrderFoodView.ORDERS) {
             item {
                 MyEatsOrdersView(onReorder = ::handleReorder, reorderingId = reorderingId, restaurants = allRestaurants)
@@ -449,7 +435,6 @@ internal fun OrderFoodContent(
                     showSearch = false,
                 )
             }
-            item { EatsPromoBanner(browseState.isPickup, browseState.selectedCoupon == "FREEDEL", { browseState.selectedCoupon = "FREEDEL" }) }
             if (searchInput.isBlank() && selectedCategory == null && !restaurants.isNullOrEmpty()) item { EatsPopularRail(restaurants!!, ::openRestaurant, isPickup = browseState.isPickup) }
             item { EatsSectionHeader("Restaurants near you", restaurants?.size) }
             // Real Baemin/Coupang Eats-style sort chip row (itunda Eats redesign,
