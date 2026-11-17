@@ -30,23 +30,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.outlined.Bolt
-import androidx.compose.material.icons.outlined.Coffee
-import androidx.compose.material.icons.outlined.Fastfood
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.RateReview
-import androidx.compose.material.icons.outlined.Restaurant
-import androidx.compose.material.icons.outlined.RestaurantMenu
-import androidx.compose.material.icons.outlined.ShoppingCart
-import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.Divider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -367,7 +353,7 @@ internal fun DeliverContent() {
             if (available == null) {
                 item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(100.dp)) {} }
             } else if (allAvailable.isEmpty()) {
-                item { EmptyState("No deliveries waiting right now.", icon = Icons.AutoMirrored.Outlined.ReceiptLong) }
+                item { EmptyState("No deliveries waiting right now.", icon = null) }
             } else {
                 items(allAvailable, key = { it.id }) { o ->
                     EatsOrderRow(o) {

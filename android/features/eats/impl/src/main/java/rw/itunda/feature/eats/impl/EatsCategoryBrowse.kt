@@ -25,17 +25,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.outlined.Coffee
-import androidx.compose.material.icons.outlined.Fastfood
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.Restaurant
-import androidx.compose.material.icons.outlined.Storefront
-import rw.itunda.core.designsystem.theme.IdsIcons
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -49,6 +40,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import rw.itunda.core.designsystem.components.ItundaArt
+import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.components.StarGold
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.EatsDishDto
@@ -69,10 +62,10 @@ import rw.itunda.core.network.ShoppingMerchantDto
 // merchant categories (SeedDataRunner.kt: "Rwandan"/"Fast Food"/"Coffee & Bakery"),
 // with a generic fallback for any other real category a merchant sets that isn't
 // explicitly mapped, so a new category never renders with no icon at all.
-internal fun eatsCategoryIcon(category: String) = when {
-    category.contains("fast food", ignoreCase = true) -> Icons.Outlined.Fastfood
-    category.contains("coffee", ignoreCase = true) || category.contains("bakery", ignoreCase = true) -> Icons.Outlined.Coffee
-    else -> Icons.Outlined.Restaurant
+internal fun eatsCategoryArt(category: String): String = when {
+    category.contains("fast food", ignoreCase = true) -> "burger"
+    category.contains("coffee", ignoreCase = true) || category.contains("bakery", ignoreCase = true) -> "coffee"
+    else -> "restaurant"
 }
 
 @Composable
@@ -89,7 +82,7 @@ internal fun EatsCategoryIconRow(categories: List<String>, selectedCategory: Str
                         .background(if (selected) Ids.colors.brand.copy(alpha = 0.15f) else Ids.colors.surfaceSoft),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(eatsCategoryIcon(c), contentDescription = null, tint = if (selected) Ids.colors.brand else Ids.colors.textSecondary, modifier = Modifier.size(26.dp))
+                    ItundaArt(eatsCategoryArt(c), ItundaArtSet.Color, 26.dp, tint = if (selected) Ids.colors.brand else Ids.colors.textSecondary)
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -108,14 +101,14 @@ internal fun EatsCategoryIconRow(categories: List<String>, selectedCategory: Str
 // Real Baemin/Coupang Eats-style sort chip (itunda Eats redesign, 2026-08-28) --
 // see EatsScreen.kt's own sortMode doc comment for the full account.
 @Composable
-fun EatsSortChip(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector?, active: Boolean, onClick: () -> Unit) {
+fun EatsSortChip(label: String, icon: String?, active: Boolean, onClick: () -> Unit) {
     Row(
         modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(if (active) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
             .pressScaleClickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
-            Icon(icon, contentDescription = null, tint = if (active) Ids.colors.background else Ids.colors.textSecondary, modifier = Modifier.size(16.dp))
+            ItundaArt(icon, ItundaArtSet.Line, 16.dp, tint = if (active) Ids.colors.background else Ids.colors.textSecondary)
             Spacer(modifier = Modifier.width(4.dp))
         }
         Text(
@@ -156,16 +149,14 @@ internal fun RestaurantCard(m: ShoppingMerchantDto, isFavorite: Boolean, favorit
                 } else {
                     RestaurantPhotoPlaceholder()
                 }
-                Icon(
-                    if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                    contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
-                    tint = if (isFavorite) Ids.colors.danger else Color.White,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(10.dp)
-                        .size(22.dp)
+                Box(
+                    modifier = Modifier.align(Alignment.TopEnd).padding(10.dp).size(36.dp)
+                        .clip(CircleShape).background(Color.Black.copy(alpha = 0.22f))
                         .pressScaleClickable(enabled = !favoriteBusy, onClick = onToggleFavorite),
-                )
+                    contentAlignment = Alignment.Center,
+                ) {
+                    ItundaArt(if (isFavorite) "heartred" else "heart", if (isFavorite) ItundaArtSet.Proto else ItundaArtSet.Line, 22.dp, tint = if (isFavorite) null else Color.White)
+                }
                 // Real Coupang 와우(WOW)-style per-restaurant membership badge (itunda
                 // Eats redesign, 2026-08-28) -- see
                 // ShoppingMerchantDto.participatesInEatsMembership's own doc comment.
@@ -197,7 +188,7 @@ internal fun RestaurantCard(m: ShoppingMerchantDto, isFavorite: Boolean, favorit
                 if (m.rating != null || m.distanceKm != null || m.minOrderAmount != null) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
                         if (m.rating != null) {
-                            Icon(IdsIcons.Star, contentDescription = null, tint = StarGold, modifier = Modifier.size(12.dp))
+                            ItundaArt("star", ItundaArtSet.Line, 12.dp, tint = StarGold)
                             Spacer(modifier = Modifier.width(2.dp))
                             Text(String.format(Locale.US, "%.1f (%d)", m.rating, m.reviewCount), color = Ids.colors.textSecondary, fontSize = 12.sp)
                             Spacer(modifier = Modifier.width(6.dp))
@@ -284,7 +275,7 @@ internal fun EatsDishGrid(dishes: List<EatsDishDto>, onOpen: (EatsDishDto) -> Un
 @Composable
 internal fun RestaurantPhotoPlaceholder() {
     Box(modifier = Modifier.fillMaxSize().background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
-        Icon(Icons.Outlined.Storefront, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(40.dp))
+        ItundaArt("restaurant", ItundaArtSet.Color, 40.dp)
     }
 }
 
