@@ -35,7 +35,7 @@ class PayScreenshotTest {
     private fun render(dark: Boolean, name: String, mode: ProtoPayMode = ProtoPayMode.MY_CODE) {
         rule.setContent {
             IdsTheme(darkTheme = dark) {
-                ProtoPayContent(mode, {}, "ITUNDA-DEMO-1", 4, "itunda Pay Money", "120,500", {}, {}, {}, {}, {})
+                ProtoPayContent(mode, {}, "ITUNDA-DEMO-1", 43, "itunda Pay Money", "120,500", {}, {}, {}, {}, {})
             }
         }
         rule.onRoot().captureRoboImage("build/screenshots/$name.png")
@@ -46,7 +46,8 @@ class PayScreenshotTest {
     @Test fun tapLight() = render(false, "pay-tap-light", ProtoPayMode.TAP)
     @Test fun tapDark() = render(true, "pay-tap-dark", ProtoPayMode.TAP)
     // Scan hosts the real camera (CameraX, not available on the JVM); only the dark chrome is checked here.
-    @Test fun scanDark() = render(false, "pay-scan-dark", ProtoPayMode.SCAN)
+    @Test fun scanLight() = render(false, "pay-scan-light", ProtoPayMode.SCAN)
+    @Test fun scanDark() = render(true, "pay-scan-dark", ProtoPayMode.SCAN)
 
     @Test fun hubLight() {
         rule.setContent { IdsTheme(darkTheme = false) { PayHub(onBack = {}, onFindStores = {}) } }

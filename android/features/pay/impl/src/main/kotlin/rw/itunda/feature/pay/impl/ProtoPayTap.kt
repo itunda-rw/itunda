@@ -1,15 +1,16 @@
 package rw.itunda.feature.pay.impl
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,38 +21,36 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.components.pressScaleClickable
 
 /**
- * Prototype "Tap" screen: concentric rings around the countdown tile, balance below.
- * Tap-to-pay has no NFC backend yet, so this says so instead of faking a terminal tap.
+ * Prototype "Tap" screen (card 350x409.2, r28): two brand rings (258.8 / 177.6dp, 16% alpha)
+ * around the 92dp countdown tile, then the balance row. Tap-to-pay has no NFC backend yet,
+ * so the hint says so instead of faking a terminal tap.
  */
 @Composable
-internal fun ProtoPayTap(secondsLeft: Int, fundingName: String, fundingBalance: String) {
-    Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(32.dp)).background(Ids.colors.surfaceSoft).padding(20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Box(Modifier.fillMaxWidth().height(254.dp), contentAlignment = Alignment.Center) {
-            val brand = Ids.colors.brand
-            Canvas(Modifier.size(254.dp)) {
-                drawCircle(brand.copy(alpha = 0.10f), radius = size.minDimension / 2)
-                drawCircle(brand.copy(alpha = 0.16f), radius = size.minDimension / 2 * 0.68f)
-            }
-            Box(Modifier.size(92.dp).clip(RoundedCornerShape(30.dp)).background(brand), contentAlignment = Alignment.Center) {
-                Text("$secondsLeft", color = Ids.colors.textPrimary, fontSize = 36.sp, fontWeight = FontWeight.ExtraBold)
+internal fun ProtoPayTap(p: PayPalette, secondsLeft: Int, fundingName: String, fundingBalance: String, onTopUp: () -> Unit) {
+    Column(Modifier.fillMaxWidth().height(409.2.dp).clip(RoundedCornerShape(28.dp)).background(p.soft)) {
+        Box(Modifier.fillMaxWidth().height(331.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(258.8.dp).clip(CircleShape).background(p.brand.copy(alpha = 0.16f)))
+            Box(Modifier.size(177.6.dp).clip(CircleShape).background(p.brand.copy(alpha = 0.16f)))
+            Box(Modifier.size(92.dp).clip(RoundedCornerShape(30.dp)).background(p.brand), contentAlignment = Alignment.Center) {
+                Text("$secondsLeft", color = p.segOn, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold)
             }
         }
-        Spacer(Modifier.height(16.dp))
-        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(fundingName, color = Ids.colors.textTertiary, fontSize = 14.sp)
-            Text("$fundingBalance RWF", color = Ids.colors.textPrimary, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
+        Row(Modifier.fillMaxWidth().padding(horizontal = 22.dp).height(77.8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(fundingName, color = p.tt, fontSize = 13.sp, lineHeight = 18.2.sp)
+                Text("$fundingBalance RWF", color = p.text, fontSize = 24.sp, lineHeight = 31.2.sp, fontWeight = FontWeight.ExtraBold)
+            }
+            Box(Modifier.width(73.9.dp).height(36.dp).clip(RoundedCornerShape(12.dp)).background(p.tint).pressScaleClickable(onClick = onTopUp), contentAlignment = Alignment.Center) {
+                Text("Top up", color = p.tintFg, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            }
         }
     }
-    Spacer(Modifier.height(16.dp))
+    Spacer(Modifier.height(21.8.dp))
     Text(
-        "Tap to pay isn't available yet. Use Scan or My code at the till.",
-        color = Ids.colors.textTertiary, fontSize = 15.sp, textAlign = TextAlign.Center,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+        "Tap to pay isn't available yet. Use Scan or My code at the till.", color = p.tt, fontSize = 14.sp, lineHeight = 19.6.sp,
+        textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
     )
 }
