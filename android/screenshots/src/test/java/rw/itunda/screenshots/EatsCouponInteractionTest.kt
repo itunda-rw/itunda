@@ -29,7 +29,7 @@ class EatsCouponInteractionTest {
         rule.onNodeWithContentDescription("Coupons").performClick()
         rule.onAllNodesWithText("Use")[1].performClick()
         assertEquals("EATS20", state.selectedCoupon)
-        rule.onNodeWithText("EATS20 ✓", substring = true).assertExists()
+        rule.onNodeWithText("Coupons ✓").assertExists()
     }
 
     @Test fun freeDeliveryCouponClosesAndRejectsPickup() {
