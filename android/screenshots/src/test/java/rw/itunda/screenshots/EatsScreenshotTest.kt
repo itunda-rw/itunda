@@ -14,6 +14,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -180,10 +181,10 @@ class EatsScreenshotTest {
             }
         }
         rule.onNodeWithText("Pickup").performClick()
-        assert(state.isPickup)
+        assertTrue(state.isPickup)
         rule.onNodeWithText("Pickup near").assertExists()
         rule.onNodeWithText("Delivery").performClick()
-        assert(!state.isPickup)
+        assertTrue(!state.isPickup)
     }
 
     @Test fun couponCanBeSaved() {
@@ -195,7 +196,7 @@ class EatsScreenshotTest {
         }
         rule.onNodeWithText("Coupons").performClick()
         rule.onAllNodesWithText("Use")[1].performClick()
-        assert(state.selectedCoupon == "EATS20")
+        assertTrue(state.selectedCoupon == "EATS20")
     }
 
 }
