@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.assertExists
@@ -157,6 +158,44 @@ class EatsScreenshotTest {
         rule.onNodeWithText("Coupons").performClick()
         rule.onAllNodesWithText("Use")[0].performClick()
         rule.onNodeWithText("Free delivery only applies to delivery orders.").assertExists()
+    }
+
+    @Test fun addressPickerSheetLight() {
+        val state = rw.itunda.feature.eats.impl.EatsBrowseState()
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
+            }
+        }
+        rule.onNodeWithContentDescription("Change delivery address").performClick()
+        rule.waitForIdle()
+        rule.onRoot().captureRoboImage("build/screenshots/eats-address-picker-light.png")
+    }
+
+    @Test fun deliveryAndPickupSelectionStayInSync() {
+        val state = rw.itunda.feature.eats.impl.EatsBrowseState()
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
+            }
+        }
+        rule.onNodeWithText("Pickup").performClick()
+        assert(state.isPickup)
+        rule.onNodeWithText("Pickup near").assertExists()
+        rule.onNodeWithText("Delivery").performClick()
+        assert(!state.isPickup)
+    }
+
+    @Test fun couponCanBeSaved() {
+        val state = rw.itunda.feature.eats.impl.EatsBrowseState()
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
+            }
+        }
+        rule.onNodeWithText("Coupons").performClick()
+        rule.onAllNodesWithText("Use")[1].performClick()
+        assert(state.selectedCoupon == "EATS20")
     }
 
 }
