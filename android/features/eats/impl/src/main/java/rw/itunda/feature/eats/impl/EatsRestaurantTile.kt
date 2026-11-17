@@ -57,6 +57,7 @@ fun EatsRestaurantTile(
     onOpen: () -> Unit,
     onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier,
+    isPickup: Boolean = false,
 ) {
     Column(modifier.pressScaleClickable(onClick = onOpen)) {
         Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(24.dp)).background(tileTints[tintIndex.mod(tileTints.size)])) {
@@ -91,9 +92,9 @@ fun EatsRestaurantGridRow(row: List<ShoppingMerchantDto>, favoriteIds: Set<Strin
                 name = m.businessName, category = m.category,
                 tag = if (discount != null) "$discount% off" else if (m.participatesInEatsMembership) "Member" else null,
                 rating = m.rating?.let { String.format(Locale.US, "%.1f (%d)", it, m.reviewCount) },
-                meta = m.deliveryTimeMinutes?.let { "$it min" },
-                deliveryLine = if (m.participatesInEatsMembership) "Free delivery" else m.minOrderAmount?.let { "Min ${String.format(Locale.US, "%,.0f", it)}" },
-                freeDelivery = m.participatesInEatsMembership,
+                meta = m.deliveryTimeMinutes?.let { minutes -> if (isPickup) "Ready in ${maxOf(10, minutes - 10)} min" else "$minutes min" },
+                deliveryLine = if (isPickup) "Pickup · No delivery fee" else if (m.participatesInEatsMembership) "Free delivery" else m.minOrderAmount?.let { "Min ${String.format(Locale.US, "%,.0f", it)}" },
+                freeDelivery = isPickup || m.participatesInEatsMembership,
                 isFavorite = m.merchantId in favoriteIds, tintIndex = m.businessName.length,
                 onOpen = { onOpen(m) }, onToggleFavorite = { onToggleFavorite(m) },
                 modifier = Modifier.weight(1f),
