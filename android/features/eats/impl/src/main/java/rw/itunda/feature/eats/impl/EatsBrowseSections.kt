@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -93,7 +94,7 @@ fun EatsBrowseOffers(
         )
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             Row(
-                Modifier.offset(x = (-24).dp).width(maxWidth + 48.dp).padding(horizontal = 12.dp).padding(top = 18.dp),
+                Modifier.offset(x = (-24).dp).requiredWidth(maxWidth + 48.dp).padding(horizontal = 12.dp).padding(top = 18.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 EatsShortcut("Fastest", "moto", ItundaArtSet.Color, 34.dp, onFastestClick, Modifier.weight(1f))
