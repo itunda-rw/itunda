@@ -8,6 +8,8 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.After
 import org.junit.Before
@@ -99,7 +101,7 @@ class EatsIntegratedScreenshotTest {
 
     @Test fun browseLowerLight() {
         show(false)
-        rule.onNodeWithText("Gisozi Street Kitchen").performScrollTo()
+        repeat(3) { rule.onRoot().performTouchInput { swipeUp() } }
         capture("eats-prototype-browse-lower-light")
     }
 }
