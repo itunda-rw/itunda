@@ -1262,10 +1262,7 @@ fun ItundaAppScreen(
                         pendingMerchantId = pendingEatsMerchantId,
                         pendingMerchantName = pendingEatsMerchantName,
                         onPendingMerchantConsumed = { pendingEatsMerchantId = null; pendingEatsMerchantName = null },
-                        onReportIssue = { transactionId ->
-                            pendingEatsIssueTransactionId = transactionId
-                            showSupport = true
-                        },
+                        onReportIssue = { transactionId -> pendingEatsIssueTransactionId = transactionId; showSupport = true },
                     )
                 }
             }
@@ -1412,12 +1409,7 @@ fun ItundaAppScreen(
             BackHandler { showSupport = false }
             SupportScreen(
                 onBack = { showSupport = false; pendingRideIssueTransactionId = null; pendingEatsIssueTransactionId = null },
-                initialTransactionId = pendingEatsIssueTransactionId ?: pendingRideIssueTransactionId,
-                initialCategory = when {
-                    pendingEatsIssueTransactionId != null -> "EATS_ORDER_ISSUE"
-                    pendingRideIssueTransactionId != null -> "RIDE_ISSUE"
-                    else -> null
-                },
+                initialTransactionId = pendingEatsIssueTransactionId ?: pendingRideIssueTransactionId, initialCategory = when { pendingEatsIssueTransactionId != null -> "EATS_ORDER_ISSUE"; pendingRideIssueTransactionId != null -> "RIDE_ISSUE"; else -> null },
                 onConsumedInitial = { pendingRideIssueTransactionId = null; pendingEatsIssueTransactionId = null },
             )
             return@IdsTheme
