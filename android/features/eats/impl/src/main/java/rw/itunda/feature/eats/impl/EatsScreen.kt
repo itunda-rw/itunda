@@ -443,10 +443,11 @@ internal fun OrderFoodContent(
                     showSearch = false,
                 )
             }
-            item { EatsPromoBanner() }
+            item { EatsPromoBanner(browseState.isPickup, browseState.selectedCoupon == "FREEDEL", { browseState.selectedCoupon = "FREEDEL" }) }
             item {
                 EatsQuickActions(
                     onFastest = { sortMode = if (sortMode == "delivery_time") null else "delivery_time" },
+                    onCoupons = { browseState.showCoupons = true },
                     onClub = { showMembership = !showMembership },
                     onSaved = { view = OrderFoodView.FAVORITES },
                 )
