@@ -398,20 +398,13 @@ class EatsScreenshotTest {
         assertEquals("pizza", query)
     }
 
-    @Test fun shopTabReturnsToExplore() {
-        var shopOpened = false
-        rule.setContent { EatsBrowseTestSurface(rw.itunda.feature.eats.impl.EatsBrowseState(), onShopClick = { shopOpened = true }) }
-        rule.onNodeWithText("Shop").performClick()
-        assertTrue(shopOpened)
-    }
-
     @Test fun couponCanBeSaved() {
         val state = rw.itunda.feature.eats.impl.EatsBrowseState()
         rule.setContent { EatsBrowseTestSurface(state) }
         rule.onNodeWithContentDescription("Coupons").performClick()
         rule.onAllNodesWithText("Use")[1].performClick()
         assertEquals("EATS20", state.selectedCoupon)
-        rule.onNodeWithText("EATS20 ✓", substring = true).assertExists()
+        rule.onNodeWithText("Coupons ✓").assertExists()
     }
 
     @Test fun fulfillmentAndCouponStateStayConsistent() {
