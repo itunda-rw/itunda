@@ -296,6 +296,26 @@ class EatsScreenshotTest {
     @Test fun couponsSheetLight() = couponsSheet(false, "light")
     @Test fun couponsSheetDark() = couponsSheet(true, "dark")
 
+    @Test fun promoBannerOnlySavesCouponForDelivery() {
+        var deliverySaved = false
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                rw.itunda.feature.eats.impl.EatsPromoBanner(false, false, { deliverySaved = true })
+            }
+        }
+        rule.onNodeWithText("Free delivery on your first order").performClick()
+        assertTrue(deliverySaved)
+
+        var pickupSaved = false
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                rw.itunda.feature.eats.impl.EatsPromoBanner(true, false, { pickupSaved = true })
+            }
+        }
+        rule.onNodeWithText("Free delivery on your first order").performClick()
+        assertFalse(pickupSaved)
+    }
+
     @Test fun pickupBlocksDeliveryOnlyCoupon() {
         val state = rw.itunda.feature.eats.impl.EatsBrowseState()
         state.isPickup = true
