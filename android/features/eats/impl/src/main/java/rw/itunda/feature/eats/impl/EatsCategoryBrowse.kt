@@ -82,7 +82,7 @@ internal fun EatsCategoryIconRow(categories: List<String>, selectedCategory: Str
                         .background(if (selected) Ids.colors.brand.copy(alpha = 0.15f) else Ids.colors.surfaceSoft),
                     contentAlignment = Alignment.Center,
                 ) {
-                    ItundaArt(eatsCategoryArt(c), if (selected) ItundaArtSet.Color else ItundaArtSet.Line, 26.dp, tint = if (selected) Ids.colors.brand else Ids.colors.textSecondary)
+                    ItundaArt(eatsCategoryArt(c), ItundaArtSet.Color, 26.dp, tint = if (selected) Ids.colors.brand else Ids.colors.textSecondary)
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
