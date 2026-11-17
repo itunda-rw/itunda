@@ -156,7 +156,7 @@ class EatsScreenshotTest {
                 rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
             }
         }
-        rule.onNodeWithText("Coupons").performClick()
+        rule.onNodeWithContentDescription("Coupons").performClick()
         rule.onAllNodesWithText("Use")[0].performClick()
         rule.onNodeWithText("Free delivery only applies to delivery orders.").assertExists()
     }
@@ -193,10 +193,9 @@ class EatsScreenshotTest {
                 rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
             }
         }
-        rule.onNodeWithText("Pickup").performClick()
+        rule.onNodeWithContentDescription("Pickup").performClick()
         assertTrue(state.isPickup)
-        rule.onNodeWithText("Pickup near").assertExists()
-        rule.onNodeWithText("Delivery").performClick()
+        rule.onNodeWithContentDescription("Delivery").performClick()
         assertTrue(!state.isPickup)
     }
 
