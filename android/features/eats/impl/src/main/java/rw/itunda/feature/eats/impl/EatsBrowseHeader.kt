@@ -12,7 +12,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -39,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import rw.itunda.core.network.ShoppingMerchantDto
 import androidx.compose.ui.graphics.SolidColor
 import rw.itunda.core.designsystem.components.ItundaArt
 import rw.itunda.core.designsystem.components.ItundaArtSet
@@ -86,6 +86,7 @@ internal class EatsBrowseState {
     var isPickup by mutableStateOf(false)
     var selectedCoupon by mutableStateOf<String?>(null)
     var address by mutableStateOf("Kimironko, KG 11 Ave")
+    var cartRestaurant by mutableStateOf<ShoppingMerchantDto?>(null)
 }
 
 @Composable
@@ -130,6 +131,7 @@ internal fun EatsBrowseHeader(
             Box {
                 EatsHeaderIcon("Cart", "bag", {
                     if (cartCount == 0) Toast.makeText(context, "Your cart is empty", Toast.LENGTH_SHORT).show()
+                    else if (state.cartRestaurant == null) Toast.makeText(context, "Open your restaurant to continue the cart", Toast.LENGTH_SHORT).show()
                     else onCartClick()
                 })
                 if (cartCount > 0) {
@@ -168,7 +170,7 @@ internal fun EatsBrowseHeader(
             modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 14.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            EatsFulfillmentChoice("Delivery", "To your door", "moto", !state.isPickup, Modifier.weight(1f)) {
+            EatsFulfillmentChoice("Delivery", "To your door", "mbike", !state.isPickup, Modifier.weight(1f)) {
                 state.isPickup = false
             }
             EatsFulfillmentChoice("Pickup", "No delivery fee", "bag", state.isPickup, Modifier.weight(1f)) {
