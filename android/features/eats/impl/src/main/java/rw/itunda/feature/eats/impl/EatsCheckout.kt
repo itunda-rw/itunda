@@ -63,13 +63,14 @@ internal fun EatsCheckoutView(
     restaurant: ShoppingMerchantDto,
     cart: Map<String, EatsCartLine>,
     menu: List<MerchantProductDto>,
+    initialMode: EatsCheckoutMode = EatsCheckoutMode.DELIVERY,
     onBack: () -> Unit,
     onOrderPlaced: (EatsOrderDto) -> Unit,
     onDineInOrderPlaced: (DineInOrderDto) -> Unit,
     deviceStepUpHost: @Composable (Boolean, () -> Unit, suspend () -> Unit) -> Unit,
 ) {
     BackHandler(onBack = onBack)
-    var mode by remember { mutableStateOf(EatsCheckoutMode.DELIVERY) }
+    var mode by remember { mutableStateOf(initialMode) }
     var address by remember { mutableStateOf("") }
     var addressLatitude by remember { mutableStateOf<Double?>(null) }
     var addressLongitude by remember { mutableStateOf<Double?>(null) }
