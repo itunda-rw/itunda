@@ -233,7 +233,7 @@ internal fun HomePocketRow(icon: @Composable () -> Unit, progress: Float?, name:
         // The goal ring sits just outside the 44dp circle (so the circle is clipped, the ring is not).
         Box(Modifier.size(44.dp).drawBehind {
             if (progress != null) {
-                val sw = 2.5.dp.toPx(); val r = size.width / 2 + 2.5.dp.toPx()
+                val sw = 2.dp.toPx(); val r = size.width / 2 + 1.5.dp.toPx()
                 drawCircle(p.ring, radius = r, style = Stroke(sw))
                 drawArc(p.barOn, -90f, 360f * progress, false, Offset(size.width / 2 - r, size.height / 2 - r), Size(2 * r, 2 * r), style = Stroke(sw, cap = StrokeCap.Round))
             }
@@ -268,7 +268,7 @@ internal fun HomeNavRow(art: String, title: String, subtitle: String, onClick: (
             Spacer(Modifier.height(3.dp))
             HText(subtitle, p.mu, 14, FontWeight.Normal, lh = 21, ls = -0.2f)
         }
-        if (onClick != null) ItundaArt("chev", ItundaArtSet.Line, 16.dp, tint = p.tt.copy(alpha = 0.3f))
+        if (onClick != null) ItundaArt("chev", ItundaArtSet.Line, 14.dp, tint = p.tt.copy(alpha = 0.25f))
     }
 }
 

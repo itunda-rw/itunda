@@ -33,5 +33,5 @@ internal fun homePalette(): HomePalette = if (Ids.colors.background.luminance() 
     text = Color(0xFF191F28), mu = Color(0xFF566170), pk = Color(0xFF5F6A78), tt = Color(0xFF6B7684),
     tint = Color(0xFFEEEDFF), tintFg = Color(0xFF5B54D6), lk = Color(0xFF5A51EC),
     tileA = Color(0xFFEEEDFF), tileB = Color(0xFFC9C6FA), chip = Color(0xFFF2F4F6), line = Color(0xFFE5E8EB),
-    hair = Color(0xFFE9ECF0), glow = Color(0xFFE0DEFF), footShade = Color(0x0D191F28), setFg = Color(0xFF6B7684), ring = Color(0xFFEFF0F2),
+    hair = Color(0xFFE9ECF0), glow = Color(0xFFE0DEFF), footShade = Color(0x0D191F28), setFg = Color(0xFF6B7684), ring = Color(0xFFF3F4F6),
 )
