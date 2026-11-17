@@ -336,6 +336,12 @@ internal fun OrderFoodContent(
             pickupInitially = browseState.isPickup,
             deliveryAddress = browseState.address,
             savedCoupon = browseState.selectedCoupon,
+            onCheckoutModeChange = { mode ->
+                browseState.isPickup = mode == rw.itunda.feature.eats.impl.EatsCheckoutMode.PICKUP
+                if (mode != rw.itunda.feature.eats.impl.EatsCheckoutMode.DELIVERY && browseState.selectedCoupon == "FREEDEL") {
+                    browseState.selectedCoupon = null
+                }
+            },
             showCheckout = showCheckout,
             menu = menu,
             cart = cart,
