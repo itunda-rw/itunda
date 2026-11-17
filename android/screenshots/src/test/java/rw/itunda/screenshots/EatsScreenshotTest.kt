@@ -62,7 +62,7 @@ class EatsScreenshotTest {
         }
         rule.onNodeWithText("Ready in 10 min", substring = true).assertExists()
         rule.onNodeWithText("Ready in 15 min", substring = true).assertExists()
-        rule.onNodeWithText("Pickup · No delivery fee", substring = true).assertExists()
+        assertEquals(2, rule.onAllNodesWithText("Pickup · No delivery fee", substring = true).fetchSemanticsNodes().size)
         rule.onRoot().captureRoboImage("build/screenshots/eats-pickup-grid-$name.png")
     }
 
