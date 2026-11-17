@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
@@ -22,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -50,7 +52,7 @@ fun EatsDeliveryPickupRow(state: EatsBrowseState) {
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(addressLabel, color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-            ItundaArt("chev", ItundaArtSet.Line, 16.dp, tint = Ids.colors.textTertiary, modifier = Modifier.padding(start = 1.dp))
+            ItundaArt("chev", ItundaArtSet.Line, 16.dp, tint = Ids.colors.textTertiary, modifier = Modifier.rotate(90f))
         }
         EatsModeSwitch(
             state.isPickup,
@@ -58,7 +60,7 @@ fun EatsDeliveryPickupRow(state: EatsBrowseState) {
                 state.isPickup = pickup
                 if (pickup && state.selectedCoupon == "FREEDEL") state.selectedCoupon = null
             },
-            Modifier,
+            Modifier.width(144.dp),
         )
     }
     if (showAddressSheet) EatsAddressPickerSheet(state, onDismiss = { showAddressSheet = false })
