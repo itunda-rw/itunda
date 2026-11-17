@@ -10,8 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -229,7 +227,7 @@ internal fun MyEatsOrdersView(
         } else if (orders == null) {
             SkeletonBlock()
         } else if (allOrders.isEmpty()) {
-            EmptyState("No orders yet — order from a nearby restaurant and it'll show up here.", icon = Icons.AutoMirrored.Outlined.ReceiptLong)
+            EmptyState("No orders yet — order from a nearby restaurant and it'll show up here.")
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 allOrders.forEach { o ->
