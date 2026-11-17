@@ -67,7 +67,7 @@ fun EatsPromoBanner(
             Text("Free delivery on your first order", color = Color(0xFF191F28), fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
             Text(if (selected) "Code FREEDEL saved" else "Delivery only · Code FREEDEL", color = Color(0xFF4E5968), fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
         }
-        ItundaArt("gift", ItundaArtSet.Color, 48.dp)
+        ItundaArt("gift", ItundaArtSet.Color, 52.dp)
     }
 }
 
@@ -80,7 +80,7 @@ fun EatsQuickActions(
     onSaved: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+    Row(modifier.fillMaxWidth().padding(vertical = 11.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
         EatsQuickAction("moto", "Fastest", onFastest)
         EatsQuickAction("voucher", "Coupons", onCoupons)
         EatsQuickAction("gift", "Eats Club", onClub)
@@ -95,7 +95,7 @@ private fun EatsQuickAction(art: String, label: String, onClick: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(Modifier.size(56.dp).clip(RoundedCornerShape(20.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
-            ItundaArt(art, ItundaArtSet.Color, 30.dp)
+            ItundaArt(art, ItundaArtSet.Color, 34.dp)
         }
         Text(label, color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp))
     }
@@ -175,7 +175,7 @@ fun EatsBrowseHeader(
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).height(44.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 6.dp).height(44.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(
