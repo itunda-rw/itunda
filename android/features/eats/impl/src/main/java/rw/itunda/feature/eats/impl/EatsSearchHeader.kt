@@ -71,6 +71,7 @@ fun EatsSearchHeader(
                     Box(
                         Modifier.height(44.dp).clip(RoundedCornerShape(14.dp)).background(if (on) Ids.colors.surfaceSoft else Color.Transparent)
                             .pressScaleClickable { onSelectCategory(c) }.padding(horizontal = 14.dp),
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(c ?: "All", color = if (on) Ids.colors.textPrimary else Ids.colors.textSecondary, fontSize = 16.sp, fontWeight = if (on) FontWeight.ExtraBold else FontWeight.Bold, maxLines = 1, softWrap = false)
                     }
