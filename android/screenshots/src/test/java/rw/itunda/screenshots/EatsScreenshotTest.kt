@@ -14,6 +14,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -214,6 +217,45 @@ class EatsScreenshotTest {
         rule.onNodeWithContentDescription("Coupons").performClick()
         rule.onAllNodesWithText("Use")[1].performClick()
         assertTrue(state.selectedCoupon == "EATS20")
+    }
+
+    @Test fun fulfillmentAndCouponStateStayConsistent() {
+        val state = rw.itunda.feature.eats.impl.EatsBrowseState()
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                Column {
+                    rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
+                    rw.itunda.feature.eats.impl.EatsQuickActions({}, { state.showCoupons = true }, {}, {})
+                }
+            }
+        }
+
+        rule.onNodeWithContentDescription("Pickup").performClick()
+        assertTrue(state.isPickup)
+        rule.onNodeWithContentDescription("Delivery").performClick()
+        assertFalse(state.isPickup)
+
+        rule.onNodeWithContentDescription("Coupons").performClick()
+        rule.onAllNodesWithText("Use")[0].performClick()
+        assertEquals("FREEDEL", state.selectedCoupon)
+
+        rule.onNodeWithContentDescription("Pickup").performClick()
+        assertTrue(state.isPickup)
+        assertNull(state.selectedCoupon)
+
+        rule.onNodeWithContentDescription("Coupons").performClick()
+        rule.onAllNodesWithText("Use")[1].performClick()
+        assertEquals("EATS20", state.selectedCoupon)
+    }
+
+    @Test fun browseHeaderPickupLight() {
+        val state = rw.itunda.feature.eats.impl.EatsBrowseState().apply { isPickup = true }
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
+            }
+        }
+        rule.onRoot().captureRoboImage("build/screenshots/eats-browse-pickup-light.png")
     }
 
 }
