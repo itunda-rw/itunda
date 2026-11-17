@@ -380,12 +380,6 @@ internal fun OrderFoodContent(
             onSearchChange = { searchInput = it },
             onOrdersClick = { view = if (view == OrderFoodView.ORDERS) OrderFoodView.BROWSE else OrderFoodView.ORDERS },
             onCartClick = { selectedRestaurant = browseState.cartRestaurant; showCheckout = true },
-            onFastestClick = {
-                view = OrderFoodView.BROWSE
-                if (browseLocation == null) Toast.makeText(locationContext, "Enable location to sort by fastest delivery", Toast.LENGTH_SHORT).show()
-                else sortMode = "delivery_time"
-            },
-            onSavedClick = { view = if (view == OrderFoodView.FAVORITES) OrderFoodView.BROWSE else OrderFoodView.FAVORITES },
         )
         LazyColumn(
             state = eatsListState, modifier = Modifier.weight(1f).padding(horizontal = Ids.layout.screenHorizontal).trackScrollPressedKey(eatsListState, eatsTouchedKey),
@@ -403,6 +397,19 @@ internal fun OrderFoodContent(
             }
         } else if (view == OrderFoodView.FAVORITES) {
             item {
+                EatsBrowseOffers(
+                    state = browseState,
+                    onFastestClick = {
+                        view = OrderFoodView.BROWSE
+                        if (browseLocation == null) Toast.makeText(locationContext, "Enable location to sort by fastest delivery", Toast.LENGTH_SHORT).show()
+                        else sortMode = "delivery_time"
+                    },
+                    onSavedClick = { view = OrderFoodView.BROWSE },
+                    showPromo = false,
+                    savedSelected = true,
+                )
+            }
+            item {
                 FavoriteRestaurantsView(
                     onOpen = { fav ->
                         val restaurant = allRestaurants?.find { it.merchantId == fav.restaurantId }
@@ -415,26 +422,26 @@ internal fun OrderFoodContent(
         } else if (view == OrderFoodView.GROUP) {
             item { GroupEatsOrderView(restaurants = allRestaurants) }
         } else {
-            // Real Coupang Eats category icon row (2026-08-12, direct user screenshot)
-            // -- the real reference shows a horizontally-scrolling row of round
-            // category icons (일식/회해물/구이/찜탕/한식 -- Japanese/Seafood/Grilled/
-            // Stew/Korean) above the search bar, not just the plain text chips below.
-            // Uses itunda's own real merchant categories (getMerchantCategories,
-            // already fetched above -- real values like "Rwandan"/"Fast Food"/"Coffee
-            // & Bakery" from real seeded merchants, not fabricated Korean cuisine
-            // names) mapped to real Material icons -- no invented dish photography
-            // itunda has no license or real source for. Additive: the text chip row
-            // below still does the actual filtering; this is the same real
-            // selectedCategory state, just a second, visually-matched way to reach it.
             item {
-                EatsSearchHeader(
-                    searchInput = searchInput,
-                    onSearchChange = { searchInput = it },
-                    categories = categories,
-                    selectedCategory = selectedCategory,
-                    onSelectCategory = { c -> selectedCategory = if (c == selectedCategory) null else c },
-                    showSearch = false,
-                )
+                Column {
+                    EatsDeliveryPickupRow(browseState)
+                    EatsSearchHeader(
+                        searchInput = searchInput,
+                        onSearchChange = { searchInput = it },
+                        categories = categories,
+                        selectedCategory = selectedCategory,
+                        onSelectCategory = { c -> selectedCategory = if (c == selectedCategory) null else c },
+                        showSearch = false,
+                    )
+                    EatsBrowseOffers(
+                        state = browseState,
+                        onFastestClick = {
+                            if (browseLocation == null) Toast.makeText(locationContext, "Enable location to sort by fastest delivery", Toast.LENGTH_SHORT).show()
+                            else sortMode = "delivery_time"
+                        },
+                        onSavedClick = { view = OrderFoodView.FAVORITES },
+                    )
+                }
             }
             if (searchInput.isBlank() && selectedCategory == null && !restaurants.isNullOrEmpty()) item { EatsPopularRail(restaurants!!, ::openRestaurant, isPickup = browseState.isPickup) }
             item { EatsSectionHeader("Restaurants near you", restaurants?.size) }
