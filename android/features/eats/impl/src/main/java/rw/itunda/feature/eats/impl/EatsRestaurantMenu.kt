@@ -127,7 +127,7 @@ fun RestaurantMenuView(
             if (isPickup) add("Pickup · No delivery fee")
             else if (restaurant.participatesInEatsMembership) add("Free delivery")
         }.joinToString(" · ").ifBlank { if (isPickup) "Pickup · No delivery fee" else "Delivery" }
-        EatsRestaurantHero(restaurant.businessName, onBack, meta = heroMeta)
+        EatsRestaurantHero(restaurant.businessName, onBack, meta = heroMeta, category = restaurant.category, photoUrl = restaurant.photoUrl)
         if (selectedTab != "Reviews") RestaurantRatingBadge(restaurant.merchantId)
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 4.dp),
