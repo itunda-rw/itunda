@@ -205,10 +205,13 @@ class EatsScreenshotTest {
         val state = rw.itunda.feature.eats.impl.EatsBrowseState()
         rule.setContent {
             IdsTheme(darkTheme = false) {
-                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
+                Column {
+                    rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
+                    rw.itunda.feature.eats.impl.EatsQuickActions({}, { state.showCoupons = true }, {}, {})
+                }
             }
         }
-        rule.onNodeWithText("Coupons").performClick()
+        rule.onNodeWithContentDescription("Coupons").performClick()
         rule.onAllNodesWithText("Use")[1].performClick()
         assertTrue(state.selectedCoupon == "EATS20")
     }
