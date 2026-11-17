@@ -51,8 +51,8 @@ fun EatsPromoBanner(isPickup: Boolean, selected: Boolean, onSelectCoupon: () -> 
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(if (isPickup) "20% off your meal" else "Free delivery on your first order", color = Color(0xFF191F28), fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
-            Text(if (isPickup) "Up to 2,000 RWF with EATS20" else "Code FREEDEL, auto-applied at checkout", color = Color(0xFF3B4350), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 2.dp))
+            Text(if (isPickup) "20% off your meal" else "Free delivery on your first order", color = Color(0xFF191F28), fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
+            Text(if (isPickup) "Up to 2,000 RWF with EATS20" else "Code FREEDEL, applied at checkout", color = Color(0xFF3B4350), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 2.dp))
         }
         ItundaArt(if (isPickup) "voucher" else "gift", ItundaArtSet.Color, 52.dp)
     }
