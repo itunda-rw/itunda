@@ -58,16 +58,17 @@ import java.util.UUID
 
 
 
-internal enum class EatsCheckoutMode { DELIVERY, PICKUP, DINE_IN }
+enum class EatsCheckoutMode { DELIVERY, PICKUP, DINE_IN }
 
 @Composable
-internal fun EatsCheckoutView(
+fun EatsCheckoutView(
     restaurant: ShoppingMerchantDto,
     cart: Map<String, EatsCartLine>,
     menu: List<MerchantProductDto>,
     initialMode: EatsCheckoutMode = EatsCheckoutMode.DELIVERY,
     initialAddress: String = "",
     savedCoupon: String? = null,
+    onModeChange: (EatsCheckoutMode) -> Unit = {},
     onBack: () -> Unit,
     onOrderPlaced: (EatsOrderDto) -> Unit,
     onDineInOrderPlaced: (DineInOrderDto) -> Unit,
@@ -197,7 +198,7 @@ internal fun EatsCheckoutView(
                                 .weight(1f)
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(if (selected) Ids.colors.brand else Color.Transparent)
-                                .pressScaleClickable(enabled = !submitting) { mode = m; error = null }
+                                .pressScaleClickable(enabled = !submitting) { mode = m; error = null; onModeChange(m) }
                                 .padding(vertical = 10.dp),
                             contentAlignment = Alignment.Center,
                         ) {
