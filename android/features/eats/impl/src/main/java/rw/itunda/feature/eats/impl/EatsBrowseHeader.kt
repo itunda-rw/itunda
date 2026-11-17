@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -101,16 +102,16 @@ fun EatsBrowseHeader(
 
     Column(modifier = Modifier.fillMaxWidth().background(Ids.colors.background)) {
         Row(
-            modifier = Modifier.fillMaxWidth().height(58.dp).padding(horizontal = 8.dp),
+            modifier = Modifier.fillMaxWidth().height(60.dp).padding(start = 8.dp, end = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             EatsHeaderIcon("Back", "back") { backDispatcher?.onBackPressed() }
             Row(
                 modifier = Modifier.weight(1f).height(48.dp)
                     .semantics { contentDescription = "Change delivery address" }
                     .pressScaleClickable { newAddress = ""; showAddressSheet = true }
-                    .padding(horizontal = 4.dp),
+                    .padding(horizontal = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
@@ -143,11 +144,13 @@ fun EatsBrowseHeader(
                 })
                 if (cartCount > 0) {
                     Box(
-                        modifier = Modifier.align(Alignment.TopEnd).padding(top = 2.dp, end = 1.dp)
-                            .clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                            .padding(horizontal = 5.dp, vertical = 2.dp),
+                        modifier = Modifier.align(Alignment.TopEnd).padding(top = 5.dp, end = 3.dp)
+                            .defaultMinSize(minWidth = 18.dp).height(18.dp)
+                            .clip(RoundedCornerShape(9.dp)).background(Ids.colors.brand)
+                            .padding(horizontal = 5.dp),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Text(cartCount.toString(), color = Ids.colors.onBrand, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text(cartCount.toString(), color = Ids.colors.onBrand, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
                     }
                 }
             }
@@ -174,6 +177,8 @@ fun EatsBrowseHeader(
                 )
             }
         }
+
+        Spacer(Modifier.height(10.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 14.dp),
@@ -212,9 +217,9 @@ fun EatsBrowseHeader(
             Spacer(Modifier.width(10.dp))
             Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                 Text("Coupons", color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                Text(" · 2 available", color = Ids.colors.textSecondary, fontSize = 14.sp)
+                Text(" · 2 available", color = Ids.colors.textPrimary, fontSize = 14.sp)
                 state.selectedCoupon?.let {
-                    Text(" · $it ✓", color = Ids.colors.textBrand, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(" · $it ✓", color = Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
             ItundaArt("chev", ItundaArtSet.Line, 16.dp, tint = Ids.colors.textTertiary)
@@ -303,8 +308,13 @@ private fun EatsModeChoice(
         ItundaArt(art, ItundaArtSet.Line, 22.dp, tint = if (selected) Ids.colors.textBrand else Ids.colors.textSecondary)
         Spacer(Modifier.width(8.dp))
         Column {
-            Text(label, color = if (selected) Ids.colors.textBrand else Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            Text(subtitle, color = if (selected) Ids.colors.textBrand else Ids.colors.textSecondary, fontSize = 11.sp)
+            Text(label, color = if (selected) Ids.colors.textBrand else Ids.colors.textSecondary, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
+            Text(
+                subtitle,
+                color = (if (selected) Ids.colors.textBrand else Ids.colors.textSecondary).copy(alpha = 0.85f),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
         }
     }
 }

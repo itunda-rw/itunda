@@ -241,7 +241,7 @@ class EatsScreenshotTest {
                     rw.itunda.feature.eats.impl.EatsBrowseHeader(
                         state = rw.itunda.feature.eats.impl.EatsBrowseState(),
                         searchInput = "",
-                        cartCount = 2,
+                        cartCount = 0,
                         onSearchChange = {},
                         onOrdersClick = {},
                         onCartClick = {},
@@ -329,7 +329,7 @@ class EatsScreenshotTest {
         val state = rw.itunda.feature.eats.impl.EatsBrowseState().apply { isPickup = true }
         rule.setContent {
             IdsTheme(darkTheme = true) {
-                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 2, {}, {}, {})
+                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
             }
         }
         rule.onRoot().captureRoboImage("build/screenshots/eats-browse-pickup-dark.png")
