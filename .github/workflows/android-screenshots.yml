@@ -21,6 +21,8 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v5
+      - name: Check file-size limits
+        run: python3 scripts/file-size-lint.py
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -49,7 +51,7 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           PROTO=/tmp/itunda_clickable_prototype_v1038.html \
           OUT_DIR="$GITHUB_WORKSPACE/android/screenshots/build/screenshots/prototype-eats" \
-          NODE_PATH=/tmp/prototype-playwright/node_modules \
+          PLAYWRIGHT_ENTRY=/tmp/prototype-playwright/node_modules/playwright/index.mjs \
           node scripts/measure-prototype-eats.js
 
       - name: Upload prototype Eats measurements
@@ -65,6 +67,14 @@ jobs:
         run: |
           chmod +x ./gradlew
           ./gradlew :screenshots:testDebugUnitTest -Proborazzi.test.record=true --stacktrace
+      - name: Upload Android screenshot renders
+        if: always() && github.event_name == 'push' && contains(github.event.head_commit.message, '[measure-eats]')
+        uses: actions/upload-artifact@v4
+        with:
+          name: eats-android-screenshots-${{ github.sha }}
+          path: android/screenshots/build/screenshots/
+          if-no-files-found: warn
+          retention-days: 7
       - name: Push PNGs to ci-screenshots branch
         if: always()
         env:
