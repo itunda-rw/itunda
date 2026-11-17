@@ -7,6 +7,10 @@ import androidx.compose.foundation.background
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
@@ -105,4 +109,54 @@ class EatsScreenshotTest {
         }
         rule.onRoot().captureRoboImage("build/screenshots/eats-popular.png")
     }
+    private fun browseHeader(dark: Boolean, name: String) {
+        rule.setContent {
+            IdsTheme(darkTheme = dark) {
+                Box(Modifier.fillMaxSize().background(Ids.colors.background)) {
+                    rw.itunda.feature.eats.impl.EatsBrowseHeader(
+                        state = rw.itunda.feature.eats.impl.EatsBrowseState(),
+                        searchInput = "",
+                        cartCount = 2,
+                        onSearchChange = {},
+                        onOrdersClick = {},
+                        onCartClick = {},
+                    )
+                }
+            }
+        }
+        rule.waitForIdle()
+        rule.onRoot().captureRoboImage("build/screenshots/eats-browse-$name.png")
+    }
+
+    @Test fun browseHeaderLight() = browseHeader(false, "light")
+    @Test fun browseHeaderDark() = browseHeader(true, "dark")
+
+    private fun couponsSheet(dark: Boolean, name: String) {
+        rule.setContent {
+            IdsTheme(darkTheme = dark) {
+                Box(Modifier.fillMaxSize().background(Ids.colors.background)) {
+                    rw.itunda.feature.eats.impl.EatsCouponsSheet(false, null, {}, {})
+                }
+            }
+        }
+        rule.waitForIdle()
+        rule.onRoot().captureRoboImage("build/screenshots/eats-coupons-$name.png")
+    }
+
+    @Test fun couponsSheetLight() = couponsSheet(false, "light")
+    @Test fun couponsSheetDark() = couponsSheet(true, "dark")
+
+    @Test fun pickupBlocksDeliveryOnlyCoupon() {
+        val state = rw.itunda.feature.eats.impl.EatsBrowseState()
+        state.isPickup = true
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
+            }
+        }
+        rule.onNodeWithText("Coupons").performClick()
+        rule.onAllNodesWithText("Use")[0].performClick()
+        rule.onNodeWithText("Free delivery only applies to delivery orders.").assertExists()
+    }
+
 }
