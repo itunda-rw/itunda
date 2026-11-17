@@ -185,6 +185,7 @@ internal fun EatsBrowseHeader(
                 .height(48.dp).clip(RoundedCornerShape(14.dp))
                 .border(1.dp, Ids.colors.divider, RoundedCornerShape(14.dp))
                 .pressScaleClickable { showCoupons = true }
+                .semantics { contentDescription = "Coupons" }
                 .padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -283,6 +284,7 @@ private fun EatsFulfillmentChoice(
     Row(
         modifier = modifier.height(52.dp).clip(RoundedCornerShape(16.dp))
             .background(if (selected) Ids.colors.pressed else Ids.colors.surfaceSoft)
+            .semantics { contentDescription = label }
             .pressScaleClickable(onClick = onClick).padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
