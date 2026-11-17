@@ -24,7 +24,6 @@ internal fun EatsBrowseTestSurface(
     onSearchChange: (String) -> Unit = {},
     onOrdersClick: () -> Unit = {},
     onCartClick: () -> Unit = {},
-    onShopClick: () -> Unit = {},
     onFastestClick: () -> Unit = {},
     onSavedClick: () -> Unit = {},
 ) {
@@ -32,7 +31,7 @@ internal fun EatsBrowseTestSurface(
         Column(Modifier.fillMaxSize().background(Ids.colors.background)) {
             EatsBrowseHeader(state, searchInput, cartCount, onSearchChange, onOrdersClick, onCartClick)
             Column(Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
-                EatsDeliveryPickupRow(state, onShopClick)
+                EatsDeliveryPickupRow(state)
                 EatsSearchHeader(
                     searchInput = searchInput,
                     onSearchChange = onSearchChange,
