@@ -91,7 +91,9 @@ internal fun EatsCheckoutView(
 
     val lines = cart.values.filter { it.quantity > 0 }.mapNotNull { line -> menu.find { it.id == line.productId }?.let { it to line } }
     val total = lines.sumOf { (p, line) -> eatsLineUnitPrice(p, line.choiceIds) * line.quantity }
-    val canSubmit = when (mode) {
+    // The prototype never allows an empty cart to reach payment. Also protects
+    // against stale menu entries disappearing between browse and checkout.
+    val canSubmit = lines.isNotEmpty() && when (mode) {
         EatsCheckoutMode.DELIVERY -> address.isNotBlank()
         EatsCheckoutMode.PICKUP -> true
         EatsCheckoutMode.DINE_IN -> tableNumber.isNotBlank()
