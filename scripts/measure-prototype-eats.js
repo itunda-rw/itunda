@@ -20,23 +20,41 @@ const order = (pickup = false, status = 'On the way', id = 'EA-7207') => ({
 
 const states = [
   { id: 'browse-default', screen: 'shop' },
+  { id: 'browse-pickup', screen: 'shop', pickup: true },
+  { id: 'browse-address-work', screen: 'shop', addressIndex: 1 },
   { id: 'browse-search-bakery', screen: 'shop', query: 'bakery' },
+  { id: 'browse-search-coffee', screen: 'shop', query: 'coffee' },
   { id: 'browse-search-no-results', screen: 'shop', query: 'zzzz' },
-  { id: 'browse-favorites-only', screen: 'shop', favoritesOnly: true, favorite: { 0: true } },
-  { id: 'browse-filter-open', screen: 'shop', filters: { open: 1 } },
-  { id: 'browse-filter-top-rated', screen: 'shop', filters: { top: 1 } },
-  { id: 'browse-filter-under-2km', screen: 'shop', filters: { near: 1 } },
+  { id: 'browse-filter-open-now', screen: 'shop', filters: { open: 1 } },
+  { id: 'browse-filter-saved', screen: 'shop', favoritesOnly: true, favorite: { 0: true, 1: true } },
   { id: 'browse-category-brochette', screen: 'shop', category: 'Brochette' },
+  { id: 'browse-category-chicken', screen: 'shop', category: 'Chicken' },
+  { id: 'browse-category-pizza', screen: 'shop', category: 'Pizza' },
+  { id: 'browse-category-burgers', screen: 'shop', category: 'Burgers' },
+  { id: 'browse-category-local', screen: 'shop', category: 'Local' },
   { id: 'browse-category-chips', screen: 'shop', category: 'Chips' },
-  { id: 'browse-category-bread', screen: 'shop', category: 'Bread' },
+  { id: 'browse-category-bakery', screen: 'shop', category: 'Bakery' },
   { id: 'browse-category-coffee', screen: 'shop', category: 'Coffee' },
   { id: 'browse-category-juice', screen: 'shop', category: 'Juice' },
-  { id: 'browse-empty-filter-combination', screen: 'shop', category: 'Brochette', sort: 'free' },
+  { id: 'browse-category-healthy', screen: 'shop', category: 'Healthy' },
+  { id: 'browse-category-dessert', screen: 'shop', category: 'Dessert' },
+  { id: 'browse-empty-filter-combination', screen: 'shop', category: 'Brochette', filters: { open: 1 } },
   { id: 'browse-sort-fastest', screen: 'shop', sort: 'fast' },
   { id: 'browse-sort-top-rated', screen: 'shop', sort: 'rating' },
   { id: 'browse-sort-free-delivery', screen: 'shop', sort: 'free' },
   { id: 'browse-sort-nearest', screen: 'shop', sort: 'near' },
-  { id: 'browse-pickup', screen: 'shop', pickup: true },
+  { id: 'browse-promo-delivery-saved', screen: 'shop', promo: 'FREEDEL' },
+  { id: 'browse-promo-pickup-saved', screen: 'shop', pickup: true, promo: 'EATS20' },
+  { id: 'browse-coupons-sheet', screen: 'shop', actions: [{ fn: 'e2Cp', args: [] }] },
+  { id: 'browse-coupons-freedel-saved', screen: 'shop', promo: 'FREEDEL', actions: [{ fn: 'e2Cp', args: [] }] },
+  { id: 'browse-coupons-eats20-saved', screen: 'shop', pickup: true, promo: 'EATS20', actions: [{ fn: 'e2Cp', args: [] }] },
+  { id: 'browse-address-sheet', screen: 'shop', actions: [{ fn: 'eAddr', args: [] }] },
+  { id: 'browse-address-work-selected', screen: 'shop', addressIndex: 1, actions: [{ fn: 'eAddr', args: [] }] },
+  { id: 'browse-address-new-form', screen: 'shop', actions: [{ fn: 'eAddr', args: [] }, { fn: 'eaForm', args: [1] }] },
+  { id: 'browse-club-sheet', screen: 'shop', actions: [{ fn: 'clubSheet', args: [] }] },
+  { id: 'browse-order-again', screen: 'shop', orderAgain: true },
+  { id: 'browse-recently-viewed', screen: 'shop', recentlyViewed: [1, 2] },
+  { id: 'browse-cart-cta', screen: 'shop', restaurant: 0, cart: { 0: 2 } },
   { id: 'restaurant-kigali-bakery-delivery', screen: 'erest', restaurant: 0 },
   { id: 'restaurant-kigali-bakery-pickup', screen: 'erest', restaurant: 0, pickup: true },
   { id: 'restaurant-info-tab', screen: 'erest', restaurant: 0, restaurantTab: 'info' },
@@ -97,11 +115,17 @@ function safe(value) {
 async function applyState(page, state) {
   const payload = { ...state, defaultOrder: order(!!state.pickup, 'On the way') };
   await page.evaluate((s) => {
-    const stackByScreen = { shop: ['shop'], erest: ['shop', 'erest'], echeck: ['shop', 'erest', 'echeck'], etrack: ['etrack'], eorders: ['shop', 'eorders'] };
+    const stackByScreen = {
+      shop: ['shop'],
+      erest: ['shop', 'erest'],
+      echeck: ['shop', 'erest', 'echeck'],
+      etrack: ['etrack'],
+      eorders: ['shop', 'eorders'],
+    };
     const layer = document.getElementById('layer');
     if (layer) layer.innerHTML = '';
     S.tab = 'home';
-    S.stack = stackByScreen[s.screen];
+    S.stack = stackByScreen[s.screen] || ['shop'];
     S.shopTab = 'eats';
     S.addrOk = true;
     S.ecat = s.category || 'All';
@@ -127,11 +151,19 @@ async function applyState(page, state) {
     S.etip = s.tip || 0;
     S.enote = s.note || '';
     S.epromo = s.promo || null;
-    S.eai = 0;
-    S.eaddrs = [['Home', 'Kimironko, KG 11 Ave'], ['Work', 'Kacyiru, KG 7 Ave']];
+    if (S.pickup && S.epromo === 'FREEDEL') S.epromo = null;
+    S.eai = s.addressIndex === undefined ? 0 : s.addressIndex;
+    S.eaddrs = [['Home', 'Kimironko, KG 11 Ave', 'Kimironko, Kigali'], ['Work', 'Kacyiru, KG 7 Ave', 'Kacyiru, Kigali']];
+    S.eapend = null;
+    S.eaform = 0;
+    S.eadraft = '';
+    S.eanote = '';
+    S.ealab = 'Other';
     S.esched = s.scheduled || null;
     S.epm = s.paymentMethod || 'pay';
     S.egrp = s.group || null;
+    S.club = !!s.club;
+    S.erec = s.recentlyViewed || [];
     S.egsel = [];
     S.egadd = false;
     S.eik = 0;
@@ -139,12 +171,15 @@ async function applyState(page, state) {
     S.eipf = [];
     S.eiad = [];
     S.ecancel = !!s.cancelled;
+    S.ervH = {};
+    S.ervS = null;
+    S.ezAll = false;
     S.cpn = [];
     S.cpIn = '';
     S.cpUsed = {};
     S.lang = 'en';
     if (s.orders) S.orders = s.orders;
-    else if (s.screen === 'etrack') S.orders = [s.defaultOrder];
+    else if (s.orderAgain || s.screen === 'etrack') S.orders = [s.defaultOrder];
     else S.orders = [];
     S.scart = {};
     S.oN = null;
@@ -158,7 +193,6 @@ async function applyState(page, state) {
   }, payload);
   await page.waitForTimeout(180);
 }
-
 async function measure(page) {
   return page.evaluate(() => {
     const root = document.getElementById('sc');
@@ -253,12 +287,12 @@ async function capture(page, state, theme, height, scrollTop) {
           screenKeys: Object.keys(screens),
           stateKeys: Object.keys(S),
           restaurants: REST.map((r) => ({
-            name: r.n, category: r.cat, rating: r.r, reviews: r.rc,
-            distanceKm: r.d, deliveryTime: r.t, deliveryFee: r.fee,
-            minimumOrder: r.min, menu: r.items.map((item) => item[0]),
+            name: r.n, categories: r.cats, rating: r.r, reviews: r.rc,
+            distanceKm: r.d, deliveryMinutes: r.tm, deliveryFee: r.fee,
+            minimumOrder: r.min, closed: r.closed, menu: r.items.map((item) => item[0]),
           })),
-          categories: ECATS,
-          sorts: ESORT,
+          categories: ['All', 'Brochette', 'Chicken', 'Pizza', 'Burgers', 'Local', 'Chips', 'Bakery', 'Coffee', 'Juice', 'Healthy', 'Dessert'],
+          sorts: ['fast', 'rating', 'free', 'near'],
           eatsHandlers: Object.keys(window).filter((key) => /^(e|eg|epm|openCoupons|cp)/i.test(key)).sort(),
         }));
         fs.writeFileSync(path.join(OUT_DIR, 'prototype-metadata-' + theme + '-h' + height + '.json'), JSON.stringify(metadata, null, 2));
