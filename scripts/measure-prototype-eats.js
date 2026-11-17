@@ -2,9 +2,9 @@
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const fs = require('node:fs');
-const path = require('node:path');
-const { chromium } = require('playwright');
+import fs from 'node:fs';
+import path from 'node:path';
+import { chromium } from 'playwright';
 
 const PROTO = process.env.PROTO;
 const OUT_DIR = process.env.OUT_DIR;
@@ -71,10 +71,53 @@ async function applyState(page, state) {
     S.req = s.request || 'Leave at the door';
     S.trk = s.step || 0;
     S.pay = s.pay === undefined ? 120500 : s.pay;
-    S.orders = [];
+    S.orders = s.screen === 'etrack' ? [{
+      k: 'Eats order', s: 'Order accepted', t: 2400, r: S.er,
+      items: [{ k: 0, q: 2 }], pickup: !!s.pickup, note: '',
+      id: 'EA-7207', rate: 0, eta: Date.now() + 20 * 60000,
+      addr: 'Kimironko, KG 11 Ave', snap: { sub: 2400, disc: 0, fee: 0, tip: 0 },
+      pm: 'pay'
+    }] : [];
     S.scart = {};
     S.oN = null;
     S.oE = null;
+    S.eq = '';
+    S.efav = {};
+    S.efavOnly = false;
+    S.eflt = { open: 0, top: 0, near: 0 };
+    S.emq = '';
+    S.etab = 'menu';
+    S.etip = 0;
+    S.enote = '';
+    S.epromo = null;
+    S.eai = 0;
+    S.eaddrs = [['Home', 'Kimironko, KG 11 Ave'], ['Work', 'Kacyiru, KG 7 Ave']];
+    S.esched = null;
+    S.epm = 'pay';
+    S.egrp = null;
+    S.egsel = [];
+    S.egadd = false;
+    S.eik = 0;
+    S.eiq = 1;
+    S.eipf = [];
+    S.eiad = [];
+    S.cpn = [];
+    S.cpIn = '';
+    S.cpUsed = {};
+    S.e2cat = 'All';
+    S.e2sort = 'fast';
+    S.e2q = '';
+    S.e2flt = { open: 0, top: 0, near: 0 };
+    S.e2mq = '';
+    S.ervH = null;
+    S.ervS = null;
+    S.erec = null;
+    S.ezAll = false;
+    S.eapend = null;
+    S.eadraft = null;
+    S.eanote = '';
+    S.eaform = null;
+    S.ealab = '';
     S.lang = 'en';
     render('fade-none');
     if (s.sheet === 'payment') ePay();
@@ -154,6 +197,25 @@ async function capture(page, state, theme, height, scrollTop) {
           document.documentElement.setAttribute('data-theme', mode);
         }, theme);
         await page.evaluate(() => document.fonts.ready);
+        const metadata = await page.evaluate(() => ({
+          title: document.title,
+          screenKeys: Object.keys(screens),
+          stateKeys: Object.keys(S),
+          restaurants: REST.map((r) => ({
+            name: r.n, category: r.cat, rating: r.r, reviews: r.rc,
+            distanceKm: r.d, deliveryTime: r.t, deliveryFee: r.fee,
+            minimumOrder: r.min, menu: r.items.map((item) => item[0]),
+          })),
+          categories: ECATS,
+          sorts: ESORT,
+          eatsHandlers: Object.keys(window).filter((key) =>
+            /^(e|eg|epm|openCoupons|cp)/i.test(key)
+          ).sort(),
+        }));
+        fs.writeFileSync(
+          path.join(OUT_DIR, 'prototype-metadata-' + theme + '-h' + height + '.json'),
+          JSON.stringify(metadata, null, 2)
+        );
 
         for (const state of states) {
           await applyState(page, state);
