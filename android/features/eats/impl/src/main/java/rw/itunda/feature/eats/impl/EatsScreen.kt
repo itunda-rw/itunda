@@ -381,6 +381,7 @@ internal fun OrderFoodContent(
             onOrdersClick = { view = if (view == OrderFoodView.ORDERS) OrderFoodView.BROWSE else OrderFoodView.ORDERS },
             onCartClick = { selectedRestaurant = browseState.cartRestaurant; showCheckout = true },
             onFastestClick = {
+                view = OrderFoodView.BROWSE
                 if (browseLocation == null) Toast.makeText(locationContext, "Enable location to sort by fastest delivery", Toast.LENGTH_SHORT).show()
                 else sortMode = if (sortMode == "delivery_time") null else "delivery_time"
             },
