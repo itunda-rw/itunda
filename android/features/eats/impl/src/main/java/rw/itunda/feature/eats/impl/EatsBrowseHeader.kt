@@ -1,50 +1,50 @@
 package rw.itunda.feature.eats.impl
 
-import androidx.compose.foundation.background
 import android.widget.Toast
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
-import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextStyle
-import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import rw.itunda.core.network.ShoppingMerchantDto
-import androidx.compose.ui.graphics.SolidColor
+import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.ItundaArt
 import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.network.ShoppingMerchantDto
 
 /** Prototype Eats promo strip: tappable delivery-only offer with fixed contrast-safe art. */
 @Composable
@@ -114,7 +114,7 @@ class EatsBrowseState {
 @Composable
 internal fun rememberEatsBrowseState(): EatsBrowseState = remember { EatsBrowseState() }
 
-/** Native Compose version of the v1038 Eats search, address and fulfillment header. */
+/** Native Compose version of the v1038 Eats address, search, fulfillment and coupon header. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EatsBrowseHeader(
@@ -138,21 +138,31 @@ fun EatsBrowseHeader(
         ) {
             EatsHeaderIcon("Back", "back") { backDispatcher?.onBackPressed() }
             Row(
-                modifier = Modifier.weight(1f).height(44.dp).clip(RoundedCornerShape(14.dp))
-                    .background(Ids.colors.surfaceSoft).padding(horizontal = 12.dp),
+                modifier = Modifier.weight(1f).height(48.dp)
+                    .semantics { contentDescription = "Change delivery address" }
+                    .pressScaleClickable { newAddress = ""; showAddressSheet = true }
+                    .padding(horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                ItundaArt("search", ItundaArtSet.Line, 20.dp, tint = Ids.colors.textTertiary)
-                Box(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
-                    if (searchInput.isEmpty()) Text("Search restaurants", color = Ids.colors.textTertiary, fontSize = 14.sp)
-                    BasicTextField(
-                        value = searchInput,
-                        onValueChange = onSearchChange,
-                        singleLine = true,
-                        textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 14.sp),
-                        cursorBrush = SolidColor(Ids.colors.brand),
-                        modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Search restaurants" },
+                ItundaArt("pin", ItundaArtSet.Line, 22.dp, tint = Ids.colors.textBrand)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        if (state.isPickup) "Pickup near" else "Deliver to",
+                        color = Ids.colors.textTertiary,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
                     )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            state.address,
+                            color = Ids.colors.textPrimary,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                        )
+                        ItundaArt("chev", ItundaArtSet.Line, 16.dp, tint = Ids.colors.textTertiary)
+                    }
                 }
             }
             EatsHeaderIcon("Orders", "receipt-rw", onOrdersClick)
@@ -175,30 +185,70 @@ fun EatsBrowseHeader(
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 6.dp).height(44.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).height(46.dp)
+                .clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft)
+                .padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier.weight(1f).semantics { contentDescription = "Change delivery address" }
-                    .pressScaleClickable { newAddress = ""; showAddressSheet = true },
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(state.address.substringBefore(","), color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                ItundaArt("chev", ItundaArtSet.Line, 16.dp, tint = Ids.colors.textTertiary)
+            ItundaArt("search", ItundaArtSet.Line, 20.dp, tint = Ids.colors.textTertiary)
+            Box(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
+                if (searchInput.isEmpty()) {
+                    Text("Search restaurants or dishes", color = Ids.colors.textTertiary, fontSize = 15.sp)
+                }
+                BasicTextField(
+                    value = searchInput,
+                    onValueChange = onSearchChange,
+                    singleLine = true,
+                    textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 15.sp),
+                    cursorBrush = SolidColor(Ids.colors.brand),
+                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Search restaurants" },
+                )
             }
-            Row(
-                modifier = Modifier.height(38.dp).clip(RoundedCornerShape(20.dp))
-                    .background(Ids.colors.surfaceSoft).padding(3.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            EatsModeChoice(
+                label = "Delivery",
+                subtitle = "To your door",
+                art = "scooter",
+                selected = !state.isPickup,
+                modifier = Modifier.weight(1f),
+            ) { state.isPickup = false }
+            EatsModeChoice(
+                label = "Pickup",
+                subtitle = "No delivery fee",
+                art = "bag",
+                selected = state.isPickup,
+                modifier = Modifier.weight(1f),
             ) {
-                EatsModeChoice("Delivery", !state.isPickup) { state.isPickup = false }
-                EatsModeChoice("Pickup", state.isPickup) {
-                    state.isPickup = true
-                    if (state.selectedCoupon == "FREEDEL") state.selectedCoupon = null
+                state.isPickup = true
+                if (state.selectedCoupon == "FREEDEL") state.selectedCoupon = null
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 12.dp)
+                .height(48.dp).clip(RoundedCornerShape(14.dp))
+                .background(Ids.colors.surface)
+                .border(1.dp, Ids.colors.divider, RoundedCornerShape(14.dp))
+                .semantics { contentDescription = "Coupons" }
+                .pressScaleClickable { state.showCoupons = true }
+                .padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ItundaArt("tag", ItundaArtSet.Line, 22.dp, tint = Ids.colors.textBrand)
+            Spacer(Modifier.width(10.dp))
+            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                Text("Coupons", color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(" · 2 available", color = Ids.colors.textSecondary, fontSize = 14.sp)
+                state.selectedCoupon?.let {
+                    Text(" · $it ✓", color = Ids.colors.textBrand, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
+            ItundaArt("chev", ItundaArtSet.Line, 16.dp, tint = Ids.colors.textTertiary)
         }
     }
 
@@ -264,31 +314,7 @@ fun EatsBrowseHeader(
 }
 
 @Composable
-private fun EatsModeChoice(label: String, selected: Boolean, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier.height(32.dp).clip(RoundedCornerShape(16.dp))
-            .background(if (selected) Ids.colors.textPrimary else Color.Transparent)
-            .semantics { contentDescription = label }
-            .pressScaleClickable(onClick = onClick)
-            .padding(horizontal = 12.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(label, color = if (selected) Ids.colors.background else Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-private fun EatsHeaderIcon(label: String, art: String, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier.size(44.dp).semantics { contentDescription = label }.pressScaleClickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        ItundaArt(art, ItundaArtSet.Line, 24.dp, tint = Ids.colors.iconPrimary)
-    }
-}
-
-@Composable
-private fun EatsFulfillmentChoice(
+private fun EatsModeChoice(
     label: String,
     subtitle: String,
     art: String,
@@ -300,7 +326,8 @@ private fun EatsFulfillmentChoice(
         modifier = modifier.height(52.dp).clip(RoundedCornerShape(16.dp))
             .background(if (selected) Ids.colors.pressed else Ids.colors.surfaceSoft)
             .semantics { contentDescription = label }
-            .pressScaleClickable(onClick = onClick).padding(horizontal = 10.dp),
+            .pressScaleClickable(onClick = onClick)
+            .padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
@@ -310,6 +337,16 @@ private fun EatsFulfillmentChoice(
             Text(label, color = if (selected) Ids.colors.textBrand else Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             Text(subtitle, color = if (selected) Ids.colors.textBrand else Ids.colors.textSecondary, fontSize = 11.sp)
         }
+    }
+}
+
+@Composable
+private fun EatsHeaderIcon(label: String, art: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier.size(44.dp).semantics { contentDescription = label }.pressScaleClickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        ItundaArt(art, ItundaArtSet.Line, 24.dp, tint = Ids.colors.iconPrimary)
     }
 }
 
