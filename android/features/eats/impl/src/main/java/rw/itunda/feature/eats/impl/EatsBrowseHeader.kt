@@ -56,8 +56,12 @@ fun EatsPromoBanner(
     Row(
         modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color(0xFFFFE08A))
             .pressScaleClickable {
-                if (isPickup) Toast.makeText(context, "Free delivery only applies to delivery orders.", Toast.LENGTH_SHORT).show()
-                else onSelectCoupon()
+                if (isPickup) {
+                    Toast.makeText(context, "Free delivery only applies to delivery orders.", Toast.LENGTH_SHORT).show()
+                } else {
+                    onSelectCoupon()
+                    Toast.makeText(context, "Code FREEDEL saved. It applies at checkout.", Toast.LENGTH_SHORT).show()
+                }
             }.padding(horizontal = 18.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
