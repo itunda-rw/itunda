@@ -34,6 +34,7 @@ internal fun EatsOrderFlowDispatch(
     onDineInOrderPlaced: (DineInOrderDto) -> Unit,
     onMenuBack: () -> Unit,
     onCheckoutRequested: () -> Unit,
+    onGroupOrder: () -> Unit = {},
 ): Boolean {
     if (confirmedOrder != null) {
         EatsOrderConfirmationView(confirmedOrder, onDone = onOrderConfirmationDone)
@@ -66,6 +67,8 @@ internal fun EatsOrderFlowDispatch(
                 onBack = onMenuBack,
                 onCheckout = onCheckoutRequested,
                 isPickup = pickupInitially,
+                onModeChange = onCheckoutModeChange,
+                onGroupOrder = onGroupOrder,
             )
         }
         return true
