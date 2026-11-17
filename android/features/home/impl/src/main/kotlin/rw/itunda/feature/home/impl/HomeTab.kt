@@ -117,6 +117,8 @@ fun HomeTab(
         onOpenProfile = onOpenProfile,
         onOpenSpending = onOpenSpending,
         onOpenCreditScore = onOpenCreditScore,
+        onOpenShop = onOpenShop,
+        onOpenTransit = onOpenOverview,
     )
 }
 

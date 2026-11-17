@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -59,14 +60,15 @@ internal fun weekSpend(transactions: List<TransactionDto>, userId: String, today
 }
 
 /**
- * The prototype's 7-day bars (v1038): a readout row (selected day's amount left, "Today ·
- * Sat 7 Nov" right), seven 30dp bars with 7/7/3/3 corners (selected = brand, others soft
- * brand), and day labels (selected = bold ink). Touch or drag across the bars to change
- * the selected day. Measured values: bar width 30dp, tallest 56dp, shortest 17dp.
+ * The prototype's 7-day bars (v1038), measured from the rendered HTML: a 318dp-wide block
+ * (readout row 29dp: selected day's amount left, "Today · Sat 7 Nov" right), seven 40.3dp
+ * columns 6dp apart holding 30dp bars (7/7/3/3 corners, 17-56dp tall, selected = #8F89FF),
+ * then 13sp day labels. Tap or drag across the bars to change the selected day.
  */
 @Composable
 internal fun ProtoWeekChart(days: List<DaySpend>, today: LocalDate = LocalDate.now(), modifier: Modifier = Modifier) {
     if (days.isEmpty()) return
+    val p = homePalette()
     var selected by remember { mutableIntStateOf(days.lastIndex) }
     var widthPx by remember { mutableIntStateOf(1) }
     val grow = remember { Animatable(0f) }
@@ -78,48 +80,44 @@ internal fun ProtoWeekChart(days: List<DaySpend>, today: LocalDate = LocalDate.n
 
     fun indexAt(x: Float) = ((x / widthPx) * days.size).toInt().coerceIn(0, days.lastIndex)
 
-    Column(modifier = modifier.fillMaxWidth().padding(top = 20.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    Column(modifier = modifier.fillMaxWidth().padding(horizontal = 36.dp).padding(top = 10.dp, bottom = 2.dp)) {
+        Row(Modifier.fillMaxWidth().height(29.dp).padding(horizontal = 2.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 "${String.format(Locale.US, "%,.0f", day.amount)} RWF",
-                color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f),
+                color = p.text, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.2).sp, modifier = Modifier.weight(1f),
             )
             Text(
                 "${if (day.date == today) "$todayLabel · " else ""}${day.date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale)} ${day.date.dayOfMonth} ${day.date.month.getDisplayName(TextStyle.SHORT, locale)}",
-                color = Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                color = p.mu, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
             )
         }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(72.dp)
-                .padding(top = 8.dp)
+                .height(86.dp)
                 .onSizeChanged { widthPx = it.width.coerceAtLeast(1) }
                 .pointerInput(days) { detectTapGestures { selected = indexAt(it.x) } }
                 .pointerInput(days) { detectHorizontalDragGestures { change, _ -> selected = indexAt(change.position.x) } },
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             days.forEachIndexed { i, d ->
+                val on = i == selected
                 val h = (17f + (56f - 17f) * (d.amount / max).toFloat()).coerceAtMost(56f) * grow.value
-                Box(
-                    Modifier
-                        .width(30.dp)
-                        .height(h.dp)
-                        .clip(RoundedCornerShape(topStart = 7.dp, topEnd = 7.dp, bottomStart = 3.dp, bottomEnd = 3.dp))
-                        .background(if (i == selected) Ids.colors.brand else Ids.colors.brand.copy(alpha = 0.14f)),
-                )
-            }
-        }
-        Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            days.forEachIndexed { i, d ->
-                Text(
-                    d.date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale),
-                    color = if (i == selected) Ids.colors.textPrimary else Ids.colors.textSecondary,
-                    fontSize = 13.sp, fontWeight = if (i == selected) FontWeight.ExtraBold else FontWeight.SemiBold,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    modifier = Modifier.width(30.dp),
-                )
+                Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(Modifier.fillMaxWidth().height(66.dp), contentAlignment = Alignment.BottomCenter) {
+                        Box(
+                            Modifier.width(30.dp).height(h.dp)
+                                .clip(RoundedCornerShape(topStart = 7.dp, topEnd = 7.dp, bottomStart = 3.dp, bottomEnd = 3.dp))
+                                .background(if (on) p.barOn else p.tint),
+                        )
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        d.date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale),
+                        color = if (on) p.text else p.mu, fontSize = 13.sp, lineHeight = 14.sp,
+                        fontWeight = if (on) FontWeight.ExtraBold else FontWeight.SemiBold,
+                    )
+                }
             }
         }
     }

@@ -38,14 +38,14 @@ class HomeScreenshotTest {
     private fun render(dark: Boolean, name: String) {
         rule.setContent {
             IdsTheme(darkTheme = dark) {
-                ProtoHomeContent(state, true, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})
+                ProtoHomeContent(state, true, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})
             }
         }
         rule.onRoot().captureRoboImage("build/screenshots/$name.png")
     }
 
     private fun renderLower(dark: Boolean, name: String) {
-        rule.setContent { IdsTheme(darkTheme = dark) { ProtoHomeContent(state, true, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}) } }
+        rule.setContent { IdsTheme(darkTheme = dark) { ProtoHomeContent(state, true, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}) } }
         rule.onNode(androidx.compose.ui.test.hasScrollAction()).performScrollToNode(androidx.compose.ui.test.hasText("Home settings"))
         rule.onRoot().captureRoboImage("build/screenshots/$name.png")
     }
