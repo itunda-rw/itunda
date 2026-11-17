@@ -31,7 +31,7 @@ class HomeScreenshotTest {
         spentThisMonth = 312_000.0, monthName = "November",
         week = listOf(31, 41, 17, 51, 28, 56, 24).mapIndexed { i, h -> DaySpend(sat.minusDays((6 - i).toLong()), (h - 17) / 39.0 * 165_000) }
             .let { it.dropLast(1) + DaySpend(sat, 29_700.0) },
-        bill = ProtoBill("REG electricity", "Fri 13 Nov", 18_500.0),
+        bill = ProtoBill("REG electricity", "Fri 20 Nov", 18_500.0),
         earned = 6_400.0, today = sat,
     )
 

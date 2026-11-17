@@ -108,16 +108,16 @@ if(inviteShown) item{HomeInviteBanner(onInvite){inviteShown=false}}
 item{Column(Modifier.fillMaxWidth().padding(horizontal=24.dp).padding(top=24.dp)){
 Row(Modifier.fillMaxWidth().clickable(onClick=onOpenSpending),verticalAlignment=Alignment.CenterVertically){
 Column(Modifier.weight(1f)){
-Row(verticalAlignment=Alignment.Bottom){Text(homeRwf(state.spentThisMonth),color=Ids.colors.textPrimary,fontSize=24.sp,fontWeight=FontWeight.ExtraBold);Text(" RWF",color=Ids.colors.textSecondary,fontSize=14.sp,modifier=Modifier.padding(bottom=3.dp))}
+Row(verticalAlignment=Alignment.Bottom){Text(homeRwf(state.spentThisMonth),color=Ids.colors.textPrimary,fontSize=20.sp,fontWeight=FontWeight.ExtraBold);Text(" RWF",color=Ids.colors.textSecondary,fontSize=14.sp,modifier=Modifier.padding(bottom=3.dp))}
 Text("Spent in ${state.monthName}",color=Ids.colors.textSecondary,fontSize=15.sp)}
 ItundaArt("chev",ItundaArtSet.Line,18.dp,tint=Ids.colors.textTertiary)}
 Spacer(Modifier.height(16.dp));ProtoWeekChart(state.week,state.today)
 }}
 state.bill?.let{b->item{HomeRow("bill",b.title,"Due ${b.due} · ${homeRwf(b.amount)} RWF","Pay",onPayBill)}}
-item{HomeRow("star-duo","${homeRwf(state.earned)} RWF earned","Points and coupons","View",onOpenRewards,ItundaArtSet.Duo)}
+item{HomeRow("star-solid","${homeRwf(state.earned)} RWF earned","Points and coupons","View",onOpenRewards,ItundaArtSet.Solid,Color(0xFFFFC83D))}
 item{HomeSectionHeader("Pockets","See all",onSavings)}
-item{HomeRow("school-fees","School fees","120,000 RWF","Top up",onSavings)}
-item{HomeRow("lock","Emergency fund","50,000 RWF","Top up",onSavings)}
+item{HomeRow("school-fees","School fees","120,000 RWF","Top up",onSavings,amountBelow=true)}
+item{HomeRow("lock","Emergency fund","50,000 RWF","Top up",onSavings,amountBelow=true)}
 item{HomeSectionHeader("Around you",null){}}
 item{HomeNavRow("market","Kigali Roast","Cafe · open till 20:00 · 3 min walk")}
 item{HomeNavRow("restaurant","Eats","Free delivery on your first order")}

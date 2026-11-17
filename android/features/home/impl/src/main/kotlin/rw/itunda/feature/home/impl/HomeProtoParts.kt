@@ -36,7 +36,7 @@ import rw.itunda.core.designsystem.theme.Ids
 internal fun HomeProtoHeader(hasUnread: Boolean, onBank: () -> Unit, onPay: () -> Unit, onBell: () -> Unit, bellLabel: String) {
     Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 16.dp, top = 20.dp), verticalAlignment = Alignment.CenterVertically) {
         Row(Modifier.clickable(onClick = onBank), verticalAlignment = Alignment.CenterVertically) {
-            ItundaArt("bank", ItundaArtSet.Proto, 28.dp)
+            androidx.compose.material3.Icon(androidx.compose.ui.res.painterResource(rw.itunda.core.designsystem.R.drawable.itunda_mark), null, Modifier.size(28.dp), tint = Ids.colors.textTertiary.copy(alpha = 0.6f))
             Spacer(Modifier.width(6.dp))
             Text("Bank", color = Ids.colors.textTertiary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
             ItundaArt("chev", ItundaArtSet.Line, 16.dp, tint = Ids.colors.textTertiary)
@@ -61,7 +61,7 @@ private fun HomePill(label: String, onClick: () -> Unit) {
 @Composable
 private fun HomeBalanceRow(art: String, amount: Double, label: String, extra: String?, action: String, onOpen: () -> Unit, onAction: () -> Unit) {
     Row(Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(44.dp).clip(RoundedCornerShape(16.dp)).background(Ids.colors.brand.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) { ItundaArt(art, ItundaArtSet.Proto, 28.dp) }
+        Box(Modifier.size(44.dp).clip(RoundedCornerShape(16.dp)).background(Ids.colors.brand.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) { if (art == "bank") androidx.compose.material3.Icon(androidx.compose.ui.res.painterResource(rw.itunda.core.designsystem.R.drawable.itunda_mark), null, Modifier.size(26.dp), tint = Ids.colors.brand) else ItundaArt(art, ItundaArtSet.Proto, 28.dp) }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.Bottom) {
@@ -108,19 +108,24 @@ internal fun HomeInviteBanner(onInvite: () -> Unit, onDismiss: () -> Unit) {
             }, color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
         Box(Modifier.size(44.dp).clickable(onClick = onDismiss).semantics { contentDescription = "Dismiss" }, contentAlignment = Alignment.Center) {
-            Text("✕", color = Ids.colors.textPrimary, fontSize = 18.sp)
+            Text("✕", color = Ids.colors.textPrimary, fontSize = 14.sp)
         }
     }
 }
 
 @Composable
-internal fun HomeRow(art: String, title: String, subtitle: String, action: String, onAction: () -> Unit, artSet: ItundaArtSet = ItundaArtSet.Proto) {
+internal fun HomeRow(art: String, title: String, subtitle: String, action: String, onAction: () -> Unit, artSet: ItundaArtSet = ItundaArtSet.Proto, artTint: Color? = null, amountBelow: Boolean = false) {
     Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(44.dp).clip(RoundedCornerShape(16.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) { ItundaArt(art, artSet, 28.dp) }
+        Box(Modifier.size(44.dp).clip(RoundedCornerShape(16.dp)).background(Ids.colors.brand.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) { ItundaArt(art, artSet, 28.dp, tint = artTint) }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-            Text(subtitle, color = Ids.colors.textSecondary, fontSize = 14.sp)
+            if (amountBelow) {
+                Text(title, color = Ids.colors.textSecondary, fontSize = 14.sp)
+                Text(subtitle, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            } else {
+                Text(title, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                Text(subtitle, color = Ids.colors.textSecondary, fontSize = 14.sp)
+            }
         }
         HomePill(action, onAction)
     }

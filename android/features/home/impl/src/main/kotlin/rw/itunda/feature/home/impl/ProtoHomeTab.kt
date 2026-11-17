@@ -71,7 +71,7 @@ internal fun ProtoHomeTab(
         } catch (_: Exception) {
         }
         if (NetworkClient.demoMode) {
-            state = state.copy(interestDays = 3, bill = ProtoBill("REG electricity", "Fri 13 Nov", 18_500.0))
+            state = state.copy(interestDays = 3, bill = ProtoBill("REG electricity", "Fri 20 Nov", 18_500.0))
         }
     }
     ProtoHomeContent(
