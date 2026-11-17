@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.requiredWidth
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
@@ -63,7 +62,7 @@ fun EatsDeliveryPickupRow(state: EatsBrowseState) {
                 state.isPickup = pickup
                 if (pickup && state.selectedCoupon == "FREEDEL") state.selectedCoupon = null
             },
-            Modifier.width(144.dp),
+            Modifier,
         )
     }
     if (showAddressSheet) EatsAddressPickerSheet(state, onDismiss = { showAddressSheet = false })
