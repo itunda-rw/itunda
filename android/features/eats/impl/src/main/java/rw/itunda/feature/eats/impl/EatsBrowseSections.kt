@@ -116,9 +116,10 @@ fun EatsBrowseOffers(
             state.showCoupons = false
             Toast.makeText(context, "Code $code saved. It applies at checkout.", Toast.LENGTH_SHORT).show()
         },
-        onUnavailable = {
+        onRemove = { code ->
+            if (state.selectedCoupon == code) state.selectedCoupon = null
             state.showCoupons = false
-            Toast.makeText(context, "Free delivery only applies to delivery orders.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Coupon removed", Toast.LENGTH_SHORT).show()
         },
     )
     if (showClubSheet) ModalBottomSheet(

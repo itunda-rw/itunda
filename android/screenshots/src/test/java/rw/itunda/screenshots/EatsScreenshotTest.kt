@@ -251,7 +251,7 @@ class EatsScreenshotTest {
         rule.setContent { EatsBrowseTestSurface(state) }
 
         rule.onNodeWithText("Kimironko").assertExists()
-        rule.onNodeWithText("Search restaurants or dishes").assertExists()
+        rule.onNodeWithText("Search restaurants").assertExists()
         rule.onNodeWithContentDescription("Delivery").assertExists()
         rule.onNodeWithContentDescription("Pickup").assertExists()
         rule.onNodeWithContentDescription("Coupons").performClick()
@@ -267,7 +267,9 @@ class EatsScreenshotTest {
         rule.waitForIdle()
         rule.onNodeWithText("Your coupons").assertExists()
         rule.onNodeWithText("Free delivery").assertExists()
-        rule.onNodeWithText("20% off").assertExists()
+        rule.onNodeWithText("20% off your meal").assertExists()
+        rule.onNodeWithText("Enter a code").assertExists()
+        rule.onNodeWithText("Apply").assertExists()
         rule.onRoot().captureRoboImage("build/screenshots/eats-coupons-$name.png")
     }
 
@@ -298,10 +300,12 @@ class EatsScreenshotTest {
         val state = rw.itunda.feature.eats.impl.EatsBrowseState().apply { isPickup = true }
         rule.setContent { EatsBrowseTestSurface(state) }
         rule.onNodeWithContentDescription("Coupons").performClick()
-        rule.onAllNodesWithText("Use")[0].performClick()
-        rule.waitForIdle()
+        rule.onNodeWithText("Delivery only").assertExists()
+        rule.onNodeWithContentDescription("Promo code").performTextInput("FREEDEL")
+        rule.onNodeWithText("Apply").performClick()
+        rule.onNodeWithText("Free delivery only applies to delivery orders.").assertExists()
         assertNull(state.selectedCoupon)
-        assertTrue(rule.onAllNodesWithText("Your coupons").fetchSemanticsNodes().isEmpty())
+        assertTrue(rule.onAllNodesWithText("Your coupons").fetchSemanticsNodes().isNotEmpty())
     }
 
     private fun addressPickerSheet(dark: Boolean, name: String) {
@@ -425,12 +429,15 @@ class EatsScreenshotTest {
         assertNull(state.selectedCoupon)
 
         rule.onNodeWithContentDescription("Coupons").performClick()
-        rule.onAllNodesWithText("Use")[0].performClick()
-        rule.waitForIdle()
+        rule.onNodeWithText("Delivery only").assertExists()
+        rule.onNodeWithContentDescription("Promo code").performTextInput("FREEDEL")
+        rule.onNodeWithText("Apply").performClick()
+        rule.onNodeWithText("Free delivery only applies to delivery orders.").assertExists()
         assertNull(state.selectedCoupon)
 
-        rule.onNodeWithContentDescription("Coupons").performClick()
-        rule.onAllNodesWithText("Use")[1].performClick()
+        rule.onNodeWithContentDescription("Promo code").performTextClearance()
+        rule.onNodeWithContentDescription("Promo code").performTextInput("EATS20")
+        rule.onNodeWithText("Apply").performClick()
         assertEquals("EATS20", state.selectedCoupon)
     }
 

@@ -6,7 +6,9 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -27,27 +29,53 @@ class EatsCouponInteractionTest {
         val state = EatsBrowseState()
         rule.setContent { EatsBrowseTestSurface(state) }
         rule.onNodeWithContentDescription("Coupons").performClick()
-        rule.onAllNodesWithText("Use")[1].performClick()
+        rule.onAllNodesWithText("Use").get(1).performClick()
         assertEquals("EATS20", state.selectedCoupon)
+        assertFalse(state.showCoupons)
         rule.onNodeWithText("Coupons ✓").assertExists()
     }
 
-    @Test fun freeDeliveryCouponClosesAndRejectsPickup() {
+    @Test fun freeDeliveryIsDisabledForPickupAndCodeEntryShowsError() {
         val state = EatsBrowseState().apply { isPickup = true }
         rule.setContent { EatsBrowseTestSurface(state) }
         rule.onNodeWithContentDescription("Coupons").performClick()
-        rule.onAllNodesWithText("Use")[0].performClick()
-        rule.waitForIdle()
+        rule.onNodeWithText("Delivery only").assertExists()
+        assertEquals(1, rule.onAllNodesWithText("Use").fetchSemanticsNodes().size)
+        rule.onNodeWithContentDescription("Promo code").performTextInput("FREEDEL")
+        rule.onNodeWithText("Apply").performClick()
+        rule.onNodeWithText("Free delivery only applies to delivery orders.").assertExists()
         assertNull(state.selectedCoupon)
-        assertTrue(rule.onAllNodesWithText("Your coupons").fetchSemanticsNodes().isEmpty())
+        assertTrue(state.showCoupons)
     }
 
-    @Test fun selectedCouponShowsSavedWithoutExtraControls() {
+    @Test fun selectedCouponCanBeRemoved() {
         val state = EatsBrowseState().apply { selectedCoupon = "EATS20" }
         rule.setContent { EatsBrowseTestSurface(state) }
         rule.onNodeWithContentDescription("Coupons").performClick()
-        rule.onNodeWithText("Saved").assertExists()
-        assertTrue(rule.onAllNodesWithText("Remove").fetchSemanticsNodes().isEmpty())
-        assertTrue(rule.onAllNodesWithText("Enter a code").fetchSemanticsNodes().isEmpty())
+        rule.onNodeWithText("Applied ✓").assertExists()
+        rule.onNodeWithText("Remove").performClick()
+        assertNull(state.selectedCoupon)
+        assertFalse(state.showCoupons)
+    }
+
+    @Test fun validCodeCanBeAppliedFromTheCodeField() {
+        val state = EatsBrowseState()
+        rule.setContent { EatsBrowseTestSurface(state) }
+        rule.onNodeWithContentDescription("Coupons").performClick()
+        rule.onNodeWithContentDescription("Promo code").performTextInput("EATS20")
+        rule.onNodeWithText("Apply").performClick()
+        assertEquals("EATS20", state.selectedCoupon)
+        assertFalse(state.showCoupons)
+    }
+
+    @Test fun invalidCodeShowsAnErrorWithoutClosingTheSheet() {
+        val state = EatsBrowseState()
+        rule.setContent { EatsBrowseTestSurface(state) }
+        rule.onNodeWithContentDescription("Coupons").performClick()
+        rule.onNodeWithContentDescription("Promo code").performTextInput("NOTREAL")
+        rule.onNodeWithText("Apply").performClick()
+        rule.onNodeWithText("Code not valid. Try EATS20.").assertExists()
+        assertNull(state.selectedCoupon)
+        assertTrue(state.showCoupons)
     }
 }
