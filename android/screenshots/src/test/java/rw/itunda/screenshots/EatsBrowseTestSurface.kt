@@ -35,7 +35,7 @@ internal fun EatsBrowseTestSurface(
                 EatsSearchHeader(
                     searchInput = searchInput,
                     onSearchChange = onSearchChange,
-                    categories = listOf("Brochette", "Chicken", "Pizza", "Burgers"),
+                    categories = rw.itunda.feature.eats.impl.EATS_PROTOTYPE_CATEGORIES,
                     selectedCategory = null,
                     onSelectCategory = {},
                     showSearch = false,
