@@ -279,20 +279,17 @@ class EatsScreenshotTest {
 
     @Test fun promoBannerOnlySavesCouponForDelivery() {
         var deliverySaved = false
+        var pickupSaved = false
         rule.setContent {
             IdsTheme(darkTheme = false) {
-                rw.itunda.feature.eats.impl.EatsPromoBanner(false, false, { deliverySaved = true })
+                Column {
+                    rw.itunda.feature.eats.impl.EatsPromoBanner(false, false, { deliverySaved = true })
+                    rw.itunda.feature.eats.impl.EatsPromoBanner(true, false, { pickupSaved = true })
+                }
             }
         }
         rule.onNodeWithText("Free delivery on your first order").performClick()
         assertTrue(deliverySaved)
-
-        var pickupSaved = false
-        rule.setContent {
-            IdsTheme(darkTheme = false) {
-                rw.itunda.feature.eats.impl.EatsPromoBanner(true, false, { pickupSaved = true })
-            }
-        }
         rule.onNodeWithText("20% off your meal").performClick()
         assertTrue(pickupSaved)
     }

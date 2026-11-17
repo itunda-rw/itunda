@@ -34,6 +34,32 @@ jobs:
       - name: Install Saronite dependencies (settings.gradle autolinking needs them)
         working-directory: packages/saronite
         run: yarn install --no-immutable
+
+      - name: Measure prototype Eats at 3x (light and dark)
+        if: github.event_name == 'push' && contains(github.event.head_commit.message, '[measure-eats]')
+        run: |
+          git fetch origin main --depth=1
+          git show FETCH_HEAD:itunda_clickable_prototype_v1038.html > /tmp/itunda_clickable_prototype_v1038.html
+          echo "Prototype main commit: $(git rev-parse FETCH_HEAD)"
+          mkdir -p /tmp/prototype-playwright
+          cd /tmp/prototype-playwright
+          npm init -y
+          npm install --no-audit --no-fund playwright
+          npx playwright install chromium --with-deps
+          cd "$GITHUB_WORKSPACE"
+          PROTO=/tmp/itunda_clickable_prototype_v1038.html \
+          OUT_DIR="$GITHUB_WORKSPACE/android/screenshots/build/screenshots/prototype-eats" \
+          NODE_PATH=/tmp/prototype-playwright/node_modules \
+          node scripts/measure-prototype-eats.js
+
+      - name: Upload prototype Eats measurements
+        if: always() && github.event_name == 'push' && contains(github.event.head_commit.message, '[measure-eats]')
+        uses: actions/upload-artifact@v4
+        with:
+          name: eats-prototype-measurements-${{ github.sha }}
+          path: android/screenshots/build/screenshots/prototype-eats/
+          if-no-files-found: error
+          retention-days: 7
       - name: Render screenshots
         working-directory: android
         run: |
