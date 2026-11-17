@@ -230,13 +230,16 @@ internal fun HomeSectionHeader(title: String, action: String?, onAction: () -> U
 internal fun HomePocketRow(icon: @Composable () -> Unit, progress: Float?, name: String, amount: String, onTopUp: () -> Unit) {
     val p = homePalette()
     Row(Modifier.fillMaxWidth().padding(horizontal = 40.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(44.dp).clip(RoundedCornerShape(22.dp)).background(p.tint).drawBehind {
+        // The goal ring sits just outside the 44dp circle (so the circle is clipped, the ring is not).
+        Box(Modifier.size(44.dp).drawBehind {
             if (progress != null) {
-                val sw = 2.5.dp.toPx()
-                drawCircle(p.ring, radius = size.width / 2 - sw / 2, style = Stroke(sw))
-                drawArc(p.barOn, -90f, 360f * progress, false, Offset(sw / 2, sw / 2), Size(size.width - sw, size.height - sw), style = Stroke(sw, cap = StrokeCap.Round))
+                val sw = 2.5.dp.toPx(); val r = size.width / 2 + 2.5.dp.toPx()
+                drawCircle(p.ring, radius = r, style = Stroke(sw))
+                drawArc(p.barOn, -90f, 360f * progress, false, Offset(size.width / 2 - r, size.height / 2 - r), Size(2 * r, 2 * r), style = Stroke(sw, cap = StrokeCap.Round))
             }
-        }, contentAlignment = Alignment.Center) { icon() }
+        }, contentAlignment = Alignment.Center) {
+            Box(Modifier.size(44.dp).clip(RoundedCornerShape(22.dp)).background(p.tint), contentAlignment = Alignment.Center) { icon() }
+        }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             HText(name, p.pk, 14, FontWeight.Normal, lh = 20, ls = -0.3f)
@@ -265,7 +268,7 @@ internal fun HomeNavRow(art: String, title: String, subtitle: String, onClick: (
             Spacer(Modifier.height(3.dp))
             HText(subtitle, p.mu, 14, FontWeight.Normal, lh = 21, ls = -0.2f)
         }
-        if (onClick != null) ItundaArt("chev", ItundaArtSet.Line, 16.dp, tint = p.tt.copy(alpha = 0.45f))
+        if (onClick != null) ItundaArt("chev", ItundaArtSet.Line, 16.dp, tint = p.tt.copy(alpha = 0.3f))
     }
 }
 
