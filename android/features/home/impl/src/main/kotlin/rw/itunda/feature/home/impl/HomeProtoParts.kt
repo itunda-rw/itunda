@@ -82,9 +82,9 @@ internal fun HomeProtoHeader(hasUnread: Boolean, onBank: () -> Unit, onPay: () -
             ItundaArt("chev", ItundaArtSet.Line, 16.dp, tint = p.tt)
         }
         Spacer(Modifier.weight(1f))
-        Box(Modifier.size(44.dp).clickable(onClick = onPay), contentAlignment = Alignment.Center) { PayScanGlyph(30.dp, p.text) }
+        Box(Modifier.size(44.dp).clickable(onClick = onPay), contentAlignment = Alignment.Center) { PayScanGlyph(32.dp, p.text) }
         Box(Modifier.size(44.dp).clickable(onClick = onBell).semantics { contentDescription = bellLabel }, contentAlignment = Alignment.Center) {
-            ItundaArt("bell", ItundaArtSet.Line, 30.dp, tint = p.text)
+            ItundaArt("bell", ItundaArtSet.Line, 32.dp, tint = p.text)
             if (hasUnread) Box(Modifier.align(Alignment.TopStart).padding(start = 25.dp, top = 10.dp).size(8.dp).clip(RoundedCornerShape(4.dp)).background(p.unread))
         }
     }
@@ -92,10 +92,10 @@ internal fun HomeProtoHeader(hasUnread: Boolean, onBank: () -> Unit, onPay: () -
 
 /** 20sp amount (24dp line) with the 14sp unit hanging 10dp below the top, inside the prototype's 35dp line box. */
 @Composable
-private fun HomeAmountLine(amount: String) {
+private fun HomeAmountLine(amount: String, lh: Int = 24) {
     val p = homePalette()
     Row(Modifier.height(35.dp)) {
-        Text(amount, color = p.text, fontSize = 20.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp, letterSpacing = (-0.5).sp)
+        Text(amount, color = p.text, fontSize = 20.sp, fontWeight = FontWeight.Bold, lineHeight = lh.sp, letterSpacing = (-0.5).sp)
         Text("RWF", color = p.mu, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, lineHeight = 17.sp, modifier = Modifier.padding(start = 5.dp, top = 10.dp))
     }
 }
@@ -134,7 +134,7 @@ internal fun HomeAccountsCard(
         }.padding(top = 16.dp),
     ) {
         HeroRow({ Icon(painterResource(rw.itunda.core.designsystem.R.drawable.itunda_mark), null, Modifier.size(24.dp), tint = p.barOn) }, bank, "itunda Bank", interestDays?.let { "+interest $it" }, "Send", onBank, onSend)
-        HeroRow({ ItundaArt("wallet", ItundaArtSet.Proto, 25.dp) }, pay, "itunda Pay", null, "Add", onPay, onAdd)
+        HeroRow({ ItundaArt("wallet", ItundaArtSet.Proto, 22.5.dp) }, pay, "itunda Pay", null, "Add", onPay, onAdd)
         Spacer(Modifier.height(4.dp))
         Box(
             Modifier.fillMaxWidth().height(49.dp).drawBehind {
@@ -162,7 +162,7 @@ internal fun HomeAccountsCard(
 internal fun HomeInviteBanner(onInvite: () -> Unit) {
     val p = homePalette()
     Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 8.dp).clickable(onClick = onInvite), verticalAlignment = Alignment.CenterVertically) {
-        HomeTile(48.dp) { ItundaArt("gift", ItundaArtSet.Proto, 20.5.dp) }
+        HomeTile(48.dp) { ItundaArt("gift", ItundaArtSet.Proto, 18.5.dp) }
         Spacer(Modifier.width(14.dp))
         Text(
             buildAnnotatedString { append("Invite friends, get "); withStyle(SpanStyle(color = p.lk)) { append("10,000 RWF") } },
@@ -175,9 +175,9 @@ internal fun HomeInviteBanner(onInvite: () -> Unit) {
 @Composable
 internal fun HomeSpendingRow(amount: Double, month: String, onClick: () -> Unit) {
     val p = homePalette()
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(start = 40.dp, end = 40.dp, top = 16.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            HomeAmountLine(homeRwf(amount))
+            HomeAmountLine(homeRwf(amount), 32)
             Text("Spent in $month", color = p.mu, fontSize = 14.sp, lineHeight = 21.sp)
         }
         Canvas(Modifier.padding(end = 6.dp).size(8.dp)) {
@@ -192,7 +192,7 @@ internal fun HomeSpendingRow(amount: Double, month: String, onClick: () -> Unit)
 @Composable
 internal fun HomeRow(glyph: @Composable () -> Unit, title: String, subtitle: String, action: String, onAction: () -> Unit) {
     val p = homePalette()
-    Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 40.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
         HomeTile(36.dp, glyph)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
@@ -207,7 +207,7 @@ internal fun HomeRow(glyph: @Composable () -> Unit, title: String, subtitle: Str
 @Composable
 internal fun HomeSectionHeader(title: String, action: String?, onAction: () -> Unit) {
     val p = homePalette()
-    Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 32.dp, bottom = if (action != null) 7.dp else 4.dp)) {
+    Row(Modifier.fillMaxWidth().padding(start = 40.dp, end = 40.dp, top = 32.dp, bottom = if (action != null) 7.dp else 4.dp)) {
         Text(title, Modifier.weight(1f).alignByBaseline(), color = p.text, fontSize = 20.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp, letterSpacing = (-0.4).sp)
         if (action != null) Text(action, Modifier.clickable(onClick = onAction).alignByBaseline(), color = p.pk, fontSize = 14.sp, fontWeight = FontWeight.Medium, lineHeight = 24.sp)
     }
@@ -217,7 +217,7 @@ internal fun HomeSectionHeader(title: String, action: String?, onAction: () -> U
 @Composable
 internal fun HomePocketRow(icon: @Composable () -> Unit, progress: Float?, name: String, amount: String, onTopUp: () -> Unit) {
     val p = homePalette()
-    Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 40.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(44.dp).clip(RoundedCornerShape(22.dp)).background(p.tint).drawBehind {
             if (progress != null) {
                 val sw = 2.5.dp.toPx()
@@ -243,10 +243,10 @@ internal fun HomePocketRow(icon: @Composable () -> Unit, progress: Float?, name:
 internal fun HomeNavRow(art: String, title: String, subtitle: String, onClick: (() -> Unit)? = null) {
     val p = homePalette()
     Row(
-        Modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(horizontal = 24.dp, vertical = 8.dp),
+        Modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(horizontal = 40.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(44.dp).clip(RoundedCornerShape(16.dp)).background(p.chip), contentAlignment = Alignment.Center) { ItundaArt(art, ItundaArtSet.Proto, 27.dp) }
+        Box(Modifier.size(44.dp).clip(RoundedCornerShape(16.dp)).background(p.chip), contentAlignment = Alignment.Center) { ItundaArt(art, ItundaArtSet.Proto, 24.5.dp) }
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
             HText(title, p.text, 17, FontWeight.SemiBold, lh = 24, ls = -0.2f)
@@ -261,8 +261,8 @@ internal fun HomeNavRow(art: String, title: String, subtitle: String, onClick: (
 @Composable
 internal fun HomeActivityRow(art: String, title: String, subtitle: String, amount: String, earned: String?) {
     val p = homePalette()
-    Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(44.dp).clip(RoundedCornerShape(16.dp)).background(p.chip), contentAlignment = Alignment.Center) { ItundaArt(art, ItundaArtSet.Proto, 27.dp) }
+    Row(Modifier.fillMaxWidth().padding(horizontal = 40.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(44.dp).clip(RoundedCornerShape(16.dp)).background(p.chip), contentAlignment = Alignment.Center) { ItundaArt(art, ItundaArtSet.Proto, 24.5.dp) }
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
             HText(title, p.text, 17, FontWeight.SemiBold, lh = 24, ls = -0.2f)

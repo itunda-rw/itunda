@@ -81,14 +81,14 @@ internal fun ProtoWeekChart(days: List<DaySpend>, today: LocalDate = LocalDate.n
     fun indexAt(x: Float) = ((x / widthPx) * days.size).toInt().coerceIn(0, days.lastIndex)
 
     Column(modifier = modifier.fillMaxWidth().padding(horizontal = 36.dp).padding(top = 10.dp, bottom = 2.dp)) {
-        Row(Modifier.fillMaxWidth().height(29.dp).padding(horizontal = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().height(29.dp).padding(horizontal = 2.dp), verticalAlignment = Alignment.Top) {
             Text(
                 "${String.format(Locale.US, "%,.0f", day.amount)} RWF",
-                color = p.text, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.2).sp, modifier = Modifier.weight(1f),
+                color = p.text, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.2).sp, modifier = Modifier.weight(1f),
             )
             Text(
                 "${if (day.date == today) "$todayLabel · " else ""}${day.date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale)} ${day.date.dayOfMonth} ${day.date.month.getDisplayName(TextStyle.SHORT, locale)}",
-                color = p.mu, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                color = p.mu, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 3.dp),
             )
         }
         Row(
@@ -111,7 +111,7 @@ internal fun ProtoWeekChart(days: List<DaySpend>, today: LocalDate = LocalDate.n
                                 .background(if (on) p.barOn else p.tint),
                         )
                     }
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(5.dp))
                     Text(
                         d.date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale),
                         color = if (on) p.text else p.mu, fontSize = 13.sp, lineHeight = 14.sp,
