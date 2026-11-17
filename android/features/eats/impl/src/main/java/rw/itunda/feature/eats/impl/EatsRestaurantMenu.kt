@@ -62,7 +62,7 @@ import rw.itunda.core.network.ShoppingMerchantDto
 
 
 @Composable
-internal fun RestaurantMenuView(
+fun RestaurantMenuView(
     restaurant: ShoppingMerchantDto,
     menu: List<MerchantProductDto>?,
     cart: SnapshotStateMap<String, EatsCartLine>,
