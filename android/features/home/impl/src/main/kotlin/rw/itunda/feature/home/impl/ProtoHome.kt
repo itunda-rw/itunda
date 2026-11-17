@@ -88,16 +88,17 @@ onOpenProfile:()->Unit,onOpenCreditScore:()->Unit,onOpenShop:()->Unit,onOpenTran
 val p=homePalette()
 val bellLabel=when(androidx.compose.ui.platform.LocalConfiguration.current.locales[0]?.language){"rw"->"Amamenyesha";"fr"->"Notifications";else->"Notifications"}
 // Every vertical gap below is the prototype's measured card spacing: cards sit 12dp apart.
+androidx.compose.material3.ProvideTextStyle(androidx.compose.ui.text.TextStyle(lineHeightStyle=androidx.compose.ui.text.style.LineHeightStyle(androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,androidx.compose.ui.text.style.LineHeightStyle.Trim.None),platformStyle=androidx.compose.ui.text.PlatformTextStyle(includeFontPadding=false))){
 LazyColumn(Modifier.fillMaxSize().background(Ids.colors.background),contentPadding=androidx.compose.foundation.layout.PaddingValues(bottom=96.dp)){
 item{HomeProtoHeader(hasUnread,onOpenBank,onOpenPay,onOpenNotifications,bellLabel)}
 item{Spacer(Modifier.height(12.dp));HomeAccountsCard(state.bankBalance,state.payBalance,state.interestDays,onOpenBank,onOpenPay,onSend,onAdd,onBills,onCard,onSavings,onSeeAll)}
 item{Spacer(Modifier.height(12.dp));HomeInviteBanner(onInvite)}
 item{Spacer(Modifier.height(12.dp+6.dp));HomeSpendingRow(state.spentThisMonth,state.monthName,onOpenSpending);ProtoWeekChart(state.week,state.today)}
-state.bill?.let{b->item{Spacer(Modifier.height(6.dp));HomeRow({ItundaArt("bill",ItundaArtSet.Proto,26.dp)},b.title,"Due ${b.due} · ${homeRwf(b.amount)} RWF","Pay",onPayBill);Spacer(Modifier.height(8.dp))}}
+state.bill?.let{b->item{Spacer(Modifier.height(6.dp));HomeRow({ItundaArt("bill",ItundaArtSet.Proto,23.dp)},b.title,"Due ${b.due} · ${homeRwf(b.amount)} RWF","Pay",onPayBill);Spacer(Modifier.height(8.dp))}}
 item{Spacer(Modifier.height(12.dp+6.dp));HomeRow({ItundaArt("star-solid",ItundaArtSet.Solid,18.dp,tint=Color(0xFFFFC83D))},"${homeRwf(state.earned)} RWF earned","Points and coupons","View",onOpenRewards);Spacer(Modifier.height(8.dp))}
 item{Spacer(Modifier.height(18.dp));HomeSectionHeader("Pockets","See all",onSavings)}
 item{HomePocketRow({ItundaArt("school",ItundaArtSet.Line,22.dp,tint=p.tintFg)},0.4f,"School fees","120,000 RWF",onSavings)}
-item{HomePocketRow({ItundaArt("lock",ItundaArtSet.Proto,22.dp)},null,"Emergency fund","50,000 RWF",onSavings);Spacer(Modifier.height(8.dp))}
+item{HomePocketRow({ItundaArt("lock",ItundaArtSet.Proto,19.5.dp)},null,"Emergency fund","50,000 RWF",onSavings);Spacer(Modifier.height(8.dp))}
 item{Spacer(Modifier.height(18.dp));HomeSectionHeader("Around you",null){}}
 item{HomeNavRow("market","Kigali Roast","Cafe · open till 20:00 · 3 min walk",onOpenShop)}
 item{HomeNavRow("restaurant","Eats","Free delivery on your first order",onOpenShop)}
@@ -106,5 +107,6 @@ item{Spacer(Modifier.height(18.dp));HomeSectionHeader("Recent activity","See all
 item{HomeActivityRow("receive","Amina K.","Received · Yesterday","+25,000 RWF",null)}
 item{HomeActivityRow("transit","Kigali Bus Services","Paid · Tuesday","\u2212300 RWF","+9 earned");Spacer(Modifier.height(8.dp))}
 item{HomeSettingsButton(onOpenProfile)}
+}
 }
 }

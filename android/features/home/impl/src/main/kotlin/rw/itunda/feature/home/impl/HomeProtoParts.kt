@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -74,7 +75,7 @@ internal fun HomePill(label: String, onClick: () -> Unit) {
 internal fun HomeProtoHeader(hasUnread: Boolean, onBank: () -> Unit, onPay: () -> Unit, onBell: () -> Unit, bellLabel: String) {
     val p = homePalette()
     Row(Modifier.fillMaxWidth().height(78.dp).padding(start = 24.dp, end = 16.dp, top = 24.dp), verticalAlignment = Alignment.Top) {
-        Row(Modifier.height(44.dp).clickable(onClick = onBank), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.height(44.dp).offset(y = 2.dp).clickable(onClick = onBank), verticalAlignment = Alignment.CenterVertically) {
             Icon(painterResource(rw.itunda.core.designsystem.R.drawable.itunda_mark), null, Modifier.size(24.dp), tint = p.logo)
             Spacer(Modifier.width(2.dp))
             HText("Bank", p.bankTitle, 24, FontWeight.ExtraBold, lh = 28, ls = -0.3f)
@@ -97,7 +98,7 @@ private fun HeroRow(glyph: @Composable () -> Unit, amount: Double, label: String
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Row(Modifier.height(34.dp)) {
-                Text(homeRwf(amount), color = p.text, fontSize = 20.sp, fontWeight = FontWeight.Bold, lineHeight = 32.sp, letterSpacing = (-0.5).sp, modifier = Modifier.alignByBaseline())
+                Text(homeRwf(amount), color = p.text, fontSize = 20.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp, letterSpacing = (-0.5).sp, modifier = Modifier.alignByBaseline())
                 Text(" RWF", color = p.mu, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, lineHeight = 17.sp, modifier = Modifier.padding(start = 1.dp).alignByBaseline())
             }
             Text(
@@ -122,11 +123,11 @@ internal fun HomeAccountsCard(
             scale(1f, 0.55f, pivot = Offset(w, 0f)) {
                 drawRect(Brush.radialGradient(listOf(p.glow, p.glow.copy(alpha = 0.55f), Color.Transparent), Offset(w, 0f), 250.dp.toPx()), size = Size(w, size.height / 0.55f))
             }
-            drawRect(Brush.radialGradient(listOf(p.tint.copy(alpha = 0.9f), Color.Transparent), Offset(0f, size.height), 150.dp.toPx()))
+            drawRect(Brush.radialGradient(listOf(p.tint.copy(alpha = 0.6f), Color.Transparent), Offset(0f, size.height), 120.dp.toPx()))
         }.padding(top = 16.dp),
     ) {
         HeroRow({ Icon(painterResource(rw.itunda.core.designsystem.R.drawable.itunda_mark), null, Modifier.size(24.dp), tint = p.barOn) }, bank, "itunda Bank", interestDays?.let { "+interest $it" }, "Send", onBank, onSend)
-        HeroRow({ ItundaArt("wallet", ItundaArtSet.Proto, 28.dp) }, pay, "itunda Pay", null, "Add", onPay, onAdd)
+        HeroRow({ ItundaArt("wallet", ItundaArtSet.Proto, 25.dp) }, pay, "itunda Pay", null, "Add", onPay, onAdd)
         Spacer(Modifier.height(4.dp))
         Box(
             Modifier.fillMaxWidth().height(49.dp).drawBehind {
@@ -135,7 +136,7 @@ internal fun HomeAccountsCard(
                 drawRect(Brush.linearGradient(listOf(Color.Transparent, p.footShade.copy(alpha = p.footShade.alpha * 0.2f), p.footShade), Offset(w / 2 - dx * half, h / 2 - dy * half), Offset(w / 2 + dx * half, h / 2 + dy * half)))
             },
         ) {
-            Box(Modifier.align(Alignment.TopCenter).padding(horizontal = 24.dp).fillMaxWidth().height(1.dp).background(p.line))
+            Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().height(1.dp).background(Brush.horizontalGradient(0f to Color.Transparent, 0.2f to p.hair, 0.8f to p.hair, 1f to Color.Transparent)))
             Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp).height(49.dp), verticalAlignment = Alignment.CenterVertically) {
                 HText("Bills", p.mu, 15, FontWeight.Medium, Modifier.clickable(onClick = onBills), lh = 22)
                 Spacer(Modifier.width(18.dp))
@@ -154,7 +155,7 @@ internal fun HomeAccountsCard(
 internal fun HomeInviteBanner(onInvite: () -> Unit) {
     val p = homePalette()
     Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 8.dp).clickable(onClick = onInvite), verticalAlignment = Alignment.CenterVertically) {
-        HomeTile(48.dp) { ItundaArt("gift", ItundaArtSet.Proto, 24.dp) }
+        HomeTile(48.dp) { ItundaArt("gift", ItundaArtSet.Proto, 20.5.dp) }
         Spacer(Modifier.width(14.dp))
         Text(
             buildAnnotatedString { append("Invite friends, get "); withStyle(SpanStyle(color = p.lk)) { append("10,000 RWF") } },
@@ -170,7 +171,7 @@ internal fun HomeSpendingRow(amount: Double, month: String, onClick: () -> Unit)
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Row(Modifier.height(34.dp)) {
-                Text(homeRwf(amount), color = p.text, fontSize = 20.sp, fontWeight = FontWeight.Bold, lineHeight = 32.sp, letterSpacing = (-0.5).sp, modifier = Modifier.alignByBaseline())
+                Text(homeRwf(amount), color = p.text, fontSize = 20.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp, letterSpacing = (-0.5).sp, modifier = Modifier.alignByBaseline())
                 Text(" RWF", color = p.mu, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, lineHeight = 17.sp, modifier = Modifier.padding(start = 1.dp).alignByBaseline())
             }
             Text("Spent in $month", color = p.mu, fontSize = 14.sp, lineHeight = 21.sp)
@@ -241,7 +242,7 @@ internal fun HomeNavRow(art: String, title: String, subtitle: String, onClick: (
         Modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(horizontal = 24.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(44.dp).clip(RoundedCornerShape(16.dp)).background(p.chip), contentAlignment = Alignment.Center) { ItundaArt(art, ItundaArtSet.Proto, 31.dp) }
+        Box(Modifier.size(44.dp).clip(RoundedCornerShape(16.dp)).background(p.chip), contentAlignment = Alignment.Center) { ItundaArt(art, ItundaArtSet.Proto, 27.dp) }
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
             HText(title, p.text, 17, FontWeight.SemiBold, lh = 24, ls = -0.2f)
@@ -257,7 +258,7 @@ internal fun HomeNavRow(art: String, title: String, subtitle: String, onClick: (
 internal fun HomeActivityRow(art: String, title: String, subtitle: String, amount: String, earned: String?) {
     val p = homePalette()
     Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(44.dp).clip(RoundedCornerShape(16.dp)).background(p.chip), contentAlignment = Alignment.Center) { ItundaArt(art, ItundaArtSet.Proto, 31.dp) }
+        Box(Modifier.size(44.dp).clip(RoundedCornerShape(16.dp)).background(p.chip), contentAlignment = Alignment.Center) { ItundaArt(art, ItundaArtSet.Proto, 27.dp) }
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
             HText(title, p.text, 17, FontWeight.SemiBold, lh = 24, ls = -0.2f)
