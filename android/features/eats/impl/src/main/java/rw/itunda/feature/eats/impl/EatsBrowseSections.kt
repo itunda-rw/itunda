@@ -43,6 +43,7 @@ import rw.itunda.core.designsystem.theme.Ids
 fun EatsDeliveryPickupRow(state: EatsBrowseState) {
     var showAddressSheet by remember { mutableStateOf(false) }
     val addressLabel = state.address.substringBefore(",").trim().ifBlank { state.address }
+    val palette = eatsPrototypePalette()
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -54,8 +55,8 @@ fun EatsDeliveryPickupRow(state: EatsBrowseState) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text(addressLabel, color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-            ItundaArt("chev", ItundaArtSet.Line, 16.dp, tint = Ids.colors.textTertiary, modifier = Modifier.rotate(90f))
+            Text(addressLabel, color = palette.primary, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            ItundaArt("chev", ItundaArtSet.Line, 16.dp, tint = palette.secondary, modifier = Modifier.rotate(90f))
         }
         EatsModeSwitch(
             state.isPickup,
@@ -90,7 +91,7 @@ fun EatsBrowseOffers(
                 state.selectedCoupon = code
                 Toast.makeText(context, "Code $code saved. It applies at checkout.", Toast.LENGTH_SHORT).show()
             },
-            Modifier.padding(top = 10.dp),
+            Modifier.padding(start = 4.dp, top = 10.dp, end = 4.dp),
         )
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             Row(
@@ -145,16 +146,17 @@ private fun EatsShortcut(
     accessibilityLabel: String = label,
     selected: Boolean = false,
 ) {
+    val palette = eatsPrototypePalette()
     Column(
         modifier.semantics { contentDescription = accessibilityLabel }.pressScaleClickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
-            Modifier.size(56.dp).clip(RoundedCornerShape(20.dp)).background(if (selected) Ids.colors.pressed else Ids.colors.surfaceSoft),
+            Modifier.size(56.dp).clip(RoundedCornerShape(20.dp)).background(if (selected) palette.selected else palette.surfaceSoft),
             contentAlignment = Alignment.Center,
         ) {
             ItundaArt(art, artSet, artSize)
         }
-        Text(label, color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        Text(label, color = palette.primary, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
     }
 }

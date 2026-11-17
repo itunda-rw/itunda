@@ -70,7 +70,7 @@ import java.io.IOException
 // a single-slice extraction). Deliver's own DeliverContent stays in
 // EatsDeliver.kt, unaffected by this split.
 
-internal enum class OrderFoodView { BROWSE, FAVORITES, ORDERS, GROUP }
+internal enum class OrderFoodView { BROWSE, ORDERS, GROUP }
 
 @Composable
 internal fun OrderFoodContent(
@@ -128,7 +128,7 @@ internal fun OrderFoodContent(
     // reference's own 최대할인/최소주문낮은매장 quick-filter chips onto itunda's own
     // real per-merchant data (see ShoppingMerchantBrowseService.browse's own doc
     // comment on both).
-    var sortMode by remember { mutableStateOf<String?>(null) }
+    val browseFilters = rememberEatsBrowseFilters()
     val browseState = rememberEatsBrowseState()
 
     fun loadFavorites() {
@@ -163,11 +163,11 @@ internal fun OrderFoodContent(
                 val res = NetworkClient.apiService.getShoppingMerchants(
                     category = selectedCategory, businessType = "RESTAURANT", q = searchInput.trim().ifBlank { null },
                     buyerLat = browseLocation?.first, buyerLng = browseLocation?.second,
-                    sortBy = when (sortMode) { "delivery_time" -> "delivery_time"; "rating" -> "rating"; "free_delivery" -> "free_delivery"; "nearest" -> "distance"; else -> null },
+                    sortBy = when (browseFilters.sortMode) { "delivery_time" -> "delivery_time"; "rating" -> "rating"; "free_delivery" -> "free_delivery"; "nearest" -> "distance"; else -> null },
                 )
                 if (res.success) restaurants = when (sortMode) {
                     "rating" -> res.merchants.sortedByDescending { it.rating ?: 0.0 }
-                    "free_delivery" -> res.merchants.sortedByDescending { it.participatesInEatsMembership }
+                    "free_delivery" -> res.merchants.sortedBy { it.toEatsPrototypeRestaurant().deliveryFeeRwf }
                     "nearest" -> res.merchants.sortedBy { it.distanceKm ?: Double.MAX_VALUE }
                     "delivery_time" -> res.merchants.sortedBy { it.deliveryTimeMinutes ?: Int.MAX_VALUE }
                     else -> res.merchants
@@ -195,7 +195,7 @@ internal fun OrderFoodContent(
     // Real category/search filter (2026-07-19), debounced so typing doesn't re-fetch on
     // every keystroke -- LaunchedEffect's own cancel-and-restart-on-key-change is the
     // debounce mechanism here.
-    LaunchedEffect(selectedCategory, searchInput, sortMode) {
+    LaunchedEffect(selectedCategory, searchInput, browseFilters.sortMode) {
         delay(rw.itunda.core.network.SEARCH_DEBOUNCE_MS)
         loadRestaurants()
     }
@@ -349,92 +349,31 @@ internal fun OrderFoodContent(
                 }
                 MyDineInOrdersView()
             }
-        } else if (view == OrderFoodView.FAVORITES) {
-            item {
-                EatsBrowseOffers(
-                    state = browseState,
-                    onFastestClick = {
-                        view = OrderFoodView.BROWSE
-                        sortMode = if (sortMode == "delivery_time") null else "delivery_time"
-                    },
-                    onSavedClick = { view = OrderFoodView.BROWSE },
-                    showPromo = false,
-                    savedSelected = true,
-                )
-            }
-            item {
-                FavoriteRestaurantsView(
-                    onOpen = { fav ->
-                        val restaurant = allRestaurants?.find { it.merchantId == fav.restaurantId }
-                            ?: ShoppingMerchantDto(merchantId = fav.restaurantId, businessName = fav.businessName, category = fav.category, cashbackRate = "1%")
-                        openRestaurant(restaurant)
-                    },
-                    onChanged = ::loadFavorites,
-                )
-            }
         } else if (view == OrderFoodView.GROUP) {
             item { GroupEatsOrderView(restaurants = allRestaurants) }
         } else {
-            item {
-                Column {
-                    EatsDeliveryPickupRow(browseState)
-                    EatsSearchHeader(
-                        searchInput = searchInput,
-                        onSearchChange = { searchInput = it },
-                        categories = EATS_PROTOTYPE_CATEGORIES,
-                        selectedCategory = selectedCategory,
-                        onSelectCategory = { c -> selectedCategory = if (c == selectedCategory) null else c },
-                        showSearch = false,
-                    )
-                    EatsBrowseOffers(
-                        state = browseState,
-                        onFastestClick = { sortMode = if (sortMode == "delivery_time") null else "delivery_time" },
-                        onSavedClick = { view = OrderFoodView.FAVORITES },
-                    )
-                }
-            }
-            if (searchInput.isBlank() && selectedCategory == null && !restaurants.isNullOrEmpty()) item { EatsPopularRail(restaurants!!, ::openRestaurant, isPickup = browseState.isPickup) }
-            item { EatsSectionHeader("Restaurants near you", restaurants?.size) }
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    EatsSortChip("Fastest", Icons.Outlined.Bolt, active = sortMode == "delivery_time") {
-                        sortMode = if (sortMode == "delivery_time") null else "delivery_time"
-                    }
-                    EatsSortChip("Top rated", null, active = sortMode == "rating") {
-                        sortMode = if (sortMode == "rating") null else "rating"
-                    }
-                    EatsSortChip("Free delivery", null, active = sortMode == "free_delivery") {
-                        sortMode = if (sortMode == "free_delivery") null else "free_delivery"
-                    }
-                    EatsSortChip("Nearest", null, active = sortMode == "nearest") {
-                        sortMode = if (sortMode == "nearest") null else "nearest"
-                    }
-                }
-            }
-            if (error != null) {
-                item { ErrorCard(error!!, onRetry = ::loadRestaurants) }
-            } else if (restaurants == null) {
-                item { SkeletonBlock() }
-            } else if (restaurants!!.isEmpty()) {
-                item {
-                    EmptyState(
-                        // Real copy-voice fix (item 244, round 5 of the empty-state pass):
-                        // the "registered yet" case is honest about whose gap this is --
-                        // no restaurant has joined yet, not something the reader is missing
-                        // a step on, matching docs/COPY_VOICE.md's "when the cause is
-                        // someone else's, say so honestly" rule.
-                        if (selectedCategory != null || searchInput.isNotBlank()) "No restaurants match your search — try a different category or search term." else "No restaurants registered yet — check back once restaurants in your area join itunda Eats.",
-                        icon = Icons.Outlined.Restaurant,
-                    )
-                }
-            } else {
-                items(restaurants!!.chunked(2), key = { row -> row.first().merchantId }) { row ->
-                    EatsRestaurantGridRow(row, favoriteIds, onOpen = { openRestaurant(it) }, onToggleFavorite = { toggleFavorite(it.merchantId) }, isPickup = browseState.isPickup)
-                }
-            }
+            eatsBrowseItems(
+                state = browseState,
+                searchInput = searchInput,
+                onSearchChange = { searchInput = it },
+                selectedCategory = selectedCategory,
+                onSelectCategory = { category -> selectedCategory = if (category == selectedCategory) null else category },
+                filters = browseFilters,
+                restaurants = restaurants,
+                favoriteIds = favoriteIds,
+                error = error,
+                onRetry = ::loadRestaurants,
+                onOpen = ::openRestaurant,
+                onToggleFavorite = ::toggleFavorite,
+                onClearFilters = {
+                    searchInput = ""
+                    selectedCategory = null
+                    browseFilters.openNowOnly = false
+                    browseFilters.favoritesOnly = false
+                    browseFilters.sortMode = "delivery_time"
+                },
+            )
+        }
         }
         }
     }

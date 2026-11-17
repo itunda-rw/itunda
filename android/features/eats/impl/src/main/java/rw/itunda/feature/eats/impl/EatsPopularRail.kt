@@ -18,7 +18,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -30,8 +29,6 @@ import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.ShoppingMerchantDto
-
-private val railTints = listOf(Color(0xFFFFDDD4), Color(0xFFFFF0B8), Color(0xFFFFE6C7), Color(0xFFDDF3E4), Color(0xFFE6DDF7))
 
 /** "Popular this week": top restaurants by rating x reviews, numbered, in a horizontal rail. Hidden when nothing is rated. */
 @Composable
@@ -61,8 +58,9 @@ fun EatsPopularRail(restaurants: List<ShoppingMerchantDto>, onOpen: (ShoppingMer
 /** Section title with a trailing count, as in the prototype's "Restaurants near you  14". */
 @Composable
 fun EatsSectionHeader(title: String, count: Int?, modifier: Modifier = Modifier) {
+    val palette = eatsPrototypePalette()
     Row(modifier.fillMaxWidth().height(60.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, Modifier.weight(1f), color = Ids.colors.textPrimary, fontSize = 19.sp, lineHeight = 27.sp, fontWeight = FontWeight.ExtraBold)
-        if (count != null) Text("$count", color = Ids.colors.textSecondary, fontSize = 14.sp)
+        Text(title, Modifier.weight(1f), color = palette.primary, fontSize = 19.sp, lineHeight = 26.6.sp, fontWeight = FontWeight.Black)
+        if (count != null) Text("$count", color = palette.secondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     }
 }

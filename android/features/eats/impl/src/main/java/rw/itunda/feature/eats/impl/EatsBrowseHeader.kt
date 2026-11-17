@@ -52,8 +52,9 @@ internal fun rememberEatsBrowseState(): EatsBrowseState = remember { EatsBrowseS
 
 @Composable
 internal fun EatsModeSwitch(isPickup: Boolean, onModeChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+    val palette = eatsPrototypePalette()
     Row(
-        modifier.height(38.dp).clip(RoundedCornerShape(16.dp)).background(Ids.colors.surfaceSoft).padding(3.dp),
+        modifier.height(38.dp).clip(RoundedCornerShape(16.dp)).background(palette.surfaceSoft).padding(3.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -61,12 +62,12 @@ internal fun EatsModeSwitch(isPickup: Boolean, onModeChange: (Boolean) -> Unit, 
             val selected = isPickup == pickup
             Box(
                 modifier = Modifier.height(32.dp).clip(RoundedCornerShape(13.dp))
-                    .background(if (selected) Color(0xFF191F28) else Color.Transparent)
+                    .background(if (selected) palette.selected else Color.Transparent)
                     .semantics { contentDescription = label }.pressScaleClickable { onModeChange(pickup) }
                     .padding(horizontal = 10.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(label, color = if (selected) Color.White else Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(label, color = if (selected) palette.selectedText else palette.secondary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -83,8 +84,9 @@ fun EatsBrowseHeader(
     onCartClick: () -> Unit,
 ) {
     val context = LocalContext.current
+    val palette = eatsPrototypePalette()
     val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
-    Column(modifier = Modifier.fillMaxWidth().background(Ids.colors.background)) {
+    Column(modifier = Modifier.fillMaxWidth().background(palette.background)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 12.dp, top = 8.dp, bottom = 6.dp).height(44.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -92,17 +94,17 @@ fun EatsBrowseHeader(
         ) {
             EatsHeaderIcon("Back", "back") { backDispatcher?.onBackPressed() }
             Row(
-                modifier = Modifier.weight(1f).height(44.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 14.dp),
+                modifier = Modifier.weight(1f).height(44.dp).clip(RoundedCornerShape(14.dp)).background(palette.surfaceSoft).padding(horizontal = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                ItundaArt("search", ItundaArtSet.Line, 20.dp, tint = Ids.colors.textSecondary)
+                ItundaArt("search", ItundaArtSet.Line, 20.dp, tint = palette.secondary)
                 Box(Modifier.weight(1f)) {
-                    if (searchInput.isEmpty()) Text("Search restaurants", color = Ids.colors.textSecondary, fontSize = 15.sp)
+                    if (searchInput.isEmpty()) Text("Search restaurants", color = palette.secondary, fontSize = 15.sp)
                     BasicTextField(
                         value = searchInput, onValueChange = onSearchChange, singleLine = true,
-                        textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 15.sp),
-                        cursorBrush = SolidColor(Ids.colors.brand),
+                        textStyle = TextStyle(color = palette.primary, fontSize = 15.sp),
+                        cursorBrush = SolidColor(palette.accent),
                         modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Search restaurants" },
                     )
                 }
@@ -129,6 +131,6 @@ fun EatsBrowseHeader(
 @Composable
 private fun EatsHeaderIcon(label: String, art: String, onClick: () -> Unit) {
     Box(Modifier.size(44.dp).semantics { contentDescription = label }.pressScaleClickable(onClick = onClick), contentAlignment = Alignment.Center) {
-        ItundaArt(art, ItundaArtSet.Line, 24.dp, tint = Ids.colors.iconPrimary)
+        ItundaArt(art, ItundaArtSet.Line, 24.dp, tint = eatsPrototypePalette().primary)
     }
 }
