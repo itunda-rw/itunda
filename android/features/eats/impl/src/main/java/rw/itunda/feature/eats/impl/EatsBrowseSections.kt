@@ -3,6 +3,7 @@ package rw.itunda.feature.eats.impl
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.offset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -89,17 +91,19 @@ fun EatsBrowseOffers(
             },
             Modifier.padding(top = 10.dp),
         )
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(top = 18.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            EatsShortcut("Fastest", "moto", ItundaArtSet.Color, 34.dp, onFastestClick, Modifier.weight(1f))
-            EatsShortcut(
-                if (state.selectedCoupon == null) "Coupons" else "Coupons ✓",
-                "voucher", ItundaArtSet.Color, 34.dp, { state.showCoupons = true }, Modifier.weight(1f), "Coupons",
-            )
-            EatsShortcut("Eats Club", "gift", ItundaArtSet.Color, 34.dp, { showClubSheet = true }, Modifier.weight(1f))
-            EatsShortcut("Saved", "heartred", ItundaArtSet.Proto, 28.dp, onSavedClick, Modifier.weight(1f), selected = savedSelected)
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            Row(
+                Modifier.offset(x = (-24).dp).width(maxWidth + 48.dp).padding(horizontal = 12.dp).padding(top = 18.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                EatsShortcut("Fastest", "moto", ItundaArtSet.Color, 34.dp, onFastestClick, Modifier.weight(1f))
+                EatsShortcut(
+                    if (state.selectedCoupon == null) "Coupons" else "Coupons ✓",
+                    "voucher", ItundaArtSet.Color, 34.dp, { state.showCoupons = true }, Modifier.weight(1f), "Coupons",
+                )
+                EatsShortcut("Eats Club", "gift", ItundaArtSet.Color, 34.dp, { showClubSheet = true }, Modifier.weight(1f))
+                EatsShortcut("Saved", "heartred", ItundaArtSet.Proto, 28.dp, onSavedClick, Modifier.weight(1f), selected = savedSelected)
+            }
         }
     }
     if (state.showCoupons) EatsCouponsSheet(
