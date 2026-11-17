@@ -295,7 +295,7 @@ fun EatsCouponsSheet(
     val context = LocalContext.current
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Ids.colors.surface,
+        containerColor = Ids.colors.background,
         contentColor = Ids.colors.textPrimary,
     ) {
         Column(

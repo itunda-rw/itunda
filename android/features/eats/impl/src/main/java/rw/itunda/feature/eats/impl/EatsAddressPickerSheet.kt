@@ -84,7 +84,7 @@ internal fun EatsAddressPickerSheet(state: EatsBrowseState, onDismiss: () -> Uni
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Ids.colors.surface,
+        containerColor = Ids.colors.background,
         contentColor = Ids.colors.textPrimary,
     ) {
         Column(
