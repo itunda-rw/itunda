@@ -36,7 +36,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.components.IdsTextField
@@ -68,36 +67,6 @@ fun EatsPromoBanner(
             Text(if (selected) "Code FREEDEL saved" else "Delivery only · Code FREEDEL", color = Color(0xFF4E5968), fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
         }
         ItundaArt("gift", ItundaArtSet.Color, 52.dp)
-    }
-}
-
-/** Prototype quick-action row: four round tinted tiles with exact Itunda artwork. */
-@Composable
-fun EatsQuickActions(
-    onFastest: () -> Unit,
-    onCoupons: () -> Unit,
-    onClub: () -> Unit,
-    onSaved: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(modifier.fillMaxWidth().padding(vertical = 11.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-        EatsQuickAction("moto", "Fastest", onFastest)
-        EatsQuickAction("voucher", "Coupons", onCoupons)
-        EatsQuickAction("gift", "Eats Club", onClub)
-        EatsQuickAction("heart", "Saved", onSaved)
-    }
-}
-
-@Composable
-private fun EatsQuickAction(art: String, label: String, onClick: () -> Unit) {
-    Column(
-        Modifier.semantics { contentDescription = label }.pressScaleClickable(onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Box(Modifier.size(56.dp).clip(RoundedCornerShape(20.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
-            ItundaArt(art, ItundaArtSet.Color, 34.dp)
-        }
-        Text(label, color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp))
     }
 }
 
