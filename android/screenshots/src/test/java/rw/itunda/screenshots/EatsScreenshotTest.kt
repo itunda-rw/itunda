@@ -161,16 +161,29 @@ class EatsScreenshotTest {
         rule.onNodeWithText("Free delivery only applies to delivery orders.").assertExists()
     }
 
-    @Test fun addressPickerSheetLight() {
+    private fun addressPickerSheet(dark: Boolean, name: String) {
         val state = rw.itunda.feature.eats.impl.EatsBrowseState()
         rule.setContent {
-            IdsTheme(darkTheme = false) {
+            IdsTheme(darkTheme = dark) {
                 rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
             }
         }
         rule.onNodeWithContentDescription("Change delivery address").performClick()
         rule.waitForIdle()
-        rule.onRoot().captureRoboImage("build/screenshots/eats-address-picker-light.png")
+        rule.onRoot().captureRoboImage("build/screenshots/eats-address-picker-$name.png")
+    }
+
+    @Test fun addressPickerSheetLight() = addressPickerSheet(false, "light")
+    @Test fun addressPickerSheetDark() = addressPickerSheet(true, "dark")
+
+    @Test fun browseHeaderPickupDark() {
+        val state = rw.itunda.feature.eats.impl.EatsBrowseState().apply { isPickup = true }
+        rule.setContent {
+            IdsTheme(darkTheme = true) {
+                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 2, {}, {}, {})
+            }
+        }
+        rule.onRoot().captureRoboImage("build/screenshots/eats-browse-pickup-dark.png")
     }
 
     @Test fun deliveryAndPickupSelectionStayInSync() {
