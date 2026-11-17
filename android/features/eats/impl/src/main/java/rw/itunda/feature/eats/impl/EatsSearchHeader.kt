@@ -36,9 +36,10 @@ fun EatsSearchHeader(
     categories: List<String>,
     selectedCategory: String?,
     onSelectCategory: (String?) -> Unit,
+    showSearch: Boolean = true,
 ) {
     Column {
-        Row(
+        if (showSearch) Row(
             Modifier.fillMaxWidth().height(46.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
