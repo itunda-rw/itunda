@@ -212,7 +212,7 @@ fun EatsBrowseHeader(
             Spacer(Modifier.width(10.dp))
             Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                 Text("Coupons", color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                Text(" · 2 available", color = Ids.colors.textSecondary, fontSize = 14.sp)
+                Text(" · ${if (state.isPickup) 1 else 2} available", color = Ids.colors.textSecondary, fontSize = 14.sp)
                 state.selectedCoupon?.let {
                     Text(" · $it ✓", color = Ids.colors.textBrand, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
