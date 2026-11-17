@@ -12,10 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Call
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import rw.itunda.core.designsystem.components.ItundaArt
+import rw.itunda.core.designsystem.components.ItundaArtSet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -27,22 +25,26 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.components.pressScaleClickable
-import rw.itunda.core.designsystem.itundaface.PeopleWavingHand
 
 @Composable
 internal fun EatsTrackingRiderCard(name: String, onCall: () -> Unit) {
     val palette = eatsPrototypePalette()
-    Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp).clip(RoundedCornerShape(22.dp)).background(palette.surfaceSoft).padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(44.dp).clip(CircleShape).background(Color(0xFFDDE8F2)), contentAlignment = Alignment.Center) {
-            PeopleWavingHand(34.dp)
+    Row(
+        Modifier.fillMaxWidth().padding(top = 12.dp).padding(horizontal = 24.dp).padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(44.dp).clip(RoundedCornerShape(16.dp)).background(palette.surfaceSoft), contentAlignment = Alignment.Center) {
+            ItundaArt("moto", set = ItundaArtSet.Color, size = 36.dp)
         }
         Column(Modifier.weight(1f).padding(start = 12.dp)) {
-            Text(name, color = palette.primary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-            Text("Your rider · ★ 4.9 · Moto RAF 214 K · Helmet on", color = palette.secondary, fontSize = 13.sp, lineHeight = 18.sp)
+            Text(name, color = palette.primary, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold)
+            Text("Your rider · ★ 4.9 · Moto RAF 214 K · Helmet on", color = palette.secondary, fontSize = 14.sp, lineHeight = 20.sp)
         }
-        IconButton(onClick = onCall, modifier = Modifier.size(44.dp).clip(CircleShape).background(palette.background)) {
-            Icon(Icons.Outlined.Call, contentDescription = "Call rider", tint = palette.primary)
+        Box(
+            Modifier.size(48.dp).clip(CircleShape).background(palette.surfaceSoft).pressScaleClickable(onClick = onCall),
+            contentAlignment = Alignment.Center,
+        ) {
+            ItundaArt("airtime", set = ItundaArtSet.Color, size = 29.dp)
         }
     }
 }

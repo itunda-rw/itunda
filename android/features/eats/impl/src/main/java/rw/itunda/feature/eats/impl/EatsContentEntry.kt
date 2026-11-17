@@ -10,12 +10,14 @@ fun EatsContent(
     pendingMerchantId: String? = null,
     pendingMerchantName: String? = null,
     onPendingMerchantConsumed: () -> Unit = {},
+    onReportIssue: (String) -> Unit = {},
 ) {
     OrderFoodContent(
         deviceStepUpHost,
         pendingMerchantId = pendingMerchantId,
         pendingMerchantName = pendingMerchantName,
         onPendingMerchantConsumed = onPendingMerchantConsumed,
+        onReportIssue = onReportIssue,
     )
 }
 
@@ -26,6 +28,7 @@ fun EatsEntryPoint(
     pendingMerchantId: String? = null,
     pendingMerchantName: String? = null,
     onPendingMerchantConsumed: () -> Unit = {},
+    onReportIssue: (String) -> Unit = {},
 ) {
-    EatsContent(deviceStepUpHost, pendingMerchantId, pendingMerchantName, onPendingMerchantConsumed)
+    EatsContent(deviceStepUpHost, pendingMerchantId, pendingMerchantName, onPendingMerchantConsumed, onReportIssue)
 }

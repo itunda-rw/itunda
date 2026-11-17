@@ -532,6 +532,7 @@ fun ItundaAppScreen(
         // BankDashboard.tsx already established (pendingRideIssueTransactionId), see
         // SupportScreen.kt's own doc comment for the full account.
         var pendingRideIssueTransactionId by rememberSaveable { mutableStateOf<String?>(null) }
+        var pendingEatsIssueTransactionId by rememberSaveable { mutableStateOf<String?>(null) }
         // Real USSD basic-banking access (USSD product-completeness pass, 2026-09-08) --
         // first Android entry point for the "Set USSD PIN" screen bank-mfe already has.
         var showUssdSettings by rememberSaveable { mutableStateOf(false) }
@@ -1261,6 +1262,10 @@ fun ItundaAppScreen(
                         pendingMerchantId = pendingEatsMerchantId,
                         pendingMerchantName = pendingEatsMerchantName,
                         onPendingMerchantConsumed = { pendingEatsMerchantId = null; pendingEatsMerchantName = null },
+                        onReportIssue = { transactionId ->
+                            pendingEatsIssueTransactionId = transactionId
+                            showSupport = true
+                        },
                     )
                 }
             }
@@ -1406,10 +1411,14 @@ fun ItundaAppScreen(
         if (showSupport) {
             BackHandler { showSupport = false }
             SupportScreen(
-                onBack = { showSupport = false; pendingRideIssueTransactionId = null },
-                initialTransactionId = pendingRideIssueTransactionId,
-                initialCategory = if (pendingRideIssueTransactionId != null) "RIDE_ISSUE" else null,
-                onConsumedInitial = { pendingRideIssueTransactionId = null },
+                onBack = { showSupport = false; pendingRideIssueTransactionId = null; pendingEatsIssueTransactionId = null },
+                initialTransactionId = pendingEatsIssueTransactionId ?: pendingRideIssueTransactionId,
+                initialCategory = when {
+                    pendingEatsIssueTransactionId != null -> "EATS_ORDER_ISSUE"
+                    pendingRideIssueTransactionId != null -> "RIDE_ISSUE"
+                    else -> null
+                },
+                onConsumedInitial = { pendingRideIssueTransactionId = null; pendingEatsIssueTransactionId = null },
             )
             return@IdsTheme
         }

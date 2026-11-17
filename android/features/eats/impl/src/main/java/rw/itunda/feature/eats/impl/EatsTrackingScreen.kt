@@ -53,6 +53,7 @@ fun EatsTrackingScreen(
     restaurant: ShoppingMerchantDto?,
     onBack: () -> Unit,
     onDone: () -> Unit,
+    onReportIssue: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     initialItems: List<EatsOrderItemDto>? = null,
 ) {
@@ -123,7 +124,7 @@ fun EatsTrackingScreen(
             onMessage = { panel = EatsTrackingPanel.RIDER },
             onCancel = { panel = EatsTrackingPanel.CANCEL },
             onRate = { panel = EatsTrackingPanel.RATING },
-            onHelp = { Toast.makeText(context, "Opening order help", Toast.LENGTH_SHORT).show() },
+            onHelp = { onReportIssue(currentOrder.transactionId) },
             onCallRestaurant = { Toast.makeText(context, "Calling $restaurantName", Toast.LENGTH_SHORT).show() },
             onDone = onDone,
             modifier = modifier,
@@ -208,11 +209,11 @@ internal fun EatsTrackingMain(
                     }
                 }
             }
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(15.dp))
             EatsTrackingMap(statusText = statusLine, complete = complete, cancelled = cancelled, modifier = Modifier.padding(horizontal = 12.dp))
-            EatsTrackingStepper(stepLabels, step, Modifier.padding(start = 24.dp, end = 24.dp, top = 14.dp))
+            EatsTrackingStepper(stepLabels, step, Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp))
             if (order.status == "PLACED" && !pickup) {
-                Column(Modifier.padding(start = 24.dp, end = 24.dp, top = 42.dp)) {
+                Column(Modifier.padding(start = 24.dp, end = 24.dp, top = 20.dp)) {
                     Text("Delivery code", color = palette.secondary, fontSize = 15.sp)
                     Text("4821", color = palette.primary, fontSize = 32.sp, lineHeight = 38.sp, letterSpacing = 8.sp, fontWeight = FontWeight.Black)
                     Text("Tell your rider this code at the door. Not before.", color = palette.secondary, fontSize = 15.sp, lineHeight = 21.sp)
@@ -229,7 +230,7 @@ internal fun EatsTrackingMain(
             if (riderAssigned) {
                 EatsTrackingRiderCard(order.riderName ?: "Jean Claude", onCall)
                 if (!complete) {
-                    EatsTrackingButton("Message rider", onMessage, modifier = Modifier.width(308.dp).align(Alignment.CenterHorizontally).padding(top = 10.dp))
+                    EatsTrackingButton("Message rider", onMessage, modifier = Modifier.width(308.dp).align(Alignment.CenterHorizontally).padding(top = 10.dp), background = palette.selected, color = palette.selectedText)
                 } else {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         EatsTrackingButton("★ Rate your order", onRate, modifier = Modifier.weight(1f), height = 52.dp)

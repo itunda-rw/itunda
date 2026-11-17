@@ -12,9 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Restaurant
+import rw.itunda.core.designsystem.components.ItundaArt
+import rw.itunda.core.designsystem.components.ItundaArtSet
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,6 +33,9 @@ import androidx.compose.ui.unit.sp
 @Composable
 internal fun EatsTrackingMap(statusText: String, complete: Boolean, cancelled: Boolean, modifier: Modifier = Modifier) {
     val palette = eatsPrototypePalette()
+    val dark = palette.background == Color(0xFF17171C)
+    val roadColor = if (dark) Color(0xFF17171C) else Color.White
+    val riverColor = if (dark) Color(0xFF829A92) else Color(0xFFD8F1E8)
     Box(modifier.fillMaxWidth().height(230.dp).clip(RoundedCornerShape(28.dp)).background(palette.surfaceSoft)) {
         Canvas(Modifier.fillMaxSize().padding(bottom = 40.dp)) {
             val w = size.width
@@ -43,12 +45,12 @@ internal fun EatsTrackingMap(statusText: String, complete: Boolean, cancelled: B
                 cubicTo(w * .20f, h * .44f, w * .31f, h * .72f, w * .52f, h * .59f)
                 cubicTo(w * .72f, h * .46f, w * .83f, h * .34f, w, h * .43f)
             }
-            drawPath(river, Color(0xFFD8F1E8), style = Stroke(width = 24.dp.toPx(), cap = StrokeCap.Round))
+            drawPath(river, riverColor, style = Stroke(width = 24.dp.toPx(), cap = StrokeCap.Round))
             listOf(h * .20f, h * .79f, h * .04f, h * .95f).forEach { y ->
-                drawLine(Color.White, Offset(0f, y), Offset(w, y), 8.dp.toPx())
+                drawLine(roadColor, Offset(0f, y), Offset(w, y), 8.dp.toPx())
             }
             listOf(w * .10f, w * .38f, w * .70f, w * .92f).forEach { x ->
-                drawLine(Color.White, Offset(x, 0f), Offset(x, h), 8.dp.toPx())
+                drawLine(roadColor, Offset(x, 0f), Offset(x, h), 8.dp.toPx())
             }
             val route = Path().apply {
                 moveTo(w * .16f, h * .25f)
@@ -60,12 +62,12 @@ internal fun EatsTrackingMap(statusText: String, complete: Boolean, cancelled: B
         }
         Box(Modifier.align(Alignment.TopStart).padding(start = 42.dp, top = 30.dp).size(36.dp)
             .clip(CircleShape).background(Color(0xFF191F28)), contentAlignment = Alignment.Center) {
-            Icon(Icons.Outlined.Restaurant, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+            ItundaArt("bag-solid", set = ItundaArtSet.Solid, size = 20.dp, tint = Color.White)
         }
         Box(Modifier.align(Alignment.BottomEnd).padding(end = 42.dp, bottom = 66.dp).size(40.dp)
             .clip(CircleShape).background(if (complete) Color.White else Color(0xFF8F89FF)), contentAlignment = Alignment.Center) {
             if (complete) Box(Modifier.size(14.dp).clip(CircleShape).background(Color(0xFFFFB321)))
-            else Icon(Icons.Outlined.Home, contentDescription = null, tint = Color(0xFF191F28), modifier = Modifier.size(22.dp))
+            else ItundaArt("home-solid", set = ItundaArtSet.Solid, size = 22.dp, tint = Color(0xFF17171C))
         }
         Row(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(40.dp).background(palette.surfaceSoft).padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically) {

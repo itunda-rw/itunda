@@ -78,6 +78,7 @@ internal fun OrderFoodContent(
     pendingMerchantId: String? = null,
     pendingMerchantName: String? = null,
     onPendingMerchantConsumed: () -> Unit = {},
+    onReportIssue: (String) -> Unit = {},
 ) {
     var view by remember { mutableStateOf(OrderFoodView.BROWSE) }
     var restaurants by remember { mutableStateOf<List<ShoppingMerchantDto>?>(null) }
@@ -335,6 +336,7 @@ internal fun OrderFoodContent(
                 restaurant = allRestaurants?.firstOrNull { it.merchantId == selectedOrder!!.restaurantId },
                 onBack = { selectedOrder = null; view = OrderFoodView.ORDERS },
                 onDone = { selectedOrder = null; view = OrderFoodView.ORDERS },
+                onReportIssue = onReportIssue,
                 modifier = Modifier.weight(1f),
             )
         } else {

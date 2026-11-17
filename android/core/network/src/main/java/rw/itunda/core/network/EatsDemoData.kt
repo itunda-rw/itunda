@@ -70,4 +70,6 @@ internal object EatsDemoData {
     }
     fun review(): String = """{"success":true,"review":{"id":"review-demo","orderId":"EA-7207","restaurantId":"m1","riderId":"rider-1","restaurantRating":5,"riderRating":5,"comment":null,"createdAt":"2026-11-17T14:30:00Z"}}"""
 
+    fun createSupportTicket(): String = """{"success":true,"ticket":{"id":"ticket-demo","userId":"demo-buyer","transactionId":"demo-txn-7207","category":"EATS_ORDER_ISSUE","description":"Order issue","status":"OPEN","resolution":null,"resolutionNotes":null,"refundTransactionId":null,"frozeAccountId":null,"dueBy":"2026-11-18T14:00:00Z","reviewedBy":null,"createdAt":"2026-11-17T14:30:00Z","resolvedAt":null}}"""
+
 }

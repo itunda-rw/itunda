@@ -40,6 +40,7 @@ internal class DemoInterceptor : Interceptor {
                 "api/v1/merchant/pay/customer-code" ->
                     """{"success":true,"code":"ITUNDA-DEMO-${'$'}{System.currentTimeMillis() / 5000}","expiresAt":"${'$'}{java.time.Instant.now().plusSeconds(60)}"}"""
                 "api/v1/eats/orders" -> EatsDemoData.placeOrder()
+                "api/v1/support/tickets" -> EatsDemoData.createSupportTicket()
                 else -> when {
                     path.startsWith("api/v1/eats/orders/") && path.endsWith("/cancel") -> EatsDemoData.cancelOrder()
                     path.startsWith("api/v1/eats/orders/") && path.endsWith("/review") -> EatsDemoData.review()
@@ -57,6 +58,8 @@ internal class DemoInterceptor : Interceptor {
             path == "api/v1/messages/presence" -> """{"success":true,"presence":{"u-c1":true,"u-c2":true}}"""
             path == "api/v1/orders/my-orders" -> """{"success":true,"orders":[]}"""
             path == "api/v1/eats/orders/my-orders" -> EatsDemoData.myOrders()
+            path == "api/v1/support/tickets" -> """{"success":true,"tickets":[]}"""
+            path == "api/v1/account/transactions" -> """{"success":true,"transactions":[]}"""
             path.startsWith("api/v1/eats/orders/") -> EatsDemoData.orderDetail()
             path == "api/v1/messages/contacts" -> """{"success":true,"contacts":[{"userId":"u-c2","name":"Amina K."},{"userId":"u-c1","name":"Patrick H."},{"userId":"u-e1","name":"Eric M."}]}"""
             path == "api/v1/messages/contacts/birthdays-today" -> """{"success":true,"contacts":[]}"""
