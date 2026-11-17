@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -55,15 +56,15 @@ fun EatsSearchHeader(
             }
         }
         if (categories.isNotEmpty()) {
-            Spacer(Modifier.height(14.dp))
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Spacer(Modifier.height(if (showSearch) 14.dp else 4.dp))
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                 listOf<String?>(null).plus(categories).forEach { c ->
                     val on = c == selectedCategory
                     Box(
-                        Modifier.clip(RoundedCornerShape(14.dp)).background(if (on) Ids.colors.textPrimary else Ids.colors.background)
-                            .pressScaleClickable { onSelectCategory(c) }.padding(horizontal = 14.dp, vertical = 10.dp),
+                        Modifier.height(44.dp).clip(RoundedCornerShape(14.dp)).background(if (on) Ids.colors.surfaceSoft else Color.Transparent)
+                            .pressScaleClickable { onSelectCategory(c) }.padding(horizontal = 14.dp),
                     ) {
-                        Text(c ?: "All", color = if (on) Ids.colors.background else Ids.colors.textTertiary, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                        Text(c ?: "All", color = if (on) Ids.colors.textPrimary else Ids.colors.textSecondary, fontSize = 16.sp, fontWeight = if (on) FontWeight.ExtraBold else FontWeight.Bold, maxLines = 1, softWrap = false)
                     }
                 }
             }
