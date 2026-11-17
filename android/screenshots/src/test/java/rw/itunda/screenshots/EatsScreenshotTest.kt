@@ -391,11 +391,18 @@ class EatsScreenshotTest {
 
         rule.onNodeWithContentDescription("Orders").performClick()
         rule.onNodeWithContentDescription("Cart").performClick()
-        rule.onNodeWithContentDescription("Search restaurants or dishes").performTextInput("pizza")
+        rule.onNodeWithContentDescription("Search restaurants").performTextInput("pizza")
 
         assertTrue(ordersOpened)
         assertTrue(cartOpened)
         assertEquals("pizza", query)
+    }
+
+    @Test fun shopTabReturnsToExplore() {
+        var shopOpened = false
+        rule.setContent { EatsBrowseTestSurface(rw.itunda.feature.eats.impl.EatsBrowseState(), onShopClick = { shopOpened = true }) }
+        rule.onNodeWithText("Shop").performClick()
+        assertTrue(shopOpened)
     }
 
     @Test fun couponCanBeSaved() {

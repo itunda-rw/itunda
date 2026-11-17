@@ -1,6 +1,7 @@
 package rw.itunda.feature.eats.impl
 
 import android.Manifest
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import android.widget.Toast
 import android.content.pm.PackageManager
 import androidx.compose.foundation.background
@@ -370,6 +371,7 @@ internal fun OrderFoodContent(
     // Real fix (2026-08-25, direct user directive: "implant that into our designs
     // and apply it across our ecosystems", following the account ledger's own
     // shipped version) -- see ScrollPressTracker.kt's own doc comment.
+    val browseBackDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
     val eatsListState = rememberLazyListState()
     val eatsTouchedKey = remember { mutableStateOf<Any?>(null) }
     Column(modifier = Modifier.fillMaxSize()) {
@@ -424,7 +426,7 @@ internal fun OrderFoodContent(
         } else {
             item {
                 Column {
-                    EatsDeliveryPickupRow(browseState)
+                    EatsDeliveryPickupRow(browseState, onShopClick = { browseBackDispatcher?.onBackPressed() })
                     EatsSearchHeader(
                         searchInput = searchInput,
                         onSearchChange = { searchInput = it },
