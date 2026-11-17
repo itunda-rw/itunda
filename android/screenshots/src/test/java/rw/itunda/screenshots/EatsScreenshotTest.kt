@@ -237,20 +237,8 @@ class EatsScreenshotTest {
         rule.onRoot().captureRoboImage("build/screenshots/eats-popular.png")
     }
     private fun browseHeader(dark: Boolean, name: String) {
-        rule.setContent {
-            IdsTheme(darkTheme = dark) {
-                Box(Modifier.fillMaxSize().background(Ids.colors.background)) {
-                    rw.itunda.feature.eats.impl.EatsBrowseHeader(
-                        state = rw.itunda.feature.eats.impl.EatsBrowseState(),
-                        searchInput = "",
-                        cartCount = 0,
-                        onSearchChange = {},
-                        onOrdersClick = {},
-                        onCartClick = {},
-                    )
-                }
-            }
-        }
+        val state = rw.itunda.feature.eats.impl.EatsBrowseState()
+        rule.setContent { EatsBrowseTestSurface(state, darkTheme = dark) }
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/screenshots/eats-browse-$name.png")
     }
@@ -260,11 +248,7 @@ class EatsScreenshotTest {
 
     @Test fun headerCouponEntryOpensSheet() {
         val state = rw.itunda.feature.eats.impl.EatsBrowseState()
-        rule.setContent {
-            IdsTheme(darkTheme = false) {
-                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
-            }
-        }
+        rule.setContent { EatsBrowseTestSurface(state) }
 
         rule.onNodeWithText("Kimironko").assertExists()
         rule.onNodeWithText("Search restaurants").assertExists()
@@ -278,13 +262,7 @@ class EatsScreenshotTest {
     private fun couponsSheet(dark: Boolean, name: String) {
         rule.activity.actionBar?.hide()
         val state = rw.itunda.feature.eats.impl.EatsBrowseState()
-        rule.setContent {
-            IdsTheme(darkTheme = dark) {
-                Box(Modifier.fillMaxSize().background(Ids.colors.background)) {
-                    rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
-                }
-            }
-        }
+        rule.setContent { EatsBrowseTestSurface(state, darkTheme = dark) }
         rule.onNodeWithContentDescription("Coupons").performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Your coupons").assertExists()
@@ -317,28 +295,19 @@ class EatsScreenshotTest {
     }
 
     @Test fun pickupBlocksDeliveryOnlyCoupon() {
-        val state = rw.itunda.feature.eats.impl.EatsBrowseState()
-        state.isPickup = true
-        rule.setContent {
-            IdsTheme(darkTheme = false) {
-                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
-            }
-        }
+        val state = rw.itunda.feature.eats.impl.EatsBrowseState().apply { isPickup = true }
+        rule.setContent { EatsBrowseTestSurface(state) }
         rule.onNodeWithContentDescription("Coupons").performClick()
-        rule.onNodeWithText("Delivery only").assertExists()
+        rule.onAllNodesWithText("Use")[0].performClick()
         rule.waitForIdle()
         assertNull(state.selectedCoupon)
-        rule.onNodeWithText("Your coupons").assertExists()
+        assertTrue(rule.onAllNodesWithText("Your coupons").fetchSemanticsNodes().isEmpty())
     }
 
     private fun addressPickerSheet(dark: Boolean, name: String) {
         rule.activity.actionBar?.hide()
         val state = rw.itunda.feature.eats.impl.EatsBrowseState()
-        rule.setContent {
-            IdsTheme(darkTheme = dark) {
-                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
-            }
-        }
+        rule.setContent { EatsBrowseTestSurface(state, darkTheme = dark) }
         rule.onNodeWithContentDescription("Change delivery address").performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Your rider will go to the address you pick.").assertExists()
@@ -350,11 +319,7 @@ class EatsScreenshotTest {
     private fun addressPickerForm(dark: Boolean, name: String) {
         rule.activity.actionBar?.hide()
         val state = rw.itunda.feature.eats.impl.EatsBrowseState()
-        rule.setContent {
-            IdsTheme(darkTheme = dark) {
-                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
-            }
-        }
+        rule.setContent { EatsBrowseTestSurface(state, darkTheme = dark) }
         rule.onNodeWithContentDescription("Change delivery address").performClick()
         rule.onNodeWithText("Add a new address").performClick()
         rule.waitForIdle()
@@ -369,11 +334,7 @@ class EatsScreenshotTest {
 
     @Test fun addressPickerAppliesSelectedAddress() {
         val state = rw.itunda.feature.eats.impl.EatsBrowseState()
-        rule.setContent {
-            IdsTheme(darkTheme = false) {
-                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
-            }
-        }
+        rule.setContent { EatsBrowseTestSurface(state) }
         rule.onNodeWithContentDescription("Change delivery address").performClick()
         rule.onNodeWithText("Work").performClick()
         rule.onNodeWithText("Use this address").performClick()
@@ -382,11 +343,7 @@ class EatsScreenshotTest {
 
     @Test fun addressPickerSavesNewAddress() {
         val state = rw.itunda.feature.eats.impl.EatsBrowseState()
-        rule.setContent {
-            IdsTheme(darkTheme = false) {
-                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
-            }
-        }
+        rule.setContent { EatsBrowseTestSurface(state) }
         rule.onNodeWithContentDescription("Change delivery address").performClick()
         rule.onNodeWithText("Add a new address").performClick()
         rule.onNodeWithContentDescription("Street or landmark").performTextInput("Remera, KG 5 Ave")
@@ -396,25 +353,17 @@ class EatsScreenshotTest {
 
     @Test fun browseHeaderPickupDark() {
         val state = rw.itunda.feature.eats.impl.EatsBrowseState().apply { isPickup = true }
-        rule.setContent {
-            IdsTheme(darkTheme = true) {
-                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
-            }
-        }
+        rule.setContent { EatsBrowseTestSurface(state, darkTheme = true) }
         rule.onRoot().captureRoboImage("build/screenshots/eats-browse-pickup-dark.png")
     }
 
     @Test fun deliveryAndPickupSelectionStayInSync() {
         val state = rw.itunda.feature.eats.impl.EatsBrowseState()
-        rule.setContent {
-            IdsTheme(darkTheme = false) {
-                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
-            }
-        }
+        rule.setContent { EatsBrowseTestSurface(state) }
         rule.onNodeWithContentDescription("Pickup").performClick()
         assertTrue(state.isPickup)
         rule.onNodeWithContentDescription("Delivery").performClick()
-        assertTrue(!state.isPickup)
+        assertFalse(state.isPickup)
     }
 
     @Test fun topBarActionsAndSearchAreInteractive() {
@@ -430,11 +379,14 @@ class EatsScreenshotTest {
         var cartOpened = false
         var query = ""
         rule.setContent {
-            IdsTheme(darkTheme = false) {
-                rw.itunda.feature.eats.impl.EatsBrowseHeader(
-                    state, query, 1, { query = it }, { ordersOpened = true }, { cartOpened = true },
-                )
-            }
+            EatsBrowseTestSurface(
+                state = state,
+                searchInput = query,
+                cartCount = 1,
+                onSearchChange = { query = it },
+                onOrdersClick = { ordersOpened = true },
+                onCartClick = { cartOpened = true },
+            )
         }
 
         rule.onNodeWithContentDescription("Orders").performClick()
@@ -448,24 +400,16 @@ class EatsScreenshotTest {
 
     @Test fun couponCanBeSaved() {
         val state = rw.itunda.feature.eats.impl.EatsBrowseState()
-        rule.setContent {
-            IdsTheme(darkTheme = false) {
-                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
-            }
-        }
+        rule.setContent { EatsBrowseTestSurface(state) }
         rule.onNodeWithContentDescription("Coupons").performClick()
         rule.onAllNodesWithText("Use")[1].performClick()
-        assertTrue(state.selectedCoupon == "EATS20")
+        assertEquals("EATS20", state.selectedCoupon)
         rule.onNodeWithText("Coupons ✓").assertExists()
     }
 
     @Test fun fulfillmentAndCouponStateStayConsistent() {
         val state = rw.itunda.feature.eats.impl.EatsBrowseState()
-        rule.setContent {
-            IdsTheme(darkTheme = false) {
-                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
-            }
-        }
+        rule.setContent { EatsBrowseTestSurface(state) }
 
         rule.onNodeWithContentDescription("Pickup").performClick()
         assertTrue(state.isPickup)
@@ -482,17 +426,17 @@ class EatsScreenshotTest {
 
         rule.onNodeWithContentDescription("Coupons").performClick()
         rule.onAllNodesWithText("Use")[0].performClick()
+        rule.waitForIdle()
+        assertNull(state.selectedCoupon)
+
+        rule.onNodeWithContentDescription("Coupons").performClick()
+        rule.onAllNodesWithText("Use")[1].performClick()
         assertEquals("EATS20", state.selectedCoupon)
     }
 
     @Test fun browseHeaderPickupLight() {
         val state = rw.itunda.feature.eats.impl.EatsBrowseState().apply { isPickup = true }
-        rule.setContent {
-            IdsTheme(darkTheme = false) {
-                rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
-            }
-        }
+        rule.setContent { EatsBrowseTestSurface(state, darkTheme = false) }
         rule.onRoot().captureRoboImage("build/screenshots/eats-browse-pickup-light.png")
     }
-
 }
