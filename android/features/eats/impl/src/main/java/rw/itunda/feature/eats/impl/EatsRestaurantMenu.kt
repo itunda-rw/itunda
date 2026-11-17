@@ -2,6 +2,7 @@ package rw.itunda.feature.eats.impl
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -66,12 +68,14 @@ internal fun RestaurantMenuView(
     cart: SnapshotStateMap<String, EatsCartLine>,
     onBack: () -> Unit,
     onCheckout: () -> Unit,
+    isPickup: Boolean = false,
 ) {
     BackHandler(onBack = onBack)
     // Real menu-options selection UI (2026-07-21, v1: required single-select only) --
     // ports bank-mfe's own MenuView 1:1. Only one item's option panel is expanded at a
     // time, matching this file's own established "inline-card-replaces-trigger"
     // convention (no modal-overlay pattern exists anywhere in this app).
+    var selectedTab by remember { mutableStateOf("Menu") }
     var expandedProductId by remember { mutableStateOf<String?>(null) }
     // Real optional/multi-select menu option groups (itunda Eats redesign,
     // 2026-08-28) -- the backend has always supported 4 real group combinations
@@ -116,9 +120,68 @@ internal fun RestaurantMenuView(
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(bottom = Ids.layout.screenVertical)) {
-        EatsRestaurantHero(restaurant.businessName, onBack)
-        RestaurantRatingBadge(restaurant.merchantId)
-        LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
+        val eta = restaurant.deliveryTimeMinutes?.let { if (isPickup) maxOf(10, it - 10) else it }
+        val heroMeta = buildList {
+            eta?.let { add(if (isPickup) "Ready in $it min" else "$it min") }
+            restaurant.distanceKm?.let { add(String.format(Locale.US, "%.1f km", it)) }
+            if (isPickup) add("Pickup · No delivery fee")
+            else if (restaurant.participatesInEatsMembership) add("Free delivery")
+        }.joinToString(" · ").ifBlank { if (isPickup) "Pickup · No delivery fee" else "Delivery" }
+        EatsRestaurantHero(restaurant.businessName, onBack, meta = heroMeta)
+        if (selectedTab != "Reviews") RestaurantRatingBadge(restaurant.merchantId)
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
+        ) {
+            listOf("Menu", "Info", "Reviews").forEach { tab ->
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.pressScaleClickable { selectedTab = tab },
+                ) {
+                    Text(
+                        tab,
+                        color = if (selectedTab == tab) Ids.colors.textPrimary else Ids.colors.textSecondary,
+                        fontSize = 15.sp,
+                        fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Normal,
+                        modifier = Modifier.padding(top = 8.dp, bottom = 6.dp),
+                    )
+                    Box(
+                        Modifier.width(22.dp).height(2.dp)
+                            .background(if (selectedTab == tab) Ids.colors.brand else Color.Transparent, RoundedCornerShape(1.dp)),
+                    )
+                }
+            }
+        }
+        if (selectedTab == "Info") {
+            val details = listOfNotNull(
+                restaurant.category?.let { "Category" to it },
+                restaurant.openingHours?.let { "Opening hours" to it },
+                restaurant.phoneNumber?.let { "Phone" to it },
+                restaurant.distanceKm?.let { "Distance" to String.format(Locale.US, "%.1f km", it) },
+                restaurant.minOrderAmount?.let { "Minimum order" to String.format(Locale.US, "%,.0f RWF", it) },
+            )
+            Column(
+                modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 4.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Text("About this restaurant", color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                if (details.isEmpty()) {
+                    Text("Restaurant details aren't available yet.", color = Ids.colors.textSecondary, fontSize = 14.sp)
+                } else {
+                    details.forEach { (label, value) ->
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(label, color = Ids.colors.textTertiary, fontSize = 12.sp)
+                            Text(value, color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                }
+            }
+        } else if (selectedTab == "Reviews") {
+            Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 4.dp, vertical = 12.dp)) {
+                RestaurantRatingBadge(restaurant.merchantId, initiallyExpanded = true)
+            }
+        } else {
+            LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
             if (menu == null) {
                 item { SkeletonBlock(height = 72.dp) }
             } else if (menu.isEmpty()) {
@@ -241,6 +304,8 @@ internal fun RestaurantMenuView(
                     }
                 }
             }
+        }
+    }
         }
     }
 }
