@@ -426,7 +426,7 @@ internal fun OrderFoodContent(
         } else {
             item {
                 Column {
-                    EatsDeliveryPickupRow(browseState, onShopClick = { browseBackDispatcher?.onBackPressed() })
+                    EatsDeliveryPickupRow(browseState)
                     EatsSearchHeader(
                         searchInput = searchInput,
                         onSearchChange = { searchInput = it },
