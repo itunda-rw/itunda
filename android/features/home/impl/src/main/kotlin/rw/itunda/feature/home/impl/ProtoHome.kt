@@ -88,7 +88,7 @@ onOpenProfile:()->Unit,onOpenCreditScore:()->Unit,onOpenShop:()->Unit,onOpenTran
 val p=homePalette()
 val bellLabel=when(androidx.compose.ui.platform.LocalConfiguration.current.locales[0]?.language){"rw"->"Amamenyesha";"fr"->"Notifications";else->"Notifications"}
 // Every vertical gap below is the prototype's measured card spacing: cards sit 12dp apart.
-androidx.compose.material3.ProvideTextStyle(androidx.compose.ui.text.TextStyle(lineHeightStyle=androidx.compose.ui.text.style.LineHeightStyle(androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,androidx.compose.ui.text.style.LineHeightStyle.Trim.None),platformStyle=androidx.compose.ui.text.PlatformTextStyle(includeFontPadding=false))){
+androidx.compose.material3.ProvideTextStyle(androidx.compose.ui.text.TextStyle(fontFamily=rw.itunda.core.designsystem.theme.PretendardFontFamily,lineHeightStyle=androidx.compose.ui.text.style.LineHeightStyle(androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,androidx.compose.ui.text.style.LineHeightStyle.Trim.None),platformStyle=androidx.compose.ui.text.PlatformTextStyle(includeFontPadding=false))){
 LazyColumn(Modifier.fillMaxSize().background(Ids.colors.background),contentPadding=androidx.compose.foundation.layout.PaddingValues(bottom=96.dp)){
 item{HomeProtoHeader(hasUnread,onOpenBank,onOpenPay,onOpenNotifications,bellLabel)}
 item{Spacer(Modifier.height(12.dp));HomeAccountsCard(state.bankBalance,state.payBalance,state.interestDays,onOpenBank,onOpenPay,onSend,onAdd,onBills,onCard,onSavings,onSeeAll)}

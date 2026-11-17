@@ -90,6 +90,16 @@ internal fun HomeProtoHeader(hasUnread: Boolean, onBank: () -> Unit, onPay: () -
     }
 }
 
+/** 20sp amount (24dp line) with the 14sp unit hanging 10dp below the top, inside the prototype's 35dp line box. */
+@Composable
+private fun HomeAmountLine(amount: String) {
+    val p = homePalette()
+    Row(Modifier.height(35.dp)) {
+        Text(amount, color = p.text, fontSize = 20.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp, letterSpacing = (-0.5).sp)
+        Text("RWF", color = p.mu, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, lineHeight = 17.sp, modifier = Modifier.padding(start = 5.dp, top = 10.dp))
+    }
+}
+
 @Composable
 private fun HeroRow(glyph: @Composable () -> Unit, amount: Double, label: String, extra: String?, action: String, onOpen: () -> Unit, onAction: () -> Unit) {
     val p = homePalette()
@@ -97,10 +107,7 @@ private fun HeroRow(glyph: @Composable () -> Unit, amount: Double, label: String
         HomeTile(36.dp, glyph)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Row(Modifier.height(34.dp)) {
-                Text(homeRwf(amount), color = p.text, fontSize = 20.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp, letterSpacing = (-0.5).sp, modifier = Modifier.alignByBaseline())
-                Text(" RWF", color = p.mu, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, lineHeight = 17.sp, modifier = Modifier.padding(start = 1.dp).alignByBaseline())
-            }
+            HomeAmountLine(homeRwf(amount))
             Text(
                 buildAnnotatedString { append(label); if (extra != null) withStyle(SpanStyle(color = p.lk)) { append(" $extra") } },
                 color = p.mu, fontSize = 14.sp, lineHeight = 21.sp,
@@ -170,10 +177,7 @@ internal fun HomeSpendingRow(amount: Double, month: String, onClick: () -> Unit)
     val p = homePalette()
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Row(Modifier.height(34.dp)) {
-                Text(homeRwf(amount), color = p.text, fontSize = 20.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp, letterSpacing = (-0.5).sp, modifier = Modifier.alignByBaseline())
-                Text(" RWF", color = p.mu, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, lineHeight = 17.sp, modifier = Modifier.padding(start = 1.dp).alignByBaseline())
-            }
+            HomeAmountLine(homeRwf(amount))
             Text("Spent in $month", color = p.mu, fontSize = 14.sp, lineHeight = 21.sp)
         }
         Canvas(Modifier.padding(end = 6.dp).size(8.dp)) {
@@ -203,7 +207,7 @@ internal fun HomeRow(glyph: @Composable () -> Unit, title: String, subtitle: Str
 @Composable
 internal fun HomeSectionHeader(title: String, action: String?, onAction: () -> Unit) {
     val p = homePalette()
-    Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 32.dp, bottom = if (action != null) 6.dp else 4.dp)) {
+    Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 32.dp, bottom = if (action != null) 7.dp else 4.dp)) {
         Text(title, Modifier.weight(1f).alignByBaseline(), color = p.text, fontSize = 20.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp, letterSpacing = (-0.4).sp)
         if (action != null) Text(action, Modifier.clickable(onClick = onAction).alignByBaseline(), color = p.pk, fontSize = 14.sp, fontWeight = FontWeight.Medium, lineHeight = 24.sp)
     }
