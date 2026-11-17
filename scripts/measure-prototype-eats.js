@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-'use strict';
+import { createRequire } from 'node:module';
 
+const require = createRequire(import.meta.url);
 const fs = require('node:fs');
 const path = require('node:path');
 const { chromium } = require('playwright');

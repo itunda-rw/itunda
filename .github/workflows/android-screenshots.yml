@@ -5,7 +5,7 @@ name: Android Screenshots
 on:
   push:
     branches: ["integration/prototype-parity", "feat/screenshot-loop"]
-    paths: ["android/**", ".github/workflows/android-screenshots.yml"]
+    paths: ["android/**", "scripts/measure-prototype-eats.js", ".github/workflows/android-screenshots.yml"]
   workflow_dispatch:
 
 concurrency:
