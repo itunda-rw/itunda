@@ -129,7 +129,7 @@ fun EatsBrowseHeader(
                         Text(
                             state.address,
                             color = Ids.colors.textPrimary,
-                            fontSize = 16.sp,
+                            fontSize = 17.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
                         )
@@ -189,7 +189,7 @@ fun EatsBrowseHeader(
             EatsModeChoice(
                 label = "Delivery",
                 subtitle = "To your door",
-                art = "scooter",
+                art = "mbike",
                 selected = !state.isPickup,
                 modifier = Modifier.weight(1f),
             ) { state.isPickup = false }
