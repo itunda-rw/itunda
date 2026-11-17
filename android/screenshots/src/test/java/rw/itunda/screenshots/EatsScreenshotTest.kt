@@ -274,14 +274,20 @@ class EatsScreenshotTest {
     }
 
     private fun couponsSheet(dark: Boolean, name: String) {
+        rule.activity.actionBar?.hide()
+        val state = rw.itunda.feature.eats.impl.EatsBrowseState()
         rule.setContent {
             IdsTheme(darkTheme = dark) {
                 Box(Modifier.fillMaxSize().background(Ids.colors.background)) {
-                    rw.itunda.feature.eats.impl.EatsCouponsSheet(false, null, {}, {})
+                    rw.itunda.feature.eats.impl.EatsBrowseHeader(state, "", 0, {}, {}, {})
                 }
             }
         }
+        rule.onNodeWithContentDescription("Coupons").performClick()
         rule.waitForIdle()
+        rule.onNodeWithText("Your coupons").assertExists()
+        rule.onNodeWithText("Free delivery").assertExists()
+        rule.onNodeWithText("20% off").assertExists()
         rule.onRoot().captureRoboImage("build/screenshots/eats-coupons-$name.png")
     }
 
@@ -304,6 +310,7 @@ class EatsScreenshotTest {
     }
 
     private fun addressPickerSheet(dark: Boolean, name: String) {
+        rule.activity.actionBar?.hide()
         val state = rw.itunda.feature.eats.impl.EatsBrowseState()
         rule.setContent {
             IdsTheme(darkTheme = dark) {
