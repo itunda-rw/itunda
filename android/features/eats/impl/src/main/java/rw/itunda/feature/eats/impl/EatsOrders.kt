@@ -59,6 +59,8 @@ internal fun EatsOrderRow(
     val restaurantLng = restaurant?.longitude
     val deliveryLat = order.deliveryLatitude
     val deliveryLng = order.deliveryLongitude
+    // Pickup orders intentionally have no delivery address or destination pin.
+    val isPickupOrder = order.deliveryAddress.isBlank()
     val canShowRoute = restaurantLat != null && restaurantLng != null && deliveryLat != null && deliveryLng != null
     // Real live rider-location tracking (item 182) -- only while a rider is actually
     // en route, same gating as bank-mfe's own canShowLiveTracking.
@@ -70,8 +72,13 @@ internal fun EatsOrderRow(
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(EATS_STATUS_LABEL[order.status] ?: order.status, color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    Text(order.deliveryAddress, color = Ids.colors.textSecondary, fontSize = 12.sp)
+                    Text(restaurant?.businessName ?: "Eats order", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text(EATS_STATUS_LABEL[order.status] ?: order.status, color = Ids.colors.brand, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                    Text(
+                        if (isPickupOrder) "Pickup at restaurant" else order.deliveryAddress,
+                        color = Ids.colors.textSecondary,
+                        fontSize = 12.sp,
+                    )
                 }
                 Text(String.format(Locale.US, "%,.0f RWF", order.totalAmount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             }
