@@ -148,6 +148,7 @@ internal fun OrderFoodContent(
     // real per-merchant data (see ShoppingMerchantBrowseService.browse's own doc
     // comment on both).
     var sortMode by remember { mutableStateOf<String?>(null) }
+    val browseState = rememberEatsBrowseState()
 
     fun loadDishes() {
         coroutineScope.launch {
@@ -234,6 +235,7 @@ internal fun OrderFoodContent(
 
     fun openRestaurant(m: ShoppingMerchantDto) {
         selectedRestaurant = m
+        browseState.cartRestaurant = m
         recentlyViewedRestaurants = recentlyViewedStore.add(
             RecentlyViewedRestaurantDto(m.merchantId, m.businessName, m.category, m.photoUrl, m.rating),
         )
@@ -314,6 +316,7 @@ internal fun OrderFoodContent(
                     return@launch
                 }
                 selectedRestaurant = restaurant
+                browseState.cartRestaurant = restaurant
                 menu = menuRes.products
                 cart.clear()
                 cart.putAll(newCart)
@@ -332,17 +335,18 @@ internal fun OrderFoodContent(
             confirmedOrder = confirmedOrder,
             confirmedDineInOrder = confirmedDineInOrder,
             selectedRestaurant = selectedRestaurant,
+            pickupInitially = browseState.isPickup,
             showCheckout = showCheckout,
             menu = menu,
             cart = cart,
             deviceStepUpHost = deviceStepUpHost,
             onOrderConfirmationDone = {
                 confirmedOrder = null; selectedRestaurant = null; menu = null
-                cart.clear(); showCheckout = false; view = OrderFoodView.ORDERS
+                cart.clear(); browseState.cartRestaurant = null; showCheckout = false; view = OrderFoodView.ORDERS
             },
             onDineInConfirmationDone = {
                 confirmedDineInOrder = null; selectedRestaurant = null; menu = null
-                cart.clear(); showCheckout = false; view = OrderFoodView.ORDERS
+                cart.clear(); browseState.cartRestaurant = null; showCheckout = false; view = OrderFoodView.ORDERS
             },
             onCheckoutBack = { showCheckout = false },
             onOrderPlaced = { order -> confirmedOrder = order },
@@ -358,9 +362,18 @@ internal fun OrderFoodContent(
     var showMembership by remember { mutableStateOf(false) }
     val eatsListState = rememberLazyListState()
     val eatsTouchedKey = remember { mutableStateOf<Any?>(null) }
-    LazyColumn(
+    Column(modifier = Modifier.fillMaxSize()) {
+        EatsBrowseHeader(
+            state = browseState,
+            searchInput = searchInput,
+            cartCount = cart.values.sumOf { it.quantity },
+            onSearchChange = { searchInput = it },
+            onOrdersClick = { view = OrderFoodView.ORDERS },
+            onCartClick = { selectedRestaurant = browseState.cartRestaurant; showCheckout = true },
+        )
+        LazyColumn(
         state = eatsListState,
-        modifier = Modifier.fillMaxSize().trackScrollPressedKey(eatsListState, eatsTouchedKey),
+        modifier = Modifier.weight(1f).padding(horizontal = Ids.layout.screenHorizontal).trackScrollPressedKey(eatsListState, eatsTouchedKey),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
         item {
@@ -433,6 +446,7 @@ internal fun OrderFoodContent(
                     categories = categories,
                     selectedCategory = selectedCategory,
                     onSelectCategory = { c -> selectedCategory = if (c == selectedCategory) null else c },
+                    showSearch = false,
                 )
             }
             item { EatsPromoBanner() }
@@ -508,6 +522,7 @@ internal fun OrderFoodContent(
                     EatsRestaurantGridRow(row, favoriteIds, onOpen = { openRestaurant(it) }, onToggleFavorite = { toggleFavorite(it.merchantId) })
                 }
             }
+        }
         }
     }
 }
