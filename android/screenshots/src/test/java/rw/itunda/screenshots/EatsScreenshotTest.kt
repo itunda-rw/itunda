@@ -106,6 +106,7 @@ class EatsScreenshotTest {
         }
         rule.onNodeWithText("Ready in 10 min", substring = true).assertExists()
         rule.onNodeWithText("Pickup · No delivery fee", substring = true).assertExists()
+        rule.onRoot().captureRoboImage("build/screenshots/eats-restaurant-hero-bakery.png")
         rule.onNodeWithText("Menu").assertExists()
         rule.onNodeWithText("Info").performClick()
         rule.onNodeWithText("Opening hours").assertExists()
