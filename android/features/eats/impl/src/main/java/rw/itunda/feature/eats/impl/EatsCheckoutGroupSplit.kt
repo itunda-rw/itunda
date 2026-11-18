@@ -66,7 +66,7 @@ internal fun EatsCheckoutGroupSplitCard(
                     color = palette.accent,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.pressScaleClickable(onClick = onManage).padding(start = 8.dp, vertical = 4.dp),
+                    modifier = Modifier.pressScaleClickable(onClick = onManage).padding(start = 8.dp, top = 4.dp, bottom = 4.dp),
                 )
             }
         }
