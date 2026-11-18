@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -123,7 +124,10 @@ fun EatsBrowseOffers(
             Toast.makeText(context, "Coupon removed", Toast.LENGTH_SHORT).show()
         },
     )
-    if (showClubSheet) ModalBottomSheet(
+    if (showClubSheet) {
+        val clubSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+        sheetState = clubSheetState,
         onDismissRequest = { showClubSheet = false },
         containerColor = Ids.colors.background,
         contentColor = Ids.colors.textPrimary,
@@ -131,6 +135,7 @@ fun EatsBrowseOffers(
         Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 28.dp)) {
             EatsMembershipCard()
             TextButton(onClick = { showClubSheet = false }) { Text("Not now") }
+        }
         }
     }
 }
