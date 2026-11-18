@@ -99,7 +99,7 @@ internal fun EatsCheckoutAddressCard(
     Row(
         Modifier.fillMaxWidth().padding(top = 12.dp).clip(RoundedCornerShape(16.dp))
             .background(palette.surfaceSoft).pressScaleClickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .height(59.dp).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -147,7 +147,7 @@ internal fun EatsCheckoutCartLineRow(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(formatEatsRwf(eatsLineUnitPrice(product, line.choiceIds)), color = palette.secondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            Text(formatEatsRwf(eatsLineUnitPrice(product, line.choiceIds)), color = palette.secondary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
         }
         EatsCheckoutQuantityButton("−", "Remove one", palette, onMinus)
         Text(line.quantity.toString(), color = palette.primary, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(28.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
@@ -194,8 +194,8 @@ internal fun EatsCheckoutUpsellCard(
                 Text(if (quantity == 0) "+" else quantity.toString(), color = palette.primary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
             }
         }
-        Text(product.name, color = palette.primary, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
-        Text(formatEatsRwf(product.price), color = palette.secondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 12.dp))
+        Text(product.name, color = palette.primary, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp).height(38.dp))
+        Text(formatEatsRwf(product.price), color = palette.secondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 5.dp))
     }
 }
 
@@ -243,18 +243,18 @@ internal fun EatsCheckoutCouponRow(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(palette.surfaceSoft)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+        modifier.fillMaxWidth().height(60.dp).clip(RoundedCornerShape(14.dp)).background(palette.surfaceSoft)
+            .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             if (coupon == "EATS20") "EATS20 · 20% off items (max 2,000 RWF)" else "FREEDEL · Free delivery",
             color = palette.primary,
-            fontSize = 12.sp,
+            fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f),
         )
-        Text("Remove", color = palette.primary, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.pressScaleClickable(onClick = onRemove).padding(start = 8.dp, vertical = 8.dp))
+        Text("Remove", color = palette.primary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.pressScaleClickable(onClick = onRemove).padding(start = 8.dp, top = 8.dp, bottom = 8.dp))
     }
 }
 
@@ -274,7 +274,7 @@ internal fun EatsCheckoutSummaryRow(
         Text(label, color = palette.secondary, fontSize = 15.sp)
         Text(
             if (free) "Free" else if (positive) "−${formatEatsRwf(-amount)}" else formatEatsRwf(amount),
-            color = if (positive) Color(0xFF14966A) else palette.primary,
+            color = if (positive) Color(0xFF08794D) else palette.primary,
             fontSize = 15.sp,
             fontWeight = FontWeight.Bold,
         )
@@ -295,7 +295,7 @@ internal fun EatsCheckoutPayButton(
             .pressScaleClickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, color = if (enabled) palette.brandOn else palette.accent, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Text(label, color = if (enabled) palette.brandOn else palette.accent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -325,7 +325,7 @@ internal fun EatsCheckoutEmptyPage(
                 .pressScaleClickable(onClick = onBack),
             contentAlignment = Alignment.Center,
         ) {
-            Text("Back to the menu", color = palette.brandOn, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text("Back to the menu", color = palette.brandOn, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
