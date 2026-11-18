@@ -38,7 +38,7 @@ class EatsBrowseParityScreenshotTest {
             }
         }
         rule.waitUntil(30_000) {
-            rule.onNodeWithText("Nyamirambo", substring = true).fetchSemanticsNodes().isNotEmpty()
+            rule.onAllNodesWithText("Nyamirambo", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
     }
 
