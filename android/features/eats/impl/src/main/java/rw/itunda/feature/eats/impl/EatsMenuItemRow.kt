@@ -38,12 +38,13 @@ fun EatsMenuItemRow(
     imageUrl: String?,
     qty: Int,
     optionsHint: String?,
+    onOpenDetails: () -> Unit,
     onAdd: () -> Unit,
     onMinus: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(modifier.fillMaxWidth().padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
+        Column(Modifier.weight(1f).pressScaleClickable(onClick = onOpenDetails)) {
             Text(name, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
             if (!description.isNullOrBlank()) {
                 Text(description, color = Ids.colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
@@ -58,7 +59,7 @@ fun EatsMenuItemRow(
             if (optionsHint != null) Text(optionsHint, color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
         }
         Spacer(Modifier.width(12.dp))
-        Box(Modifier.size(84.dp)) {
+        Box(Modifier.size(84.dp).pressScaleClickable(onClick = onOpenDetails)) {
             if (imageUrl != null) MenuItemThumb(imageUrl, 84.dp)
             else Box(Modifier.size(84.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFFFFE6C7)), contentAlignment = Alignment.Center) {
                 ItundaArt("bread", ItundaArtSet.Color, 48.dp)

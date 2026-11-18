@@ -260,4 +260,62 @@ class EatsIntegratedScreenshotTest {
         rule.waitForIdle()
         capture("eats-prototype-browse-search-bakery-entered-light")
     }
+
+    private fun openBakery(dark: Boolean) {
+        show(dark)
+        rule.onNodeWithText("Kigali Bakery").performClick()
+        rule.waitUntil(20_000) {
+            rule.onAllNodesWithText("Croissant").fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    @Test fun restaurantMenuLight() {
+        openBakery(false)
+        rule.onNodeWithText("Popular").assertExists()
+        capture("eats-prototype-restaurant-menu-light")
+    }
+
+    @Test fun restaurantMenuDark() {
+        openBakery(true)
+        rule.onNodeWithText("Popular").assertExists()
+        capture("eats-prototype-restaurant-menu-dark")
+    }
+
+    @Test fun restaurantInfoTabLight() {
+        openBakery(false)
+        rule.onNodeWithText("Info").performClick()
+        rule.onNodeWithText("About this restaurant").assertExists()
+        capture("eats-prototype-restaurant-info-light")
+    }
+
+    @Test fun restaurantReviewsTabDark() {
+        openBakery(true)
+        rule.onNodeWithText("Reviews").performClick()
+        capture("eats-prototype-restaurant-reviews-dark")
+    }
+
+    @Test fun restaurantItemSheetLight() {
+        openBakery(false)
+        rule.onNodeWithText("Croissant").performClick()
+        rule.onNodeWithText("Preferences").assertExists()
+        rule.onNodeWithText("No onions").assertExists()
+        rule.onNodeWithText("Extra spicy").assertExists()
+        capture("eats-prototype-restaurant-item-sheet-light")
+    }
+
+    @Test fun restaurantItemSheetDark() {
+        openBakery(true)
+        rule.onNodeWithText("Croissant").performClick()
+        rule.onNodeWithText("Preferences").assertExists()
+        capture("eats-prototype-restaurant-item-sheet-dark")
+    }
+
+    @Test fun restaurantItemSheetCanCustomizeQuantityAndAdd() {
+        openBakery(false)
+        rule.onNodeWithText("Croissant").performClick()
+        rule.onNodeWithText("No onions").performClick()
+        rule.onNodeWithContentDescription("Add one").performClick()
+        rule.onNodeWithText("Add to cart · 2,400 RWF").performClick()
+        rule.onNodeWithText("Checkout (2 items)").assertExists()
+    }
 }

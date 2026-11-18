@@ -71,6 +71,7 @@ fun RestaurantMenuView(
     isPickup: Boolean = false,
     onModeChange: (EatsCheckoutMode) -> Unit = {},
     onGroupOrder: () -> Unit = {},
+    onItemPreferences: (String) -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
     // Real menu-options selection UI (2026-07-21, v1: required single-select only) --
@@ -79,6 +80,7 @@ fun RestaurantMenuView(
     // convention (no modal-overlay pattern exists anywhere in this app).
     var selectedTab by remember { mutableStateOf("Menu") }
     var expandedProductId by remember { mutableStateOf<String?>(null) }
+    var selectedItemForDetails by remember { mutableStateOf<MerchantProductDto?>(null) }
     // Real optional/multi-select menu option groups (itunda Eats redesign,
     // 2026-08-28) -- the backend has always supported 4 real group combinations
     // (required x multiSelect, see MenuOptionGroup.kt's own doc comment), but this
@@ -216,6 +218,7 @@ fun RestaurantMenuView(
                             imageUrl = p.imageUrl,
                             qty = simpleQty,
                             optionsHint = if (hasOptions) (if (isExpanded) "Tap + to close options" else "Options required — tap + to choose") else null,
+                            onOpenDetails = { selectedItemForDetails = p },
                             onAdd = { if (hasOptions) toggleExpand(p.id) else setSimpleQty(p.id, simpleQty + 1) },
                             onMinus = { if (simpleQty > 0) setSimpleQty(p.id, simpleQty - 1) },
                         )
@@ -291,6 +294,24 @@ fun RestaurantMenuView(
             EatsFrequentlyOrderedWith(productId = lastLine.productId) { item ->
                 setSimpleQty(item.id, (cart[eatsCartKey(item.id, emptyList())]?.quantity ?: 0) + 1)
             }
+        }
+        selectedItemForDetails?.let { item ->
+            EatsMenuItemSheet(
+                name = item.name,
+                description = item.description,
+                price = item.price,
+                imageUrl = item.imageUrl,
+                art = eatsMenuItemArt(item.name),
+                onDismiss = { selectedItemForDetails = null },
+                onAdd = { quantity, preferences ->
+                    val key = eatsCartKey(item.id, emptyList())
+                    cart[key] = EatsCartLine(item.id, (cart[key]?.quantity ?: 0) + quantity)
+                    if (preferences.isNotEmpty()) {
+                        onItemPreferences(item.name + ": " + preferences.joinToString(", "))
+                    }
+                    selectedItemForDetails = null
+                },
+            )
         }
         if (cartCount > 0) {
             Box(

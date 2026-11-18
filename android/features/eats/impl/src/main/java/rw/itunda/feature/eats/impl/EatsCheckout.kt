@@ -68,6 +68,7 @@ fun EatsCheckoutView(
     menu: List<MerchantProductDto>,
     initialMode: EatsCheckoutMode = EatsCheckoutMode.DELIVERY,
     initialAddress: String = "",
+    initialDeliveryNotes: String = "",
     savedCoupon: String? = null,
     onModeChange: (EatsCheckoutMode) -> Unit = {},
     onBack: () -> Unit,
@@ -88,7 +89,7 @@ fun EatsCheckoutView(
     var groupSummary by remember(initialGroupSummary) { mutableStateOf(initialGroupSummary) }
     var addressLatitude by remember { mutableStateOf<Double?>(null) }
     var addressLongitude by remember { mutableStateOf<Double?>(null) }
-    var deliveryNotes by remember { mutableStateOf("") }
+    var deliveryNotes by remember(initialDeliveryNotes) { mutableStateOf(initialDeliveryNotes) }
     var requestForRider by remember { mutableStateOf("Leave at the door") }
     // Real 배민오더-style table/QR ordering (2026-07-25) -- the table number a buyer
     // reads off the physical tag/QR at their table. See DineInOrder.kt's own doc

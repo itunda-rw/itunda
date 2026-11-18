@@ -292,6 +292,11 @@ internal fun OrderFoodContent(
             selectedRestaurant = selectedRestaurant,
             pickupInitially = browseState.isPickup,
             deliveryAddress = browseState.address,
+            initialDeliveryNotes = browseState.kitchenNote,
+            onItemPreferences = { preference ->
+                browseState.kitchenNote = listOf(browseState.kitchenNote, preference)
+                    .filter { it.isNotBlank() }.joinToString("; ").take(80)
+            },
             savedCoupon = browseState.selectedCoupon,
             onCheckoutModeChange = { mode ->
                 browseState.isPickup = mode == rw.itunda.feature.eats.impl.EatsCheckoutMode.PICKUP

@@ -21,6 +21,8 @@ internal fun EatsOrderFlowDispatch(
     selectedRestaurant: ShoppingMerchantDto?,
     pickupInitially: Boolean,
     deliveryAddress: String,
+    initialDeliveryNotes: String = "",
+    onItemPreferences: (String) -> Unit = {},
     savedCoupon: String? = null,
     onCheckoutModeChange: (EatsCheckoutMode) -> Unit = {},
     showCheckout: Boolean,
@@ -52,6 +54,7 @@ internal fun EatsOrderFlowDispatch(
                 menu = menu.orEmpty(),
                 initialMode = if (pickupInitially) EatsCheckoutMode.PICKUP else EatsCheckoutMode.DELIVERY,
                 initialAddress = deliveryAddress,
+                initialDeliveryNotes = initialDeliveryNotes,
                 savedCoupon = savedCoupon,
                 onModeChange = onCheckoutModeChange,
                 onBack = onCheckoutBack,
@@ -69,6 +72,7 @@ internal fun EatsOrderFlowDispatch(
                 isPickup = pickupInitially,
                 onModeChange = onCheckoutModeChange,
                 onGroupOrder = onGroupOrder,
+                onItemPreferences = onItemPreferences,
             )
         }
         return true

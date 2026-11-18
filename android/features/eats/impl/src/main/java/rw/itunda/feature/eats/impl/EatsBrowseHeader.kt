@@ -45,6 +45,7 @@ class EatsBrowseState {
     var savedAddresses by mutableStateOf(listOf(EatsSavedAddress("Home", "Kimironko, KG 11 Ave"), EatsSavedAddress("Work", "Kacyiru, KG 7 Ave")))
     var cartRestaurant by mutableStateOf<ShoppingMerchantDto?>(null)
     var showCoupons by mutableStateOf(false)
+    var kitchenNote by mutableStateOf("")
 }
 
 @Composable
