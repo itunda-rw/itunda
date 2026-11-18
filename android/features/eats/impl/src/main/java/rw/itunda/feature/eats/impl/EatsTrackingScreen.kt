@@ -314,7 +314,7 @@ internal fun EatsTrackingMain(
                     background = Color(0xFFC4281B),
                     color = Color.White,
                 )
-                if (!pickup) Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(16.dp))
                 EatsTrackingOrderCard(order, items, restaurantName, orderCode, pickup, onCallRestaurant = if (showRestaurantCall) onCallRestaurant else null)
             }
             Spacer(Modifier.height(24.dp))
