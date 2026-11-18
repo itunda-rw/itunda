@@ -40,7 +40,7 @@ class EatsIntegratedScreenshotTest {
             }
         }
         rule.waitUntil(10_000) {
-            rule.onAllNodesWithText("Kigali Bakery").fetchSemanticsNodes().isNotEmpty()
+            rule.onAllNodesWithText("Nyamirambo Grill").fetchSemanticsNodes().isNotEmpty()
         }
     }
 
