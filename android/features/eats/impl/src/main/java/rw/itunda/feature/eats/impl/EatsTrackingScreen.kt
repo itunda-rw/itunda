@@ -298,7 +298,7 @@ internal fun EatsTrackingMain(
                     restaurantName = restaurantName,
                     orderCode = orderCode,
                     pickup = pickup,
-                    onCallRestaurant = if (pickup && order.status == "PREPARING") onCallRestaurant else null,
+                    onCallRestaurant = if (showRestaurantCall) onCallRestaurant else null,
                 )
                 Spacer(Modifier.height(24.dp))
             }
@@ -314,7 +314,7 @@ internal fun EatsTrackingMain(
                 )
                 if (!pickup) {
                     Spacer(Modifier.height(16.dp))
-                    EatsTrackingOrderCard(order, items, restaurantName, orderCode, pickup)
+                    EatsTrackingOrderCard(order, items, restaurantName, orderCode, pickup, onCallRestaurant = if (showRestaurantCall) onCallRestaurant else null)
                 }
             }
             Spacer(Modifier.height(24.dp))

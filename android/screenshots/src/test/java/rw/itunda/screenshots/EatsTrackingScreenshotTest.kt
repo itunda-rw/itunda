@@ -69,17 +69,28 @@ class EatsTrackingScreenshotTest {
         rule.onRoot().captureRoboImage("build/screenshots/$name.png")
     }
 
-    @Test fun deliveryAcceptedLight() = show("PLACED", name = "eats-prototype-tracking-delivery-accepted-light")
+    @Test fun deliveryAcceptedLight() {
+        show("PLACED", name = "eats-prototype-tracking-delivery-accepted-light")
+        rule.onNodeWithText("Call restaurant").assertExists()
+        rule.onNodeWithText("Kigali Bakery, EA-7207 · 2 items").assertExists()
+    }
     @Test fun deliveryPreparingLight() {
         show("PREPARING", name = "eats-prototype-tracking-delivery-preparing-light")
         rule.onNodeWithText("Arrives by", substring = true).assertExists()
+        rule.onNodeWithText("Call restaurant").assertDoesNotExist()
+        rule.onNodeWithText("Kigali Bakery, EA-7207").assertExists()
     }
     @Test fun deliveryOnTheWayLight() = show("PICKED_UP", name = "eats-prototype-tracking-delivery-on-the-way-light")
-    @Test fun deliveryCompleteLight() = show("DELIVERED", name = "eats-prototype-tracking-delivery-complete-light")
+    @Test fun deliveryCompleteLight() {
+        show("DELIVERED", name = "eats-prototype-tracking-delivery-complete-light")
+        rule.onNodeWithText("Call restaurant").assertExists()
+    }
     @Test fun deliveryCancelledLight() = show("CANCELLED", name = "eats-prototype-tracking-cancelled-light")
     @Test fun pickupReadyLight() {
         show("READY_FOR_PICKUP", pickup = true, name = "eats-prototype-tracking-pickup-ready-light")
         rule.onNodeWithText("Ready by", substring = true).assertExists()
+        rule.onNodeWithText("Call restaurant").assertExists()
+        rule.onNodeWithText("Kigali Bakery, EA-7207 · 2 items").assertExists()
     }
     @Test fun pickupCompleteLight() = show("PICKED_UP", pickup = true, name = "eats-prototype-tracking-pickup-complete-light")
     @Test fun deliveryOnTheWayDark() = show("PICKED_UP", dark = true, name = "eats-prototype-tracking-delivery-on-the-way-dark")
