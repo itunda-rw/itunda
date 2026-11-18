@@ -333,6 +333,7 @@ internal fun EatsCheckoutPrototypeScreen(
                                 }
                                 error?.let { Text(it, color = Color(0xFFE5484D), fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
                             }
+                            Spacer(Modifier.height(110.dp))
                         }
                     }
                     EatsCheckoutPayButton(
