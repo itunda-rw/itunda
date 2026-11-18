@@ -3,6 +3,7 @@ package rw.itunda.screenshots
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
