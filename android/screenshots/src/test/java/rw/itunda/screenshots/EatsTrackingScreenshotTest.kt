@@ -270,8 +270,6 @@ class EatsTrackingScreenshotTest {
     @Test fun cancelledDarkScroll236() =
         showScrolled("CANCELLED", dark = true, scrollOffset = 236, name = "eats-prototype-tracking-cancelled-dark-scroll-236")
 
-        showScrolled("PICKED_UP", pickup = true, dark = true, scrollOffset = 90, name = "eats-prototype-tracking-pickup-complete-dark-scroll-90")
-        showScrolled("PICKED_UP", pickup = true, dark = true, scrollOffset = 179, name = "eats-prototype-tracking-pickup-complete-dark-scroll-179")
 
     @Test fun pickupPreparingLightScroll112() =
         showScrolled("PREPARING", pickup = true, scrollOffset = 112, name = "eats-prototype-tracking-pickup-preparing-light-scroll-112")
