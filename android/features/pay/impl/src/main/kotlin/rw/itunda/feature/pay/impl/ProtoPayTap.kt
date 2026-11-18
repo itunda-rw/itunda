@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -17,6 +18,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -39,9 +42,14 @@ internal fun ProtoPayTap(p: PayPalette, secondsLeft: Int, fundingName: String, f
             }
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = 22.dp).height(77.8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
+            Column(Modifier.weight(1f).offset(y = (-9.5).dp)) {
                 Text(fundingName, color = p.tt, fontSize = 13.sp, lineHeight = 18.2.sp)
-                Text("$fundingBalance RWF", color = p.text, fontSize = 24.sp, lineHeight = 31.2.sp, fontWeight = FontWeight.ExtraBold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("$fundingBalance RWF", color = p.text, fontSize = 24.sp, lineHeight = 31.2.sp, fontWeight = FontWeight.ExtraBold)
+                    Box(Modifier.padding(start = 10.dp).size(width = 10.dp, height = 5.dp).drawBehind {
+                        drawPath(Path().apply { moveTo(0f, 0f); lineTo(size.width, 0f); lineTo(size.width / 2, size.height); close() }, p.text)
+                    })
+                }
             }
             Box(Modifier.width(73.9.dp).height(36.dp).clip(RoundedCornerShape(12.dp)).background(p.tint).pressScaleClickable(onClick = onTopUp), contentAlignment = Alignment.Center) {
                 Text("Top up", color = p.tintFg, fontSize = 14.sp, fontWeight = FontWeight.Bold)

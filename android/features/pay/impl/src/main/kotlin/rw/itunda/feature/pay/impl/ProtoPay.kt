@@ -80,7 +80,7 @@ fun ProtoPayContent(
             Column(Modifier.fillMaxSize().background(p.page)) {
                 PayHeader(p, onOpenPay, onSettings)
                 Segments(p, mode, onMode)
-                Spacer(Modifier.height(if (scan) 0.dp else 16.dp))
+                Spacer(Modifier.height(if (scan) 0.dp else if (mode == ProtoPayMode.TAP) 21.dp else 16.dp))
                 when (mode) {
                     ProtoPayMode.MY_CODE -> Column(Modifier.padding(horizontal = 20.dp)) { MyCode(p, qrContent, secondsLeft, fundingName, fundingBalance, onReceive) }
                     ProtoPayMode.TAP -> Column(Modifier.padding(horizontal = 20.dp)) { ProtoPayTap(p, secondsLeft, fundingName, fundingBalance, onChangeFunding) }
@@ -102,7 +102,7 @@ fun ProtoPayContent(
 /** Title button (24,24 · 167x44), EN pill (40x32) and 44dp settings button, measured at 390dp. */
 @Composable
 private fun PayHeader(p: PayPalette, onOpenPay: () -> Unit, onSettings: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 10.dp).height(44.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().height(78.dp).padding(top = 24.dp), verticalAlignment = Alignment.CenterVertically) {
         Row(
             Modifier.padding(start = 24.dp).height(44.dp).pressScaleClickable(onClick = onOpenPay),
             verticalAlignment = Alignment.CenterVertically,
@@ -125,17 +125,16 @@ private fun PayHeader(p: PayPalette, onOpenPay: () -> Unit, onSettings: () -> Un
 
 @Composable
 private fun Segments(p: PayPalette, mode: ProtoPayMode, onMode: (ProtoPayMode) -> Unit) {
-    val scan = mode == ProtoPayMode.SCAN
     Row(Modifier.padding(horizontal = 20.dp).fillMaxWidth().height(48.dp).clip(RoundedCornerShape(14.dp)).background(p.soft).padding(4.dp)) {
         ProtoPayMode.values().forEach { m ->
             val on = m == mode
             Box(
                 Modifier.weight(1f).height(40.dp).clip(RoundedCornerShape(11.dp))
-                    .background(if (!on) Color.Transparent else if (scan) p.scanTrack else p.brand)
+                    .background(if (on) p.brand else Color.Transparent)
                     .pressScaleClickable { onMode(m) },
                 contentAlignment = Alignment.Center,
             ) {
-                Text(m.label, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold, color = if (on) p.segOn else p.segOff)
+                Text(m.label, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold, color = if (on) Color(0xFF17171C) else p.segOff)
             }
         }
     }
@@ -149,12 +148,12 @@ private fun MyCode(p: PayPalette, qrContent: String?, secondsLeft: Int, fundingN
     ) {
         Box(Modifier.size(204.dp).clip(RoundedCornerShape(20.dp)).background(Color.White), contentAlignment = Alignment.Center) {
             if (qrContent != null) {
-                val qr = remember(qrContent) { generatePayQrBitmap(qrContent) }
+                val qr = remember(qrContent) { generatePayQrBitmap(qrContent, margin = 0) }
                 Image(qr, "Your payment code", Modifier.size(176.dp), contentScale = ContentScale.Fit)
             }
             Box(Modifier.size(52.8.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
-                Box(Modifier.size(44.dp).clip(CircleShape).background(p.brand), contentAlignment = Alignment.Center) {
-                    Text("i", color = p.segOn, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
+                Box(Modifier.size(44.dp).clip(CircleShape).background(Color(0xFF7472F4)), contentAlignment = Alignment.Center) {
+                    Text("i", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
                 }
             }
         }

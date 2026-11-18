@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -75,6 +76,23 @@ internal fun ProtoPayScan(
     }
 }
 
+/** Line glyphs for the three pills, 22dp box, 1.8dp round strokes (bolt / pencil / photo). */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawPillGlyph(label: String) {
+    val u = size.width / 22f
+    val st = Stroke(1.8f * u, cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round)
+    val path = Path()
+    when (label) {
+        "Flash" -> { path.moveTo(12.5f * u, 3f * u); path.lineTo(5f * u, 12.5f * u); path.lineTo(10.5f * u, 12.5f * u); path.lineTo(9.5f * u, 19f * u); path.lineTo(17f * u, 9.5f * u); path.lineTo(11.5f * u, 9.5f * u); path.close() }
+        "Till number" -> { path.moveTo(4f * u, 18f * u); path.lineTo(4.8f * u, 14f * u); path.lineTo(14.5f * u, 4.3f * u); path.lineTo(17.7f * u, 7.5f * u); path.lineTo(8f * u, 17.2f * u); path.close(); path.moveTo(12.6f * u, 6.2f * u); path.lineTo(15.8f * u, 9.4f * u) }
+        else -> {
+            path.addRoundRect(androidx.compose.ui.geometry.RoundRect(3f * u, 4f * u, 19f * u, 18f * u, CornerRadius(3f * u)))
+            path.moveTo(3.5f * u, 15f * u); path.lineTo(8.5f * u, 10.5f * u); path.lineTo(13f * u, 14.5f * u); path.lineTo(15.5f * u, 12.5f * u); path.lineTo(18.5f * u, 15.5f * u)
+            drawCircle(Color.White, 1.4f * u, Offset(14.5f * u, 8.5f * u), style = st)
+        }
+    }
+    drawPath(path, Color.White, style = st)
+}
+
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFrame(p: PayPalette) {
     val w = 280.dp.toPx(); val r = 18.dp.toPx(); val len = 46.dp.toPx(); val t = 4.dp.toPx()
     val stroke = Stroke(t, cap = StrokeCap.Butt)
@@ -101,9 +119,7 @@ private fun ScanPill(label: String, width: Dp, p: PayPalette, onClick: (() -> Un
             .padding(start = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(22.dp).drawBehind {
-            drawRoundRect(Color.White, cornerRadius = CornerRadius(5.dp.toPx()), style = Stroke(1.8.dp.toPx()))
-        })
+        Box(Modifier.size(22.dp).drawBehind { drawPillGlyph(label) })
         Text(label, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.14).sp, modifier = Modifier.padding(start = 6.dp))
     }
 }
@@ -114,6 +130,7 @@ private fun ScanChip(name: String, width: Dp, strong: Boolean, p: PayPalette, on
         Modifier.width(width).height(44.dp).clip(RoundedCornerShape(22.dp)).background(p.scanChip).pressScaleClickable { onMerchant(name) },
         contentAlignment = Alignment.Center,
     ) {
+        if (!strong) Box(Modifier.align(Alignment.CenterStart).padding(start = 8.dp).size(3.3.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.4f)))
         Text(
             name, maxLines = 1, textAlign = TextAlign.Center,
             color = if (strong) Color.White else Color.White.copy(alpha = 0.62f),
