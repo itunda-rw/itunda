@@ -56,12 +56,16 @@ internal fun EatsTrackingRiderPanel(riderName: String, onBack: () -> Unit, onQui
     Column(modifier.fillMaxSize().background(palette.background)) {
         EatsTrackingHeader("", onBack)
         Column(Modifier.weight(1f).padding(horizontal = 24.dp)) {
-            Text(riderName, color = palette.primary, fontSize = 32.sp, lineHeight = 40.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(top = 16.dp))
-            Text("Quick message", color = palette.secondary, fontSize = 16.sp, modifier = Modifier.padding(top = 18.dp, bottom = 12.dp))
+            Text(riderName, color = palette.primary, fontSize = 30.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 16.dp))
+            Text("Quick message", color = palette.secondary, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 18.dp, bottom = 10.dp))
             listOf("I’m at the gate", "Please call me", "Leave it at the door").forEach { message ->
-                Box(Modifier.padding(start = 24.dp, bottom = 10.dp).clip(RoundedCornerShape(28.dp)).background(palette.surfaceSoft)
-                    .pressScaleClickable(onClick = { onQuickMessage(message) }).padding(horizontal = 20.dp, vertical = 14.dp)) {
-                    Text(message, color = palette.primary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                Box(
+                    Modifier.padding(start = 24.dp, bottom = 10.dp).height(40.dp)
+                        .clip(RoundedCornerShape(18.dp)).background(palette.surfaceSoft)
+                        .pressScaleClickable(onClick = { onQuickMessage(message) }).padding(horizontal = 16.dp),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    Text(message, color = palette.primary, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -76,8 +80,8 @@ internal fun EatsTrackingCancelPanel(refund: String, busy: Boolean, onBack: () -
     Column(modifier.fillMaxSize().background(palette.background)) {
         EatsTrackingHeader("", onBack)
         Column(Modifier.weight(1f).padding(horizontal = 24.dp).padding(top = 16.dp)) {
-            Text("Cancel this order?", color = palette.primary, fontSize = 32.sp, lineHeight = 40.sp, fontWeight = FontWeight.Black)
-            Text("You will get $refund back in itunda Pay.", color = palette.secondary, fontSize = 16.sp, lineHeight = 23.sp,
+            Text("Cancel this order?", color = palette.primary, fontSize = 30.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold)
+            Text("You will get $refund back in itunda Pay.", color = palette.secondary, fontSize = 15.sp, lineHeight = 21.sp,
                 modifier = Modifier.padding(top = 12.dp))
         }
         Column(Modifier.padding(horizontal = 24.dp, vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -94,11 +98,20 @@ internal fun EatsTrackingRatingPanel(rating: Int, busy: Boolean, onBack: () -> U
     Column(modifier.fillMaxSize().background(palette.background)) {
         EatsTrackingHeader("", onBack)
         Column(Modifier.weight(1f).padding(horizontal = 24.dp).padding(top = 16.dp)) {
-            Text("How was your order?", color = palette.primary, fontSize = 32.sp, lineHeight = 40.sp, fontWeight = FontWeight.Black)
-            Row(Modifier.padding(top = 28.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text("How was your order?", color = palette.primary, fontSize = 30.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold)
+            Row(Modifier.padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 (1..5).forEach { value ->
-                    Text("★", color = if (value <= rating) Color(0xFFFFB321) else palette.surfaceSoft, fontSize = 36.sp,
-                        modifier = Modifier.pressScaleClickable(onClick = { onRatingChange(value) }))
+                    Box(
+                        Modifier.size(48.dp).pressScaleClickable(onClick = { onRatingChange(value) }),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            "★",
+                            color = if (value <= rating) Color(0xFFFFB800) else palette.surfaceSoft,
+                            fontSize = 34.sp,
+                            lineHeight = 47.6.sp,
+                        )
+                    }
                 }
             }
         }
