@@ -288,7 +288,7 @@ class EatsScreenshotTest {
                 }
             }
         }
-        rule.onNodeWithText("Free delivery on your first order").performClick()
+        rule.onNodeWithText("Free delivery on your first", substring = true).performClick()
         assertTrue(deliverySaved)
         rule.onNodeWithText("20% off your meal").performClick()
         assertTrue(pickupSaved)
