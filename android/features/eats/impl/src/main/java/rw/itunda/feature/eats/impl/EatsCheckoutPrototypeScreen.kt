@@ -337,6 +337,7 @@ internal fun EatsCheckoutPrototypeScreen(
                     EatsCheckoutPayButton(
                         label = when {
                             shortOfMinimum -> "Add ${formatEatsRwf(minimumOrderAmount - itemTotal)} to order"
+                            paymentMethod == EatsPaymentMethod.CASH -> "Place order · ${formatEatsRwf(total)}"
                             else -> "Pay ${formatEatsRwf(total)}"
                         },
                         enabled = canPay,
