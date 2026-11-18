@@ -254,8 +254,8 @@ internal fun EatsCheckoutCouponRow(
             fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f),
         )
-        Text("Remove", color = palette.primary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.pressScaleClickable(onClick = onRemove)
-                .semantics { contentDescription = "Remove coupon" }
+        Text("Remove", color = palette.primary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { contentDescription = "Remove coupon" }
+                .pressScaleClickable(onClick = onRemove)
                 .padding(start = 8.dp, top = 8.dp, bottom = 8.dp))
     }
 }
