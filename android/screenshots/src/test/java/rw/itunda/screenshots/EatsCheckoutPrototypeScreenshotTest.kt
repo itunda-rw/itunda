@@ -153,9 +153,14 @@ class EatsCheckoutPrototypeScreenshotTest {
 
     @Test fun bankPaymentSelectionReturnsToCart() {
         render(paymentMethod = EatsPaymentMethod.ITUNDA_BANK)
+        rule.onRoot().performTouchInput { swipeUp() }
+        rule.onRoot().performTouchInput { swipeUp() }
+        rule.waitForIdle()
         rule.onNodeWithText("Pay with").performClick()
-        rule.onNodeWithText("itunda Bank").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithContentDescription("Payment option itunda Bank").performClick()
         rule.onNodeWithText("Done").performClick()
+        rule.waitForIdle()
         rule.onNodeWithText("itunda Bank · 842,300 RWF").assertExists()
         rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-payment-bank.png")
     }
@@ -197,7 +202,7 @@ class EatsCheckoutPrototypeScreenshotTest {
         render()
         rule.onNodeWithContentDescription("Add Hot milk tea").performClick()
         assertFalse(rule.onAllNodesWithText("Hot milk tea").fetchSemanticsNodes().isEmpty())
-        rule.onNodeWithText("3,400 RWF").assertExists()
+        assertTrue(rule.onAllNodesWithText("3,400 RWF").fetchSemanticsNodes().size >= 2)
         rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-upsell-added.png")
     }
 }
