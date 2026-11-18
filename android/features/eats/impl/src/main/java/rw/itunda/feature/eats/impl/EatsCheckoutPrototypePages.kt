@@ -99,7 +99,8 @@ private fun EatsCheckoutPaymentOption(
     onClick: () -> Unit,
 ) {
     Row(
-        Modifier.fillMaxWidth().height(71.dp).pressScaleClickable(onClick = onClick),
+        Modifier.fillMaxWidth().height(71.dp).pressScaleClickable(onClick = onClick)
+            .semantics { contentDescription = "Payment option $title" },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
