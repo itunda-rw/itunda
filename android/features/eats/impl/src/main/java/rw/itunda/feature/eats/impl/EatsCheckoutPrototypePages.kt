@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -39,50 +40,60 @@ import rw.itunda.core.designsystem.components.ItundaArt
 import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.components.pressScaleClickable
 
+internal const val EATS_CASH_PAYMENT_LIMIT = 100000.0
+
 @Composable
 internal fun EatsCheckoutPaymentPage(
     selected: EatsPaymentMethod,
     payBalance: Double,
     bankBalance: Double,
+    amount: Double,
     isPickup: Boolean,
     onBack: () -> Unit,
     onDone: (EatsPaymentMethod) -> Unit,
 ) {
     val palette = eatsPrototypePalette()
-    var selectedMethod by remember(selected) { mutableStateOf(selected) }
+    val payDisabled = amount > payBalance
+    val bankDisabled = amount > bankBalance
+    val cashDisabled = amount > EATS_CASH_PAYMENT_LIMIT
     Column(Modifier.fillMaxSize().background(palette.background)) {
         EatsCheckoutPageBack(onBack, palette, topOffset = 22.dp, height = 78.dp)
         Text("Pay with", color = palette.primary, fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 24.dp, top = 5.dp, bottom = 8.dp))
         Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
             EatsCheckoutPaymentOption(
                 title = "itunda Pay",
-                detail = String.format(java.util.Locale.US, "%,.0f RWF", payBalance),
-                selected = selectedMethod == EatsPaymentMethod.ITUNDA_PAY,
+                detail = if (payDisabled) "Not enough balance" else String.format(java.util.Locale.US, "%,.0f RWF", payBalance),
+                selected = selected == EatsPaymentMethod.ITUNDA_PAY,
+                enabled = !payDisabled,
                 palette = palette,
-                onClick = { selectedMethod = EatsPaymentMethod.ITUNDA_PAY },
+                onClick = { onDone(EatsPaymentMethod.ITUNDA_PAY) },
             )
             EatsCheckoutPaymentOption(
                 title = "itunda Bank",
-                detail = String.format(java.util.Locale.US, "%,.0f RWF", bankBalance),
-                selected = selectedMethod == EatsPaymentMethod.ITUNDA_BANK,
+                detail = if (bankDisabled) "Not enough balance" else String.format(java.util.Locale.US, "%,.0f RWF", bankBalance),
+                selected = selected == EatsPaymentMethod.ITUNDA_BANK,
+                enabled = !bankDisabled,
                 palette = palette,
-                onClick = { selectedMethod = EatsPaymentMethod.ITUNDA_BANK },
+                onClick = { onDone(EatsPaymentMethod.ITUNDA_BANK) },
             )
-            if (!isPickup) {
-                EatsCheckoutPaymentOption(
-                    title = "Cash on delivery",
-                    detail = "Pay your rider when the food arrives",
-                    selected = selectedMethod == EatsPaymentMethod.CASH,
-                    palette = palette,
-                    onClick = { selectedMethod = EatsPaymentMethod.CASH },
-                )
-            }
+            EatsCheckoutPaymentOption(
+                title = if (isPickup) "Cash at pickup" else "Cash on delivery",
+                detail = when {
+                    cashDisabled -> "Cash orders are limited to 100,000 RWF"
+                    isPickup -> "Pay when you collect your order"
+                    else -> "Pay your rider when the food arrives"
+                },
+                selected = selected == EatsPaymentMethod.CASH,
+                enabled = !cashDisabled,
+                palette = palette,
+                onClick = { onDone(EatsPaymentMethod.CASH) },
+            )
         }
         Spacer(Modifier.weight(1f))
         Box(
             Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp).height(58.dp)
                 .clip(RoundedCornerShape(18.dp)).background(palette.accentTint)
-                .pressScaleClickable { onDone(selectedMethod) },
+                .pressScaleClickable { onDone(selected) },
             contentAlignment = Alignment.Center,
         ) {
             Text("Done", color = palette.accent, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
@@ -95,13 +106,15 @@ private fun EatsCheckoutPaymentOption(
     title: String,
     detail: String,
     selected: Boolean,
+    enabled: Boolean,
     palette: EatsPrototypePalette,
     onClick: () -> Unit,
 ) {
     Row(
         Modifier.fillMaxWidth().height(71.dp)
             .semantics { contentDescription = "Payment option $title" }
-            .pressScaleClickable(onClick = onClick),
+            .then(Modifier.alpha(if (enabled) 1f else 0.45f))
+            .pressScaleClickable(enabled = enabled, onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -143,8 +156,8 @@ internal fun EatsCheckoutAddressPage(
                     label = "Home",
                     address = "Kimironko, KG 11 Ave",
                     selected = selectedAddress == "Kimironko, KG 11 Ave",
-                    art = "home-duo",
-                    artSet = ItundaArtSet.Duo,
+                    art = "house",
+                    artSet = ItundaArtSet.Color,
                     palette = palette,
                     onClick = { selectedAddress = "Kimironko, KG 11 Ave" },
                 )
@@ -287,8 +300,7 @@ internal fun EatsCheckoutConfirmPage(
         Column(Modifier.fillMaxSize()) {
             EatsCheckoutPageBack(onBack, palette, topOffset = 16.dp, height = 70.dp)
             Box(Modifier.padding(start = 24.dp, top = 20.dp).size(60.dp), contentAlignment = Alignment.Center) {
-                ItundaArt("shield-solid", ItundaArtSet.Solid, 60.dp, tint = palette.brandFill)
-                ItundaArt("check", ItundaArtSet.Line, 24.dp, tint = palette.brandOn)
+                ItundaArt("verified", ItundaArtSet.Color, 60.dp)
             }
             Text("Confirm it’s you", color = palette.primary, fontSize = 30.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 24.dp, top = 18.dp))
             Text(
