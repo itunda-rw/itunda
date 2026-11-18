@@ -43,7 +43,7 @@ private fun Avatar(letter: String, bg: Color, fg: Color) {
 /** Prototype section header: 15sp bold, 16dp above (not on the first) and 12dp below. */
 @Composable
 private fun DayHeader(p: PayPalette, text: String, first: Boolean = false) {
-    Text(text, color = p.text, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = if (first) 16.dp else 24.dp, bottom = 4.dp))
+    Text(text, color = p.text, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = if (first) 16.dp else 24.dp, bottom = if (first) 16.dp else 4.dp))
 }
 
 /** Prototype "Payment history": month total, search, filter pills, rows grouped by day (dummy data). */
