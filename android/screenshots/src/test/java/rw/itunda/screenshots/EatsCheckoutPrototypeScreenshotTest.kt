@@ -27,13 +27,21 @@ import rw.itunda.feature.eats.impl.EatsCartLine
 import rw.itunda.feature.eats.impl.EatsCheckoutMode
 import rw.itunda.feature.eats.impl.EatsCheckoutView
 import rw.itunda.feature.eats.impl.EatsPaymentMethod
-import rw.itunda.feature.eats.impl.eatsScheduleSlots
+import java.time.LocalTime
+import java.util.Locale
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w390dp-h844dp-xxhdpi")
 class EatsCheckoutPrototypeScreenshotTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
+
+    private fun firstScheduleSlot(): String {
+        val now = LocalTime.now()
+        val minutes = now.hour * 60 + now.minute + 45
+        val slot = ((minutes + 29) / 30) * 30
+        return String.format(Locale.US, "%02d:%02d", slot / 60, slot % 60)
+    }
 
     private val restaurant = ShoppingMerchantDto(
         merchantId = "m1",
@@ -135,7 +143,7 @@ class EatsCheckoutPrototypeScreenshotTest {
     }
 
     @Test fun scheduledDeliverySelectionIsRestored() {
-        val slot = eatsScheduleSlots().first()
+        val slot = firstScheduleSlot()
         render(scheduled = slot)
         rule.onNodeWithText(slot).assertExists()
         rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-scheduled.png")
