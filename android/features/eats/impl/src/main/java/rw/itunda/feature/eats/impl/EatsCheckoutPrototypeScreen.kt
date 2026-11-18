@@ -74,7 +74,6 @@ internal fun EatsCheckoutPrototypeScreen(
     var scheduledTime by remember(initialScheduledTime) { mutableStateOf(initialScheduledTime) }
     var paymentMethod by remember(initialPaymentMethod) { mutableStateOf(initialPaymentMethod) }
     var page by remember { mutableStateOf(EatsCheckoutPage.CART) }
-    var selectedAddress by remember(address) { mutableStateOf(address) }
     val palette = eatsPrototypePalette()
 
     val lines = cart.values.filter { it.quantity > 0 }
@@ -154,7 +153,7 @@ internal fun EatsCheckoutPrototypeScreen(
                                     mode = mode,
                                     address = address,
                                     palette = palette,
-                                    onClick = { selectedAddress = address; page = EatsCheckoutPage.ADDRESS },
+                                    onClick = { page = EatsCheckoutPage.ADDRESS },
                                 )
                                 Text(
                                     "Your order",
