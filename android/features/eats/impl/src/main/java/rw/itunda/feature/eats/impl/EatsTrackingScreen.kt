@@ -125,7 +125,6 @@ fun EatsTrackingScreen(
             onCancel = { panel = EatsTrackingPanel.CANCEL },
             onRate = { panel = EatsTrackingPanel.RATING },
             onHelp = { onReportIssue(currentOrder.transactionId) },
-            onCallRestaurant = { Toast.makeText(context, "Calling $restaurantName", Toast.LENGTH_SHORT).show() },
             onDone = onDone,
             modifier = modifier,
         )
@@ -191,11 +190,11 @@ internal fun EatsTrackingMain(
     etaTitle: String, statusLine: String, stepLabels: List<String>, step: Int, pickup: Boolean,
     complete: Boolean, cancelled: Boolean, riderAssigned: Boolean, onBack: () -> Unit, onCall: () -> Unit,
     onMessage: () -> Unit, onCancel: () -> Unit, onRate: () -> Unit, onHelp: () -> Unit,
-    onCallRestaurant: () -> Unit, onDone: () -> Unit, modifier: Modifier,
+    onDone: () -> Unit, modifier: Modifier,
 ) {
     val palette = eatsPrototypePalette()
     Column(modifier.fillMaxSize().background(palette.background)) {
-        EatsTrackingHeader("Your delivery", onBack, onCall, showCall = true)
+        EatsTrackingHeader(if (pickup) "Your pickup" else "Your delivery", onBack)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             Column(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 16.dp)) {
                 Text(etaTitle, color = palette.primary, fontSize = 36.sp, lineHeight = 43.sp, fontWeight = FontWeight.Black)
@@ -209,16 +208,14 @@ internal fun EatsTrackingMain(
                     }
                 }
             }
-            Spacer(Modifier.height(15.dp))
-            EatsTrackingMap(statusText = statusLine, complete = complete, cancelled = cancelled, modifier = Modifier.padding(horizontal = 12.dp))
+            Spacer(Modifier.height(if (!pickup && !cancelled) 12.dp else 16.dp))
+            EatsTrackingMap(statusText = statusLine, step = step, pickup = pickup, complete = complete, cancelled = cancelled, modifier = Modifier.padding(horizontal = if (!pickup && !cancelled) 12.dp else 24.dp))
             EatsTrackingStepper(stepLabels, step, Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp))
             if (order.status == "PLACED" && !pickup) {
                 Column(Modifier.padding(start = 24.dp, end = 24.dp, top = 20.dp)) {
                     Text("Delivery code", color = palette.secondary, fontSize = 15.sp)
                     Text("4821", color = palette.primary, fontSize = 32.sp, lineHeight = 38.sp, letterSpacing = 8.sp, fontWeight = FontWeight.Black)
                     Text("Tell your rider this code at the door. Not before.", color = palette.secondary, fontSize = 15.sp, lineHeight = 21.sp)
-                    Text("Cancel order", color = palette.accent, fontSize = 15.sp, fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 18.dp).pressScaleClickable(onClick = onCancel))
                 }
             } else if (order.status == "PREPARING" && !pickup) {
                 Text("You can cancel only before the restaurant starts preparing.", color = palette.primary, fontSize = 15.sp,
@@ -243,10 +240,7 @@ internal fun EatsTrackingMain(
                     EatsTrackingButton("Get help", onHelp, modifier = Modifier.weight(1f), height = 52.dp, background = palette.surfaceSoft, color = palette.primary)
                 }
             }
-            EatsTrackingOrderSummary(order, items, restaurantName, orderCode, pickup, order.status, onCallRestaurant)
-            if (order.status == "READY_FOR_PICKUP" || pickup) {
-                Text("Pick up at $restaurantName", color = palette.secondary, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp))
-            }
+            EatsTrackingOrderSummary(order, items, restaurantName, orderCode, pickup, order.status, onCancel)
             Spacer(Modifier.height(24.dp))
         }
         if (complete) EatsTrackingButton("Done", onDone, modifier = Modifier.padding(horizontal = 24.dp, vertical = 18.dp))

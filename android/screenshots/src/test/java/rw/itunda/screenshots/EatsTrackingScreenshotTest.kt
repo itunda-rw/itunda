@@ -117,7 +117,7 @@ class EatsTrackingScreenshotTest {
             }
         }
         rule.waitForIdle()
-        rule.onNodeWithText(action).performClick()
+        rule.onNodeWithText(action).performScrollTo().performClick()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/screenshots/$name.png")
     }

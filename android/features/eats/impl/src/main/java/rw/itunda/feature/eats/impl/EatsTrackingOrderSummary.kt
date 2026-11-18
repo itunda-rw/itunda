@@ -24,11 +24,11 @@ import rw.itunda.core.network.EatsOrderItemDto
 @Composable
 internal fun EatsTrackingOrderSummary(
     order: EatsOrderDto, items: List<EatsOrderItemDto>, restaurantName: String, orderCode: String,
-    pickup: Boolean, status: String, onCallRestaurant: () -> Unit,
+    pickup: Boolean, status: String, onCancel: () -> Unit,
 ) {
     val palette = eatsPrototypePalette()
-    Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 18.dp)) {
-        Text(when { status == "CANCELLED" -> "Refunded to itunda Pay"; status == "DELIVERED" -> "Delivered at 15:00"; pickup && status == "PICKED_UP" -> "Picked up at 15:00"; pickup -> "Ready by 15:00"; else -> "Arrives by 15:00" }, color = palette.accent, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+    Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 22.dp)) {
+        Text(when { status == "CANCELLED" -> "Refunded to itunda Pay"; status == "DELIVERED" -> "Delivered at 16:50"; pickup && status == "PICKED_UP" -> "Picked up"; pickup -> "Ready by 16:50"; else -> "Arrives by 16:50" }, color = palette.accent, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
         items.forEach { item ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -48,10 +48,14 @@ internal fun EatsTrackingOrderSummary(
             }
         }
         Text(orderCode, color = palette.secondary, fontSize = 14.sp, modifier = Modifier.padding(top = 10.dp))
+        if (status == "PLACED" && !pickup) {
+            Text("Cancel order", color = palette.accent, fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 10.dp).pressScaleClickable(onClick = onCancel))
+        }
         Spacer(Modifier.height(18.dp))
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(palette.surfaceSoft).padding(16.dp)) {
-            Text("Your order", color = palette.primary, fontSize = 20.sp, fontWeight = FontWeight.Black)
-            Text("$restaurantName, $orderCode · ${items.sumOf { it.quantity }} items", color = palette.secondary, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+            Text("Your order", color = palette.primary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            Text("$restaurantName, $orderCode", color = palette.secondary, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
             items.forEach { item ->
                 Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("${item.quantity} × ${item.productName}", color = palette.primary, fontSize = 15.sp)
@@ -68,8 +72,6 @@ internal fun EatsTrackingOrderSummary(
                 Text("Total", color = palette.primary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 Text(String.format(Locale.US, "%,.0f RWF", order.totalAmount), color = palette.primary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
-            Text("Call restaurant ›", color = palette.accent, fontSize = 14.sp, fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 16.dp).pressScaleClickable(onClick = onCallRestaurant))
         }
     }
 }
