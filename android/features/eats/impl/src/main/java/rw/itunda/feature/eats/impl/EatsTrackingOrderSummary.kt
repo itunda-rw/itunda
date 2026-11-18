@@ -97,7 +97,7 @@ internal fun EatsTrackingOrderCard(
     val palette = eatsPrototypePalette()
     val deliveryNotes = order.deliveryNotes
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(palette.surfaceSoft).padding(16.dp),
+        Modifier.fillMaxWidth().padding(horizontal = 24.dp).clip(RoundedCornerShape(20.dp)).background(palette.surfaceSoft).padding(16.dp),
     ) {
         Text("Your order", color = palette.primary, fontSize = 17.sp, lineHeight = 24.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(2.dp))

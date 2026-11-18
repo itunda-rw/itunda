@@ -39,6 +39,7 @@ class EatsIntegratedScreenshotTest {
         NetworkClient.demoMode = true
         rule.activity.actionBar?.hide()
         val sessionKey = Any()
+        NetworkClient.demoMode = true
         rule.setContent {
             key(sessionKey) {
                 IdsTheme(darkTheme = dark) {
@@ -47,7 +48,7 @@ class EatsIntegratedScreenshotTest {
             }
         }
         rule.waitUntil(60_000) {
-            rule.onAllNodesWithText("Nyamirambo", substring = true).fetchSemanticsNodes().isNotEmpty()
+            rule.onAllNodesWithText("Kigali Bakery", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
     }
 

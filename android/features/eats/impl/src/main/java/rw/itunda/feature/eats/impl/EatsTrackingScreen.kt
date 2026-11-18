@@ -56,6 +56,7 @@ fun EatsTrackingScreen(
     onReportIssue: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     initialItems: List<EatsOrderItemDto>? = null,
+    initialScrollOffset: Int = 0,
 ) {
     var currentOrder by remember(order.id) { mutableStateOf(order) }
     var items by remember(order.id) { mutableStateOf(initialItems) }
@@ -125,6 +126,7 @@ fun EatsTrackingScreen(
                 else Toast.makeText(context, "Calling Jean Claude… (sample)", Toast.LENGTH_SHORT).show()
             },
             onCallRestaurant = onCallRestaurant,
+            initialScrollOffset = initialScrollOffset,
             onMessage = { panel = EatsTrackingPanel.RIDER },
             onCancel = { panel = EatsTrackingPanel.CANCEL },
             onRate = { panel = EatsTrackingPanel.RATING },
@@ -193,13 +195,13 @@ internal fun EatsTrackingMain(
     order: EatsOrderDto, items: List<EatsOrderItemDto>, restaurantName: String, orderCode: String,
     etaTitle: String, statusLine: String, stepLabels: List<String>, step: Int, pickup: Boolean,
     complete: Boolean, cancelled: Boolean, riderAssigned: Boolean, onBack: () -> Unit, onCall: () -> Unit,
-    onCallRestaurant: (() -> Unit)?, onMessage: () -> Unit, onCancel: () -> Unit, onRate: () -> Unit,
+    onCallRestaurant: (() -> Unit)?, initialScrollOffset: Int, onMessage: () -> Unit, onCancel: () -> Unit, onRate: () -> Unit,
     onHelp: () -> Unit, onDone: () -> Unit, modifier: Modifier,
 ) {
     val palette = eatsPrototypePalette()
     Column(modifier.fillMaxSize().background(palette.background)) {
         EatsTrackingHeader(if (pickup) "Your pickup" else "Your delivery", onBack)
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState(initialScrollOffset))) {
             Column(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 12.dp)) {
                 Text(etaTitle, color = palette.primary, fontSize = 36.sp, lineHeight = 44.sp, fontWeight = FontWeight.ExtraBold)
                 Spacer(Modifier.height(6.dp))
