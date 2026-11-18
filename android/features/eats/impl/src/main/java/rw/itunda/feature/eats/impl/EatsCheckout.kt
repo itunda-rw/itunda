@@ -74,6 +74,11 @@ fun EatsCheckoutView(
     onOrderPlaced: (EatsOrderDto) -> Unit,
     onDineInOrderPlaced: (DineInOrderDto) -> Unit,
     deviceStepUpHost: @Composable (Boolean, () -> Unit, suspend () -> Unit) -> Unit,
+    initialPayBalance: Double = 120500.0,
+    initialBankBalance: Double = 842300.0,
+    initialPaymentMethod: EatsPaymentMethod = EatsPaymentMethod.ITUNDA_PAY,
+    initialTipAmount: Int = 0,
+    initialScheduledTime: String? = null,
 ) {
     var mode by remember { mutableStateOf(initialMode) }
     var address by remember { mutableStateOf(initialAddress) }
@@ -159,6 +164,11 @@ fun EatsCheckoutView(
         minimumOrderAmount = minimumOrder,
         submitting = submitting,
         error = error,
+        initialPayBalance = initialPayBalance,
+        initialBankBalance = initialBankBalance,
+        initialPaymentMethod = initialPaymentMethod,
+        initialTipAmount = initialTipAmount,
+        initialScheduledTime = initialScheduledTime,
         onModeChange = { selected ->
             mode = selected
             error = null
