@@ -40,7 +40,6 @@ class EatsCheckoutParityTest {
                     menu = emptyList(),
                     initialMode = mode,
                     initialAddress = "Kimironko, KG 11 Ave",
-                    savedCoupon = "EATS20",
                     onBack = {},
                     onOrderPlaced = { orderPlaced = true },
                     onDineInOrderPlaced = {},
@@ -49,9 +48,9 @@ class EatsCheckoutParityTest {
             }
         }
 
-        rule.onNodeWithText("Checkout").assertExists()
-        rule.onNodeWithText("EATS20").assertExists()
-        rule.onNodeWithText("Place order").assertExists()
+        rule.onNodeWithText("Cart").assertExists()
+        rule.onNodeWithText("Your cart is empty").assertExists()
+        rule.onNodeWithText("Back to the menu").assertExists()
         rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-empty-$name.png")
         assertFalse("An empty cart must never place an order", orderPlaced)
     }
