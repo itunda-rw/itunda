@@ -72,16 +72,22 @@ class EatsTrackingScreenshotTest {
     @Test fun deliveryAcceptedLight() = show("PLACED", name = "eats-prototype-tracking-delivery-accepted-light")
     @Test fun deliveryPreparingLight() {
         show("PREPARING", name = "eats-prototype-tracking-delivery-preparing-light")
-        rule.onNodeWithText("Arrives by 16:51").assertExists()
+        rule.onNodeWithText("Arrives by", substring = true).assertExists()
     }
     @Test fun deliveryOnTheWayLight() = show("PICKED_UP", name = "eats-prototype-tracking-delivery-on-the-way-light")
     @Test fun deliveryCompleteLight() = show("DELIVERED", name = "eats-prototype-tracking-delivery-complete-light")
     @Test fun deliveryCancelledLight() = show("CANCELLED", name = "eats-prototype-tracking-cancelled-light")
-    @Test fun pickupReadyLight() = show("READY_FOR_PICKUP", pickup = true, name = "eats-prototype-tracking-pickup-ready-light")
+    @Test fun pickupReadyLight() {
+        show("READY_FOR_PICKUP", pickup = true, name = "eats-prototype-tracking-pickup-ready-light")
+        rule.onNodeWithText("Ready by", substring = true).assertExists()
+    }
     @Test fun pickupCompleteLight() = show("PICKED_UP", pickup = true, name = "eats-prototype-tracking-pickup-complete-light")
     @Test fun deliveryOnTheWayDark() = show("PICKED_UP", dark = true, name = "eats-prototype-tracking-delivery-on-the-way-dark")
     @Test fun deliveryCompleteDark() = show("DELIVERED", dark = true, name = "eats-prototype-tracking-delivery-complete-dark")
-    @Test fun pickupReadyDark() = show("READY_FOR_PICKUP", pickup = true, dark = true, name = "eats-prototype-tracking-pickup-ready-dark")
+    @Test fun pickupReadyDark() {
+        show("READY_FOR_PICKUP", pickup = true, dark = true, name = "eats-prototype-tracking-pickup-ready-dark")
+        rule.onNodeWithText("Ready by", substring = true).assertExists()
+    }
 
     @Test fun riderSheetLight() {
         rule.activity.actionBar?.hide()

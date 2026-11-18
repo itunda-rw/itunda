@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
+import java.time.LocalTime
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.network.EatsOrderDto
 import rw.itunda.core.network.EatsOrderItemDto
@@ -28,14 +29,13 @@ internal fun EatsTrackingStatusSummary(
     items: List<EatsOrderItemDto>,
     orderCode: String,
     pickup: Boolean,
+    deliveryMinutes: Int,
 ) {
     val palette = eatsPrototypePalette()
-    val statusTitle = when {
-        order.status == "CANCELLED" -> "Arrives by 16:52"
-        pickup && order.status in setOf("READY_FOR_PICKUP", "PICKED_UP") -> "Ready by 16:52"
-        pickup -> "Ready by 16:51"
-        else -> "Arrives by 16:51"
-    }
+    val etaMinutes = if (pickup) maxOf(10, deliveryMinutes - 10) else deliveryMinutes
+    val eta = LocalTime.now().plusMinutes(etaMinutes.toLong())
+    val etaText = String.format(Locale.US, "%02d:%02d", eta.hour, eta.minute)
+    val statusTitle = if (pickup) "Ready by $etaText" else "Arrives by $etaText"
 
     Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 22.dp)) {
         Text(statusTitle, color = palette.accent, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold)

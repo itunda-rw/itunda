@@ -89,6 +89,7 @@ fun EatsTrackingScreen(
         else -> 0
     }
     val restaurantName = restaurant?.businessName ?: "Kigali Bakery"
+    val deliveryMinutes = restaurant?.deliveryTimeMinutes ?: 20
     val onCallRestaurant: (() -> Unit)? = restaurant?.phoneNumber?.takeIf { it.isNotBlank() }?.let { phone ->
         { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", phone.filter { it.isDigit() || it == '+' }, null))) }
     }
@@ -118,7 +119,7 @@ fun EatsTrackingScreen(
 
     when (panel) {
         EatsTrackingPanel.MAIN -> EatsTrackingMain(
-            order = currentOrder, items = items.orEmpty(), restaurantName = restaurantName, orderCode = orderCode,
+            order = currentOrder, items = items.orEmpty(), restaurantName = restaurantName, deliveryMinutes = deliveryMinutes, orderCode = orderCode,
             etaTitle = etaTitle, statusLine = statusLine, stepLabels = stepLabels, step = step, pickup = pickup,
             complete = complete, cancelled = cancelled, riderAssigned = riderAssigned, onBack = onBack,
             onCall = {
@@ -192,7 +193,7 @@ fun EatsTrackingScreen(
 
 @Composable
 internal fun EatsTrackingMain(
-    order: EatsOrderDto, items: List<EatsOrderItemDto>, restaurantName: String, orderCode: String,
+    order: EatsOrderDto, items: List<EatsOrderItemDto>, restaurantName: String, deliveryMinutes: Int, orderCode: String,
     etaTitle: String, statusLine: String, stepLabels: List<String>, step: Int, pickup: Boolean,
     complete: Boolean, cancelled: Boolean, riderAssigned: Boolean, onBack: () -> Unit, onCall: () -> Unit,
     onCallRestaurant: (() -> Unit)?, initialScrollOffset: Int, onMessage: () -> Unit, onCancel: () -> Unit, onRate: () -> Unit,
@@ -301,7 +302,7 @@ internal fun EatsTrackingMain(
                 )
                 Spacer(Modifier.height(24.dp))
             }
-            EatsTrackingStatusSummary(order, items, orderCode, pickup)
+            EatsTrackingStatusSummary(order, items, orderCode, pickup, deliveryMinutes)
             if (order.status == "PLACED") {
                 EatsTrackingButton(
                     "Cancel order",
