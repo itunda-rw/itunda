@@ -56,6 +56,36 @@ class EatsIntegratedScreenshotTest {
         capture("eats-prototype-browse-default-dark")
     }
 
+    @Test fun browseCategoryBrochetteLight() {
+        show(false)
+        rule.onNodeWithText("Brochette").performClick()
+        rule.waitForIdle()
+        capture("eats-prototype-browse-category-brochette-light")
+    }
+
+    @Test fun browseCategoryBrochetteDark() {
+        show(true)
+        rule.onNodeWithText("Brochette").performClick()
+        rule.waitForIdle()
+        capture("eats-prototype-browse-category-brochette-dark")
+    }
+
+    @Test fun browseSortTopRatedLight() {
+        show(false)
+        rule.onNodeWithText("Top rated").performScrollTo()
+        rule.onNodeWithText("Top rated").performClick()
+        rule.waitForIdle()
+        capture("eats-prototype-browse-sort-top-rated-light")
+    }
+
+    @Test fun browseSortTopRatedDark() {
+        show(true)
+        rule.onNodeWithText("Top rated").performScrollTo()
+        rule.onNodeWithText("Top rated").performClick()
+        rule.waitForIdle()
+        capture("eats-prototype-browse-sort-top-rated-dark")
+    }
+
     @Test fun browsePickupLight() {
         show(false)
         rule.onNodeWithContentDescription("Pickup").performClick()
