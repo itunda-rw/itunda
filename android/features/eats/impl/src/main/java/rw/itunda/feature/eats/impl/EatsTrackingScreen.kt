@@ -251,6 +251,7 @@ internal fun EatsTrackingMain(
             }
             if (riderAssigned) {
                 EatsTrackingRiderCard(order.riderName ?: "Jean Claude", onCall)
+                Spacer(Modifier.height(17.dp))
                 if (!complete) {
                     EatsTrackingButton(
                         "Message rider",
@@ -285,6 +286,10 @@ internal fun EatsTrackingMain(
                     EatsTrackingButton("Get help", onHelp, modifier = Modifier.weight(1f), background = palette.surfaceSoft, color = palette.primary)
                 }
             }
+
+            if (cancelled) Spacer(Modifier.height(16.dp))
+            if (riderAssigned && !complete) Spacer(Modifier.height(16.dp))
+            if (complete && pickup) Spacer(Modifier.height(16.dp))
 
             val showRestaurantCall = (pickup && order.status == "READY_FOR_PICKUP") ||
                 (!pickup && order.status in setOf("PLACED", "DELIVERED"))
