@@ -82,13 +82,17 @@
     if (Array.isArray(S.act)) {
       S.act = liveTransactions.map(function (tx) {
         const outgoing = Boolean((liveUser && tx.senderId === liveUser.id) || tx.fromAccountId === mainAccountId);
-        const amount = Number(tx.amount || 0) * (outgoing ? -1 : 1);
+        const rawAmount = tx.amount;
+        const amountValue = rawAmount === null || rawAmount === undefined || rawAmount === '' ? NaN : Number(rawAmount);
+        const amount = Number.isFinite(amountValue) ? amountValue * (outgoing ? -1 : 1) : null;
         const type = String(tx.type || '').toUpperCase();
         const icon = type === 'INTEREST' ? 'coin' : (type === 'BILL' || type === 'AIRTIME' || type === 'PAYMENT' ? 'bill' : (outgoing ? 'send' : 'up'));
-        const date = tx.createdAt ? new Date(tx.createdAt) : new Date();
-        const status = String(tx.status || 'COMPLETED').toLowerCase();
+        const parsedDate = tx.createdAt ? new Date(tx.createdAt) : null;
+        const validDate = parsedDate && Number.isFinite(parsedDate.getTime()) ? parsedDate : null;
+        const status = tx.status ? String(tx.status).toLowerCase() : 'unknown';
         const label = outgoing ? 'Paid' : 'Received';
-        return [icon, String(tx.description || tx.type || 'Account activity'), label + ' · ' + date.toLocaleDateString(), amount, status, date.getTime()];
+        const dateLabel = validDate ? validDate.toLocaleDateString() : 'Date unavailable';
+        return [icon, String(tx.description || tx.type || 'Account activity'), label + ' · ' + dateLabel, amount, status, validDate ? validDate.getTime() : 0];
       });
     }
   }
@@ -207,13 +211,18 @@
     const html = previousBankScreen();
     const rows = liveTransactions.slice(0, 8).map(function (tx) {
       const label = String(tx.description || tx.title || tx.type || tx.reference || 'Account activity').replace(/[<>&"]/g, '');
-      const amount = Number(tx.amount || 0);
-      const credit = amount > 0 || String(tx.direction || '').toUpperCase() === 'CREDIT';
-      const date = tx.createdAt || tx.created_at || tx.timestamp;
+      const rawAmount = tx.amount;
+      const amountValue = rawAmount === null || rawAmount === undefined || rawAmount === '' ? NaN : Number(rawAmount);
+      const amountValid = Number.isFinite(amountValue);
+      const credit = amountValid ? amountValue > 0 : String(tx.direction || '').toUpperCase() === 'CREDIT';
+      const dateValue = tx.createdAt || tx.created_at || tx.timestamp;
+      const parsedDate = dateValue ? new Date(dateValue) : null;
+      const dateLabel = parsedDate && Number.isFinite(parsedDate.getTime()) ? parsedDate.toLocaleDateString() : 'Date unavailable';
+      const amountLabel = amountValid ? ((credit ? '+' : '') + fmt(Math.abs(amountValue)) + ' RWF') : 'Amount unavailable';
       return '<div class="row" style="cursor:default"><div class="ico">' + (credit ? '＋' : '−') + '</div>' +
         '<div style="min-width:0;flex:1"><div class="t">' + label + '</div><div class="s">' +
-        (date ? new Date(date).toLocaleDateString().replace(/[<>&"]/g, '') : '') + '</div></div>' +
-        '<div class="r" style="color:' + (credit ? 'var(--ok)' : 'var(--tx)') + '">' + (credit ? '+' : '') + fmt(Math.abs(amount)) + ' RWF</div></div>';
+        dateLabel.replace(/[<>&"]/g, '') + '</div></div>' +
+        '<div class="r" style="color:' + (credit ? 'var(--ok)' : 'var(--tx)') + '">' + amountLabel + '</div></div>';
     }).join('');
     if (demoMode) return previousBankScreen() + '<div class="sec"><div class="sech">Demo account activity</div><div class="fine" style="padding:12px 0">Sample data only. This demo is not connected to a real account or ledger.</div></div>';
     return html + '<div class="sec"><div class="sech">Real account activity</div>' +
