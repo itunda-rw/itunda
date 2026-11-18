@@ -227,7 +227,7 @@ internal fun EatsTrackingMain(
             )
             EatsTrackingStepper(stepLabels, step, Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp))
             if (order.status == "PLACED" && !pickup) {
-                Column(Modifier.padding(start = 24.dp, end = 24.dp, top = 20.dp)) {
+                Column(Modifier.padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 2.dp)) {
                     Text("Delivery code", color = palette.secondary, fontSize = 13.sp, lineHeight = 20.sp)
                     Text("4821", color = palette.primary, fontSize = 32.sp, lineHeight = 38.sp, letterSpacing = 8.sp, fontWeight = FontWeight.Black)
                     Text("Tell your rider this code at the door. Not before.", color = palette.secondary, fontSize = 13.sp, lineHeight = 20.sp)
