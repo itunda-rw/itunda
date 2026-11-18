@@ -76,8 +76,8 @@ internal fun EatsTrackingStatusSummary(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text("Delivered to", color = palette.secondary, fontSize = 14.sp, lineHeight = 20.sp)
-                    Text(order.deliveryAddress, color = palette.primary, fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Delivered to", color = palette.secondary, fontSize = 15.sp, lineHeight = 21.sp)
+                    Text(order.deliveryAddress, color = palette.primary, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
             Text(orderCode, color = palette.secondary, fontSize = 13.sp, lineHeight = 18.2.sp, modifier = Modifier.padding(vertical = 2.dp))
@@ -163,7 +163,7 @@ private fun EatsTrackingOrderCardRow(label: String, value: String) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(label, color = palette.secondary, fontSize = 14.sp, lineHeight = 20.sp)
-        Text(value, color = palette.primary, fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
+        Text(label, color = palette.secondary, fontSize = 15.sp, lineHeight = 22.sp)
+        Text(value, color = palette.primary, fontSize = 15.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold)
     }
 }

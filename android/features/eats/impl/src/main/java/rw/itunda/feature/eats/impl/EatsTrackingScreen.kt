@@ -206,12 +206,12 @@ internal fun EatsTrackingMain(
                 Text(etaTitle, color = palette.primary, fontSize = 36.sp, lineHeight = 44.sp, fontWeight = FontWeight.ExtraBold)
                 Spacer(Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(restaurantName, color = palette.secondary, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    if (pickup) Text(" · Pickup", color = palette.secondary, fontSize = 15.sp)
+                    Text(restaurantName, color = palette.secondary, fontSize = 15.sp, lineHeight = 22.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (pickup) Text(" · Pickup", color = palette.secondary, fontSize = 15.sp, lineHeight = 22.sp)
                     else {
-                        Text(" · ", color = palette.secondary, fontSize = 15.sp)
+                        Text(" · ", color = palette.secondary, fontSize = 15.sp, lineHeight = 22.sp)
                         ItundaArt("bolt-solid", set = ItundaArtSet.Solid, size = 16.dp, tint = Color(0xFFFFB321))
-                        Text(" Cheetah delivery", color = palette.secondary, fontSize = 15.sp)
+                        Text(" Cheetah delivery", color = palette.secondary, fontSize = 15.sp, lineHeight = 22.sp)
                     }
                 }
             }
@@ -333,11 +333,11 @@ internal fun EatsTrackingMain(
 @Composable
 internal fun EatsTrackingHeader(title: String, onBack: () -> Unit, onCall: () -> Unit = {}, showCall: Boolean = false) {
     val palette = eatsPrototypePalette()
-    Row(Modifier.fillMaxWidth().height(70.dp).padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().height(70.dp).padding(horizontal = 6.dp).padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
             ItundaArt("back", set = ItundaArtSet.Line, size = 24.dp, tint = palette.primary)
         }
-        Text(title, color = palette.primary, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).padding(start = 6.dp))
+        Text(title, color = palette.primary, fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).padding(start = 4.dp))
         if (showCall) IconButton(onClick = onCall, modifier = Modifier.size(48.dp)) {
             ItundaArt("phone", set = ItundaArtSet.Line, size = 20.dp, tint = palette.primary)
         }

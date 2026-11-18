@@ -121,6 +121,7 @@ internal fun EatsTrackingMap(
                     statusText,
                     color = palette.primary,
                     fontSize = 14.sp,
+                    lineHeight = 19.6.sp,
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                     maxLines = 1,
                     modifier = Modifier.padding(start = 8.dp),
@@ -285,7 +286,7 @@ internal fun EatsTrackingStepper(labels: List<String>, activeStep: Int, modifier
     Column(modifier.fillMaxWidth().padding(bottom = 15.dp)) {
         Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp)) {
             labels.forEachIndexed { index, _ ->
-                Box(Modifier.weight(1f).height(4.dp).clip(CircleShape).background(if (index <= activeStep) palette.accent else palette.surfaceSoft))
+                Box(Modifier.weight(1f).height(4.dp).clip(CircleShape).background(if (index <= activeStep) palette.brandFill else palette.surfaceSoft))
             }
         }
         Row(Modifier.padding(top = 8.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp)) {
@@ -295,7 +296,7 @@ internal fun EatsTrackingStepper(labels: List<String>, activeStep: Int, modifier
                     color = if (index <= activeStep) palette.primary else palette.secondary,
                     fontSize = 13.sp,
                     lineHeight = 16.sp,
-                    fontWeight = if (index <= activeStep) androidx.compose.ui.text.font.FontWeight.ExtraBold else androidx.compose.ui.text.font.FontWeight.Bold,
+                    fontWeight = if (index == activeStep) androidx.compose.ui.text.font.FontWeight.ExtraBold else androidx.compose.ui.text.font.FontWeight.Bold,
                     modifier = Modifier.weight(1f),
                 )
             }
