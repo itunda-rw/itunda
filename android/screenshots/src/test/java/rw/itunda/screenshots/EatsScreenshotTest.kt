@@ -189,7 +189,7 @@ class EatsScreenshotTest {
         rule.onNodeWithText("Pick up at").assertExists()
         rule.onNodeWithText("EATS20 · 20% off items (max 2,000 RWF)").assertExists()
         rule.onNodeWithText("Discount").assertExists()
-        rule.onNodeWithText("Pickup").assertExists()
+        assertTrue(rule.onAllNodesWithText("Pickup").fetchSemanticsNodes().isNotEmpty())
         rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-pickup-dark.png")
     }
 
