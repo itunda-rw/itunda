@@ -42,6 +42,7 @@ import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.network.MerchantProductDto
 import rw.itunda.core.network.ShoppingMerchantDto
+import java.time.LocalTime
 import java.util.Locale
 
 enum class EatsPaymentMethod { ITUNDA_PAY, ITUNDA_BANK, CASH }
@@ -75,6 +76,7 @@ internal fun EatsCheckoutPrototypeScreen(
     var paymentMethod by remember(initialPaymentMethod) { mutableStateOf(initialPaymentMethod) }
     var page by remember { mutableStateOf(EatsCheckoutPage.CART) }
     val palette = eatsPrototypePalette()
+    val scheduleSlots = remember { eatsScheduleSlots() }
 
     val lines = cart.values.filter { it.quantity > 0 }
         .mapNotNull { line -> menu.firstOrNull { it.id == line.productId }?.let { it to line } }
@@ -89,7 +91,16 @@ internal fun EatsCheckoutPrototypeScreen(
     val payableDelivery = if (freeDelivery) 0.0 else deliveryFee
     val total = (itemTotal - discount + payableDelivery + if (mode == EatsCheckoutMode.DELIVERY) tip.toDouble() else 0.0).coerceAtLeast(0.0)
     val payBalance = if (paymentMethod == EatsPaymentMethod.ITUNDA_BANK) initialBankBalance else initialPayBalance
-    val insufficientBalance = paymentMethod != EatsPaymentMethod.CASH && total > payBalance
+    val insufficientBalance = when (paymentMethod) {
+        EatsPaymentMethod.ITUNDA_PAY -> total > initialPayBalance
+        EatsPaymentMethod.ITUNDA_BANK -> total > initialBankBalance
+        EatsPaymentMethod.CASH -> total > EATS_CASH_PAYMENT_LIMIT
+    }
+    val paymentError = when {
+        paymentMethod == EatsPaymentMethod.CASH && insufficientBalance -> "Cash orders are limited to 100,000 RWF"
+        insufficientBalance -> "Not enough balance — you have ${formatEatsRwf(payBalance)}"
+        else -> null
+    }
     val canPay = lines.isNotEmpty() && !shortOfMinimum && !insufficientBalance &&
         (mode != EatsCheckoutMode.DELIVERY || address.isNotBlank()) && !submitting
 
@@ -110,6 +121,7 @@ internal fun EatsCheckoutPrototypeScreen(
             selected = paymentMethod,
             payBalance = initialPayBalance,
             bankBalance = initialBankBalance,
+            amount = total,
             isPickup = mode == EatsCheckoutMode.PICKUP,
             onBack = { page = EatsCheckoutPage.CART },
             onDone = { selected ->
@@ -214,7 +226,7 @@ internal fun EatsCheckoutPrototypeScreen(
                                     Text("Delivery time", color = palette.primary, fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 16.dp))
                                     Row(
                                         Modifier.fillMaxWidth().padding(top = 8.dp).horizontalScroll(rememberScrollState()),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                                     ) {
                                         EatsCheckoutTimeChip(
                                             label = "As soon as possible",
@@ -223,7 +235,7 @@ internal fun EatsCheckoutPrototypeScreen(
                                             palette = palette,
                                             onClick = { scheduledTime = null },
                                         )
-                                        listOf("12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00").forEach { time ->
+                                        scheduleSlots.forEach { time ->
                                             EatsCheckoutTimeChip(
                                                 label = time,
                                                 selected = scheduledTime == time,
@@ -305,7 +317,7 @@ internal fun EatsCheckoutPrototypeScreen(
                                         when (paymentMethod) {
                                             EatsPaymentMethod.ITUNDA_PAY -> "itunda Pay · ${formatEatsRwf(initialPayBalance)}"
                                             EatsPaymentMethod.ITUNDA_BANK -> "itunda Bank · ${formatEatsRwf(initialBankBalance)}"
-                                            EatsPaymentMethod.CASH -> "Cash on delivery"
+                                            EatsPaymentMethod.CASH -> if (mode == EatsCheckoutMode.PICKUP) "Cash at pickup" else "Cash on delivery"
                                         },
                                         color = palette.primary,
                                         fontSize = 14.sp,
@@ -315,9 +327,9 @@ internal fun EatsCheckoutPrototypeScreen(
                                     )
                                     Text("›", color = palette.secondary, fontSize = 22.sp, modifier = Modifier.padding(start = 6.dp))
                                 }
-                                if (insufficientBalance) {
+                                paymentError?.let { message ->
                                     Text(
-                                        "Not enough balance — you have ${formatEatsRwf(payBalance)}",
+                                        message,
                                         color = Color(0xFFE5484D),
                                         fontSize = 12.sp,
                                         modifier = Modifier.padding(top = 8.dp),
@@ -333,7 +345,7 @@ internal fun EatsCheckoutPrototypeScreen(
                                 }
                                 error?.let { Text(it, color = Color(0xFFE5484D), fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
                             }
-                            Spacer(Modifier.height(110.dp))
+                            Spacer(Modifier.height(98.dp))
                         }
                     }
                     EatsCheckoutPayButton(
@@ -344,12 +356,21 @@ internal fun EatsCheckoutPrototypeScreen(
                         },
                         enabled = canPay,
                         palette = palette,
-                        modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 24.dp).padding(bottom = 16.dp),
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 24.dp).padding(bottom = 24.dp),
                         onClick = { page = EatsCheckoutPage.CONFIRM },
                     )
                 }
             }
         }
+    }
+}
+
+internal fun eatsScheduleSlots(now: LocalTime = LocalTime.now()): List<String> {
+    val minutes = now.hour * 60 + now.minute + 45
+    val firstSlot = ((minutes + 29) / 30) * 30
+    return (0 until 4).mapNotNull { index ->
+        val slot = firstSlot + index * 30
+        if (slot >= 24 * 60) null else String.format(Locale.US, "%02d:%02d", slot / 60, slot % 60)
     }
 }
 
