@@ -125,7 +125,7 @@ class EatsCheckoutPrototypeScreenshotTest {
     @Test fun riderTipChangesOrderTotal() {
         render(tip = 1000)
         rule.onNodeWithText("Rider tip").assertExists()
-        rule.onNodeWithText("3,400 RWF").assertExists()
+        rule.onNodeWithText("Pay 3,400 RWF").assertExists()
         rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-tip-1000.png")
     }
 
@@ -154,7 +154,7 @@ class EatsCheckoutPrototypeScreenshotTest {
     @Test fun bankPaymentSelectionReturnsToCart() {
         render(paymentMethod = EatsPaymentMethod.ITUNDA_BANK)
         rule.onNodeWithText("Pay with").performClick()
-        rule.onNodeWithContentDescription("Payment option itunda Bank").performClick()
+        rule.onNodeWithText("itunda Bank").performClick()
         rule.onNodeWithText("Done").performClick()
         rule.onNodeWithText("itunda Bank · 842,300 RWF").assertExists()
         rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-payment-bank.png")
