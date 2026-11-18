@@ -3,7 +3,7 @@ package rw.itunda.screenshots
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.assertDoesNotExist
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -108,15 +108,15 @@ class EatsCheckoutPrototypeScreenshotTest {
         render(coupon = "FREEDEL")
         rule.onNodeWithText("FREEDEL · Free delivery").assertExists()
         rule.onNodeWithText("Remove").performClick()
-        rule.onNodeWithText("FREEDEL · Free delivery").assertDoesNotExist()
+        assertFalse(rule.onAllNodesWithText("FREEDEL · Free delivery").fetchSemanticsNodes().isNotEmpty())
         rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-freedel-removed.png")
     }
 
     @Test fun pickupOmitsDeliveryTimeAndRiderTip() {
         render(mode = EatsCheckoutMode.PICKUP, coupon = "EATS20")
         rule.onNodeWithText("Pick up at").assertExists()
-        rule.onNodeWithText("Delivery time").assertDoesNotExist()
-        rule.onNodeWithText("Tip your rider").assertDoesNotExist()
+        assertFalse(rule.onAllNodesWithText("Delivery time").fetchSemanticsNodes().isNotEmpty())
+        assertFalse(rule.onAllNodesWithText("Tip your rider").fetchSemanticsNodes().isNotEmpty())
         rule.onNodeWithText("Pickup").assertExists()
         rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-pickup-light.png")
     }
