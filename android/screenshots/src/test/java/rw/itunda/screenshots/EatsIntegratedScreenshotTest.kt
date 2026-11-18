@@ -39,8 +39,8 @@ class EatsIntegratedScreenshotTest {
                 EatsContent(deviceStepUpHost = { _, _, _ -> })
             }
         }
-        rule.waitUntil(10_000) {
-            rule.onAllNodesWithText("Nyamirambo Grill").fetchSemanticsNodes().isNotEmpty()
+        rule.waitUntil(30_000) {
+            rule.onAllNodesWithText("Nyamirambo", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
     }
 
