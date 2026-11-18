@@ -77,12 +77,14 @@ internal fun EatsTrackingMap(
     Box(
         modifier.fillMaxWidth()
             .height(if (liveDeliveryMap) 230.dp else 190.dp)
-            .clip(RoundedCornerShape(if (liveDeliveryMap) 20.dp else 24.dp))
+            .clip(RoundedCornerShape(if (liveDeliveryMap) 28.dp else 20.dp))
             .background(palette.surfaceSoft),
     ) {
         Canvas(
-            Modifier.fillMaxWidth()
+            Modifier.padding(if (liveDeliveryMap) 1.dp else 0.dp)
+                .fillMaxWidth()
                 .aspectRatio(342f / viewBoxHeight)
+                .clip(RoundedCornerShape(20.dp))
                 .align(Alignment.TopStart),
         ) {
             val scaleX = size.width / 342f
@@ -104,9 +106,10 @@ internal fun EatsTrackingMap(
         if (liveDeliveryMap) {
             Row(
                 Modifier.align(Alignment.BottomStart)
+                    .padding(start = 1.dp, end = 1.dp, bottom = 1.dp)
                     .fillMaxWidth()
-                    .height(40.dp)
-                    .background(palette.background)
+                    .height(40.6.dp)
+                    .background(palette.surfaceSoft)
                     .padding(horizontal = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
