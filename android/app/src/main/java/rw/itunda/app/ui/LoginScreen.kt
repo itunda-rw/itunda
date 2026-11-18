@@ -260,7 +260,11 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                             }
                         } catch (e: Exception) {
                             isSubmitting = false
-                            errorMessage = checkingPhoneError
+                            // Debug builds append the real cause (HTTP status or exception
+                            // type) so a "not working" report says why; release builds keep
+                            // the plain message.
+                            val cause = if (e is retrofit2.HttpException) "HTTP ${e.code()}" else e.javaClass.simpleName
+                            errorMessage = if (rw.itunda.app.BuildConfig.DEBUG) "$checkingPhoneError ($cause)" else checkingPhoneError
                         }
                     }
                 }
