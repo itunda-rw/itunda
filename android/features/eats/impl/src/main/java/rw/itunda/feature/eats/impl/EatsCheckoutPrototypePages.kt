@@ -313,11 +313,11 @@ internal fun EatsCheckoutConfirmPage(
         }
         Box(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)
-                .height(58.dp).clip(RoundedCornerShape(18.dp)).background(palette.brandFill)
+                .height(56.dp).clip(RoundedCornerShape(18.dp)).background(palette.brandFill)
                 .pressScaleClickable(enabled = !submitting, onClick = onConfirm),
             contentAlignment = Alignment.Center,
         ) {
-            Text(if (submitting) "Confirming…" else "Confirm", color = palette.brandOn, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(if (submitting) "Confirming…" else "Confirm", color = palette.brandOn, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
         }
     }
 }
