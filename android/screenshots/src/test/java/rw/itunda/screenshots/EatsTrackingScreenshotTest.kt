@@ -80,19 +80,31 @@ class EatsTrackingScreenshotTest {
         rule.onNodeWithText("Call restaurant").assertDoesNotExist()
         rule.onNodeWithText("Kigali Bakery, EA-7207").assertExists()
     }
-    @Test fun deliveryOnTheWayLight() = show("PICKED_UP", name = "eats-prototype-tracking-delivery-on-the-way-light")
+    @Test fun deliveryOnTheWayLight() {
+        show("PICKED_UP", name = "eats-prototype-tracking-delivery-on-the-way-light")
+        rule.onNodeWithText("Your order").assertExists()
+        rule.onNodeWithText("Call restaurant").assertDoesNotExist()
+    }
     @Test fun deliveryCompleteLight() {
         show("DELIVERED", name = "eats-prototype-tracking-delivery-complete-light")
         rule.onNodeWithText("Call restaurant").assertExists()
     }
-    @Test fun deliveryCancelledLight() = show("CANCELLED", name = "eats-prototype-tracking-cancelled-light")
+    @Test fun deliveryCancelledLight() {
+        show("CANCELLED", name = "eats-prototype-tracking-cancelled-light")
+        rule.onNodeWithText("Your order").assertExists()
+        rule.onNodeWithText("Call restaurant").assertDoesNotExist()
+    }
     @Test fun pickupReadyLight() {
         show("READY_FOR_PICKUP", pickup = true, name = "eats-prototype-tracking-pickup-ready-light")
         rule.onNodeWithText("Ready by", substring = true).assertExists()
         rule.onNodeWithText("Call restaurant").assertExists()
         rule.onNodeWithText("Kigali Bakery, EA-7207 · 2 items").assertExists()
     }
-    @Test fun pickupCompleteLight() = show("PICKED_UP", pickup = true, name = "eats-prototype-tracking-pickup-complete-light")
+    @Test fun pickupCompleteLight() {
+        show("PICKED_UP", pickup = true, name = "eats-prototype-tracking-pickup-complete-light")
+        rule.onNodeWithText("Your order").assertExists()
+        rule.onNodeWithText("Call restaurant").assertDoesNotExist()
+    }
     @Test fun deliveryOnTheWayDark() = show("PICKED_UP", dark = true, name = "eats-prototype-tracking-delivery-on-the-way-dark")
     @Test fun deliveryCompleteDark() = show("DELIVERED", dark = true, name = "eats-prototype-tracking-delivery-complete-dark")
     @Test fun pickupReadyDark() {

@@ -288,8 +288,7 @@ internal fun EatsTrackingMain(
 
             val showRestaurantCall = (pickup && order.status == "READY_FOR_PICKUP") ||
                 (!pickup && order.status in setOf("PLACED", "DELIVERED"))
-            val orderCardBeforeSummary = (pickup && order.status in setOf("PREPARING", "READY_FOR_PICKUP")) ||
-                (!pickup && order.status in setOf("PREPARING", "DELIVERED"))
+            val orderCardBeforeSummary = order.status != "PLACED"
             if (pickup && order.status == "READY_FOR_PICKUP") Spacer(Modifier.height(26.dp))
             if (order.status == "PREPARING") Spacer(Modifier.height(16.dp))
             if (!pickup && order.status == "DELIVERED") Spacer(Modifier.height(16.dp))
