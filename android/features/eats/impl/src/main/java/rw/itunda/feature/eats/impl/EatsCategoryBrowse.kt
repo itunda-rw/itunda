@@ -111,8 +111,8 @@ internal fun EatsCategoryIconRow(categories: List<String>, selectedCategory: Str
 fun EatsSortChip(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector?, active: Boolean, onClick: () -> Unit) {
     val palette = eatsPrototypePalette()
     Row(
-        modifier = Modifier.clip(RoundedCornerShape(18.dp)).background(if (active) palette.selected else palette.surfaceSoft)
-            .pressScaleClickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = Modifier.height(36.dp).clip(RoundedCornerShape(18.dp)).background(if (active) palette.selected else palette.surfaceSoft)
+            .pressScaleClickable(onClick = onClick).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {

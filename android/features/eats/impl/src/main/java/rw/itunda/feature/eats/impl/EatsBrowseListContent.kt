@@ -94,7 +94,7 @@ internal fun LazyListScope.eatsBrowseItems(
     item {
         val palette = eatsPrototypePalette()
         Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 14.dp).horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -126,7 +126,7 @@ internal fun LazyListScope.eatsBrowseItems(
             }
         }
         else -> items(visible!!.chunked(2), key = { row -> row.first().merchantId }) { row ->
-            Column(Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+            Column(Modifier.fillMaxWidth().padding(bottom = 20.dp)) {
                 EatsRestaurantGridRow(
                     row = row,
                     favoriteIds = favoriteIds,

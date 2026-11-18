@@ -18,10 +18,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
@@ -40,7 +43,7 @@ fun eatsCategoryArt(category: String?): String = when (category?.lowercase()) {
     else -> "restaurant"
 }
 
-/** The two-column v1038 restaurant card: square illustration, tag, save affordance and compact facts. */
+/** The two-column v1038 restaurant card: square art, status/tag, save state and compact facts. */
 @Composable
 fun EatsRestaurantTile(
     restaurant: EatsPrototypeRestaurant,
@@ -55,29 +58,50 @@ fun EatsRestaurantTile(
     val palette = eatsPrototypePalette()
     Column(modifier.pressScaleClickable(onClick = onOpen)) {
         Box(
-            Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(20.dp)).background(restaurant.background),
+            Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(20.dp)).background(restaurant.background)
+                .alpha(if (restaurant.isOpenNow) 1f else 0.45f),
         ) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 ItundaArt(restaurant.art, ItundaArtSet.Color, 84.dp)
             }
-            restaurant.tag?.let { tag ->
+            val badge = restaurant.tag?.takeIf {
+                restaurant.isOpenNow && (it == "New" || it == "Popular" || it == "20% off")
+            }
+            badge?.let { tag ->
                 Text(
                     tag,
-                    color = Color(0xFF191F28),
+                    color = palette.primary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.ExtraBold,
                     modifier = Modifier.align(Alignment.TopStart).padding(8.dp)
-                        .clip(RoundedCornerShape(10.dp)).background(Color.White)
+                        .clip(RoundedCornerShape(10.dp)).background(palette.background)
                         .padding(horizontal = 10.dp, vertical = 3.dp),
+                )
+            }
+            if (!restaurant.isOpenNow) {
+                Text(
+                    restaurant.tag ?: "Closed",
+                    color = palette.primary,
+                    fontSize = 13.sp,
+                    lineHeight = 18.2.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    modifier = Modifier.align(Alignment.BottomStart).padding(8.dp)
+                        .clip(RoundedCornerShape(12.dp)).background(palette.background)
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
                 )
             }
             Box(
                 Modifier.align(Alignment.BottomEnd).padding(8.dp).size(36.dp).clip(CircleShape)
                     .background(Color.White)
+                    .semantics { contentDescription = if (isFavorite) "Remove from favorites" else "Save" }
                     .pressScaleClickable(onClick = onToggleFavorite),
                 contentAlignment = Alignment.Center,
             ) {
-                ItundaArt("heartred", ItundaArtSet.Proto, 20.dp)
+                if (isFavorite) {
+                    ItundaArt("heartred", ItundaArtSet.Proto, 20.dp)
+                } else {
+                    ItundaArt("heart", ItundaArtSet.Line, 20.dp, tint = Color(0xFF191F28))
+                }
             }
         }
         Text(
@@ -90,7 +114,7 @@ fun EatsRestaurantTile(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 8.dp),
         )
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(top = 1.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("★", color = Color(0xFFFFB321), fontSize = 13.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(4.dp))
             Text("$rating · $eta", color = palette.secondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
@@ -101,6 +125,7 @@ fun EatsRestaurantTile(
             fontSize = 13.sp,
             fontWeight = if (deliveryLine == "Free delivery") FontWeight.Bold else FontWeight.SemiBold,
             maxLines = 1,
+            modifier = Modifier.padding(top = 1.dp),
         )
     }
 }

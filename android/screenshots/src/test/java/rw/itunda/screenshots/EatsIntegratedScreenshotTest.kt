@@ -134,4 +134,10 @@ class EatsIntegratedScreenshotTest {
         repeat(3) { rule.onRoot().performTouchInput { swipeUp() } }
         capture("eats-prototype-browse-lower-light")
     }
+
+    @Test fun browseLowerDark() {
+        show(true)
+        repeat(3) { rule.onRoot().performTouchInput { swipeUp() } }
+        capture("eats-prototype-browse-lower-dark")
+    }
 }
