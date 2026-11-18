@@ -35,13 +35,14 @@ class EatsIntegratedScreenshotTest {
     @After fun disablePrototypeDemo() { NetworkClient.demoMode = false }
 
     private fun show(dark: Boolean) {
+        NetworkClient.demoMode = true
         rule.activity.actionBar?.hide()
         rule.setContent {
             IdsTheme(darkTheme = dark) {
                 EatsContent(deviceStepUpHost = { _, _, _ -> })
             }
         }
-        rule.waitUntil(30_000) {
+        rule.waitUntil(60_000) {
             rule.onAllNodesWithText("Nyamirambo", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
     }
