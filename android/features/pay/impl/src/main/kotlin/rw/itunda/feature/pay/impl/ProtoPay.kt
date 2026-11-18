@@ -79,6 +79,7 @@ fun ProtoPayContent(
         ) {
             Column(Modifier.fillMaxSize().background(p.page)) {
                 PayHeader(p, onOpenPay, onSettings)
+                Spacer(Modifier.height(10.dp))
                 Segments(p, mode, onMode)
                 Spacer(Modifier.height(if (scan) 0.dp else if (mode == ProtoPayMode.TAP) 21.dp else 16.dp))
                 when (mode) {
@@ -102,7 +103,7 @@ fun ProtoPayContent(
 /** Title button (24,24 · 167x44), EN pill (40x32) and 44dp settings button, measured at 390dp. */
 @Composable
 private fun PayHeader(p: PayPalette, onOpenPay: () -> Unit, onSettings: () -> Unit) {
-    Row(Modifier.fillMaxWidth().height(78.dp).padding(top = 24.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(top = 24.dp).height(44.dp), verticalAlignment = Alignment.CenterVertically) {
         Row(
             Modifier.padding(start = 24.dp).height(44.dp).pressScaleClickable(onClick = onOpenPay),
             verticalAlignment = Alignment.CenterVertically,
