@@ -2,6 +2,7 @@ package rw.itunda.screenshots
 
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performScrollToNode
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
 import org.junit.Test
@@ -49,10 +50,18 @@ class PayScreenshotTest {
     @Test fun scanLight() = render(false, "pay-scan-light", ProtoPayMode.SCAN)
     @Test fun scanDark() = render(true, "pay-scan-dark", ProtoPayMode.SCAN)
 
-    @Test fun hubLight() {
-        rule.setContent { IdsTheme(darkTheme = false) { PayHub(onBack = {}, onFindStores = {}) } }
-        rule.onRoot().captureRoboImage("build/screenshots/pay-hub-light.png")
+    private fun renderHub(dark: Boolean, name: String, scrollTo: String? = null) {
+        rule.setContent { IdsTheme(darkTheme = dark) { PayHub(onBack = {}, onFindStores = {}) } }
+        if (scrollTo != null) rule.onNode(androidx.compose.ui.test.hasScrollAction()).performScrollToNode(androidx.compose.ui.test.hasText(scrollTo))
+        rule.onRoot().captureRoboImage("build/screenshots/$name.png")
     }
+
+    @Test fun hubLight() = renderHub(false, "pay-hub-light")
+    @Test fun hubDark() = renderHub(true, "pay-hub-dark")
+    @Test fun hubMidLight() = renderHub(false, "pay-hub-mid-light", "Get more benefits")
+    @Test fun hubMidDark() = renderHub(true, "pay-hub-mid-dark", "Get more benefits")
+    @Test fun hubLowerLight() = renderHub(false, "pay-hub-lower-light", "Send feedback")
+    @Test fun hubLowerDark() = renderHub(true, "pay-hub-lower-dark", "Send feedback")
 
     @Test fun splitLight() {
         rule.setContent { IdsTheme(darkTheme = false) { SplitBillAmountScreen(onBack = {}, onContinue = {}) } }

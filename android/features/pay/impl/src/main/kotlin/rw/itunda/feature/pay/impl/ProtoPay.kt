@@ -79,7 +79,7 @@ fun ProtoPayContent(
         ) {
             Column(Modifier.fillMaxSize().background(p.page)) {
                 PayHeader(p, onOpenPay, onSettings)
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(20.dp))
                 Segments(p, mode, onMode)
                 Spacer(Modifier.height(if (scan) 0.dp else if (mode == ProtoPayMode.TAP) 21.dp else 16.dp))
                 when (mode) {

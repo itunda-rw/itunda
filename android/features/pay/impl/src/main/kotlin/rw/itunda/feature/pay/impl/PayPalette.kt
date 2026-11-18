@@ -38,3 +38,18 @@ internal data class PayPalette(
 
 internal fun payPalette(scan: Boolean, dark: Boolean): PayPalette =
     if (scan) (if (dark) PayPalette.ScanOnDark else PayPalette.Scan) else if (dark) PayPalette.Dark else PayPalette.Light
+
+/** Pretendard + prototype line metrics for every Pay screen (Material3 Text ignores the family otherwise). */
+@Composable
+internal fun PayTextScope(content: @Composable () -> Unit) {
+    androidx.compose.material3.ProvideTextStyle(
+        androidx.compose.ui.text.TextStyle(
+            fontFamily = rw.itunda.core.designsystem.theme.PretendardFontFamily,
+            lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
+                androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center, androidx.compose.ui.text.style.LineHeightStyle.Trim.None,
+            ),
+            platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
+        ),
+        content,
+    )
+}

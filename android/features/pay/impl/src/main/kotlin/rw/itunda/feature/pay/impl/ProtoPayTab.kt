@@ -69,7 +69,7 @@ fun ProtoPayTab(
     if (showHub) {
         PayHub(
             onBack = { showHub = false }, onFindStores = onFindStores,
-            onOpenPoints = { sub = PaySub.POINTS }, onOpenHistory = { sub = PaySub.HISTORY }, onOpenSaved = { sub = PaySub.SAVED },
+            onOpenPoints = { sub = PaySub.POINTS }, onOpenHistory = { sub = PaySub.HISTORY }, onOpenSettings = { sub = PaySub.SETTINGS },
         )
         return
     }
