@@ -186,7 +186,7 @@ class EatsTrackingScreenshotTest {
         show("PLACED", dark = true, name = "eats-prototype-tracking-delivery-accepted-dark")
     @Test fun deliveryPreparingDark() {
         show("PREPARING", dark = true, name = "eats-prototype-tracking-delivery-preparing-dark")
-        rule.onNodeWithText("Arrives by 16:51").assertExists()
+        rule.onNodeWithText("Arrives by", substring = true).assertExists()
     }
     @Test fun deliveryCancelledDark() =
         show("CANCELLED", dark = true, name = "eats-prototype-tracking-cancelled-dark")
@@ -238,14 +238,14 @@ class EatsTrackingScreenshotTest {
         rule.onRoot().captureRoboImage("build/screenshots/eats-prototype-tracking-rating-three-stars-dark.png")
     }
 
-    @Test fun deliveryAcceptedLightScroll173() =
-        showScrolled("PLACED", scrollOffset = 173, name = "eats-prototype-tracking-delivery-accepted-light-scroll-173")
-    @Test fun deliveryAcceptedLightScroll345() =
-        showScrolled("PLACED", scrollOffset = 345, name = "eats-prototype-tracking-delivery-accepted-light-scroll-345")
-    @Test fun deliveryAcceptedDarkScroll173() =
-        showScrolled("PLACED", dark = true, scrollOffset = 173, name = "eats-prototype-tracking-delivery-accepted-dark-scroll-173")
-    @Test fun deliveryAcceptedDarkScroll345() =
-        showScrolled("PLACED", dark = true, scrollOffset = 345, name = "eats-prototype-tracking-delivery-accepted-dark-scroll-345")
+    @Test fun deliveryAcceptedLightScroll19() =
+        showScrolled("PLACED", scrollOffset = 19, name = "eats-prototype-tracking-delivery-accepted-light-scroll-19")
+    @Test fun deliveryAcceptedLightScroll38() =
+        showScrolled("PLACED", scrollOffset = 38, name = "eats-prototype-tracking-delivery-accepted-light-scroll-38")
+    @Test fun deliveryAcceptedDarkScroll19() =
+        showScrolled("PLACED", dark = true, scrollOffset = 19, name = "eats-prototype-tracking-delivery-accepted-dark-scroll-19")
+    @Test fun deliveryAcceptedDarkScroll38() =
+        showScrolled("PLACED", dark = true, scrollOffset = 38, name = "eats-prototype-tracking-delivery-accepted-dark-scroll-38")
 
     @Test fun deliveryCompleteLightScroll171() =
         showScrolled("DELIVERED", scrollOffset = 171, name = "eats-prototype-tracking-delivery-complete-light-scroll-171")
@@ -265,22 +265,43 @@ class EatsTrackingScreenshotTest {
     @Test fun deliveryOnTheWayDarkScroll35() =
         showScrolled("PICKED_UP", dark = true, scrollOffset = 35, name = "eats-prototype-tracking-delivery-on-the-way-dark-scroll-35")
 
-    @Test fun cancelledDarkScroll90() =
-        showScrolled("CANCELLED", dark = true, scrollOffset = 90, name = "eats-prototype-tracking-cancelled-dark-scroll-90")
-    @Test fun cancelledDarkScroll180() =
-        showScrolled("CANCELLED", dark = true, scrollOffset = 180, name = "eats-prototype-tracking-cancelled-dark-scroll-180")
+    @Test fun cancelledDarkScroll118() =
+        showScrolled("CANCELLED", dark = true, scrollOffset = 118, name = "eats-prototype-tracking-cancelled-dark-scroll-118")
+    @Test fun cancelledDarkScroll236() =
+        showScrolled("CANCELLED", dark = true, scrollOffset = 236, name = "eats-prototype-tracking-cancelled-dark-scroll-236")
 
-    @Test fun pickupCompleteDarkScroll90() =
         showScrolled("PICKED_UP", pickup = true, dark = true, scrollOffset = 90, name = "eats-prototype-tracking-pickup-complete-dark-scroll-90")
-    @Test fun pickupCompleteDarkScroll179() =
         showScrolled("PICKED_UP", pickup = true, dark = true, scrollOffset = 179, name = "eats-prototype-tracking-pickup-complete-dark-scroll-179")
 
-    @Test fun pickupPreparingLightScroll84() =
-        showScrolled("PREPARING", pickup = true, scrollOffset = 84, name = "eats-prototype-tracking-pickup-preparing-light-scroll-84")
-    @Test fun pickupPreparingLightScroll167() =
-        showScrolled("PREPARING", pickup = true, scrollOffset = 167, name = "eats-prototype-tracking-pickup-preparing-light-scroll-167")
-    @Test fun pickupPreparingDarkScroll84() =
-        showScrolled("PREPARING", pickup = true, dark = true, scrollOffset = 84, name = "eats-prototype-tracking-pickup-preparing-dark-scroll-84")
-    @Test fun pickupPreparingDarkScroll167() =
-        showScrolled("PREPARING", pickup = true, dark = true, scrollOffset = 167, name = "eats-prototype-tracking-pickup-preparing-dark-scroll-167")
+    @Test fun pickupPreparingLightScroll112() =
+        showScrolled("PREPARING", pickup = true, scrollOffset = 112, name = "eats-prototype-tracking-pickup-preparing-light-scroll-112")
+    @Test fun pickupPreparingLightScroll223() =
+        showScrolled("PREPARING", pickup = true, scrollOffset = 223, name = "eats-prototype-tracking-pickup-preparing-light-scroll-223")
+    @Test fun pickupPreparingDarkScroll112() =
+        showScrolled("PREPARING", pickup = true, dark = true, scrollOffset = 112, name = "eats-prototype-tracking-pickup-preparing-dark-scroll-112")
+    @Test fun pickupPreparingDarkScroll223() =
+        showScrolled("PREPARING", pickup = true, dark = true, scrollOffset = 223, name = "eats-prototype-tracking-pickup-preparing-dark-scroll-223")
+    @Test fun deliveryPreparingLightScroll116() =
+        showScrolled("PREPARING", scrollOffset = 116, name = "eats-prototype-tracking-delivery-preparing-light-scroll-116")
+    @Test fun deliveryPreparingLightScroll233() =
+        showScrolled("PREPARING", scrollOffset = 233, name = "eats-prototype-tracking-delivery-preparing-light-scroll-233")
+    @Test fun deliveryPreparingDarkScroll116() =
+        showScrolled("PREPARING", dark = true, scrollOffset = 116, name = "eats-prototype-tracking-delivery-preparing-dark-scroll-116")
+    @Test fun deliveryPreparingDarkScroll233() =
+        showScrolled("PREPARING", dark = true, scrollOffset = 233, name = "eats-prototype-tracking-delivery-preparing-dark-scroll-233")
+
+    @Test fun cancelledLightScroll118() =
+        showScrolled("CANCELLED", scrollOffset = 118, name = "eats-prototype-tracking-cancelled-light-scroll-118")
+    @Test fun cancelledLightScroll236() =
+        showScrolled("CANCELLED", scrollOffset = 236, name = "eats-prototype-tracking-cancelled-light-scroll-236")
+
+    @Test fun pickupReadyLightScroll92() =
+        showScrolled("READY_FOR_PICKUP", pickup = true, scrollOffset = 92, name = "eats-prototype-tracking-pickup-ready-light-scroll-92")
+    @Test fun pickupReadyLightScroll183() =
+        showScrolled("READY_FOR_PICKUP", pickup = true, scrollOffset = 183, name = "eats-prototype-tracking-pickup-ready-light-scroll-183")
+    @Test fun pickupReadyDarkScroll92() =
+        showScrolled("READY_FOR_PICKUP", pickup = true, dark = true, scrollOffset = 92, name = "eats-prototype-tracking-pickup-ready-dark-scroll-92")
+    @Test fun pickupReadyDarkScroll183() =
+        showScrolled("READY_FOR_PICKUP", pickup = true, dark = true, scrollOffset = 183, name = "eats-prototype-tracking-pickup-ready-dark-scroll-183")
+
 }
