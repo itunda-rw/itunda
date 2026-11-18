@@ -29,6 +29,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,7 +64,7 @@ enum class EatsCheckoutMode { DELIVERY, PICKUP, DINE_IN }
 @Composable
 fun EatsCheckoutView(
     restaurant: ShoppingMerchantDto,
-    cart: Map<String, EatsCartLine>,
+    cart: SnapshotStateMap<String, EatsCartLine>,
     menu: List<MerchantProductDto>,
     initialMode: EatsCheckoutMode = EatsCheckoutMode.DELIVERY,
     initialAddress: String = "",
@@ -74,7 +75,6 @@ fun EatsCheckoutView(
     onDineInOrderPlaced: (DineInOrderDto) -> Unit,
     deviceStepUpHost: @Composable (Boolean, () -> Unit, suspend () -> Unit) -> Unit,
 ) {
-    BackHandler(onBack = onBack)
     var mode by remember { mutableStateOf(initialMode) }
     var address by remember { mutableStateOf(initialAddress) }
     var addressLatitude by remember { mutableStateOf<Double?>(null) }
@@ -149,183 +149,73 @@ fun EatsCheckoutView(
         if (res.success) onDineInOrderPlaced(res.order)
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(vertical = Ids.layout.screenVertical)) {
-        BackTopBar("Checkout", onBack)
-        LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
-            items(lines, key = { (p, line) -> eatsCartKey(p.id, line.choiceIds) }) { (p, line) ->
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("${p.name}${eatsOptionsSummary(p, line.choiceIds)} x${line.quantity}", color = Ids.colors.textPrimary, fontSize = 14.sp)
-                    Text(String.format(Locale.US, "%,.0f RWF", eatsLineUnitPrice(p, line.choiceIds) * line.quantity), color = Ids.colors.textPrimary, fontSize = 14.sp)
-                }
-            }
-            item { Divider(color = Ids.colors.divider, modifier = Modifier.padding(vertical = 10.dp)) }
-            item {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Subtotal", color = Ids.colors.textPrimary, fontSize = 14.sp)
-                    Text(String.format(Locale.US, "%,.0f RWF", total), color = Ids.colors.textPrimary, fontSize = 14.sp)
-                }
-            }
-            if (savedCoupon != null) {
-                item {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Saved coupon", color = Ids.colors.textSecondary, fontSize = 13.sp)
-                        Text(savedCoupon, color = Ids.colors.textBrand, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-            if (shortOfMinimum) {
-                item {
-                    Text(
-                        "Add ${String.format(Locale.US, "%,.0f", minimumOrder - total)} RWF more to reach the minimum order.",
-                        color = Ids.colors.danger,
-                        fontSize = 13.sp,
-                        modifier = Modifier.padding(top = 6.dp),
-                    )
-                }
-            }
-            item { Spacer(modifier = Modifier.height(14.dp)) }
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Ids.colors.surfaceSoft),
-                ) {
-                    listOf(EatsCheckoutMode.DELIVERY to "Delivery", EatsCheckoutMode.PICKUP to "Pickup", EatsCheckoutMode.DINE_IN to "Order at table").forEach { (m, label) ->
-                        val selected = m == mode
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (selected) Ids.colors.brand else Color.Transparent)
-                                .pressScaleClickable(enabled = !submitting) { mode = m; error = null; onModeChange(m) }
-                                .padding(vertical = 10.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(label, color = if (selected) Color.White else Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            }
-            if (mode == EatsCheckoutMode.DELIVERY) {
-                item { Text("Plus a real delivery fee, added at checkout", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp)) }
-                item {
-                    Column(modifier = Modifier.padding(top = 10.dp)) {
-                        Text("Request for the rider", color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        Row(
-                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            listOf("Leave at the door", "Hand it to me", "Call when nearby").forEach { option ->
-                                val selected = requestForRider == option
-                                Box(
-                                    modifier = Modifier.clip(RoundedCornerShape(18.dp))
-                                        .background(if (selected) Ids.colors.pressed else Ids.colors.surfaceSoft)
-                                        .pressScaleClickable { requestForRider = option }
-                                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                                ) {
-                                    Text(
-                                        option,
-                                        color = if (selected) Ids.colors.textBrand else Ids.colors.textPrimary,
-                                        fontSize = 12.sp,
-                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-                item {
-                    AddressAutocompleteField(
-                        address = address,
-                        onAddressChange = { address = it; addressLatitude = null; addressLongitude = null },
-                        onSuggestionSelected = { s ->
-                            address = s.displayName
-                            addressLatitude = s.latitude
-                            addressLongitude = s.longitude
-                        },
-                    )
-                }
-                if (addressLatitude != null) {
-                    item { Text("Pinned -- real distance-based delivery fee applies", color = Ids.colors.success, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp)) }
-                }
-                item {
-                    IdsTextField(
-                        value = deliveryNotes,
-                        onValueChange = { if (it.length <= 500) deliveryNotes = it },
-                        label = "Additional delivery notes (optional)",
-                        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                    )
-                }
-            } else if (mode == EatsCheckoutMode.PICKUP) {
-                item { Text("No delivery fee -- collect your order at the restaurant once it's ready", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp)) }
-                item {
-                    IdsTextField(
-                        value = deliveryNotes,
-                        onValueChange = { if (it.length <= 500) deliveryNotes = it },
-                        label = "Pickup notes (optional)",
-                        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                    )
-                }
-            } else {
-                item { Text("No delivery fee -- served straight to your table", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp)) }
-                item {
-                    IdsTextField(
-                        value = tableNumber,
-                        onValueChange = { if (it.length <= 50) tableNumber = it },
-                        label = "Table number -- e.g. 12",
-                        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                    )
-                }
-            }
-            error?.let { item { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) } }
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(if (submitting || !canSubmit) Ids.colors.textTertiary else Ids.colors.brand)
-                .pressScaleClickable(enabled = !submitting && canSubmit) {
-                    submitting = true
-                    error = null
-                    needsDeviceVerification = false
-                    coroutineScope.launch {
-                        try {
-                            when (mode) { EatsCheckoutMode.DELIVERY -> submitDelivery(); EatsCheckoutMode.PICKUP -> submitPickup(); EatsCheckoutMode.DINE_IN -> submitDineIn() }
-                        } catch (e: HttpException) {
-                            if (isDeviceNotVerifiedError(e)) {
-                                needsDeviceVerification = true
-                            } else {
-                                error = superAppErrorMessage(e)
-                            }
-                        } catch (e: IOException) {
-                            error = "Couldn't reach itunda. Check your connection and try again."
-                        } finally {
-                            submitting = false
-                        }
-                    }
-                }
-                .padding(vertical = 16.dp),
-            contentAlignment = Alignment.Center,
-        ) { Text(if (submitting) "Placing order…" else "Place order", color = Color.White, fontWeight = FontWeight.Bold) }
-        deviceStepUpHost(
-            needsDeviceVerification,
-            { needsDeviceVerification = false },
-            {
-                needsDeviceVerification = false
+    EatsCheckoutPrototypeScreen(
+        restaurant = restaurant,
+        cart = cart,
+        menu = menu,
+        initialMode = mode,
+        address = address,
+        initialCoupon = savedCoupon,
+        minimumOrderAmount = minimumOrder,
+        submitting = submitting,
+        error = error,
+        onModeChange = { selected ->
+            mode = selected
+            error = null
+            onModeChange(selected)
+        },
+        onAddressChange = { selected ->
+            address = selected
+            addressLatitude = null
+            addressLongitude = null
+        },
+        onBack = onBack,
+        onAddMoreItems = onBack,
+        onPlaceOrder = {
+            if (!submitting) {
                 submitting = true
-                try {
-                    when (mode) { EatsCheckoutMode.DELIVERY -> submitDelivery(); EatsCheckoutMode.PICKUP -> submitPickup(); EatsCheckoutMode.DINE_IN -> submitDineIn() }
-                } catch (e: HttpException) {
-                    error = superAppErrorMessage(e)
-                } catch (e: IOException) {
-                    error = "Couldn't reach itunda. Check your connection and try again."
-                } finally {
-                    submitting = false
+                error = null
+                needsDeviceVerification = false
+                coroutineScope.launch {
+                    try {
+                        when (mode) {
+                            EatsCheckoutMode.DELIVERY -> submitDelivery()
+                            EatsCheckoutMode.PICKUP -> submitPickup()
+                            EatsCheckoutMode.DINE_IN -> submitDineIn()
+                        }
+                    } catch (e: HttpException) {
+                        if (isDeviceNotVerifiedError(e)) needsDeviceVerification = true
+                        else error = superAppErrorMessage(e)
+                    } catch (e: IOException) {
+                        error = "Couldn't reach itunda. Check your connection and try again."
+                    } finally {
+                        submitting = false
+                    }
                 }
-            },
-        )
-    }
+            }
+        },
+    )
+    deviceStepUpHost(
+        needsDeviceVerification,
+        { needsDeviceVerification = false },
+        {
+            needsDeviceVerification = false
+            submitting = true
+            try {
+                when (mode) {
+                    EatsCheckoutMode.DELIVERY -> submitDelivery()
+                    EatsCheckoutMode.PICKUP -> submitPickup()
+                    EatsCheckoutMode.DINE_IN -> submitDineIn()
+                }
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                submitting = false
+            }
+        },
+    )
 }
 
 @Composable
