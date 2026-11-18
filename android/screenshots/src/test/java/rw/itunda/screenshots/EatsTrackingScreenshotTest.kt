@@ -108,4 +108,42 @@ class EatsTrackingScreenshotTest {
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/screenshots/eats-prototype-tracking-rating-sheet-light.png")
     }
+
+    private fun showPanel(status: String, dark: Boolean, action: String, name: String) {
+        rule.activity.actionBar?.hide()
+        rule.setContent {
+            IdsTheme(darkTheme = dark) {
+                EatsTrackingScreen(order(status), null, {}, {}, initialItems = items)
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithText(action).performClick()
+        rule.waitForIdle()
+        rule.onRoot().captureRoboImage("build/screenshots/$name.png")
+    }
+
+    @Test fun deliveryAcceptedDark() =
+        show("PLACED", dark = true, name = "eats-prototype-tracking-delivery-accepted-dark")
+    @Test fun deliveryPreparingDark() =
+        show("PREPARING", dark = true, name = "eats-prototype-tracking-delivery-preparing-dark")
+    @Test fun deliveryCancelledDark() =
+        show("CANCELLED", dark = true, name = "eats-prototype-tracking-cancelled-dark")
+    @Test fun pickupAcceptedLight() =
+        show("PLACED", pickup = true, name = "eats-prototype-tracking-pickup-accepted-light")
+    @Test fun pickupAcceptedDark() =
+        show("PLACED", pickup = true, dark = true, name = "eats-prototype-tracking-pickup-accepted-dark")
+    @Test fun pickupPreparingLight() =
+        show("PREPARING", pickup = true, name = "eats-prototype-tracking-pickup-preparing-light")
+    @Test fun pickupPreparingDark() =
+        show("PREPARING", pickup = true, dark = true, name = "eats-prototype-tracking-pickup-preparing-dark")
+    @Test fun pickupCompleteDark() =
+        show("PICKED_UP", pickup = true, dark = true, name = "eats-prototype-tracking-pickup-complete-dark")
+
+    @Test fun riderSheetDark() =
+        showPanel("PICKED_UP", true, "Message rider", "eats-prototype-tracking-rider-sheet-dark")
+    @Test fun cancelSheetDark() =
+        showPanel("PLACED", true, "Cancel order", "eats-prototype-tracking-cancel-sheet-dark")
+    @Test fun ratingSheetDark() =
+        showPanel("DELIVERED", true, "★ Rate your order", "eats-prototype-tracking-rating-sheet-dark")
+
 }

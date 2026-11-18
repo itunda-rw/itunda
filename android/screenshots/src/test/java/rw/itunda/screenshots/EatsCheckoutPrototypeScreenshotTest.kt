@@ -298,6 +298,7 @@ class EatsCheckoutPrototypeScreenshotTest {
         rule.onNodeWithText("You pay now. Each friend gets a request for their items: 2,200 RWF in total.").assertExists()
         rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-group-split-light.png")
         rule.onNodeWithText("I pay for everyone").performClick()
+        rule.waitForIdle()
         assertFalse(rule.onAllNodesWithText("You pay now. Each friend gets a request for their items: 2,200 RWF in total.").fetchSemanticsNodes().isNotEmpty())
         rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-group-pay-everyone-light.png")
         rule.onNodeWithText("Manage").performClick()
