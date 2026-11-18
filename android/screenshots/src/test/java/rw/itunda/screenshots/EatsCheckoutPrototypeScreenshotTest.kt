@@ -27,6 +27,7 @@ import rw.itunda.feature.eats.impl.EatsCartLine
 import rw.itunda.feature.eats.impl.EatsCheckoutMode
 import rw.itunda.feature.eats.impl.EatsCheckoutView
 import rw.itunda.feature.eats.impl.EatsPaymentMethod
+import rw.itunda.feature.eats.impl.eatsScheduleSlots
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -57,17 +58,20 @@ class EatsCheckoutPrototypeScreenshotTest {
         scheduled: String? = null,
         payBalance: Double = 120500.0,
         paymentMethod: EatsPaymentMethod = EatsPaymentMethod.ITUNDA_PAY,
+        quantity: Int = 2,
+        bankBalance: Double = 842300.0,
     ) {
         rule.setContent {
             IdsTheme(darkTheme = dark) {
                 EatsCheckoutView(
                     restaurant = restaurant,
-                    cart = mutableStateMapOf("p1" to EatsCartLine("p1", 2)),
+                    cart = mutableStateMapOf("p1" to EatsCartLine("p1", quantity)),
                     menu = menu,
                     initialMode = mode,
                     initialAddress = "Kimironko, KG 11 Ave",
                     savedCoupon = coupon,
                     initialPayBalance = payBalance,
+                    initialBankBalance = bankBalance,
                     initialTipAmount = tip,
                     initialScheduledTime = scheduled,
                     initialPaymentMethod = paymentMethod,
@@ -131,8 +135,9 @@ class EatsCheckoutPrototypeScreenshotTest {
     }
 
     @Test fun scheduledDeliverySelectionIsRestored() {
-        render(scheduled = "12:30")
-        rule.onNodeWithText("12:30").assertExists()
+        val slot = eatsScheduleSlots().first()
+        render(scheduled = slot)
+        rule.onNodeWithText(slot).assertExists()
         rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-scheduled.png")
     }
 
@@ -160,10 +165,25 @@ class EatsCheckoutPrototypeScreenshotTest {
         rule.onNodeWithText("Pay with").performClick()
         rule.waitForIdle()
         rule.onNodeWithContentDescription("Payment option itunda Bank").performClick()
-        rule.onNodeWithText("Done").performClick()
         rule.waitForIdle()
         rule.onNodeWithText("itunda Bank · 842,300 RWF").assertExists()
         rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-payment-bank.png")
+    }
+
+    @Test fun paymentMethodPageShowsCashAtPickup() {
+        render(mode = EatsCheckoutMode.PICKUP)
+        rule.onNodeWithContentDescription("Open payment method").performScrollTo().performClick()
+        rule.onNodeWithText("Cash at pickup").assertExists()
+        rule.onNodeWithText("Pay when you collect your order").assertExists()
+        rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-payment-cash-at-pickup.png")
+    }
+
+    @Test fun cashLimitDisablesCashPaymentOption() {
+        render(quantity = 100)
+        rule.onNodeWithContentDescription("Open payment method").performScrollTo().performClick()
+        rule.onNodeWithText("Cash orders are limited to 100,000 RWF").assertExists()
+        rule.onNodeWithText("Cash on delivery").assertExists()
+        rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-cash-limit.png")
     }
 
     @Test fun deliveryAddressPageShowsSavedAddresses() {
