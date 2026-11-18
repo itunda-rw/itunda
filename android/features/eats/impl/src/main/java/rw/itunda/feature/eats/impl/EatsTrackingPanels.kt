@@ -81,7 +81,7 @@ internal fun EatsTrackingCancelPanel(refund: String, busy: Boolean, onBack: () -
     val palette = eatsPrototypePalette()
     Column(modifier.fillMaxSize().background(palette.background)) {
         EatsTrackingHeader("", onBack)
-        Column(Modifier.weight(1f).padding(horizontal = 24.dp).padding(top = 16.dp)) {
+        Column(Modifier.weight(1f).padding(horizontal = 24.dp).padding(top = 20.dp)) {
             Text("Cancel this order?", color = palette.primary, fontSize = 30.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold)
             Text("You will get $refund back in itunda Pay.", color = palette.secondary, fontSize = 15.sp, lineHeight = 21.sp,
                 modifier = Modifier.padding(top = 8.dp))
