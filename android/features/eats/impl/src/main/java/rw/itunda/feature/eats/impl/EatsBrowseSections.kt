@@ -95,7 +95,7 @@ fun EatsBrowseOffers(
         )
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             Row(
-                Modifier.offset(x = (-20).dp).requiredWidth(maxWidth + 40.dp).padding(horizontal = 12.dp).padding(top = 18.dp),
+                Modifier.offset(x = 0.dp).requiredWidth(maxWidth + 40.dp).padding(horizontal = 12.dp).padding(top = 18.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 EatsShortcut("Fastest", "moto", ItundaArtSet.Color, 34.dp, onFastestClick, Modifier.weight(1f))

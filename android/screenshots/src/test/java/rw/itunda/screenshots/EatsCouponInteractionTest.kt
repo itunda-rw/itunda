@@ -21,7 +21,7 @@ import rw.itunda.feature.eats.impl.EatsBrowseState
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [34], qualifiers = "w390dp-h844dp-xxhdpi")
+@Config(sdk = [34], qualifiers = "w390dp-h900dp-xxhdpi")
 class EatsCouponInteractionTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
 
