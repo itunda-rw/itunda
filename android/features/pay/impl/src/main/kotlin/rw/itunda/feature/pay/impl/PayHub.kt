@@ -44,14 +44,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import rw.itunda.core.designsystem.components.ItundaArt
+import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.components.pressScaleClickable
 
-private data class HubRecent(val name: String, val time: String, val amount: String, val earned: String)
+private data class HubRecent(val name: String, val time: String, val amount: String, val earned: String, val icon: HubIcon)
 
 private val Recents = listOf(
-    HubRecent("Kigali Bus Services", "Tuesday", "300 RWF", "9 RWF earned"),
-    HubRecent("Kigali Bakery", "08:12", "4,500 RWF", "135 RWF earned"),
-    HubRecent("itunda Shop", "14:05", "18,000 RWF", "540 RWF earned"),
+    HubRecent("Kigali Bus Services", "Tuesday", "300 RWF", "9 RWF earned", HubIcon.Bus),
+    HubRecent("Kigali Bakery", "08:12", "4,500 RWF", "135 RWF earned", HubIcon.Food),
+    HubRecent("itunda Shop", "14:05", "18,000 RWF", "540 RWF earned", HubIcon.Bag),
 )
 
 /**
@@ -89,7 +91,7 @@ fun PayHub(
 
 @Composable
 private fun HubTopBar(p: PayPalette, onBack: () -> Unit, onSettings: () -> Unit) {
-    Box(Modifier.fillMaxWidth().height(78.dp).padding(top = 24.dp)) {
+    Box(Modifier.fillMaxWidth().padding(top = 24.dp).height(44.dp)) {
         Box(Modifier.padding(start = 24.dp).size(44.dp).pressScaleClickable(onClick = onBack), contentAlignment = Alignment.Center) {
             Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back", Modifier.size(24.dp), tint = p.gear)
         }
@@ -102,6 +104,7 @@ private fun HubTopBar(p: PayPalette, onBack: () -> Unit, onSettings: () -> Unit)
             Icon(Icons.Outlined.Settings, "Settings", Modifier.size(30.dp), tint = p.gear)
         }
     }
+    Spacer(Modifier.height(10.dp))
 }
 
 @Composable
@@ -110,7 +113,7 @@ private fun EarningCard(p: PayPalette, dark: Boolean, onFindStores: () -> Unit) 
         Row(Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp).fillMaxWidth().height(60.dp), verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
                 Row(Modifier.height(24.dp), verticalAlignment = Alignment.CenterVertically) {
-                    WalletGlyph(Modifier.size(width = 14.5.dp, height = 13.9.dp).offset(x = 4.7.dp))
+                    ItundaArt("wallet", ItundaArtSet.Proto, 12.dp, modifier = Modifier.offset(x = 4.7.dp))
                     Text("itunda Pay", color = p.tt, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(start = 22.dp))
                 }
                 Text("Earning 3%", color = p.brandText, fontSize = 24.sp, lineHeight = 34.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.8).sp, modifier = Modifier.padding(top = 2.dp))
@@ -129,7 +132,7 @@ private fun EarningCard(p: PayPalette, dark: Boolean, onFindStores: () -> Unit) 
         ) {
             Box(Modifier.offset(x = 20.dp, y = 17.dp).size(36.dp).clip(RoundedCornerShape(11.dp)).background(if (dark) Color(0xFF17171C) else Color.White).drawBehind {
                 drawRoundRect(p.brandText, cornerRadius = CornerRadius(11.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
-            }, contentAlignment = Alignment.Center) { WalletGlyph(Modifier.size(24.dp)) }
+            }, contentAlignment = Alignment.Center) { ItundaArt("wallet", ItundaArtSet.Proto, 17.dp) }
             Box(Modifier.offset(x = 36.5.dp, y = 53.dp).size(1.5.dp, 24.dp).background(p.brandText.copy(alpha = 0.9f)))
             Box(Modifier.offset(x = 24.dp, y = 77.dp).size(28.dp).clip(CircleShape).background(p.tint), contentAlignment = Alignment.Center) {
                 Box(Modifier.size(10.dp).clip(CircleShape).background(if (dark) Color(0xFF17171C).let { p.brandText } else p.brandText))
@@ -144,32 +147,19 @@ private fun EarningCard(p: PayPalette, dark: Boolean, onFindStores: () -> Unit) 
 }
 
 @Composable
-private fun WalletGlyph(modifier: Modifier) {
-    Canvas(modifier) {
-        val w = size.width; val h = size.height
-        drawRoundRect(Color(0xFFFFC837), Offset(w * 0.18f, 0f), Size(w * 0.6f, h * 0.45f), CornerRadius(w * 0.1f))
-        drawRoundRect(Color(0xFF8F89FF), Offset(0f, h * 0.28f), Size(w, h * 0.72f), CornerRadius(w * 0.18f))
-        drawRoundRect(Color(0xFF6C63F0), Offset(w * 0.58f, h * 0.52f), Size(w * 0.42f, h * 0.26f), CornerRadius(w * 0.13f))
-        drawCircle(Color(0xFFFFD24D), w * 0.05f, Offset(w * 0.73f, h * 0.65f))
-    }
-}
-
-@Composable
 private fun HubCard(modifier: Modifier, content: @Composable () -> Unit) {
-    Box(modifier.fillMaxWidth().padding(horizontal = 15.dp)) { Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 20.dp)) { content() } }
+    Box(modifier.fillMaxWidth().padding(horizontal = 15.dp)) { Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 20.dp)) { content() } }
 }
 
 @Composable
-private fun IconChip(tint: Color, p: PayPalette, size: Dp = 30.dp, content: @Composable () -> Unit = {}) {
+private fun IconChip(p: PayPalette, size: Dp = 30.dp, content: @Composable () -> Unit = {}) {
     Box(Modifier.size(size).clip(RoundedCornerShape(9.dp)).background(p.soft), contentAlignment = Alignment.Center) { content() }
 }
 
 @Composable
 private fun OnlineRow(p: PayPalette) {
     Row(Modifier.height(70.dp), verticalAlignment = Alignment.CenterVertically) {
-        IconChip(Color(0xFF5B8CFF), p) {
-            Canvas(Modifier.size(16.3.dp)) { drawCircle(Color(0xFF5B8CFF), size.width / 2); drawCircle(Color(0xFF2DB873), size.width * 0.2f, Offset(size.width * 0.35f, size.height * 0.62f)) }
-        }
+        IconChip(p) { ItundaArt("globe", ItundaArtSet.Proto, 16.3.dp) }
         Column(Modifier.padding(start = 16.dp).weight(1f)) {
             Text("How to pay online", color = p.text, fontSize = 17.sp, lineHeight = 23.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp)
             Text("Jumia, Yego and more", color = p.tt, fontSize = 14.sp, lineHeight = 18.sp)
@@ -187,8 +177,8 @@ private fun BenefitsReceived(p: PayPalette, onOpenPoints: () -> Unit) {
         Text("6,400 RWF received", color = p.text, fontSize = 22.sp, lineHeight = 30.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.5).sp)
         Chevron(p.tt.copy(alpha = 0.6f))
     }
-    BenefitRow(p, Color(0xFFF5C518), "Points · Pay Money", "Total 6,400 RWF", onOpenPoints)
-    BenefitRow(p, Color(0xFFF0535F), "Coupons received", "0", null)
+    BenefitRow(p, HubIcon.Star, "Points · Pay Money", "Total 6,400 RWF", onOpenPoints)
+    BenefitRow(p, HubIcon.Gift, "Coupons received", "0", null)
 }
 
 @Composable
@@ -200,12 +190,12 @@ private fun Chevron(c: Color) {
 }
 
 @Composable
-private fun BenefitRow(p: PayPalette, tint: Color, label: String, value: String, onClick: (() -> Unit)?) {
+private fun BenefitRow(p: PayPalette, icon: HubIcon, label: String, value: String, onClick: (() -> Unit)?) {
     Row(
         Modifier.fillMaxWidth().height(44.dp).then(if (onClick != null) Modifier.pressScaleClickable(onClick = onClick) else Modifier),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconChip(tint, p) { Box(Modifier.size(14.dp).clip(RoundedCornerShape(4.dp)).background(tint)) }
+        IconChip(p) { HubGlyph(icon) }
         Text(label, color = p.text, fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.4).sp, modifier = Modifier.padding(start = 12.dp).weight(1f))
         Text(value, color = p.tt, fontSize = 13.sp, lineHeight = 18.2.sp, fontWeight = FontWeight.Medium, letterSpacing = (-0.2).sp)
     }
@@ -215,11 +205,11 @@ private fun BenefitRow(p: PayPalette, tint: Color, label: String, value: String,
 private fun MoreBenefits(p: PayPalette) {
     Text("Get more benefits", color = p.tt, fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium, modifier = Modifier.height(30.dp))
     listOf(
-        Color(0xFFF04452) to "Discount and cashback coupons", Color(0xFF8B5CF6) to "Airtime discounts", Color(0xFF14B8A6) to "Card with up to 5% back",
-        Color(0xFFF5A623) to "Invite friends, get 10,000 RWF", Color(0xFF3B6FF6) to "Point missions",
+        HubIcon.Gift to "Discount and cashback coupons", HubIcon.Bolt to "Airtime discounts", HubIcon.Card to "Card with up to 5% back",
+        HubIcon.People to "Invite friends, get 10,000 RWF", HubIcon.Star to "Point missions",
     ).forEach { (c, t) ->
         Row(Modifier.fillMaxWidth().height(44.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconChip(c, p) { Box(Modifier.size(14.dp).clip(RoundedCornerShape(4.dp)).background(c)) }
+            IconChip(p) { HubGlyph(c) }
             Text(t, color = p.text, fontSize = 16.sp, lineHeight = 23.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp, modifier = Modifier.padding(start = 14.dp))
         }
     }
@@ -230,7 +220,7 @@ private fun HistoryBlock(p: PayPalette, dark: Boolean, onOpenHistory: () -> Unit
     Text("History", color = p.tt, fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium, modifier = Modifier.height(30.dp))
     Recents.forEach { r ->
         Row(Modifier.fillMaxWidth().height(55.dp).pressScaleClickable(onClick = onOpenHistory), verticalAlignment = Alignment.CenterVertically) {
-            IconChip(p.text, p) { Box(Modifier.size(13.dp).clip(RoundedCornerShape(4.dp)).background(p.text)) }
+            IconChip(p) { HubGlyph(r.icon) }
             Column(Modifier.padding(start = 14.dp).weight(1f)) {
                 Text(r.name, color = p.text, fontSize = 15.sp, lineHeight = 23.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp)
                 Text(r.time, color = p.tt, fontSize = 14.sp, lineHeight = 18.sp)
@@ -241,8 +231,13 @@ private fun HistoryBlock(p: PayPalette, dark: Boolean, onOpenHistory: () -> Unit
             }
         }
     }
+    val shade = if (dark) Color.White else Color(0xFF191F28)
     Box(
-        Modifier.padding(top = 8.dp).fillMaxWidth().height(60.dp).requiredWidth(360.dp).offset(x = (-20).dp).pressScaleClickable(onClick = onOpenHistory),
+        Modifier.padding(top = 8.dp).requiredWidth(360.dp).offset(x = (-20).dp).height(60.dp)
+            .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
+            .background(Brush.linearGradient(listOf(shade.copy(alpha = 0f), shade.copy(alpha = if (dark) 0.016f else 0.01f), shade.copy(alpha = if (dark) 0.067f else 0.05f)), Offset(0f, 0f), Offset(100f, 400f)))
+            .drawBehind { drawRect(shade.copy(alpha = 0.06f), Offset.Zero, Size(size.width, 1.dp.toPx())) }
+            .pressScaleClickable(onClick = onOpenHistory),
         contentAlignment = Alignment.Center,
     ) { Text("See more", color = if (dark) Color(0xFF9EA4AE) else Color(0xFF4E5968), fontSize = 16.sp, fontWeight = FontWeight.Medium) }
 }
@@ -251,7 +246,33 @@ private fun HistoryBlock(p: PayPalette, dark: Boolean, onOpenHistory: () -> Unit
 private fun Links(p: PayPalette) {
     Column(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 24.dp)) {
         listOf("FAQ", "Send feedback").forEach {
-            Text(it, color = p.tt, fontSize = 17.sp, lineHeight = 24.sp, modifier = Modifier.fillMaxWidth().height(56.dp).padding(start = 20.dp).wrapContentHeight(Alignment.CenterVertically))
+            Text(it, color = p.tt, fontSize = 17.sp, lineHeight = 24.sp, modifier = Modifier.fillMaxWidth().height(56.dp).padding(start = 24.dp).wrapContentHeight(Alignment.CenterVertically))
         }
+    }
+}
+
+private enum class HubIcon { Star, Gift, Bolt, Card, People, Bus, Food, Bag }
+
+/** Prototype row glyphs: the shared Proto art where it exists, the two flat shapes (star, bolt) drawn directly. */
+@Composable
+private fun HubGlyph(icon: HubIcon) {
+    val gold = Color(0xFFFFC837)
+    when (icon) {
+        HubIcon.Star -> Canvas(Modifier.size(19.dp)) {
+            val u = size.width / 80f
+            val path = Path().apply { moveTo(40f * u, 9f * u); lineTo(49f * u, 28f * u); lineTo(70f * u, 31f * u); lineTo(55f * u, 46f * u); lineTo(58.5f * u, 67f * u); lineTo(40f * u, 57f * u); lineTo(21.5f * u, 67f * u); lineTo(25f * u, 46f * u); lineTo(10f * u, 31f * u); lineTo(31f * u, 28f * u); close() }
+            drawPath(path, gold); drawPath(path, gold, style = androidx.compose.ui.graphics.drawscope.Stroke(6f * u, join = androidx.compose.ui.graphics.StrokeJoin.Round))
+        }
+        HubIcon.Bolt -> Canvas(Modifier.size(19.dp)) {
+            val u = size.width / 80f
+            val path = Path().apply { moveTo(46f * u, 8f * u); lineTo(16f * u, 46f * u); lineTo(36f * u, 46f * u); lineTo(32f * u, 72f * u); lineTo(64f * u, 32f * u); lineTo(44f * u, 32f * u); close() }
+            drawPath(path, gold); drawPath(path, gold, style = androidx.compose.ui.graphics.drawscope.Stroke(6f * u, join = androidx.compose.ui.graphics.StrokeJoin.Round))
+        }
+        HubIcon.Gift -> ItundaArt("gift", ItundaArtSet.Proto, 16.dp)
+        HubIcon.Card -> ItundaArt("card", ItundaArtSet.Proto, 16.dp)
+        HubIcon.People -> ItundaArt("community", ItundaArtSet.Proto, 16.dp)
+        HubIcon.Bus -> ItundaArt("busstop", ItundaArtSet.Proto, 16.dp)
+        HubIcon.Food -> ItundaArt("restaurant", ItundaArtSet.Proto, 16.dp)
+        HubIcon.Bag -> ItundaArt("bag", ItundaArtSet.Proto, 16.dp)
     }
 }
