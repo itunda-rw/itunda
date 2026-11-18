@@ -81,7 +81,7 @@ fun EatsPopularRail(
                         maxLines = 2,
                         lineHeight = 19.sp,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 8.dp),
+                        modifier = Modifier.width(132.dp).padding(top = 8.dp),
                     )
                     Text(
                         listOfNotNull(
@@ -91,6 +91,7 @@ fun EatsPopularRail(
                         color = palette.secondary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.width(132.dp),
                     )
                 }
             }
