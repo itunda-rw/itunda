@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -234,4 +235,33 @@ class EatsCheckoutPrototypeScreenshotTest {
         assertTrue(rule.onAllNodesWithText("3,400 RWF").fetchSemanticsNodes().size >= 2)
         rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-upsell-added.png")
     }
+    @Test fun paymentMethodPageDark() {
+        render(dark = true)
+        rule.onNodeWithContentDescription("Open payment method").performScrollTo().performClick()
+        rule.onNodeWithText("Pay with").assertExists()
+        rule.onNodeWithText("itunda Pay").assertExists()
+        rule.onNodeWithText("itunda Bank").assertExists()
+        rule.onNodeWithText("Cash on delivery").assertExists()
+        rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-payment-methods-dark.png")
+    }
+
+    @Test fun savedWorkAddressCanBeSelected() {
+        render()
+        rule.onNodeWithText("Change").performClick()
+        rule.onNodeWithText("Work").performClick()
+        rule.onNodeWithText("Use this address").performClick()
+        rule.onNodeWithText("Kacyiru, KG 7 Ave").assertExists()
+        rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-address-work-selected.png")
+    }
+
+    @Test fun newAddressCanBeSavedAndUsedInDark() {
+        render(dark = true)
+        rule.onNodeWithText("Change").performClick()
+        rule.onNodeWithText("Add a new address").performClick()
+        rule.onNodeWithContentDescription("New delivery address").performTextInput("Remera, KG 5 Ave")
+        rule.onNodeWithText("Save and use").performClick()
+        rule.onNodeWithText("Remera, KG 5 Ave").assertExists()
+        rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-address-new-saved-dark.png")
+    }
+
 }
