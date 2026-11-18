@@ -31,10 +31,8 @@ internal fun EatsTrackingStatusSummary(
 ) {
     val palette = eatsPrototypePalette()
     val statusTitle = when {
-        order.status == "CANCELLED" -> "Refunded to itunda Pay"
-        order.status == "DELIVERED" -> "Delivered at 16:50"
-        pickup && order.status == "PICKED_UP" -> "Picked up"
-        pickup && order.status == "READY_FOR_PICKUP" -> "Ready by 16:52"
+        order.status == "CANCELLED" -> "Arrives by 16:52"
+        pickup && order.status in setOf("READY_FOR_PICKUP", "PICKED_UP") -> "Ready by 16:52"
         pickup -> "Ready by 16:51"
         else -> "Arrives by 16:51"
     }
@@ -97,6 +95,7 @@ internal fun EatsTrackingOrderCard(
     onCallRestaurant: (() -> Unit)? = null,
 ) {
     val palette = eatsPrototypePalette()
+    val deliveryNotes = order.deliveryNotes
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(palette.surfaceSoft).padding(16.dp),
     ) {
@@ -121,9 +120,9 @@ internal fun EatsTrackingOrderCard(
         }
         Spacer(Modifier.height(8.dp))
         EatsTrackingOrderCardRow(if (pickup) "Pick up at" else "Delivery to", if (pickup) restaurantName else order.deliveryAddress)
-        if (!order.deliveryNotes.isNullOrBlank()) {
+        if (!deliveryNotes.isNullOrBlank()) {
             Spacer(Modifier.height(7.dp))
-            EatsTrackingOrderCardRow("Your note", order.deliveryNotes)
+            EatsTrackingOrderCardRow("Your note", deliveryNotes)
         }
         EatsTrackingOrderCardRow("Paid with", "itunda Pay")
         Row(

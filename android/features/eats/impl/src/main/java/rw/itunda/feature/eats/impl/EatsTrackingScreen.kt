@@ -16,10 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Call
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,6 +36,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
 import kotlinx.coroutines.launch
+import rw.itunda.core.designsystem.components.ItundaArt
+import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.network.EatsOrderDto
 import rw.itunda.core.network.EatsOrderItemDto
@@ -210,7 +208,7 @@ internal fun EatsTrackingMain(
                     if (pickup) Text(" · Pickup", color = palette.secondary, fontSize = 15.sp)
                     else {
                         Text(" · ", color = palette.secondary, fontSize = 15.sp)
-                        Text("⚡", color = Color(0xFFFFB321), fontSize = 16.sp)
+                        ItundaArt("bolt-solid", set = ItundaArtSet.Solid, size = 16.dp, tint = Color(0xFFFFB321))
                         Text(" Cheetah delivery", color = palette.secondary, fontSize = 15.sp)
                     }
                 }
@@ -335,11 +333,11 @@ internal fun EatsTrackingHeader(title: String, onBack: () -> Unit, onCall: () ->
     val palette = eatsPrototypePalette()
     Row(Modifier.fillMaxWidth().height(70.dp).padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
-            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back", tint = palette.primary)
+            ItundaArt("back", set = ItundaArtSet.Line, size = 24.dp, tint = palette.primary)
         }
         Text(title, color = palette.primary, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).padding(start = 6.dp))
         if (showCall) IconButton(onClick = onCall, modifier = Modifier.size(48.dp)) {
-            Icon(Icons.Outlined.Call, contentDescription = "Call rider", tint = palette.primary)
+            ItundaArt("phone", set = ItundaArtSet.Line, size = 20.dp, tint = palette.primary)
         }
     }
 }

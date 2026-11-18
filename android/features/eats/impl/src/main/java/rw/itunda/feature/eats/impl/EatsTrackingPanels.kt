@@ -46,7 +46,7 @@ internal fun EatsTrackingRiderCard(name: String, onCall: () -> Unit) {
             Modifier.size(48.dp).clip(CircleShape).background(palette.surfaceSoft).pressScaleClickable(onClick = onCall),
             contentAlignment = Alignment.Center,
         ) {
-            ItundaArt("airtime", set = ItundaArtSet.Color, size = 29.dp)
+            ItundaArt("phone", set = ItundaArtSet.Line, size = 20.dp, tint = palette.primary)
         }
     }
 }
