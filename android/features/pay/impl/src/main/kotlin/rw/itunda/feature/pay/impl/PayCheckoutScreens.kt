@@ -100,10 +100,14 @@ fun PayOrderScreen(merchantName: String, onBack: () -> Unit, onPay: () -> Unit) 
             Spacer(Modifier.height(4.dp))
             Text("7,000 RWF", color = p.text, fontSize = 34.sp, lineHeight = 47.6.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.8).sp)
             Spacer(Modifier.height(20.dp))
-            listOf("2 × Cappuccino" to "5,000", "1 × Croissant" to "2,000").forEach { OrderLine(p, it.first, it.second, false) }
+            Column(Modifier.padding(vertical = 4.dp)) {
+                listOf("2 × Cappuccino" to "5,000", "1 × Croissant" to "2,000").forEach { OrderLine(p, it.first, it.second, false) }
+            }
             Spacer(Modifier.height(12.dp))
-            OrderLine(p, "Pay from", "itunda Pay", true)
-            OrderLine(p, "You earn", "70 points", true)
+            Column(Modifier.padding(vertical = 4.dp)) {
+                OrderLine(p, "Pay from", "itunda Pay", true)
+                OrderLine(p, "You earn", "70 points", true)
+            }
         }
     }
 }
@@ -155,6 +159,10 @@ fun PayAmountScreen(recipient: String, onBack: () -> Unit, onPay: (Long) -> Unit
                 ) {
                     Text("Pay from", color = p.tt, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.15).sp)
                     Text("itunda Pay", color = p.text, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.15).sp, modifier = Modifier.padding(start = 6.dp))
+                    androidx.compose.foundation.Canvas(Modifier.padding(start = 6.dp).size(18.dp)) {
+                        val path = androidx.compose.ui.graphics.Path().apply { moveTo(4.5.dp.toPx(), 7.dp.toPx()); lineTo(9.dp.toPx(), 11.5.dp.toPx()); lineTo(13.5.dp.toPx(), 7.dp.toPx()) }
+                        drawPath(path, p.tt, style = androidx.compose.ui.graphics.drawscope.Stroke(1.8.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
+                    }
                 }
             }
             Spacer(Modifier.weight(1f))
@@ -162,11 +170,11 @@ fun PayAmountScreen(recipient: String, onBack: () -> Unit, onPay: (Long) -> Unit
                 PayBtn("Pay", p, enabled = amount > 0, height = 56.dp, radius = 16.dp, size = 17) { onPay(amount) }
             }
             Column(Modifier.padding(horizontal = 32.dp).height(250.dp)) {
-                listOf(listOf("1", "2", "3"), listOf("4", "5", "6"), listOf("7", "8", "9"), listOf("00", "0", "⌫")).forEach { row ->
+                listOf(listOf("1", "2", "3"), listOf("4", "5", "6"), listOf("7", "8", "9"), listOf("", "0", "⌫")).forEach { row ->
                     Row(Modifier.fillMaxWidth().height(62.5.dp)) {
                         row.forEach { k ->
                             Box(
-                                Modifier.weight(1f).fillMaxSize().pressScaleClickable {
+                                Modifier.weight(1f).fillMaxSize().pressScaleClickable(enabled = k.isNotEmpty()) {
                                     digits = when (k) { "⌫" -> digits.dropLast(1); else -> (digits + k).trimStart('0').take(9) }
                                 },
                                 contentAlignment = Alignment.Center,

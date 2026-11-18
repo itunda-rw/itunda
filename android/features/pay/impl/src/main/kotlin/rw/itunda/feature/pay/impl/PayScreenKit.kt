@@ -64,5 +64,5 @@ internal fun PayBtn(
         modifier.fillMaxWidth().height(height).clip(RoundedCornerShape(radius)).background(if (enabled) p.brand else p.tint)
             .pressScaleClickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
-    ) { Text(label, color = if (enabled) Color(0xFF17171C) else p.tintFg, fontSize = size.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.02 * size).sp) }
+    ) { Text(label, color = if (enabled) Color(0xFF17171C) else p.tintFg.copy(alpha = 0.6f), fontSize = size.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.02 * size).sp) }
 }
