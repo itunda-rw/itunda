@@ -101,7 +101,9 @@ internal fun EatsTrackingOrderCard(
     ) {
         Text("Your order", color = palette.primary, fontSize = 17.sp, lineHeight = 24.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(2.dp))
-        Text("$restaurantName, $orderCode", color = palette.secondary, fontSize = 14.sp, lineHeight = 20.sp)
+        val itemCount = items.sumOf { it.quantity }
+        val subtitle = if (pickup) "$restaurantName, $orderCode · $itemCount ${if (itemCount == 1) "item" else "items"}" else "$restaurantName, $orderCode"
+        Text(subtitle, color = palette.secondary, fontSize = 14.sp, lineHeight = 20.sp)
         Spacer(Modifier.height(8.dp))
         items.forEach { item ->
             Row(

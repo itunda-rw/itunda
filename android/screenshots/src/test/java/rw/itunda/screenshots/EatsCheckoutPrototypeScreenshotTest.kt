@@ -35,7 +35,7 @@ import java.util.Locale
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [34], qualifiers = "w390dp-h900dp-xxhdpi")
+@Config(sdk = [34], qualifiers = "w390dp-h844dp-xxhdpi")
 class EatsCheckoutPrototypeScreenshotTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
 

@@ -28,7 +28,7 @@ import rw.itunda.feature.eats.impl.EatsContent
 /** Full production Eats entry point, using the same deterministic fixture as device demo mode. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [34], qualifiers = "w390dp-h900dp-xxhdpi")
+@Config(sdk = [34], qualifiers = "w390dp-h844dp-xxhdpi")
 class EatsIntegratedScreenshotTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
 

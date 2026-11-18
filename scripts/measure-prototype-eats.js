@@ -194,6 +194,18 @@ async function applyState(page, state) {
   }, payload);
   await page.waitForTimeout(180);
 }
+
+async function waitForStableLayout(page) {
+  await page.evaluate(() => { window.__eatsMeasureHeight = -1; window.__eatsMeasureStable = 0; });
+  await page.waitForFunction(() => {
+    const root = document.getElementById("sc");
+    if (!root) return false;
+    if (root.scrollHeight === window.__eatsMeasureHeight) window.__eatsMeasureStable += 1;
+    else { window.__eatsMeasureHeight = root.scrollHeight; window.__eatsMeasureStable = 0; }
+    return window.__eatsMeasureStable >= 3;
+  }, { timeout: 10000, polling: 100 });
+}
+
 async function measure(page) {
   return page.evaluate(() => {
     const root = document.getElementById('sc');
@@ -252,6 +264,7 @@ async function inventory(page) {
 async function capture(page, state, theme, height, scrollTop) {
   await page.evaluate((top) => {
     const root = document.getElementById('sc');
+    root.style.scrollBehavior = 'auto';
     root.scrollTop = top;
   }, scrollTop);
   await page.waitForTimeout(80);
@@ -300,6 +313,7 @@ async function capture(page, state, theme, height, scrollTop) {
 
         for (const state of states) {
           await applyState(page, state);
+          await waitForStableLayout(page);
           const maxScroll = await page.evaluate(() => {
             const root = document.getElementById('sc');
             return Math.max(0, root.scrollHeight - root.clientHeight);

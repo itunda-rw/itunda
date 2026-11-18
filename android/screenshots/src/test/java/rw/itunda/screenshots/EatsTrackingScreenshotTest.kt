@@ -22,7 +22,7 @@ import rw.itunda.feature.eats.impl.EatsTrackingScreen
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [34], qualifiers = "w390dp-h900dp-xxhdpi")
+@Config(sdk = [34], qualifiers = "w390dp-h844dp-xxhdpi")
 class EatsTrackingScreenshotTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
 

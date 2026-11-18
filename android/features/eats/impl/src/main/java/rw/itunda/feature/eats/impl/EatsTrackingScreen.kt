@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -90,7 +91,7 @@ fun EatsTrackingScreen(
     }
     val restaurantName = restaurant?.businessName ?: "Kigali Bakery"
     val onCallRestaurant: (() -> Unit)? = restaurant?.phoneNumber?.takeIf { it.isNotBlank() }?.let { phone ->
-        { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))) }
+        { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", phone.filter { it.isDigit() || it == '+' }, null))) }
     }
     val orderCode = currentOrder.id.takeIf { it.startsWith("EA-") } ?: "EA-${currentOrder.id.takeLast(4)}"
     val etaTitle = when {
@@ -199,6 +200,7 @@ internal fun EatsTrackingMain(
     onHelp: () -> Unit, onDone: () -> Unit, modifier: Modifier,
 ) {
     val palette = eatsPrototypePalette()
+    val compactDeliveryPreparing = !pickup && order.status == "PREPARING" && LocalConfiguration.current.screenHeightDp <= 844
     Column(modifier.fillMaxSize().background(palette.background)) {
         EatsTrackingHeader(if (pickup) "Your pickup" else "Your delivery", onBack)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState(initialScrollOffset))) {
@@ -286,9 +288,9 @@ internal fun EatsTrackingMain(
             }
 
             val orderCardBeforeSummary = (pickup && order.status in setOf("PREPARING", "READY_FOR_PICKUP")) ||
-                (!pickup && order.status == "DELIVERED")
+                (!pickup && order.status in setOf("PREPARING", "DELIVERED"))
             if (pickup && order.status == "READY_FOR_PICKUP") Spacer(Modifier.height(26.dp))
-            if (pickup && order.status == "PREPARING") Spacer(Modifier.height(16.dp))
+            if (order.status == "PREPARING") Spacer(Modifier.height(16.dp))
             if (!pickup && order.status == "DELIVERED") Spacer(Modifier.height(16.dp))
             if (orderCardBeforeSummary) {
                 EatsTrackingOrderCard(
@@ -299,9 +301,9 @@ internal fun EatsTrackingMain(
                     pickup = pickup,
                     onCallRestaurant = if (pickup && order.status == "PREPARING") onCallRestaurant else null,
                 )
-                Spacer(Modifier.height(24.dp))
+                if (!compactDeliveryPreparing) Spacer(Modifier.height(24.dp))
             }
-            EatsTrackingStatusSummary(order, items, orderCode, pickup)
+            if (!compactDeliveryPreparing) EatsTrackingStatusSummary(order, items, orderCode, pickup)
             if (order.status == "PLACED") {
                 EatsTrackingButton(
                     "Cancel order",
@@ -316,7 +318,7 @@ internal fun EatsTrackingMain(
                     EatsTrackingOrderCard(order, items, restaurantName, orderCode, pickup)
                 }
             }
-            Spacer(Modifier.height(24.dp))
+            if (!compactDeliveryPreparing) Spacer(Modifier.height(24.dp))
         }
         if (complete) EatsTrackingButton("Done", onDone, modifier = Modifier.padding(horizontal = 24.dp, vertical = 18.dp))
         else EatsTrackingButton(
