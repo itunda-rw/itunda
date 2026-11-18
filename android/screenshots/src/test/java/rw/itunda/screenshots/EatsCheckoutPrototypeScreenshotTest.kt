@@ -264,4 +264,12 @@ class EatsCheckoutPrototypeScreenshotTest {
         rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-address-new-saved-dark.png")
     }
 
+    @Test fun cashPaymentSelectionReturnsToCart() {
+        render()
+        rule.onNodeWithContentDescription("Open payment method").performScrollTo().performClick()
+        rule.onNodeWithContentDescription("Payment option Cash on delivery").performClick()
+        rule.onNodeWithText("Place order · 2,400 RWF").assertExists()
+        rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-cash-selected.png")
+    }
+
 }
