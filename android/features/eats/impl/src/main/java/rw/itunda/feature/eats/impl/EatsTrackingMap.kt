@@ -9,11 +9,13 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -110,7 +112,7 @@ internal fun EatsTrackingMap(
             ) {
                 Box(
                     Modifier.size(8.dp).clip(CircleShape)
-                        .background(if (complete) Color(0xFF0B8F62) else palette.accent),
+                        .background(if (complete) Color(0xFF0B8F62) else palette.brandFill),
                 )
                 Text(
                     statusText,
