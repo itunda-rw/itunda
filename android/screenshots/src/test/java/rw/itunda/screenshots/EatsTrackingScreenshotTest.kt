@@ -2,6 +2,7 @@ package rw.itunda.screenshots
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -16,6 +17,7 @@ import org.robolectric.annotation.GraphicsMode
 import rw.itunda.core.designsystem.theme.IdsTheme
 import rw.itunda.core.network.EatsOrderDto
 import rw.itunda.core.network.EatsOrderItemDto
+import rw.itunda.core.network.ShoppingMerchantDto
 import rw.itunda.feature.eats.impl.EatsTrackingScreen
 
 @RunWith(RobolectricTestRunner::class)
@@ -25,6 +27,7 @@ class EatsTrackingScreenshotTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
 
     private val items = listOf(EatsOrderItemDto("item-1", "EA-7207", "p1", "Croissant", 1200.0, 2))
+    private val restaurant = ShoppingMerchantDto("m1", "Kigali Bakery", "BAKERY", "0", phoneNumber = "0780000000")
 
     private fun order(status: String, pickup: Boolean = false): EatsOrderDto {
         val hasRider = status in setOf("RIDER_ASSIGNED", "PICKED_UP", "DELIVERED") && !pickup
@@ -43,7 +46,7 @@ class EatsTrackingScreenshotTest {
             status = status,
             createdAt = "2026-11-17T14:00:00Z",
             updatedAt = "2026-11-17T14:00:00Z",
-            deliveryNotes = "Leave it at the door",
+            deliveryNotes = "Please call when you arrive.",
             riderName = if (hasRider) "Jean Claude" else null,
             estimatedArrivalMinutes = if (hasRider) 8 else 20,
         )
@@ -55,7 +58,7 @@ class EatsTrackingScreenshotTest {
             IdsTheme(darkTheme = dark) {
                 EatsTrackingScreen(
                     order = order(status, pickup),
-                    restaurant = null,
+                    restaurant = restaurant,
                     onBack = {},
                     onDone = {},
                     initialItems = items,
@@ -80,7 +83,7 @@ class EatsTrackingScreenshotTest {
     @Test fun riderSheetLight() {
         rule.activity.actionBar?.hide()
         rule.setContent { IdsTheme(darkTheme = false) {
-            EatsTrackingScreen(order("PICKED_UP"), null, {}, {}, initialItems = items)
+            EatsTrackingScreen(order("PICKED_UP"), restaurant, {}, {}, initialItems = items)
         } }
         rule.waitForIdle()
         rule.onNodeWithText("Message rider").performClick()
@@ -91,7 +94,7 @@ class EatsTrackingScreenshotTest {
     @Test fun cancelSheetLight() {
         rule.activity.actionBar?.hide()
         rule.setContent { IdsTheme(darkTheme = false) {
-            EatsTrackingScreen(order("PLACED"), null, {}, {}, initialItems = items)
+            EatsTrackingScreen(order("PLACED"), restaurant, {}, {}, initialItems = items)
         } }
         rule.waitForIdle()
         rule.onNodeWithText("Cancel order").performClick()
@@ -102,12 +105,31 @@ class EatsTrackingScreenshotTest {
     @Test fun ratingSheetLight() {
         rule.activity.actionBar?.hide()
         rule.setContent { IdsTheme(darkTheme = false) {
-            EatsTrackingScreen(order("DELIVERED"), null, {}, {}, initialItems = items)
+            EatsTrackingScreen(order("DELIVERED"), restaurant, {}, {}, initialItems = items)
         } }
         rule.waitForIdle()
-        rule.onNodeWithText("★ Rate your order").performClick()
+        rule.onNodeWithText("Rate your order").performClick()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/screenshots/eats-prototype-tracking-rating-sheet-light.png")
+    }
+
+    private fun showScrolled(
+        status: String,
+        pickup: Boolean = false,
+        dark: Boolean = false,
+        target: String,
+        name: String,
+    ) {
+        rule.activity.actionBar?.hide()
+        rule.setContent {
+            IdsTheme(darkTheme = dark) {
+                EatsTrackingScreen(order(status, pickup), restaurant, {}, {}, initialItems = items)
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithText(target).performScrollTo()
+        rule.waitForIdle()
+        rule.onRoot().captureRoboImage("build/screenshots/$name.png")
     }
 
     private fun showPanel(status: String, dark: Boolean, action: String, name: String) {
@@ -145,6 +167,32 @@ class EatsTrackingScreenshotTest {
     @Test fun cancelSheetDark() =
         showPanel("PLACED", true, "Cancel order", "eats-prototype-tracking-cancel-sheet-dark")
     @Test fun ratingSheetDark() =
-        showPanel("DELIVERED", true, "★ Rate your order", "eats-prototype-tracking-rating-sheet-dark")
+        showPanel("DELIVERED", true, "Rate your order", "eats-prototype-tracking-rating-sheet-dark")
+
+    @Test fun ratingSheetCanSelectThreeStarsLight() {
+        rule.activity.actionBar?.hide()
+        rule.setContent { IdsTheme(darkTheme = false) {
+            EatsTrackingScreen(order("DELIVERED"), restaurant, {}, {}, initialItems = items)
+        } }
+        rule.waitForIdle()
+        rule.onNodeWithText("Rate your order").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithContentDescription("Rate 3 stars").performClick()
+        rule.waitForIdle()
+        rule.onRoot().captureRoboImage("build/screenshots/eats-prototype-tracking-rating-three-stars-light.png")
+    }
+
+    @Test fun deliveryAcceptedLightScrollToNote() =
+        showScrolled("PLACED", target = "Your note", name = "eats-prototype-tracking-delivery-accepted-light-scroll-note")
+    @Test fun deliveryAcceptedLightScrollToPayment() =
+        showScrolled("PLACED", target = "Paid with", name = "eats-prototype-tracking-delivery-accepted-light-scroll-payment")
+    @Test fun deliveryCompleteLightScrollToNote() =
+        showScrolled("DELIVERED", target = "Your note", name = "eats-prototype-tracking-delivery-complete-light-scroll-note")
+    @Test fun deliveryCompleteLightScrollToPayment() =
+        showScrolled("DELIVERED", target = "Paid with", name = "eats-prototype-tracking-delivery-complete-light-scroll-payment")
+    @Test fun pickupPreparingLightScrollToCallRestaurant() =
+        showScrolled("PREPARING", pickup = true, target = "Call restaurant", name = "eats-prototype-tracking-pickup-preparing-light-scroll-call")
+    @Test fun pickupPreparingLightScrollToReadyBy() =
+        showScrolled("PREPARING", pickup = true, target = "Ready by 16:51", name = "eats-prototype-tracking-pickup-preparing-light-scroll-ready")
 
 }

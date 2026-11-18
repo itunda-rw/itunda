@@ -282,7 +282,7 @@ private fun cubicPoint(p0: Offset, p1: Offset, p2: Offset, p3: Offset, t: Float)
 @Composable
 internal fun EatsTrackingStepper(labels: List<String>, activeStep: Int, modifier: Modifier = Modifier) {
     val palette = eatsPrototypePalette()
-    Column(modifier.fillMaxWidth()) {
+    Column(modifier.fillMaxWidth().padding(bottom = 15.dp)) {
         Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp)) {
             labels.forEachIndexed { index, _ ->
                 Box(Modifier.weight(1f).height(4.dp).clip(CircleShape).background(if (index <= activeStep) palette.accent else palette.surfaceSoft))

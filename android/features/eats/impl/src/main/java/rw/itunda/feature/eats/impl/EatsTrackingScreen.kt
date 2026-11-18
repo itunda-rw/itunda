@@ -1,5 +1,7 @@
 package rw.itunda.feature.eats.impl
 
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -88,13 +90,16 @@ fun EatsTrackingScreen(
         else -> 0
     }
     val restaurantName = restaurant?.businessName ?: "Kigali Bakery"
+    val onCallRestaurant: (() -> Unit)? = restaurant?.phoneNumber?.takeIf { it.isNotBlank() }?.let { phone ->
+        { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))) }
+    }
     val orderCode = currentOrder.id.takeIf { it.startsWith("EA-") } ?: "EA-${currentOrder.id.takeLast(4)}"
     val etaTitle = when {
         cancelled -> "Order cancelled"
         complete && pickup -> "Picked up"
         complete -> "Delivered"
         pickup && status == "READY_FOR_PICKUP" -> "Ready now"
-        pickup && status == "PREPARING" -> "Ready in 15 min"
+        pickup && status == "PREPARING" -> "About 18 min"
         pickup -> "About 20 min"
         status == "PREPARING" -> "About 18 min"
         riderAssigned -> "Arriving in ${currentOrder.estimatedArrivalMinutes ?: 8} min"
@@ -121,6 +126,7 @@ fun EatsTrackingScreen(
                 if (riderAssigned) panel = EatsTrackingPanel.RIDER
                 else Toast.makeText(context, "Calling Jean Claude… (sample)", Toast.LENGTH_SHORT).show()
             },
+            onCallRestaurant = onCallRestaurant,
             onMessage = { panel = EatsTrackingPanel.RIDER },
             onCancel = { panel = EatsTrackingPanel.CANCEL },
             onRate = { panel = EatsTrackingPanel.RATING },
@@ -189,15 +195,16 @@ internal fun EatsTrackingMain(
     order: EatsOrderDto, items: List<EatsOrderItemDto>, restaurantName: String, orderCode: String,
     etaTitle: String, statusLine: String, stepLabels: List<String>, step: Int, pickup: Boolean,
     complete: Boolean, cancelled: Boolean, riderAssigned: Boolean, onBack: () -> Unit, onCall: () -> Unit,
-    onMessage: () -> Unit, onCancel: () -> Unit, onRate: () -> Unit, onHelp: () -> Unit,
-    onDone: () -> Unit, modifier: Modifier,
+    onCallRestaurant: (() -> Unit)?, onMessage: () -> Unit, onCancel: () -> Unit, onRate: () -> Unit,
+    onHelp: () -> Unit, onDone: () -> Unit, modifier: Modifier,
 ) {
     val palette = eatsPrototypePalette()
     Column(modifier.fillMaxSize().background(palette.background)) {
         EatsTrackingHeader(if (pickup) "Your pickup" else "Your delivery", onBack)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            Column(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 16.dp)) {
-                Text(etaTitle, color = palette.primary, fontSize = 36.sp, lineHeight = 43.sp, fontWeight = FontWeight.Black)
+            Column(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 12.dp)) {
+                Text(etaTitle, color = palette.primary, fontSize = 36.sp, lineHeight = 44.sp, fontWeight = FontWeight.ExtraBold)
+                Spacer(Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(restaurantName, color = palette.secondary, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     if (pickup) Text(" · Pickup", color = palette.secondary, fontSize = 15.sp)
@@ -209,43 +216,117 @@ internal fun EatsTrackingMain(
                 }
             }
             Spacer(Modifier.height(if (!pickup && !cancelled) 12.dp else 16.dp))
-            EatsTrackingMap(statusText = statusLine, step = step, pickup = pickup, complete = complete, cancelled = cancelled, modifier = Modifier.padding(horizontal = if (!pickup && !cancelled) 12.dp else 24.dp))
+            EatsTrackingMap(
+                statusText = statusLine,
+                step = step,
+                pickup = pickup,
+                complete = complete,
+                cancelled = cancelled,
+                modifier = Modifier.padding(horizontal = if (!pickup && !cancelled) 12.dp else 24.dp),
+            )
             EatsTrackingStepper(stepLabels, step, Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp))
             if (order.status == "PLACED" && !pickup) {
                 Column(Modifier.padding(start = 24.dp, end = 24.dp, top = 20.dp)) {
-                    Text("Delivery code", color = palette.secondary, fontSize = 15.sp)
+                    Text("Delivery code", color = palette.secondary, fontSize = 13.sp, lineHeight = 20.sp)
                     Text("4821", color = palette.primary, fontSize = 32.sp, lineHeight = 38.sp, letterSpacing = 8.sp, fontWeight = FontWeight.Black)
-                    Text("Tell your rider this code at the door. Not before.", color = palette.secondary, fontSize = 15.sp, lineHeight = 21.sp)
+                    Text("Tell your rider this code at the door. Not before.", color = palette.secondary, fontSize = 13.sp, lineHeight = 20.sp)
                 }
-            } else if (order.status == "PREPARING" && !pickup) {
-                Text("You can cancel only before the restaurant starts preparing.", color = palette.primary, fontSize = 15.sp,
-                    lineHeight = 21.sp, modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp))
+            } else if (order.status == "PREPARING") {
+                Text(
+                    "You can cancel only before the restaurant starts preparing.",
+                    color = palette.primary,
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 5.dp),
+                )
             } else if (cancelled) {
-                Text("Order cancelled. Refunded to itunda Pay.", color = palette.secondary, fontSize = 15.sp,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp))
+                Text(
+                    "Order cancelled. Refunded to itunda Pay.",
+                    color = palette.secondary,
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp),
+                )
             }
             if (riderAssigned) {
                 EatsTrackingRiderCard(order.riderName ?: "Jean Claude", onCall)
                 if (!complete) {
-                    EatsTrackingButton("Message rider", onMessage, modifier = Modifier.width(308.dp).align(Alignment.CenterHorizontally).padding(top = 10.dp), background = palette.selected, color = palette.selectedText)
+                    EatsTrackingButton(
+                        "Message rider",
+                        onMessage,
+                        modifier = Modifier.width(308.dp).padding(top = 10.dp),
+                        background = palette.selected,
+                        color = palette.selectedText,
+                    )
                 } else {
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        EatsTrackingButton("★ Rate your order", onRate, modifier = Modifier.weight(1f), height = 52.dp)
-                        EatsTrackingButton("Get help", onHelp, modifier = Modifier.weight(1f), height = 52.dp, background = palette.surfaceSoft, color = palette.primary)
+                    Row(Modifier.width(308.dp).padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        EatsTrackingButton(
+                            "Rate your order",
+                            onRate,
+                            modifier = Modifier.weight(1f),
+                            background = Color(0xFF191F28),
+                            color = Color.White,
+                            leadingStar = true,
+                        )
+                        EatsTrackingButton("Get help", onHelp, modifier = Modifier.weight(1f), background = palette.surfaceSoft, color = palette.primary)
                     }
                 }
             } else if (complete) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    EatsTrackingButton("★ Rate your order", onRate, modifier = Modifier.weight(1f), height = 52.dp)
-                    EatsTrackingButton("Get help", onHelp, modifier = Modifier.weight(1f), height = 52.dp, background = palette.surfaceSoft, color = palette.primary)
+                Row(Modifier.width(308.dp).padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    EatsTrackingButton(
+                        "Rate your order",
+                        onRate,
+                        modifier = Modifier.weight(1f),
+                        background = Color(0xFF191F28),
+                        color = Color.White,
+                        leadingStar = true,
+                    )
+                    EatsTrackingButton("Get help", onHelp, modifier = Modifier.weight(1f), background = palette.surfaceSoft, color = palette.primary)
                 }
             }
-            EatsTrackingOrderSummary(order, items, restaurantName, orderCode, pickup, order.status, onCancel)
+
+            val orderCardBeforeSummary = (pickup && order.status in setOf("PREPARING", "READY_FOR_PICKUP")) ||
+                (!pickup && order.status == "DELIVERED")
+            if (pickup && order.status == "READY_FOR_PICKUP") Spacer(Modifier.height(26.dp))
+            if (pickup && order.status == "PREPARING") Spacer(Modifier.height(16.dp))
+            if (!pickup && order.status == "DELIVERED") Spacer(Modifier.height(16.dp))
+            if (orderCardBeforeSummary) {
+                EatsTrackingOrderCard(
+                    order = order,
+                    items = items,
+                    restaurantName = restaurantName,
+                    orderCode = orderCode,
+                    pickup = pickup,
+                    onCallRestaurant = if (pickup && order.status == "PREPARING") onCallRestaurant else null,
+                )
+                Spacer(Modifier.height(24.dp))
+            }
+            EatsTrackingStatusSummary(order, items, orderCode, pickup)
+            if (order.status == "PLACED") {
+                EatsTrackingButton(
+                    "Cancel order",
+                    onCancel,
+                    modifier = Modifier.width(308.dp).padding(top = 10.dp),
+                    height = 52.dp,
+                    background = Color(0xFFC4281B),
+                    color = Color.White,
+                )
+                if (!pickup) {
+                    Spacer(Modifier.height(16.dp))
+                    EatsTrackingOrderCard(order, items, restaurantName, orderCode, pickup)
+                }
+            }
             Spacer(Modifier.height(24.dp))
         }
         if (complete) EatsTrackingButton("Done", onDone, modifier = Modifier.padding(horizontal = 24.dp, vertical = 18.dp))
-        else EatsTrackingButton("Tracking your order", {}, enabled = false, modifier = Modifier.padding(horizontal = 24.dp, vertical = 18.dp),
-            background = palette.accentTint, color = Color(0xFF8F89FF))
+        else EatsTrackingButton(
+            "Tracking your order",
+            {},
+            enabled = false,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 18.dp),
+            background = palette.accentTint,
+            color = Color(0xFF8F89FF),
+        )
     }
 }
 
@@ -256,7 +337,7 @@ internal fun EatsTrackingHeader(title: String, onBack: () -> Unit, onCall: () ->
         IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
             Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back", tint = palette.primary)
         }
-        Text(title, color = palette.primary, fontSize = 20.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f).padding(start = 6.dp))
+        Text(title, color = palette.primary, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).padding(start = 6.dp))
         if (showCall) IconButton(onClick = onCall, modifier = Modifier.size(48.dp)) {
             Icon(Icons.Outlined.Call, contentDescription = "Call rider", tint = palette.primary)
         }

@@ -22,6 +22,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.components.pressScaleClickable
@@ -102,14 +104,16 @@ internal fun EatsTrackingRatingPanel(rating: Int, busy: Boolean, onBack: () -> U
             Row(Modifier.padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 (1..5).forEach { value ->
                     Box(
-                        Modifier.size(48.dp).pressScaleClickable(onClick = { onRatingChange(value) }),
+                        Modifier.size(48.dp)
+                            .pressScaleClickable(onClick = { onRatingChange(value) })
+                            .semantics { contentDescription = "Rate $value stars" },
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(
-                            "★",
-                            color = if (value <= rating) Color(0xFFFFB800) else palette.surfaceSoft,
-                            fontSize = 34.sp,
-                            lineHeight = 47.6.sp,
+                        ItundaArt(
+                            "star-solid",
+                            set = ItundaArtSet.Solid,
+                            size = 32.dp,
+                            tint = if (value <= rating) Color(0xFFFFB800) else palette.surfaceSoft,
                         )
                     }
                 }
@@ -121,10 +125,28 @@ internal fun EatsTrackingRatingPanel(rating: Int, busy: Boolean, onBack: () -> U
 }
 
 @Composable
-internal fun EatsTrackingButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true,
-    height: Dp = 58.dp, background: Color = Color(0xFF8F89FF), color: Color = Color(0xFF17171C)) {
-    Box(modifier.fillMaxWidth().height(height).clip(RoundedCornerShape(28.dp)).background(background)
-        .pressScaleClickable(enabled = enabled, onClick = onClick), contentAlignment = Alignment.Center) {
-        Text(label, color = color, fontSize = 18.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+internal fun EatsTrackingButton(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    height: Dp = 52.dp,
+    background: Color = Color(0xFF8F89FF),
+    color: Color = Color(0xFF17171C),
+    fontSize: androidx.compose.ui.unit.TextUnit = 15.sp,
+    cornerRadius: Dp = 16.dp,
+    leadingStar: Boolean = false,
+) {
+    Box(
+        modifier.fillMaxWidth().height(height).clip(RoundedCornerShape(cornerRadius)).background(background)
+            .pressScaleClickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (leadingStar) {
+                ItundaArt("star-solid", set = ItundaArtSet.Solid, size = 14.dp, tint = Color(0xFFFFB800))
+            }
+            Text(label, color = color, fontSize = fontSize, fontWeight = FontWeight.Bold, maxLines = 1)
+        }
     }
 }
