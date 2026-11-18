@@ -113,7 +113,7 @@ private fun EarningCard(p: PayPalette, dark: Boolean, onFindStores: () -> Unit) 
         Row(Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp).fillMaxWidth().height(60.dp), verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
                 Row(Modifier.height(24.dp), verticalAlignment = Alignment.CenterVertically) {
-                    ItundaArt("wallet", ItundaArtSet.Proto, 12.dp, modifier = Modifier.offset(x = 4.7.dp))
+                    ItundaArt("wallet", ItundaArtSet.Proto, 9.dp, modifier = Modifier.offset(x = 4.7.dp))
                     Text("itunda Pay", color = p.tt, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(start = 22.dp))
                 }
                 Text("Earning 3%", color = p.brandText, fontSize = 24.sp, lineHeight = 34.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.8).sp, modifier = Modifier.padding(top = 2.dp))
@@ -132,7 +132,7 @@ private fun EarningCard(p: PayPalette, dark: Boolean, onFindStores: () -> Unit) 
         ) {
             Box(Modifier.offset(x = 20.dp, y = 17.dp).size(36.dp).clip(RoundedCornerShape(11.dp)).background(if (dark) Color(0xFF17171C) else Color.White).drawBehind {
                 drawRoundRect(p.brandText, cornerRadius = CornerRadius(11.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
-            }, contentAlignment = Alignment.Center) { ItundaArt("wallet", ItundaArtSet.Proto, 17.dp) }
+            }, contentAlignment = Alignment.Center) { ItundaArt("wallet", ItundaArtSet.Proto, 12.5.dp) }
             Box(Modifier.offset(x = 36.5.dp, y = 53.dp).size(1.5.dp, 24.dp).background(p.brandText.copy(alpha = 0.9f)))
             Box(Modifier.offset(x = 24.dp, y = 77.dp).size(28.dp).clip(CircleShape).background(p.tint), contentAlignment = Alignment.Center) {
                 Box(Modifier.size(10.dp).clip(CircleShape).background(if (dark) Color(0xFF17171C).let { p.brandText } else p.brandText))
@@ -159,7 +159,7 @@ private fun IconChip(p: PayPalette, size: Dp = 30.dp, content: @Composable () ->
 @Composable
 private fun OnlineRow(p: PayPalette) {
     Row(Modifier.height(70.dp), verticalAlignment = Alignment.CenterVertically) {
-        IconChip(p) { ItundaArt("globe", ItundaArtSet.Proto, 16.3.dp) }
+        IconChip(p) { ItundaArt("globe", ItundaArtSet.Proto, 11.5.dp) }
         Column(Modifier.padding(start = 16.dp).weight(1f)) {
             Text("How to pay online", color = p.text, fontSize = 17.sp, lineHeight = 23.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp)
             Text("Jumia, Yego and more", color = p.tt, fontSize = 14.sp, lineHeight = 18.sp)
@@ -233,7 +233,7 @@ private fun HistoryBlock(p: PayPalette, dark: Boolean, onOpenHistory: () -> Unit
     }
     val shade = if (dark) Color.White else Color(0xFF191F28)
     Box(
-        Modifier.padding(top = 8.dp).requiredWidth(360.dp).offset(x = (-20).dp).height(60.dp)
+        Modifier.padding(top = 8.dp).requiredWidth(360.dp).height(60.dp)
             .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
             .background(Brush.linearGradient(listOf(shade.copy(alpha = 0f), shade.copy(alpha = if (dark) 0.016f else 0.01f), shade.copy(alpha = if (dark) 0.067f else 0.05f)), Offset(0f, 0f), Offset(100f, 400f)))
             .drawBehind { drawRect(shade.copy(alpha = 0.06f), Offset.Zero, Size(size.width, 1.dp.toPx())) }
@@ -268,11 +268,11 @@ private fun HubGlyph(icon: HubIcon) {
             val path = Path().apply { moveTo(46f * u, 8f * u); lineTo(16f * u, 46f * u); lineTo(36f * u, 46f * u); lineTo(32f * u, 72f * u); lineTo(64f * u, 32f * u); lineTo(44f * u, 32f * u); close() }
             drawPath(path, gold); drawPath(path, gold, style = androidx.compose.ui.graphics.drawscope.Stroke(6f * u, join = androidx.compose.ui.graphics.StrokeJoin.Round))
         }
-        HubIcon.Gift -> ItundaArt("gift", ItundaArtSet.Proto, 16.dp)
-        HubIcon.Card -> ItundaArt("card", ItundaArtSet.Proto, 16.dp)
-        HubIcon.People -> ItundaArt("community", ItundaArtSet.Proto, 16.dp)
-        HubIcon.Bus -> ItundaArt("busstop", ItundaArtSet.Proto, 16.dp)
-        HubIcon.Food -> ItundaArt("restaurant", ItundaArtSet.Proto, 16.dp)
-        HubIcon.Bag -> ItundaArt("bag", ItundaArtSet.Proto, 16.dp)
+        HubIcon.Gift -> ItundaArt("gift", ItundaArtSet.Proto, 12.dp)
+        HubIcon.Card -> ItundaArt("card", ItundaArtSet.Proto, 12.dp)
+        HubIcon.People -> ItundaArt("community", ItundaArtSet.Proto, 12.dp)
+        HubIcon.Bus -> ItundaArt("busstop", ItundaArtSet.Proto, 12.dp)
+        HubIcon.Food -> ItundaArt("restaurant", ItundaArtSet.Proto, 12.dp)
+        HubIcon.Bag -> ItundaArt("bag", ItundaArtSet.Proto, 12.dp)
     }
 }

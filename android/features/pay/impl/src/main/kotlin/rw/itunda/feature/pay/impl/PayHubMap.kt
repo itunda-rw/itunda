@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -46,7 +47,7 @@ internal fun PayHubMap(dark: Boolean, onOpen: () -> Unit, modifier: Modifier = M
     val minor = if (dark) Color(0xFF2C2E37) else Color(0xFFD5DBE3)
     val label = if (dark) Color(0xFFF9FAFB) else Color(0xFF191F28)
     val page = if (dark) Color(0xFF17171C) else Color.White
-    Box(modifier.fillMaxWidth().height(210.dp).background(bg)) {
+    Box(modifier.fillMaxWidth().height(210.dp).clipToBounds().background(bg)) {
         Canvas(Modifier.fillMaxWidth().height(210.dp)) {
             fun line(x1: Float, y1: Float, x2: Float, y2: Float, w: Float, c: Color) =
                 drawLine(c, Offset(x1.dp.toPx(), y1.dp.toPx()), Offset(x2.dp.toPx(), y2.dp.toPx()), w.dp.toPx(), StrokeCap.Round)
@@ -80,12 +81,7 @@ internal fun PayHubMap(dark: Boolean, onOpen: () -> Unit, modifier: Modifier = M
                 .clip(RoundedCornerShape(24.dp)).background(if (dark) Color(0xFF191F28) else Color.White).pressScaleClickable(onClick = onOpen),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Canvas(Modifier.padding(start = 24.dp).size(18.dp)) {
-                val u = size.width / 24f
-                val p = Path().apply { moveTo(20.4f * u, 3.6f * u); lineTo(4f * u, 9.4f * u); lineTo(10.2f * u, 13.9f * u); lineTo(12.6f * u, 20.1f * u); close() }
-                drawPath(p, if (dark) Color(0xFFF9FAFB) else Color(0xFF191F28))
-            }
-            Text("128 earning stores nearby", color = label, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.18).sp, modifier = Modifier.padding(start = 6.dp))
+            Text("128 earning stores nearby", color = label, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.18).sp, modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         }
     }
 }
