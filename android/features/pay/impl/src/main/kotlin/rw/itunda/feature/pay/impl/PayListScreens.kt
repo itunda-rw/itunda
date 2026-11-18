@@ -43,7 +43,7 @@ private fun Avatar(letter: String, bg: Color, fg: Color) {
 /** Prototype section header: 15sp bold, 16dp above (not on the first) and 12dp below. */
 @Composable
 private fun DayHeader(p: PayPalette, text: String, first: Boolean = false) {
-    Text(text, color = p.text, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = if (first) 0.dp else 16.dp, bottom = 12.dp))
+    Text(text, color = p.text, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = if (first) 16.dp else 24.dp, bottom = 4.dp))
 }
 
 /** Prototype "Payment history": month total, search, filter pills, rows grouped by day (dummy data). */
@@ -107,7 +107,7 @@ fun PayHistoryScreen(onBack: () -> Unit) {
 fun PaySavedMerchantsScreen(onBack: () -> Unit) {
     PaySubScreen(onBack = onBack, title = "Saved merchants") { p ->
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
-            Text("Saved", color = p.text, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp, bottom = 12.dp))
+            DayHeader(p, "Saved", first = true)
             Text("Tap ☆ on a merchant to keep it here. Paying again takes two taps.", color = p.tt, fontSize = 16.sp, lineHeight = 22.sp, modifier = Modifier.height(64.dp))
             DayHeader(p, "Recent")
             payMerchants.forEach { m ->
