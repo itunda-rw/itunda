@@ -18,6 +18,8 @@ const order = (pickup = false, status = 'On the way', id = 'EA-7207') => ({
   snap: { sub: 2400, disc: 0, fee: 0, tip: 0 }, pm: 'pay',
 });
 
+// Canonical v1038 EATS coverage matrix: 80 named states across browse, restaurant, checkout, tracking and orders.
+// Keep each state independently measurable in both themes at 3x; do not trim this list to the currently implemented UI.
 const states = [
   { id: 'browse-default', screen: 'shop' },
   { id: 'browse-address-confirmation', screen: 'shop', addrOk: false },
