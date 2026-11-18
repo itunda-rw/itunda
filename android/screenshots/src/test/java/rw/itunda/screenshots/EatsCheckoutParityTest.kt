@@ -21,7 +21,7 @@ import rw.itunda.feature.eats.impl.EatsCheckoutView
 /** Empty-cart checkout baselines in both prototype themes; empty carts must not submit. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [34], qualifiers = "w390dp-h844dp-xxhdpi")
+@Config(sdk = [34], qualifiers = "w390dp-h900dp-xxhdpi")
 class EatsCheckoutParityTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
 
