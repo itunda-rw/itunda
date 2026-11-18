@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.requiredWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -69,7 +70,7 @@ fun EatsSearchHeader(
             Spacer(Modifier.height(if (showSearch) 14.dp else 4.dp))
             BoxWithConstraints(Modifier.fillMaxWidth()) {
                 Row(
-                    Modifier.offset(x = (-20).dp).requiredWidth(maxWidth + 40.dp).padding(horizontal = 16.dp).horizontalScroll(rememberScrollState()),
+                    Modifier.offset(x = (-20).dp).requiredWidth(maxWidth + 40.dp).horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -85,6 +86,7 @@ fun EatsSearchHeader(
                 }
                 }
             }
+            Spacer(Modifier.width(12.dp))
         }
     }
 }

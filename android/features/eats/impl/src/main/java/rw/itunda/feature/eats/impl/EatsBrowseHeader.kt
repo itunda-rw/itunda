@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,7 +36,6 @@ import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.components.ItundaArt
 import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.components.pressScaleClickable
-import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.ShoppingMerchantDto
 
 class EatsBrowseState {
@@ -54,14 +54,14 @@ internal fun rememberEatsBrowseState(): EatsBrowseState = remember { EatsBrowseS
 internal fun EatsModeSwitch(isPickup: Boolean, onModeChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
     val palette = eatsPrototypePalette()
     Row(
-        modifier.height(38.dp).clip(RoundedCornerShape(16.dp)).background(palette.surfaceSoft).padding(3.dp),
+        modifier.width(155.dp).height(38.dp).clip(RoundedCornerShape(16.dp)).background(palette.surfaceSoft).padding(3.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         listOf(false to "Delivery", true to "Pickup").forEach { (pickup, label) ->
             val selected = isPickup == pickup
             Box(
-                modifier = Modifier.height(32.dp).clip(RoundedCornerShape(13.dp))
+                modifier = Modifier.width(if (pickup) 68.dp else 79.dp).height(32.dp).clip(RoundedCornerShape(13.dp))
                     .background(if (selected) palette.selected else Color.Transparent)
                     .semantics { contentDescription = label }.pressScaleClickable { onModeChange(pickup) }
                     .padding(horizontal = 10.dp),
