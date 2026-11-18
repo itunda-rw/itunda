@@ -286,6 +286,8 @@ internal fun EatsTrackingMain(
                 }
             }
 
+            val showRestaurantCall = (pickup && order.status == "READY_FOR_PICKUP") ||
+                (!pickup && order.status in setOf("PLACED", "DELIVERED"))
             val orderCardBeforeSummary = (pickup && order.status in setOf("PREPARING", "READY_FOR_PICKUP")) ||
                 (!pickup && order.status in setOf("PREPARING", "DELIVERED"))
             if (pickup && order.status == "READY_FOR_PICKUP") Spacer(Modifier.height(26.dp))
@@ -312,10 +314,8 @@ internal fun EatsTrackingMain(
                     background = Color(0xFFC4281B),
                     color = Color.White,
                 )
-                if (!pickup) {
-                    Spacer(Modifier.height(16.dp))
-                    EatsTrackingOrderCard(order, items, restaurantName, orderCode, pickup, onCallRestaurant = if (showRestaurantCall) onCallRestaurant else null)
-                }
+                if (!pickup) Spacer(Modifier.height(16.dp))
+                EatsTrackingOrderCard(order, items, restaurantName, orderCode, pickup, onCallRestaurant = if (showRestaurantCall) onCallRestaurant else null)
             }
             Spacer(Modifier.height(24.dp))
         }

@@ -178,8 +178,12 @@ class EatsTrackingScreenshotTest {
     }
     @Test fun deliveryCancelledDark() =
         show("CANCELLED", dark = true, name = "eats-prototype-tracking-cancelled-dark")
-    @Test fun pickupAcceptedLight() =
+    @Test fun pickupAcceptedLight() {
         show("PLACED", pickup = true, name = "eats-prototype-tracking-pickup-accepted-light")
+        rule.onNodeWithText("Your order").assertExists()
+        rule.onNodeWithText("Call restaurant").assertDoesNotExist()
+        rule.onNodeWithText("Kigali Bakery, EA-7207").assertExists()
+    }
     @Test fun pickupAcceptedDark() =
         show("PLACED", pickup = true, dark = true, name = "eats-prototype-tracking-pickup-accepted-dark")
     @Test fun pickupPreparingLight() =
