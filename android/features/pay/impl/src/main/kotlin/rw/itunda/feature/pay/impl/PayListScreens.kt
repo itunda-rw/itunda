@@ -1,60 +1,100 @@
 package rw.itunda.feature.pay.impl
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import rw.itunda.core.designsystem.components.BackTopBar
-import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.components.pressScaleClickable
 
 @Composable
-private fun Letter(letter: String, bg: Color, fg: Color) {
-    Box(Modifier.size(40.dp).clip(CircleShape).background(bg), contentAlignment = Alignment.Center) {
-        Text(letter, color = fg, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+private fun Avatar(letter: String, bg: Color, fg: Color) {
+    Box(Modifier.size(48.dp).clip(CircleShape).background(bg), contentAlignment = Alignment.Center) {
+        Text(letter, color = fg, fontSize = 19.sp, lineHeight = 26.6.sp, fontWeight = FontWeight.ExtraBold)
     }
 }
 
-/** Prototype "Payment history": month total, filter pills, rows grouped by day (dummy data). */
+/** Prototype section header: 15sp bold, 16dp above (not on the first) and 12dp below. */
+@Composable
+private fun DayHeader(p: PayPalette, text: String, first: Boolean = false) {
+    Text(text, color = p.text, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = if (first) 0.dp else 16.dp, bottom = 12.dp))
+}
+
+/** Prototype "Payment history": month total, search, filter pills, rows grouped by day (dummy data). */
 @Composable
 fun PayHistoryScreen(onBack: () -> Unit) {
-    Column(Modifier.fillMaxSize().background(Ids.colors.background)) {
-        BackTopBar("Payment history", onBack)
-        Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 20.dp)) {
-            Text("Spent this month", color = Ids.colors.textTertiary, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
-            Text("28,700 RWF", color = Ids.colors.textPrimary, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold)
-            Row(Modifier.padding(vertical = 16.dp)) {
+    var query by remember { mutableStateOf("") }
+    var filter by remember { mutableStateOf(0) }
+    PaySubScreen(onBack = onBack, title = "Payment history") { p ->
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+            Text("Spent this month", color = p.tt, fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
+            Text("28,700 RWF", color = p.text, fontSize = 34.sp, lineHeight = 47.6.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.8).sp, modifier = Modifier.padding(top = 2.dp))
+            BasicTextField(
+                value = query, onValueChange = { query = it }, singleLine = true,
+                textStyle = TextStyle(color = p.text, fontSize = 16.sp, lineHeight = 22.4.sp), cursorBrush = SolidColor(p.brandText),
+                modifier = Modifier.padding(top = 4.dp).fillMaxWidth().height(44.dp).clip(RoundedCornerShape(14.dp)).background(p.soft),
+                decorationBox = { inner ->
+                    Row(Modifier.padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        androidx.compose.foundation.Canvas(Modifier.size(18.dp)) {
+                            val st = androidx.compose.ui.graphics.drawscope.Stroke(1.8.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                            drawCircle(p.tt, 6.dp.toPx(), androidx.compose.ui.geometry.Offset(7.5.dp.toPx(), 7.5.dp.toPx()), style = st)
+                            drawLine(p.tt, androidx.compose.ui.geometry.Offset(12.dp.toPx(), 12.dp.toPx()), androidx.compose.ui.geometry.Offset(16.dp.toPx(), 16.dp.toPx()), 1.8.dp.toPx(), androidx.compose.ui.graphics.StrokeCap.Round)
+                        }
+                        Box(Modifier.padding(start = 12.dp).weight(1f)) {
+                            if (query.isEmpty()) Text("Search merchant, note or reference", color = p.tt, fontSize = 16.sp, lineHeight = 22.4.sp)
+                            inner()
+                        }
+                    }
+                },
+            )
+            Row(Modifier.padding(top = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("All", "Paid", "Refunds").forEachIndexed { i, label ->
-                    Text(label, color = if (i == 0) Color.White else Ids.colors.textTertiary, fontSize = 14.sp, fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(end = 8.dp).clip(RoundedCornerShape(20.dp)).background(if (i == 0) Ids.colors.textPrimary else Ids.colors.surfaceSoft).padding(horizontal = 22.dp, vertical = 10.dp))
+                    val on = filter == i
+                    Box(
+                        Modifier.width(114.dp).height(44.dp).clip(RoundedCornerShape(20.dp)).background(if (on) Color(0xFF191F28).let { if (p.page == Color(0xFF17171C)) p.text else it } else p.soft)
+                            .pressScaleClickable { filter = i },
+                        contentAlignment = Alignment.Center,
+                    ) { Text(label, color = if (on) (if (p.page == Color(0xFF17171C)) Color(0xFF17171C) else Color.White) else p.text, fontSize = 14.sp, lineHeight = 19.6.sp, fontWeight = FontWeight.Bold) }
                 }
             }
-            payHistory.groupBy { it.day }.forEach { (day, rows) ->
-                Text(day, color = Ids.colors.textTertiary, fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
-                rows.forEach { r ->
-                    Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Letter(r.name.take(1), Ids.colors.surfaceSoft, Ids.colors.textPrimary)
-                        Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                            Text(r.name, color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                            Text("${r.time} · itunda Pay", color = Ids.colors.textTertiary, fontSize = 12.sp)
+            val rows = if (filter == 2) emptyList() else payHistory.filter { it.name.contains(query.trim(), ignoreCase = true) }
+            if (rows.isEmpty()) Text("Nothing to show.", color = p.tt, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 24.dp))
+            rows.groupBy { it.day }.entries.forEachIndexed { gi, (day, dayRows) ->
+                DayHeader(p, day, first = false)
+                dayRows.forEach { r ->
+                    Row(Modifier.fillMaxWidth().height(72.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Avatar(r.name.take(1), p.soft, p.text)
+                        Column(Modifier.weight(1f).padding(start = 16.dp)) {
+                            Text(r.name, color = p.text, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp)
+                            Text("${r.time} · itunda Pay", color = p.tt, fontSize = 14.sp, lineHeight = 20.sp)
                         }
-                        Text("−${r.amount}", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Text("−${r.amount}", color = p.text, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.ExtraBold)
                     }
                 }
             }
@@ -65,20 +105,19 @@ fun PayHistoryScreen(onBack: () -> Unit) {
 /** Prototype "Saved merchants": starred tills plus recent ones. */
 @Composable
 fun PaySavedMerchantsScreen(onBack: () -> Unit) {
-    Column(Modifier.fillMaxSize().background(Ids.colors.background)) {
-        BackTopBar("Saved merchants", onBack)
-        Column(Modifier.padding(horizontal = 20.dp)) {
-            Text("Saved", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
-            Text("Tap ☆ on a merchant to keep it here. Paying again takes two taps.", color = Ids.colors.textTertiary, fontSize = 13.sp, modifier = Modifier.padding(vertical = 8.dp))
-            Text("Recent", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 16.dp))
+    PaySubScreen(onBack = onBack, title = "Saved merchants") { p ->
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
+            Text("Saved", color = p.text, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp, bottom = 12.dp))
+            Text("Tap ☆ on a merchant to keep it here. Paying again takes two taps.", color = p.tt, fontSize = 16.sp, lineHeight = 22.sp, modifier = Modifier.height(64.dp))
+            DayHeader(p, "Recent")
             payMerchants.forEach { m ->
-                Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Letter(m.name.take(1), Ids.colors.surfaceSoft, Ids.colors.textPrimary)
-                    Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                        Text(m.name, color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                        Text("Till ${m.till} · Last ${m.last} RWF", color = Ids.colors.textTertiary, fontSize = 12.sp)
+                Row(Modifier.fillMaxWidth().height(72.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Avatar(m.name.take(1), p.soft, p.text)
+                    Column(Modifier.weight(1f).padding(start = 16.dp)) {
+                        Text(m.name, color = p.text, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp)
+                        Text("Till ${m.till} · Last ${m.last} RWF", color = p.tt, fontSize = 14.sp, lineHeight = 20.sp)
                     }
-                    Text("☆", color = Ids.colors.textTertiary, fontSize = 20.sp)
+                    Text("☆", color = p.tt, fontSize = 24.sp, modifier = Modifier.padding(end = 12.dp))
                 }
             }
         }
@@ -88,24 +127,24 @@ fun PaySavedMerchantsScreen(onBack: () -> Unit) {
 /** Prototype "Points": connected balances (dummy). */
 @Composable
 fun PayPointsScreen(onBack: () -> Unit) {
-    Column(Modifier.fillMaxSize().background(Ids.colors.background)) {
-        BackTopBar("Points", onBack)
-        Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 20.dp)) {
-            Row(Modifier.fillMaxWidth().padding(top = 8.dp).clip(RoundedCornerShape(16.dp)).background(Ids.colors.surfaceSoft).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Letter("%", Ids.colors.brand, Color.White)
+    PaySubScreen(onBack = onBack, title = "Points") { p ->
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp).clip(RoundedCornerShape(16.dp)).background(p.soft).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Avatar("%", p.brand, Color.White)
                 Column(Modifier.padding(start = 12.dp)) {
-                    Text("itunda Points", color = Ids.colors.textTertiary, fontSize = 12.sp)
-                    Text("See extra earning and discounts", color = Ids.colors.textBrand, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text("itunda Points", color = p.tt, fontSize = 13.sp, lineHeight = 18.sp)
+                    Text("See extra earning and discounts", color = p.brandText, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold)
                 }
             }
-            Text("7 points connected", color = Ids.colors.textTertiary, fontSize = 13.sp, modifier = Modifier.padding(top = 20.dp))
-            Text("120,668 RWF", color = Ids.colors.textPrimary, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold)
-            payPoints.forEach { p ->
-                Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Letter(p.letter, Color(p.color), Color.White)
-                    Text(p.name, color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f).padding(start = 12.dp))
-                    Text(p.value, color = if (p.value == "0") Ids.colors.textTertiary else Ids.colors.textBrand, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                    Text("  ›", color = Ids.colors.textTertiary, fontSize = 20.sp)
+            Text("7 points connected", color = p.tt, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 20.dp))
+            Text("120,668 RWF", color = p.text, fontSize = 30.sp, lineHeight = 40.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.6).sp)
+            Spacer(Modifier.height(8.dp))
+            payPoints.forEach { r ->
+                Row(Modifier.fillMaxWidth().height(60.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Avatar(r.letter, Color(r.color), Color.White)
+                    Text(r.name, color = p.text, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp, modifier = Modifier.weight(1f).padding(start = 16.dp))
+                    Text(r.value, color = if (r.value == "0") p.tt else p.brandText, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.ExtraBold)
+                    Text("  ›", color = p.tt, fontSize = 20.sp)
                 }
             }
         }

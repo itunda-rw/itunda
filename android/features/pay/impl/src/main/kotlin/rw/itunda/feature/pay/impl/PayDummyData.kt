@@ -12,10 +12,10 @@ internal val payMerchants = listOf(
 internal class PayHistoryRow(val day: String, val name: String, val time: String, val amount: String)
 
 internal val payHistory = listOf(
-    PayHistoryRow("Fri 13 Nov", "Kigali Bakery", "09:12 AM", "3,500"),
-    PayHistoryRow("Tue 10 Nov", "Simba Supermarket", "05:19 PM", "18,200"),
-    PayHistoryRow("Mon 9 Nov", "Nyamirambo Coffee House", "08:26 AM", "2,800"),
-    PayHistoryRow("Tue 3 Nov", "Kigali Bakery", "10:33 AM", "4,200"),
+    PayHistoryRow("Mon 16 Nov", "Kigali Bakery", "09:12 AM", "3,500"),
+    PayHistoryRow("Fri 13 Nov", "Simba Supermarket", "05:19 PM", "18,200"),
+    PayHistoryRow("Thu 12 Nov", "Nyamirambo Coffee House", "08:26 AM", "2,800"),
+    PayHistoryRow("Fri 6 Nov", "Kigali Bakery", "10:33 AM", "4,200"),
 )
 
 internal class PayPointsRow(val letter: String, val name: String, val value: String, val color: Long)
