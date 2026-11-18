@@ -297,6 +297,9 @@ class EatsIntegratedScreenshotTest {
     @Test fun restaurantItemSheetLight() {
         openBakery(false)
         rule.onNodeWithText("Croissant").performClick()
+        rule.onNodeWithText("Add-ons").assertExists()
+        rule.onNodeWithText("Butter portion").assertExists()
+        rule.onNodeWithText("Honey").assertExists()
         rule.onNodeWithText("Preferences").assertExists()
         rule.onNodeWithText("No onions").assertExists()
         rule.onNodeWithText("Extra spicy").assertExists()
@@ -306,16 +309,38 @@ class EatsIntegratedScreenshotTest {
     @Test fun restaurantItemSheetDark() {
         openBakery(true)
         rule.onNodeWithText("Croissant").performClick()
+        rule.onNodeWithText("Add-ons").assertExists()
+        rule.onNodeWithText("Butter portion").assertExists()
+        rule.onNodeWithText("Honey").assertExists()
         rule.onNodeWithText("Preferences").assertExists()
         capture("eats-prototype-restaurant-item-sheet-dark")
     }
 
-    @Test fun restaurantItemSheetCanCustomizeQuantityAndAdd() {
+    @Test fun restaurantItemSheetCustomizedLight() {
         openBakery(false)
         rule.onNodeWithText("Croissant").performClick()
-        rule.onNodeWithText("No onions").performClick()
+        rule.onNodeWithText("Extra spicy").performClick()
         rule.onNodeWithContentDescription("Add one").performClick()
-        rule.onNodeWithText("Add to cart · 2,400 RWF").performClick()
+        rule.onNodeWithText("Add · 2,400 RWF").assertExists()
+        capture("eats-prototype-restaurant-item-customized-sheet-light")
+    }
+
+    @Test fun restaurantItemSheetCustomizedDark() {
+        openBakery(true)
+        rule.onNodeWithText("Croissant").performClick()
+        rule.onNodeWithText("Extra spicy").performClick()
+        rule.onNodeWithContentDescription("Add one").performClick()
+        rule.onNodeWithText("Add · 2,400 RWF").assertExists()
+        capture("eats-prototype-restaurant-item-customized-sheet-dark")
+    }
+
+    @Test fun restaurantItemSheetAddOnSelectionChangesPriceAndAdds() {
+        openBakery(false)
+        rule.onNodeWithText("Croissant").performClick()
+        rule.onNodeWithText("Butter portion").performClick()
+        rule.onNodeWithText("Extra spicy").performClick()
+        rule.onNodeWithContentDescription("Add one").performClick()
+        rule.onNodeWithText("Add · 3,000 RWF").performClick()
         rule.onNodeWithText("Checkout (2 items)").assertExists()
     }
 }
