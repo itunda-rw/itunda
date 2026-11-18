@@ -140,4 +140,116 @@ class EatsIntegratedScreenshotTest {
         repeat(3) { rule.onRoot().performTouchInput { swipeUp() } }
         capture("eats-prototype-browse-lower-dark")
     }
+
+    private fun browseCategory(category: String, dark: Boolean) {
+        show(dark)
+        rule.onAllNodesWithText(category).get(0).performScrollTo().performClick()
+        capture("eats-prototype-browse-category-${category.lowercase()}-${if (dark) "dark" else "light"}")
+    }
+
+    @Test fun browseCategoryChickenLight() = browseCategory("Chicken", false)
+    @Test fun browseCategoryChickenDark() = browseCategory("Chicken", true)
+    @Test fun browseCategoryPizzaLight() = browseCategory("Pizza", false)
+    @Test fun browseCategoryPizzaDark() = browseCategory("Pizza", true)
+    @Test fun browseCategoryBurgersLight() = browseCategory("Burgers", false)
+    @Test fun browseCategoryBurgersDark() = browseCategory("Burgers", true)
+    @Test fun browseCategoryLocalLight() = browseCategory("Local", false)
+    @Test fun browseCategoryLocalDark() = browseCategory("Local", true)
+    @Test fun browseCategoryChipsLight() = browseCategory("Chips", false)
+    @Test fun browseCategoryChipsDark() = browseCategory("Chips", true)
+    @Test fun browseCategoryBakeryLight() = browseCategory("Bakery", false)
+    @Test fun browseCategoryBakeryDark() = browseCategory("Bakery", true)
+    @Test fun browseCategoryCoffeeLight() = browseCategory("Coffee", false)
+    @Test fun browseCategoryCoffeeDark() = browseCategory("Coffee", true)
+    @Test fun browseCategoryJuiceLight() = browseCategory("Juice", false)
+    @Test fun browseCategoryJuiceDark() = browseCategory("Juice", true)
+    @Test fun browseCategoryHealthyLight() = browseCategory("Healthy", false)
+    @Test fun browseCategoryHealthyDark() = browseCategory("Healthy", true)
+    @Test fun browseCategoryDessertLight() = browseCategory("Dessert", false)
+    @Test fun browseCategoryDessertDark() = browseCategory("Dessert", true)
+
+    private fun browseSort(label: String, dark: Boolean, file: String) {
+        show(dark)
+        if (label == "Fastest") {
+            rule.onAllNodesWithText(label).get(1).performScrollTo().performClick()
+        } else {
+            rule.onNodeWithText(label).performScrollTo().performClick()
+        }
+        capture("eats-prototype-browse-sort-$file-${if (dark) "dark" else "light"}")
+    }
+
+    @Test fun browseSortFastestLight() = browseSort("Fastest", false, "fastest")
+    @Test fun browseSortFastestDark() = browseSort("Fastest", true, "fastest")
+    @Test fun browseSortFreeDeliveryLight() = browseSort("Free delivery", false, "free-delivery")
+    @Test fun browseSortFreeDeliveryDark() = browseSort("Free delivery", true, "free-delivery")
+    @Test fun browseSortNearestLight() = browseSort("Nearest", false, "nearest")
+    @Test fun browseSortNearestDark() = browseSort("Nearest", true, "nearest")
+
+    private fun browseCoupons(dark: Boolean) {
+        show(dark)
+        rule.onNodeWithContentDescription("Coupons").performClick()
+        rule.onNodeWithText("Your coupons").assertExists()
+        rule.onAllNodesWithText("Free delivery").get(0).assertExists()
+        rule.onNodeWithText("20% off your meal").assertExists()
+        capture("eats-prototype-browse-coupons-sheet-${if (dark) "dark" else "light"}")
+    }
+
+    @Test fun browseCouponsSheetLight() = browseCoupons(false)
+    @Test fun browseCouponsSheetDark() = browseCoupons(true)
+
+    private fun browseAddressPicker(dark: Boolean) {
+        show(dark)
+        rule.onNodeWithContentDescription("Change delivery address").performClick()
+        rule.onNodeWithText("Your rider will go to the address you pick.").assertExists()
+        capture("eats-prototype-browse-address-sheet-${if (dark) "dark" else "light"}")
+    }
+
+    @Test fun browseAddressPickerLight() = browseAddressPicker(false)
+    @Test fun browseAddressPickerDark() = browseAddressPicker(true)
+
+    private fun browseNewAddressForm(dark: Boolean) {
+        show(dark)
+        rule.onNodeWithContentDescription("Change delivery address").performClick()
+        rule.onNodeWithText("Add a new address").performClick()
+        rule.onNodeWithText("Street or landmark").assertExists()
+        capture("eats-prototype-browse-address-new-form-${if (dark) "dark" else "light"}")
+    }
+
+    @Test fun browseNewAddressFormLight() = browseNewAddressForm(false)
+    @Test fun browseNewAddressFormDark() = browseNewAddressForm(true)
+
+    private fun browseClubSheet(dark: Boolean) {
+        show(dark)
+        rule.onNodeWithText("Eats Club").performClick()
+        rule.onNodeWithText("Not now").assertExists()
+        capture("eats-prototype-browse-club-sheet-${if (dark) "dark" else "light"}")
+    }
+
+    @Test fun browseClubSheetLight() = browseClubSheet(false)
+    @Test fun browseClubSheetDark() = browseClubSheet(true)
+
+    private fun browseSavedDeliveryPromo(dark: Boolean) {
+        show(dark)
+        rule.onNodeWithText("Free delivery on your first", substring = true).performClick()
+        rule.onNodeWithText("Coupons ✓").assertExists()
+        capture("eats-prototype-browse-promo-delivery-saved-${if (dark) "dark" else "light"}")
+    }
+
+    @Test fun browseSavedDeliveryPromoLight() = browseSavedDeliveryPromo(false)
+    @Test fun browseSavedDeliveryPromoDark() = browseSavedDeliveryPromo(true)
+
+    @Test fun browsePickupAndDeliveryToggle() {
+        show(false)
+        rule.onNodeWithContentDescription("Pickup").performClick()
+        capture("eats-prototype-browse-pickup-toggle-light")
+        rule.onNodeWithContentDescription("Delivery").performClick()
+        capture("eats-prototype-browse-delivery-toggle-light")
+    }
+
+    @Test fun browseBakerySearchResults() {
+        show(false)
+        rule.onNodeWithContentDescription("Search restaurants").performTextInput("bakery")
+        rule.waitForIdle()
+        capture("eats-prototype-browse-search-bakery-entered-light")
+    }
 }
