@@ -15,6 +15,8 @@ internal data class EatsPrototypePalette(
     val accent: Color,
     val divider: Color,
     val accentTint: Color,
+    val brandFill: Color,
+    val brandOn: Color,
 )
 
 private val EatsLightPalette = EatsPrototypePalette(
@@ -27,6 +29,8 @@ private val EatsLightPalette = EatsPrototypePalette(
     accent = Color(0xFF5B54D6),
     divider = Color(0xFFE5E8EB),
     accentTint = Color(0xFFF0EDFF),
+    brandFill = Color(0xFF8F89FF),
+    brandOn = Color(0xFF17171C),
 )
 
 private val EatsDarkPalette = EatsPrototypePalette(
@@ -39,6 +43,8 @@ private val EatsDarkPalette = EatsPrototypePalette(
     accent = Color(0xFFB3AEFF),
     divider = Color(0xFF3C3C47),
     accentTint = Color(0xFF292644),
+    brandFill = Color(0xFF8F89FF),
+    brandOn = Color(0xFF17171C),
 )
 
 @Composable

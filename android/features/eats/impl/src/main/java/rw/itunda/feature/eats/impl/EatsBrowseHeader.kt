@@ -120,9 +120,9 @@ fun EatsBrowseHeader(
                 })
                 if (cartCount > 0) Box(
                     Modifier.align(Alignment.TopEnd).padding(top = 5.dp, end = 3.dp).defaultMinSize(minWidth = 18.dp).height(18.dp)
-                        .clip(RoundedCornerShape(9.dp)).background(Ids.colors.danger).padding(horizontal = 5.dp),
+                        .clip(RoundedCornerShape(9.dp)).background(palette.brandFill).padding(horizontal = 5.dp),
                     contentAlignment = Alignment.Center,
-                ) { Text(cartCount.toString(), color = Ids.colors.onBrand, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold) }
+                ) { Text(cartCount.toString(), color = palette.brandOn, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold) }
             }
         }
     }

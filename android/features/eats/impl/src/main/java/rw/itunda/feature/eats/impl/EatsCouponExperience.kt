@@ -45,7 +45,7 @@ import rw.itunda.core.designsystem.theme.Ids
 @Composable
 fun EatsPromoBanner(isPickup: Boolean, selected: Boolean, onSelectCoupon: () -> Unit, modifier: Modifier = Modifier) {
     if (selected) return
-    val background = if (isPickup) Color(0xFFD1E8FF) else Color(0xFFFFE08A)
+    val background = if (isPickup) Color(0xFFCFE8FF) else Color(0xFFFFE08A)
     Row(
         modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(background)
             .pressScaleClickable(onClick = onSelectCoupon).padding(horizontal = 18.dp, vertical = 16.dp),

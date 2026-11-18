@@ -69,7 +69,7 @@ fun EatsSearchHeader(
             Spacer(Modifier.height(if (showSearch) 14.dp else 4.dp))
             BoxWithConstraints(Modifier.fillMaxWidth()) {
                 Row(
-                    Modifier.offset(x = (-20).dp).requiredWidth(maxWidth + 40.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+                    Modifier.offset(x = (-20).dp).requiredWidth(maxWidth + 40.dp).padding(horizontal = 16.dp).horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {

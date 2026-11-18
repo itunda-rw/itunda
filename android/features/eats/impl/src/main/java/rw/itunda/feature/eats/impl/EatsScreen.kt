@@ -329,7 +329,7 @@ internal fun OrderFoodContent(
     // shipped version) -- see ScrollPressTracker.kt's own doc comment.
     val eatsListState = rememberLazyListState()
     val eatsTouchedKey = remember { mutableStateOf<Any?>(null) }
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize().background(eatsPrototypePalette().background)) {
         if (view == OrderFoodView.TRACKING && selectedOrder != null) {
             EatsTrackingScreen(
                 order = selectedOrder!!,
