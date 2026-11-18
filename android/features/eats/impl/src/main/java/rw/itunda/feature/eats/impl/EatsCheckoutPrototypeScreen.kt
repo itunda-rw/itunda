@@ -44,7 +44,7 @@ import rw.itunda.core.network.MerchantProductDto
 import rw.itunda.core.network.ShoppingMerchantDto
 import java.util.Locale
 
-internal enum class EatsPaymentMethod { ITUNDA_PAY, ITUNDA_BANK, CASH }
+enum class EatsPaymentMethod { ITUNDA_PAY, ITUNDA_BANK, CASH }
 
 @Composable
 internal fun EatsCheckoutPrototypeScreen(
@@ -137,8 +137,7 @@ internal fun EatsCheckoutPrototypeScreen(
                         EatsCheckoutTopBar(onBack = onBack, palette = palette)
                         Column(
                             Modifier.fillMaxWidth().weight(1f)
-                                .verticalScroll(rememberScrollState())
-                                .padding(bottom = 112.dp),
+                                .verticalScroll(rememberScrollState()),
                         ) {
                             Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
                                 EatsCheckoutModeToggle(
