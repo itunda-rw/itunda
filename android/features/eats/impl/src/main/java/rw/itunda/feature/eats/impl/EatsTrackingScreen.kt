@@ -29,7 +29,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -200,7 +199,6 @@ internal fun EatsTrackingMain(
     onHelp: () -> Unit, onDone: () -> Unit, modifier: Modifier,
 ) {
     val palette = eatsPrototypePalette()
-    val compactDeliveryPreparing = !pickup && order.status == "PREPARING" && LocalConfiguration.current.screenHeightDp <= 844
     Column(modifier.fillMaxSize().background(palette.background)) {
         EatsTrackingHeader(if (pickup) "Your pickup" else "Your delivery", onBack)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState(initialScrollOffset))) {
@@ -301,9 +299,9 @@ internal fun EatsTrackingMain(
                     pickup = pickup,
                     onCallRestaurant = if (pickup && order.status == "PREPARING") onCallRestaurant else null,
                 )
-                if (!compactDeliveryPreparing) Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(24.dp))
             }
-            if (!compactDeliveryPreparing) EatsTrackingStatusSummary(order, items, orderCode, pickup)
+            EatsTrackingStatusSummary(order, items, orderCode, pickup)
             if (order.status == "PLACED") {
                 EatsTrackingButton(
                     "Cancel order",
@@ -318,7 +316,7 @@ internal fun EatsTrackingMain(
                     EatsTrackingOrderCard(order, items, restaurantName, orderCode, pickup)
                 }
             }
-            if (!compactDeliveryPreparing) Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(24.dp))
         }
         if (complete) EatsTrackingButton("Done", onDone, modifier = Modifier.padding(horizontal = 24.dp, vertical = 18.dp))
         else EatsTrackingButton(
