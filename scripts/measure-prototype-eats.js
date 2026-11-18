@@ -20,6 +20,7 @@ const order = (pickup = false, status = 'On the way', id = 'EA-7207') => ({
 
 const states = [
   { id: 'browse-default', screen: 'shop' },
+  { id: 'browse-address-confirmation', screen: 'shop', addrOk: false },
   { id: 'browse-pickup', screen: 'shop', pickup: true },
   { id: 'browse-address-work', screen: 'shop', addressIndex: 1 },
   { id: 'browse-search-bakery', screen: 'shop', query: 'bakery' },
@@ -127,7 +128,7 @@ async function applyState(page, state) {
     S.tab = 'home';
     S.stack = stackByScreen[s.screen] || ['shop'];
     S.shopTab = 'eats';
-    S.addrOk = true;
+    S.addrOk = s.addrOk === undefined ? true : !!s.addrOk;
     S.ecat = s.category || 'All';
     S.e2cat = s.category || 'All';
     S.esort = s.sort || 'fast';
