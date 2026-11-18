@@ -98,22 +98,24 @@ internal fun EatsCheckoutPrototypeScreen(
 
     when (page) {
         EatsCheckoutPage.ADDRESS -> EatsCheckoutAddressPage(
-            currentAddress = selectedAddress,
+            currentAddress = address,
             onBack = { page = EatsCheckoutPage.CART },
             onClose = { page = EatsCheckoutPage.CART },
-            onUseAddress = {
-                onAddressChange(selectedAddress)
+            onUseAddress = { selected ->
+                onAddressChange(selected)
                 page = EatsCheckoutPage.CART
             },
-            onSelect = { selectedAddress = it },
         )
         EatsCheckoutPage.PAYMENT -> EatsCheckoutPaymentPage(
             selected = paymentMethod,
             payBalance = initialPayBalance,
             bankBalance = initialBankBalance,
+            isPickup = mode == EatsCheckoutMode.PICKUP,
             onBack = { page = EatsCheckoutPage.CART },
-            onSelect = { paymentMethod = it },
-            onDone = { page = EatsCheckoutPage.CART },
+            onDone = { selected ->
+                paymentMethod = selected
+                page = EatsCheckoutPage.CART
+            },
         )
         EatsCheckoutPage.CONFIRM -> EatsCheckoutConfirmPage(
             amount = total,
