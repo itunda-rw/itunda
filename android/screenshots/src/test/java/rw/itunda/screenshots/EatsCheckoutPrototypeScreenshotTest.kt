@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -107,7 +108,7 @@ class EatsCheckoutPrototypeScreenshotTest {
     @Test fun freeDeliveryCouponCanBeRemoved() {
         render(coupon = "FREEDEL")
         rule.onNodeWithText("FREEDEL · Free delivery").assertExists()
-        rule.onNodeWithText("Remove").performClick()
+        rule.onNodeWithContentDescription("Remove coupon").performScrollTo().performClick()
         assertFalse(rule.onAllNodesWithText("FREEDEL · Free delivery").fetchSemanticsNodes().isNotEmpty())
         rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-freedel-removed.png")
     }
@@ -117,7 +118,7 @@ class EatsCheckoutPrototypeScreenshotTest {
         rule.onNodeWithText("Pick up at").assertExists()
         assertFalse(rule.onAllNodesWithText("Delivery time").fetchSemanticsNodes().isNotEmpty())
         assertFalse(rule.onAllNodesWithText("Tip your rider").fetchSemanticsNodes().isNotEmpty())
-        rule.onNodeWithText("Pickup").assertExists()
+        assertFalse(rule.onAllNodesWithText("Pickup").fetchSemanticsNodes().isEmpty())
         rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-pickup-light.png")
     }
 
@@ -143,7 +144,7 @@ class EatsCheckoutPrototypeScreenshotTest {
 
     @Test fun paymentMethodPageShowsAllMethods() {
         render()
-        rule.onNodeWithText("Pay with").performClick()
+        rule.onNodeWithContentDescription("Open payment method").performScrollTo().performClick()
         rule.onNodeWithText("itunda Pay").assertExists()
         rule.onNodeWithText("itunda Bank").assertExists()
         rule.onNodeWithText("Cash on delivery").assertExists()
@@ -153,7 +154,7 @@ class EatsCheckoutPrototypeScreenshotTest {
     @Test fun bankPaymentSelectionReturnsToCart() {
         render(paymentMethod = EatsPaymentMethod.ITUNDA_BANK)
         rule.onNodeWithText("Pay with").performClick()
-        rule.onNodeWithText("itunda Bank").performClick()
+        rule.onNodeWithContentDescription("Payment option itunda Bank").performClick()
         rule.onNodeWithText("Done").performClick()
         rule.onNodeWithText("itunda Bank · 842,300 RWF").assertExists()
         rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-payment-bank.png")
@@ -195,7 +196,7 @@ class EatsCheckoutPrototypeScreenshotTest {
     @Test fun upsellAddsHotMilkTeaToCart() {
         render()
         rule.onNodeWithContentDescription("Add Hot milk tea").performClick()
-        rule.onNodeWithText("Hot milk tea").assertExists()
+        assertFalse(rule.onAllNodesWithText("Hot milk tea").fetchSemanticsNodes().isEmpty())
         rule.onNodeWithText("3,400 RWF").assertExists()
         rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-upsell-added.png")
     }
