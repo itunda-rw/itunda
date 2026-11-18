@@ -1,6 +1,7 @@
 package rw.itunda.screenshots
 
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -18,9 +19,9 @@ import rw.itunda.feature.eats.impl.EatsTrackingScreen
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [34], qualifiers = "w390dp-h900dp-xxhdpi")
+@Config(sdk = [34], qualifiers = "w390dp-h844dp-xxhdpi")
 class EatsTrackingScreenshotTest {
-    @get:Rule val rule = createComposeRule()
+    @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
 
     private val items = listOf(EatsOrderItemDto("item-1", "EA-7207", "p1", "Croissant", 1200.0, 2))
 
@@ -48,6 +49,7 @@ class EatsTrackingScreenshotTest {
     }
 
     private fun show(status: String, pickup: Boolean = false, dark: Boolean = false, name: String) {
+        rule.activity.actionBar?.hide()
         rule.setContent {
             IdsTheme(darkTheme = dark) {
                 EatsTrackingScreen(
@@ -75,6 +77,7 @@ class EatsTrackingScreenshotTest {
     @Test fun pickupReadyDark() = show("READY_FOR_PICKUP", pickup = true, dark = true, name = "eats-prototype-tracking-pickup-ready-dark")
 
     @Test fun riderSheetLight() {
+        rule.activity.actionBar?.hide()
         rule.setContent { IdsTheme(darkTheme = false) {
             EatsTrackingScreen(order("PICKED_UP"), null, {}, {}, initialItems = items)
         } }
@@ -85,6 +88,7 @@ class EatsTrackingScreenshotTest {
     }
 
     @Test fun cancelSheetLight() {
+        rule.activity.actionBar?.hide()
         rule.setContent { IdsTheme(darkTheme = false) {
             EatsTrackingScreen(order("PLACED"), null, {}, {}, initialItems = items)
         } }
@@ -95,6 +99,7 @@ class EatsTrackingScreenshotTest {
     }
 
     @Test fun ratingSheetLight() {
+        rule.activity.actionBar?.hide()
         rule.setContent { IdsTheme(darkTheme = false) {
             EatsTrackingScreen(order("DELIVERED"), null, {}, {}, initialItems = items)
         } }

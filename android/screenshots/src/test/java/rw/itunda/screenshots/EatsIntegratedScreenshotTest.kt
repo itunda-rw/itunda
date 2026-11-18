@@ -1,6 +1,7 @@
 package rw.itunda.screenshots
 
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -26,14 +27,15 @@ import rw.itunda.feature.eats.impl.EatsContent
 /** Full production Eats entry point, using the same deterministic fixture as device demo mode. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [34], qualifiers = "w390dp-h900dp-xxhdpi")
+@Config(sdk = [34], qualifiers = "w390dp-h844dp-xxhdpi")
 class EatsIntegratedScreenshotTest {
-    @get:Rule val rule = createComposeRule()
+    @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
 
     @Before fun enablePrototypeDemo() { NetworkClient.demoMode = true }
     @After fun disablePrototypeDemo() { NetworkClient.demoMode = false }
 
     private fun show(dark: Boolean) {
+        rule.activity.actionBar?.hide()
         rule.setContent {
             IdsTheme(darkTheme = dark) {
                 EatsContent(deviceStepUpHost = { _, _, _ -> })
