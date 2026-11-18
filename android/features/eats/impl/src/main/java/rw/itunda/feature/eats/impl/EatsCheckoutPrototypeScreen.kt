@@ -63,6 +63,9 @@ internal fun EatsCheckoutPrototypeScreen(
     initialPaymentMethod: EatsPaymentMethod = EatsPaymentMethod.ITUNDA_PAY,
     initialTipAmount: Int = 0,
     initialScheduledTime: String? = null,
+    groupSummary: EatsCheckoutGroupSummary? = null,
+    onManageGroup: (() -> Unit)? = null,
+    onGroupSplitBillChange: (Boolean) -> Unit = {},
     onModeChange: (EatsCheckoutMode) -> Unit,
     onAddressChange: (String) -> Unit,
     onBack: () -> Unit,
@@ -279,6 +282,16 @@ internal fun EatsCheckoutPrototypeScreen(
                                 Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 12.dp)) {
                                     EatsCheckoutCouponRow(coupon!!, palette, onRemove = { coupon = null })
                                 }
+                            }
+
+                            groupSummary?.let { summary ->
+                                EatsCheckoutGroupSplitCard(
+                                    summary = summary,
+                                    palette = palette,
+                                    onManage = onManageGroup,
+                                    onSplitBillChange = onGroupSplitBillChange,
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 16.dp),
+                                )
                             }
 
                             Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = if (mode == EatsCheckoutMode.DELIVERY) 16.dp else 16.dp)) {

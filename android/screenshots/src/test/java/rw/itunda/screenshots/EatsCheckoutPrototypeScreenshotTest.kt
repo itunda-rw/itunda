@@ -26,6 +26,8 @@ import rw.itunda.core.network.MerchantProductDto
 import rw.itunda.core.network.ShoppingMerchantDto
 import rw.itunda.feature.eats.impl.EatsCartLine
 import rw.itunda.feature.eats.impl.EatsCheckoutMode
+import rw.itunda.feature.eats.impl.EatsCheckoutGroupMember
+import rw.itunda.feature.eats.impl.EatsCheckoutGroupSummary
 import rw.itunda.feature.eats.impl.EatsCheckoutView
 import rw.itunda.feature.eats.impl.EatsPaymentMethod
 import java.time.LocalTime
@@ -69,6 +71,8 @@ class EatsCheckoutPrototypeScreenshotTest {
         paymentMethod: EatsPaymentMethod = EatsPaymentMethod.ITUNDA_PAY,
         quantity: Int = 2,
         bankBalance: Double = 842300.0,
+        groupSummary: EatsCheckoutGroupSummary? = null,
+        onManageGroup: (() -> Unit)? = null,
     ) {
         rule.setContent {
             IdsTheme(darkTheme = dark) {
@@ -84,6 +88,8 @@ class EatsCheckoutPrototypeScreenshotTest {
                     initialTipAmount = tip,
                     initialScheduledTime = scheduled,
                     initialPaymentMethod = paymentMethod,
+                    initialGroupSummary = groupSummary,
+                    onManageGroup = onManageGroup,
                     onBack = {},
                     onOrderPlaced = {},
                     onDineInOrderPlaced = {},
@@ -270,6 +276,41 @@ class EatsCheckoutPrototypeScreenshotTest {
         rule.onNodeWithContentDescription("Payment option Cash on delivery").performClick()
         rule.onNodeWithText("Place order · 2,400 RWF").assertExists()
         rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-cash-selected.png")
+    }
+
+    private val groupSummaryFixture = EatsCheckoutGroupSummary(
+        peopleCount = 3,
+        yourAmount = 1200.0,
+        members = listOf(
+            EatsCheckoutGroupMember("Amina K.", "1 item", 1000.0),
+            EatsCheckoutGroupMember("Eric M.", "1 item", 1200.0),
+        ),
+        friendsTotal = 2200.0,
+        splitBill = true,
+    )
+
+    @Test fun groupSplitCardTogglesPayModeLight() {
+        var manageOpened = false
+        render(groupSummary = groupSummaryFixture, onManageGroup = { manageOpened = true })
+        rule.onNodeWithText("Group order · 3 people").performScrollTo()
+        rule.onNodeWithText("Amina K.").assertExists()
+        rule.onNodeWithText("Eric M.").assertExists()
+        rule.onNodeWithText("You pay now. Each friend gets a request for their items: 2,200 RWF in total.").assertExists()
+        rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-group-split-light.png")
+        rule.onNodeWithText("I pay for everyone").performClick()
+        assertFalse(rule.onAllNodesWithText("You pay now. Each friend gets a request for their items: 2,200 RWF in total.").fetchSemanticsNodes().isNotEmpty())
+        rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-group-pay-everyone-light.png")
+        rule.onNodeWithText("Manage").performClick()
+        rule.waitForIdle()
+        assertTrue(manageOpened)
+    }
+
+    @Test fun groupSplitCardDark() {
+        render(dark = true, groupSummary = groupSummaryFixture)
+        rule.onNodeWithText("Group order · 3 people").performScrollTo()
+        rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-group-split-dark.png")
+        rule.onNodeWithText("I pay for everyone").performClick()
+        rule.onRoot().captureRoboImage("build/screenshots/eats-checkout-group-pay-everyone-dark.png")
     }
 
 }

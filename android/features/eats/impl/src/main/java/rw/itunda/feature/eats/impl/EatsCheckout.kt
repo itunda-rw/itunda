@@ -79,9 +79,13 @@ fun EatsCheckoutView(
     initialPaymentMethod: EatsPaymentMethod = EatsPaymentMethod.ITUNDA_PAY,
     initialTipAmount: Int = 0,
     initialScheduledTime: String? = null,
+    initialGroupSummary: EatsCheckoutGroupSummary? = null,
+    onManageGroup: (() -> Unit)? = null,
+    onGroupSplitBillChange: (Boolean) -> Unit = {},
 ) {
     var mode by remember { mutableStateOf(initialMode) }
     var address by remember { mutableStateOf(initialAddress) }
+    var groupSummary by remember(initialGroupSummary) { mutableStateOf(initialGroupSummary) }
     var addressLatitude by remember { mutableStateOf<Double?>(null) }
     var addressLongitude by remember { mutableStateOf<Double?>(null) }
     var deliveryNotes by remember { mutableStateOf("") }
@@ -169,6 +173,12 @@ fun EatsCheckoutView(
         initialPaymentMethod = initialPaymentMethod,
         initialTipAmount = initialTipAmount,
         initialScheduledTime = initialScheduledTime,
+        groupSummary = groupSummary,
+        onManageGroup = onManageGroup,
+        onGroupSplitBillChange = { splitBill ->
+            groupSummary = groupSummary?.copy(splitBill = splitBill)
+            onGroupSplitBillChange(splitBill)
+        },
         onModeChange = { selected ->
             mode = selected
             error = null

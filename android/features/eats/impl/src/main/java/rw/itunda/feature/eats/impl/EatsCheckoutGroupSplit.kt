@@ -22,13 +22,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.components.pressScaleClickable
 
-internal data class EatsCheckoutGroupMember(
+data class EatsCheckoutGroupMember(
     val name: String,
     val itemsSummary: String,
     val amount: Double,
 )
 
-internal data class EatsCheckoutGroupSummary(
+data class EatsCheckoutGroupSummary(
     val peopleCount: Int,
     val yourAmount: Double,
     val members: List<EatsCheckoutGroupMember>,
@@ -42,10 +42,11 @@ internal fun EatsCheckoutGroupSplitCard(
     palette: EatsPrototypePalette,
     onManage: (() -> Unit)?,
     onSplitBillChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     var splitBill by remember(summary) { mutableStateOf(summary.splitBill) }
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
+        modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
             .background(palette.surfaceSoft).padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
