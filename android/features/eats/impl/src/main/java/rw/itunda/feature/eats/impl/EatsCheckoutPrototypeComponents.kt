@@ -292,12 +292,12 @@ internal fun EatsCheckoutPayButton(
     onClick: () -> Unit,
 ) {
     Box(
-        modifier.fillMaxWidth().height(52.dp).clip(RoundedCornerShape(16.dp))
+        modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(18.dp))
             .background(if (enabled) palette.brandFill else palette.accentTint)
             .pressScaleClickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, color = if (enabled) palette.brandOn else palette.accent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text(label, color = if (enabled) palette.brandOn else palette.accent, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
     }
 }
 
@@ -322,12 +322,12 @@ internal fun EatsCheckoutEmptyPage(
             }
         }
         Box(
-            Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 16.dp)
-                .height(52.dp).clip(RoundedCornerShape(16.dp)).background(palette.brandFill)
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)
+                .height(56.dp).clip(RoundedCornerShape(18.dp)).background(palette.brandFill)
                 .pressScaleClickable(onClick = onBack),
             contentAlignment = Alignment.Center,
         ) {
-            Text("Back to the menu", color = palette.brandOn, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text("Back to the menu", color = palette.brandOn, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
         }
     }
 }
