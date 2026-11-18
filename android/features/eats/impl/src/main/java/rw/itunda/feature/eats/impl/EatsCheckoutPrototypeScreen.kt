@@ -295,8 +295,8 @@ internal fun EatsCheckoutPrototypeScreen(
                                 )
                                 Row(
                                     Modifier.fillMaxWidth().padding(top = 14.dp)
-                                        .pressScaleClickable { page = EatsCheckoutPage.PAYMENT }
-                                        .semantics { contentDescription = "Open payment method" },
+                                        .semantics { contentDescription = "Open payment method" }
+                                        .pressScaleClickable { page = EatsCheckoutPage.PAYMENT },
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     Text("Pay with", color = palette.secondary, fontSize = 14.sp)
