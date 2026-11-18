@@ -42,6 +42,7 @@ jobs:
         run: |
           PROTO="$GITHUB_WORKSPACE/itunda_clickable_prototype_v1038.html"
           test -s "$PROTO"
+          cp "$PROTO" /tmp/itunda_clickable_prototype_v1038.html
           echo "Prototype source: $(git rev-parse HEAD):itunda_clickable_prototype_v1038.html"
           mkdir -p /tmp/prototype-playwright
           cd /tmp/prototype-playwright
