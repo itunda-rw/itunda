@@ -88,7 +88,7 @@ internal fun EatsTrackingCancelPanel(refund: String, busy: Boolean, onBack: () -
         }
         Column(Modifier.padding(horizontal = 24.dp, vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             EatsTrackingButton(if (busy) "Cancelling…" else "Cancel order", onCancel, enabled = !busy)
-            EatsTrackingButton("Keep order", onKeep)
+            EatsTrackingButton("Keep order", onKeep, background = palette.surfaceSoft, color = palette.primary)
         }
     }
 }
