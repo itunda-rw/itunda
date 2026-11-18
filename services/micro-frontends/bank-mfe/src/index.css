@@ -4121,3 +4121,342 @@ button:disabled,
     scroll-behavior: auto !important;
   }
 }
+
+
+/* v689 prototype parity — keep the consumer surface at the prototype's 390px
+   reference width on desktop, while remaining edge-to-edge on phones. The app
+   remains a real React/API-backed experience; this changes presentation only. */
+@media (min-width: 431px) {
+  body {
+    background-color: #E9EBF0;
+  }
+
+  #root {
+    max-width: 390px;
+    border-inline: 1px solid color-mix(in srgb, var(--itunda-border-default) 65%, transparent);
+    box-shadow: 0 18px 56px rgba(25, 31, 40, 0.08);
+  }
+
+  .itunda-app-content {
+    padding-inline: 24px;
+  }
+
+  .itunda-bottom-nav {
+    width: min(calc(100% - 20px), 350px);
+  }
+}
+
+@media (max-width: 430px) {
+  #root {
+    max-width: none;
+    border-inline: 0;
+    box-shadow: none;
+  }
+}
+
+/* Match the prototype's calmer page canvas without overriding the app's semantic
+   light/dark surfaces or the canonical Itunda brand color. */
+@media (prefers-color-scheme: dark) {
+  @media (min-width: 431px) {
+    body {
+      background-color: #0A0A0D;
+    }
+  }
+}
+
+
+/* The prototype also allows an in-app theme choice, so the surrounding desktop
+   canvas must follow that choice rather than only the operating-system setting. */
+:root[data-theme="light"] body {
+  background-color: #E9EBF0;
+}
+:root[data-theme="dark"] body {
+  background-color: #0A0A0D;
+}
+
+
+/* v689 Home pass 2: use the prototype's calm, separated section rhythm rather
+   than a long uninterrupted feed. Surfaces use semantic theme tokens; the live
+   Home components and their click handlers are unchanged. */
+.itunda-home-page {
+  padding: 12px 24px 28px;
+  background: color-mix(in srgb, var(--itunda-text-primary) 3%, var(--itunda-surface-default));
+}
+
+.itunda-home-money,
+.itunda-home-actions-section,
+.itunda-home-local-services,
+.itunda-home-spending,
+.itunda-home-for-you {
+  margin: 12px -8px 0;
+  padding: 20px 12px 12px;
+  border-radius: 24px;
+  background: var(--itunda-surface-default);
+}
+
+.itunda-home-money {
+  margin-top: 8px;
+  padding-top: 18px;
+}
+
+.itunda-home-actions-section,
+.itunda-home-local-services,
+.itunda-home-spending,
+.itunda-home-for-you {
+  scroll-margin-top: 84px;
+}
+
+.itunda-home-actions-section > h2,
+.itunda-home-prototype-section-heading,
+.itunda-home-for-you > h2 {
+  margin-bottom: 12px;
+}
+
+.itunda-home-for-you__item {
+  padding-inline: 4px;
+}
+
+@media (max-width: 430px) {
+  .itunda-home-page {
+    padding-inline: 20px;
+  }
+
+  .itunda-home-money,
+  .itunda-home-actions-section,
+  .itunda-home-local-services,
+  .itunda-home-spending,
+  .itunda-home-for-you {
+    margin-inline: -4px;
+    padding-inline: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itunda-home-page,
+  .itunda-home-money,
+  .itunda-home-actions-section,
+  .itunda-home-local-services,
+  .itunda-home-spending,
+  .itunda-home-for-you {
+    scroll-behavior: auto;
+  }
+}
+
+
+/* v689 parity pass 3 — refine the flat destination lists and primary navigation.
+   Keep rows action-driven and low-chrome; no changes to tab routing or handlers. */
+.itunda-explore-page .itunda-flat-section > div > .itunda-btn,
+.itunda-you-page > .itunda-flat-section > div > .itunda-btn {
+  min-height: 58px;
+  gap: 12px;
+  transition: background-color 140ms ease, padding-inline 140ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.itunda-explore-page .itunda-flat-section > div > .itunda-btn:active,
+.itunda-you-page > .itunda-flat-section > div > .itunda-btn:active {
+  background: color-mix(in srgb, var(--itunda-brand) 7%, transparent);
+}
+
+.itunda-explore-page .itunda-flat-section > div > .itunda-btn:focus-visible,
+.itunda-you-page > .itunda-flat-section > div > .itunda-btn:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid var(--itunda-brand);
+  outline-offset: -2px;
+  border-radius: 12px;
+}
+
+.itunda-bottom-nav {
+  border: 1px solid color-mix(in srgb, var(--itunda-border-default) 75%, transparent);
+  box-shadow: 0 6px 24px rgba(25, 31, 40, 0.07);
+}
+
+.itunda-bottom-nav__item {
+  min-height: 56px;
+  border-radius: 15px;
+  transition: color 140ms ease, background-color 140ms ease, transform 140ms ease;
+}
+
+.itunda-bottom-nav__item.is-active {
+  background: color-mix(in srgb, var(--itunda-brand) 11%, var(--itunda-surface-default));
+  font-weight: 700;
+}
+
+.itunda-bottom-nav__item:focus-visible {
+  outline: 2px solid var(--itunda-brand);
+  outline-offset: -2px;
+}
+
+@media (max-width: 430px) {
+  .itunda-bottom-nav {
+    border-color: color-mix(in srgb, var(--itunda-border-default) 65%, transparent);
+    box-shadow: 0 4px 18px rgba(25, 31, 40, 0.08);
+  }
+
+  .itunda-explore-page .itunda-flat-section > div > .itunda-btn,
+  .itunda-you-page > .itunda-flat-section > div > .itunda-btn {
+    min-height: 56px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .itunda-bottom-nav {
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+  }
+}
+
+:root[data-theme="dark"] .itunda-bottom-nav {
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itunda-explore-page .itunda-flat-section > div > .itunda-btn,
+  .itunda-you-page > .itunda-flat-section > div > .itunda-btn,
+  .itunda-bottom-nav__item {
+    transition: none;
+  }
+}
+
+
+/* v689 parity pass 4 — apply the same quiet, rounded section language to
+   destination screens, not only Home. This is presentation-only: no routes,
+   state, API calls, or action handlers are changed. */
+.itunda-app-content {
+  padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+}
+
+.itunda-app-content .itunda-flat-section {
+  overflow: clip;
+  border-radius: 22px;
+  background: var(--itunda-surface-default);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--itunda-border-default) 26%, transparent);
+}
+
+.itunda-app-content .itunda-flat-section + .itunda-flat-section {
+  margin-top: 10px;
+}
+
+.itunda-app-content .itunda-flat-section h2,
+.itunda-app-content .itunda-flat-section h3 {
+  letter-spacing: -0.025em;
+}
+
+.itunda-app-content .itunda-flat-section > button,
+.itunda-app-content .itunda-flat-section > div > button {
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 140ms ease;
+}
+
+.itunda-app-content .itunda-flat-section > button:active,
+.itunda-app-content .itunda-flat-section > div > button:active {
+  background-color: color-mix(in srgb, var(--itunda-brand) 6%, var(--itunda-surface-default));
+}
+
+.itunda-app-content :is(.itunda-explore-row, .itunda-you-row-list) {
+  border-radius: 14px;
+}
+
+.itunda-bottom-nav {
+  backdrop-filter: blur(18px) saturate(1.15);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+}
+
+@media (min-width: 431px) {
+  .itunda-app-content {
+    padding-inline: 20px;
+  }
+}
+
+@media (max-width: 430px) {
+  .itunda-app-content {
+    padding-bottom: calc(108px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .itunda-app-content .itunda-flat-section {
+    border-radius: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itunda-app-content .itunda-flat-section > button,
+  .itunda-app-content .itunda-flat-section > div > button {
+    transition: none;
+  }
+}
+
+
+/* v689 parity pass 5 — make Pay and Explore destinations scan like the
+   prototype: clear primary actions, quieter supporting rows, and consistent
+   touch targets. Existing live data and navigation remain the source of truth. */
+.itunda-pay-page .itunda-pay-balance {
+  padding: 22px 18px;
+  border-radius: 24px;
+  background: var(--itunda-surface-subtle);
+}
+
+.itunda-pay-page .itunda-pay-primary-actions button {
+  min-height: 52px;
+  font-weight: 700;
+  box-shadow: none;
+  transition: background-color 140ms ease, transform 140ms ease;
+}
+
+.itunda-pay-page .itunda-pay-primary-actions button:active {
+  transform: scale(.985);
+}
+
+.itunda-pay-page .itunda-flat-section > button,
+.itunda-pay-page .itunda-flat-section > div > button {
+  min-height: 56px;
+}
+
+.itunda-explore-page .itunda-explore-row {
+  padding-inline: 8px;
+  border-radius: 16px;
+  transition: background-color 140ms ease;
+}
+
+.itunda-explore-page .itunda-explore-row:active {
+  background: color-mix(in srgb, var(--itunda-brand) 7%, var(--itunda-surface-default));
+}
+
+.itunda-explore-page .itunda-explore-row__icon {
+  background: color-mix(in srgb, var(--itunda-brand) 9%, var(--itunda-surface-default));
+  color: var(--itunda-text-primary);
+}
+
+.itunda-home-topbar {
+  min-height: 56px;
+}
+
+.itunda-home-topbar > button {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  transition: background-color 140ms ease;
+}
+
+.itunda-home-topbar > button:active {
+  background: color-mix(in srgb, var(--itunda-brand) 8%, transparent);
+}
+
+@media (max-width: 430px) {
+  .itunda-pay-page .itunda-pay-balance {
+    padding: 20px 16px;
+  }
+
+  .itunda-explore-page .itunda-explore-row {
+    min-height: 64px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itunda-pay-page .itunda-pay-primary-actions button,
+  .itunda-explore-page .itunda-explore-row,
+  .itunda-home-topbar > button {
+    transition: none;
+  }
+}
