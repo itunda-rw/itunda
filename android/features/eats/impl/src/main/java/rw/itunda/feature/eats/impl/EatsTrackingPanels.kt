@@ -58,11 +58,11 @@ internal fun EatsTrackingRiderPanel(riderName: String, onBack: () -> Unit, onQui
     Column(modifier.fillMaxSize().background(palette.background)) {
         EatsTrackingHeader("", onBack)
         Column(Modifier.weight(1f).padding(horizontal = 24.dp)) {
-            Text(riderName, color = palette.primary, fontSize = 30.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 16.dp))
-            Text("Quick message", color = palette.secondary, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 18.dp, bottom = 10.dp))
-            listOf("I’m at the gate", "Please call me", "Leave it at the door").forEach { message ->
+            Text(riderName, color = palette.primary, fontSize = 30.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 20.dp))
+            Text("Quick message", color = palette.secondary, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
+            listOf("I’m at the gate", "Please call me", "Leave it at the door").forEachIndexed { index, message ->
                 Box(
-                    Modifier.padding(start = 24.dp, bottom = 10.dp).height(40.dp)
+                    Modifier.padding(start = 24.dp, bottom = if (index < 2) 10.dp else 0.dp).height(40.dp)
                         .clip(RoundedCornerShape(18.dp)).background(palette.surfaceSoft)
                         .pressScaleClickable(onClick = { onQuickMessage(message) }).padding(horizontal = 16.dp),
                     contentAlignment = Alignment.CenterStart,
@@ -84,7 +84,7 @@ internal fun EatsTrackingCancelPanel(refund: String, busy: Boolean, onBack: () -
         Column(Modifier.weight(1f).padding(horizontal = 24.dp).padding(top = 16.dp)) {
             Text("Cancel this order?", color = palette.primary, fontSize = 30.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold)
             Text("You will get $refund back in itunda Pay.", color = palette.secondary, fontSize = 15.sp, lineHeight = 21.sp,
-                modifier = Modifier.padding(top = 12.dp))
+                modifier = Modifier.padding(top = 8.dp))
         }
         Column(Modifier.padding(horizontal = 24.dp, vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             EatsTrackingButton(if (busy) "Cancelling…" else "Cancel order", onCancel, enabled = !busy)
@@ -101,7 +101,7 @@ internal fun EatsTrackingRatingPanel(rating: Int, busy: Boolean, onBack: () -> U
         EatsTrackingHeader("", onBack)
         Column(Modifier.weight(1f).padding(horizontal = 24.dp).padding(top = 16.dp)) {
             Text("How was your order?", color = palette.primary, fontSize = 30.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold)
-            Row(Modifier.padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 (1..5).forEach { value ->
                     Box(
                         Modifier.size(48.dp)
