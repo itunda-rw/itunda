@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/sync-v434-entry.mjs && node --check scripts/sync-v434-entry.mjs && node scripts/verify-v434-entry.mjs && vite build && node scripts/verify-v434-entry.mjs",
+    "build": "node scripts/sync-v1038-entry.mjs && node --check scripts/sync-v1038-entry.mjs && node scripts/verify-v1038-entry.mjs && vite build && node scripts/verify-v1038-entry.mjs",
     "typecheck": "tsc -b",
     "lint": "oxlint",
     "preview": "vite preview"
