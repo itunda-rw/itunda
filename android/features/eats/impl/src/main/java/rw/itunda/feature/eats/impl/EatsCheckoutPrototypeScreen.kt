@@ -395,10 +395,10 @@ private fun EatsCheckoutModeToggle(
         listOf(EatsCheckoutMode.DELIVERY to "Delivery", EatsCheckoutMode.PICKUP to "Pickup").forEach { (value, label) ->
             val selected = mode == value
             Box(
-                Modifier.height(32.dp).clip(RoundedCornerShape(13.dp))
+                Modifier.width(if (value == EatsCheckoutMode.DELIVERY) 79.3.dp else 67.8.dp).height(32.dp)
+                    .clip(RoundedCornerShape(13.dp))
                     .background(if (selected) palette.selected else Color.Transparent)
-                    .pressScaleClickable { onSelect(value) }
-                    .padding(horizontal = if (value == EatsCheckoutMode.DELIVERY) 12.dp else 13.dp),
+                    .pressScaleClickable { onSelect(value) },
                 contentAlignment = Alignment.Center,
             ) {
                 Text(label, color = if (selected) palette.selectedText else palette.secondary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -627,15 +627,14 @@ private fun EatsCheckoutEmptyPage(
         Column(Modifier.fillMaxSize()) {
             EatsCheckoutTopBar(onBack, palette)
             Column(
-                Modifier.fillMaxWidth().weight(1f),
+                Modifier.fillMaxWidth().padding(top = 88.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
             ) {
-                Box(Modifier.size(76.dp).clip(RoundedCornerShape(22.dp)).background(palette.surfaceSoft), contentAlignment = Alignment.Center) {
-                    ItundaArt("bag", ItundaArtSet.Line, 24.dp, tint = Color(0xFF5287FF))
+                Box(Modifier.size(96.dp).clip(RoundedCornerShape(32.dp)).background(palette.surfaceSoft), contentAlignment = Alignment.Center) {
+                    ItundaArt("bag", ItundaArtSet.Line, 32.dp, tint = Color(0xFF5287FF))
                 }
-                Text("Your cart is empty", color = palette.primary, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 16.dp))
-                Text("Add something from ${restaurantName} to order.", color = palette.secondary, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+                Text("Your cart is empty", color = palette.primary, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 16.dp))
+                Text("Add something from ${restaurantName} to order.", color = palette.secondary, fontSize = 14.sp, modifier = Modifier.padding(top = 6.dp))
             }
         }
         Box(
