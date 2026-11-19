@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
@@ -52,7 +53,7 @@ fun PayAddCardScreen(onBack: () -> Unit, onAdd: (PayNewCard) -> Unit) {
     val valid = digits.length == 16 && expiry.length == 5 && month in 1..12 && cvc.length == 3 && name.trim().length > 1
     PaySubScreen(onBack = onBack, title = "Add a card") { p ->
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(top = 8.dp)) {
-            CardPreview(digits, name.trim().uppercase(), expiry)
+            CardPreview(digits, name.trim().uppercase(), expiry, p.text)
             CardField("Card number", number, "1234 5678 9012 3456", p) { v -> number = v.filter(Char::isDigit).take(16).chunked(4).joinToString(" ") }
             CardField("Name on card", name, "AMINA UWASE", p, KeyboardType.Text) { name = it }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -83,16 +84,17 @@ fun PayAddCardScreen(onBack: () -> Unit, onAdd: (PayNewCard) -> Unit) {
 }
 
 @Composable
-private fun CardPreview(digits: String, holder: String, expiry: String) {
+private fun CardPreview(digits: String, holder: String, expiry: String, ink: Color) {
     val shown = (digits + "••••••••••••••••").take(16).chunked(4).joinToString(" ")
     val line = (if (holder.isNotEmpty()) "$holder  " else "") + expiry.ifEmpty { "MM/YY" }
     Box(
-        Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(20.dp))
+        Modifier.fillMaxWidth().height(150.dp)
+            .shadow(10.dp, RoundedCornerShape(20.dp), ambientColor = Color(0xFF4B43C9), spotColor = Color(0xFF4B43C9)).clip(RoundedCornerShape(20.dp))
             .cssGradient158(0f to Color(0xFFA9A5FF), 0.46f to Color(0xFF7472F4), 1f to Color(0xFF4B43C9)),
     ) {
         Column(Modifier.align(Alignment.BottomStart).padding(horizontal = 20.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(shown, color = Color.White, fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
-            Text(line, color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp, lineHeight = 19.6.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+            Text(shown, color = ink, fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+            Text(line, color = ink.copy(alpha = 0.85f), fontSize = 14.sp, lineHeight = 19.6.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
         }
     }
 }
