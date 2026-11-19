@@ -31,7 +31,7 @@ fun SplitBillAmountScreen(onBack: () -> Unit, onContinue: () -> Unit) {
     fun rwf(v: Long) = String.format(Locale.US, "%,d RWF", v)
     PaySubScreen(onBack = onBack) { p ->
         Column(Modifier.weight(1f).padding(horizontal = 24.dp)) {
-            Text("Split a bill", color = p.text, fontSize = 30.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp, modifier = Modifier.height(46.dp))
+            Text("Split a bill", color = p.text, fontSize = 30.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp, modifier = Modifier.height(46.dp).padding(top = 8.dp))
             Spacer(Modifier.height(12.dp))
             Text("How much was the bill?", color = p.tt, fontSize = 15.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 4.dp))
             Text(rwf(total), color = p.text, fontSize = 44.sp, lineHeight = 52.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1.2).sp, modifier = Modifier.padding(top = 4.dp))
