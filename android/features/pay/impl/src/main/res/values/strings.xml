@@ -14,11 +14,11 @@
     <string name="pay_points_pay_money_row">Points · Pay Money</string>
     <string name="pay_your_coupons_row">Your Coupons</string>
     <string name="pay_request_money_row">Request money</string>
-    <string name="pay_coupon_box_title">Coupon box</string>
+    <string name="pay_coupon_box_title">Coupons</string>
     <string name="pay_coupons_received">Received %1$d</string>
     <string name="pay_coupons_used_expired">Used / expired %1$d</string>
-    <string name="pay_coupons_empty_title">You have no coupons</string>
-    <string name="pay_coupons_empty_subtitle">Want coupons you can get right now? Find them at shops near you.</string>
+    <string name="pay_coupons_empty_title">No coupons yet</string>
+    <string name="pay_coupons_empty_subtitle">Shall we find some you can get right now?</string>
     <string name="pay_coupons_find_new">Find new coupons</string>
     <string name="pay_coupons_none_used">You haven\'t used any coupons yet.</string>
     <string name="pay_membership_title">Membership</string>
