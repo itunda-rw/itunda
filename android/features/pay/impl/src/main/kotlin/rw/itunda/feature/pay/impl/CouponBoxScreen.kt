@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -109,7 +110,7 @@ fun CouponBoxContent(
                     }
                 }
             }
-            Row(Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().height(64.dp).padding(start = 20.dp, end = 20.dp, top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 listOf(false to stringResource(R.string.pay_coupons_received, received.size), true to stringResource(R.string.pay_coupons_used_expired, used.size)).forEach { (isUsed, label) ->
                     val on = usedSelected == isUsed
                     Box(
@@ -123,11 +124,13 @@ fun CouponBoxContent(
             when {
                 error != null -> Text(error, color = Color(0xFFC4281B), fontSize = 14.sp, modifier = Modifier.padding(horizontal = 24.dp))
                 !loaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = p.brand) }
-                rows.isEmpty() && !usedSelected -> Column(Modifier.fillMaxWidth().padding(top = 57.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                rows.isEmpty() && !usedSelected -> Column(Modifier.fillMaxWidth().padding(top = 73.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     androidx.compose.foundation.Canvas(Modifier.size(72.dp)) {
                         val u = size.width / 72f
+                        scale(0.86f) {
                         rotate(-8f, center) { drawRoundRect(Color(0xFF1E2230), androidx.compose.ui.geometry.Offset(8f * u, 8f * u), androidx.compose.ui.geometry.Size(40f * u, 46f * u), androidx.compose.ui.geometry.CornerRadius(9f * u)) }
                         rotate(6f, center) { drawRoundRect(Color(0xFF3D6BEA).copy(alpha = 0.85f), androidx.compose.ui.geometry.Offset(26f * u, 22f * u), androidx.compose.ui.geometry.Size(38f * u, 40f * u), androidx.compose.ui.geometry.CornerRadius(9f * u)) }
+                        }
                     }
                     Text(stringResource(R.string.pay_coupons_empty_title), color = p.text, fontSize = 19.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.4).sp, modifier = Modifier.padding(top = 27.dp))
                     Text(stringResource(R.string.pay_coupons_empty_subtitle), color = if (p.page == Color(0xFF17171C)) p.tt else Color(0xFF5F6A78), fontSize = 16.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 6.dp))
