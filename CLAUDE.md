@@ -25,6 +25,8 @@ whichever one is wrong; never let them silently drift apart.
 **Working on Android prototype parity (make a product look/behave exactly like prototype v1038)?**
 Read [`docs/PROTOTYPE_PARITY_AGENT_PROMPT.md`](docs/PROTOTYPE_PARITY_AGENT_PROMPT.md) first: the
 measure -> build -> render -> side-by-side diff method, plus the git/CI pitfalls.
+For the Shop (non-Eats shopping) product also read
+[`docs/PROTOTYPE_PARITY_SHOP_PROMPT.md`](docs/PROTOTYPE_PARITY_SHOP_PROMPT.md).
 
 ## Real stack, per workspace
 
