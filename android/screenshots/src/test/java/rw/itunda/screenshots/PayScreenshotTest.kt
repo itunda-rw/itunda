@@ -22,6 +22,7 @@ import rw.itunda.feature.pay.impl.PayAmountScreen
 import rw.itunda.feature.pay.impl.AddMoneyScreen
 import rw.itunda.feature.pay.impl.PayCouponAddScreen
 import rw.itunda.feature.pay.impl.CouponBoxContent
+import rw.itunda.feature.pay.impl.PayAddCardScreen
 import rw.itunda.feature.pay.impl.PayHub
 import rw.itunda.feature.pay.impl.ProtoPayContent
 import rw.itunda.feature.pay.impl.ProtoPayMode
@@ -88,5 +89,6 @@ class PayScreenshotTest {
         AddMoneyScreen(pay, listOf(bank), {}, {})
     }
     @Test fun couponBoxEmpty() = shot("coupon-box") { CouponBoxContent(true, null, emptyList(), emptyList(), false, {}, {}, {}, {}) }
+    @Test fun addCard() = shot("add-card") { PayAddCardScreen({}, {}) }
     @Test fun couponAdd() = shot("coupon-add") { PayCouponAddScreen({}) }
 }
