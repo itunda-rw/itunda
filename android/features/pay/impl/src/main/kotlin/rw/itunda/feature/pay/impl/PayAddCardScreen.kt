@@ -76,7 +76,7 @@ fun PayAddCardScreen(onBack: () -> Unit, onAdd: (PayNewCard) -> Unit) {
                     },
                 contentAlignment = Alignment.Center,
             ) { Text("Add card", color = if (valid) Color(0xFF17171C) else p.tt, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = FontWeight.Bold) }
-            Spacer(Modifier.height(56.dp))
+            Spacer(Modifier.height(53.6.dp))
             Text(
                 "Your card details are encrypted. Only the last 4 digits are shown in the app.", color = p.tt, fontSize = 13.sp, lineHeight = 19.sp,
                 textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
