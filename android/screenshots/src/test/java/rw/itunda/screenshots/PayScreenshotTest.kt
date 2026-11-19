@@ -78,14 +78,26 @@ class PayScreenshotTest {
         rule.setContent { IdsTheme(darkTheme = false) { content() } }
         rule.onRoot().captureRoboImage("build/screenshots/pay-$name.png")
     }
+    private fun shotDark(name: String, content: @androidx.compose.runtime.Composable () -> Unit) {
+        rule.setContent { IdsTheme(darkTheme = true) { content() } }
+        rule.onRoot().captureRoboImage("build/screenshots/pay-$name-dark.png")
+    }
     @Test fun till() = shot("till") { PayTillScreen({}, {}) }
+    @Test fun tillDark() = shotDark("till") { PayTillScreen({}, {}) }
     @Test fun order() = shot("order") { PayOrderScreen("Nyamirambo Coffee House", {}, {}) }
+    @Test fun orderDark() = shotDark("order") { PayOrderScreen("Nyamirambo Coffee House", {}, {}) }
     @Test fun done() = shot("done") { PayDoneScreen("Nyamirambo Coffee House", {}) }
+    @Test fun doneDark() = shotDark("done") { PayDoneScreen("Nyamirambo Coffee House", {}) }
     @Test fun history() = shot("history") { PayHistoryScreen({}) }
+    @Test fun historyDark() = shotDark("history") { PayHistoryScreen({}) }
     @Test fun saved() = shot("saved") { PaySavedMerchantsScreen({}) }
+    @Test fun savedDark() = shotDark("saved") { PaySavedMerchantsScreen({}) }
     @Test fun points() = shot("points") { PayPointsScreen({}) }
+    @Test fun pointsDark() = shotDark("points") { PayPointsScreen({}) }
     @Test fun settings() = shot("settings") { PaySettingsScreen({}) }
+    @Test fun settingsDark() = shotDark("settings") { PaySettingsScreen({}) }
     @Test fun amount() = shot("amount") { PayAmountScreen("Amina K.", {}, {}) }
+    @Test fun amountDark() = shotDark("amount") { PayAmountScreen("Amina K.", {}, {}) }
     @Test fun scanChips() = render(false, "pay-scan-chips-light", ProtoPayMode.SCAN)
     @Test fun topUp() = shot("topup") {
         val bank = rw.itunda.core.network.Account("b", "u", "0001", "itunda Bank", null, "SAVINGS", 842300.0, 842300.0, "RWF", true)
@@ -93,10 +105,17 @@ class PayScreenshotTest {
         AddMoneyScreen(pay, listOf(bank), {}, {})
     }
     @Test fun couponBoxEmpty() = shot("coupon-box") { CouponBoxContent(true, null, emptyList(), emptyList(), false, {}, {}, {}, {}) }
+    @Test fun couponBoxEmptyDark() = shotDark("coupon-box") { CouponBoxContent(true, null, emptyList(), emptyList(), false, {}, {}, {}, {}) }
     @Test fun addCard() = shot("add-card") { PayAddCardScreen({}, {}) }
+    @Test fun addCardDark() = shotDark("add-card") { PayAddCardScreen({}, {}) }
     @Test fun myCards() = shot("my-cards") { PayMyCardsScreen("120,500", "842,300", emptyList(), {}, {}, {}) }
+    @Test fun myCardsDark() = shotDark("my-cards") { PayMyCardsScreen("120,500", "842,300", emptyList(), {}, {}, {}) }
     @Test fun myCardsWithCard() = shot("my-cards-visa") { PayMyCardsScreen("120,500", "842,300", listOf(PayNewCard("Visa", "4242", "AMINA UWASE", "12/28")), {}, {}, {}) }
+    @Test fun myCardsWithCardDark() = shotDark("my-cards-visa") { PayMyCardsScreen("120,500", "842,300", listOf(PayNewCard("Visa", "4242", "AMINA UWASE", "12/28")), {}, {}, {}) }
     @Test fun limits() = shot("limits") { PayLimitsScreen(500_000, 2_000_000, 0, {}, { _, _ -> }) }
+    @Test fun limitsDark() = shotDark("limits") { PayLimitsScreen(500_000, 2_000_000, 0, {}, { _, _ -> }) }
     @Test fun receipt() = shot("receipt") { PayReceiptScreen(0, {}, {}) }
+    @Test fun receiptDark() = shotDark("receipt") { PayReceiptScreen(0, {}, {}) }
     @Test fun couponAdd() = shot("coupon-add") { PayCouponAddScreen({}) }
+    @Test fun couponAddDark() = shotDark("coupon-add") { PayCouponAddScreen({}) }
 }
