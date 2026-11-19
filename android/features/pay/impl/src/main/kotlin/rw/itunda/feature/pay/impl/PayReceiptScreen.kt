@@ -55,8 +55,8 @@ fun PayReceiptScreen(index: Int, onBack: () -> Unit, onPayAgain: (merchant: Stri
                 Box(Modifier.size(64.dp).clip(RoundedCornerShape(32.dp)).background(p.soft), contentAlignment = Alignment.Center) {
                     Text(r.name.take(1), color = p.text, fontSize = 26.sp, lineHeight = 36.4.sp, fontWeight = FontWeight.ExtraBold)
                 }
-                Text(r.name, color = p.tt, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp, modifier = Modifier.padding(top = 12.dp))
-                Text("${r.amount} RWF", color = p.text, fontSize = 40.sp, lineHeight = 48.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp, modifier = Modifier.padding(top = 4.dp))
+                Text(r.name, color = p.tt, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp, modifier = Modifier.padding(top = 9.5.dp))
+                Text("${r.amount} RWF", color = p.text, fontSize = 40.sp, lineHeight = 48.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp, modifier = Modifier.padding(top = 6.5.dp))
             }
             Box(Modifier.padding(top = 8.dp).fillMaxWidth().height(1.dp).background(p.soft))
             Column(Modifier.padding(horizontal = 24.dp)) {
