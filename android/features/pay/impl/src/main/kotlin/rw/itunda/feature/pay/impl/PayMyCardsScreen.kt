@@ -72,7 +72,10 @@ fun PayMyCardsScreen(
 @Composable
 private fun CardRow(title: String, sub: String, p: PayPalette, tile: Modifier, trailing: (@Composable () -> Unit)? = null) {
     Row(Modifier.fillMaxWidth().height(64.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        Box(Modifier.size(width = 64.dp, height = 32.dp).clip(RoundedCornerShape(8.dp)).then(tile))
+        Box(Modifier.size(width = 64.dp, height = 32.dp).clip(RoundedCornerShape(8.dp)).then(tile)) {
+            Box(Modifier.padding(start = 8.dp, top = 11.dp).size(width = 11.dp, height = 8.dp).clip(RoundedCornerShape(2.5.dp)).background(Color.White.copy(alpha = 0.55f)))
+            Box(Modifier.padding(start = 8.dp, top = 21.dp).size(width = 48.dp, height = 3.dp).clip(RoundedCornerShape(1.5.dp)).background(Color.White.copy(alpha = 0.3f)))
+        }
         Column(Modifier.weight(1f)) {
             Text(title, color = p.text, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp)
             Text(sub, color = p.tt, fontSize = 13.sp, lineHeight = 18.2.sp)
