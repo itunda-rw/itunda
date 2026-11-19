@@ -23,6 +23,7 @@ import rw.itunda.feature.pay.impl.AddMoneyScreen
 import rw.itunda.feature.pay.impl.PayCouponAddScreen
 import rw.itunda.feature.pay.impl.CouponBoxContent
 import rw.itunda.feature.pay.impl.PayAddCardScreen
+import rw.itunda.feature.pay.impl.PayLimitsScreen
 import rw.itunda.feature.pay.impl.PayMyCardsScreen
 import rw.itunda.feature.pay.impl.PayNewCard
 import rw.itunda.feature.pay.impl.PayHub
@@ -94,5 +95,6 @@ class PayScreenshotTest {
     @Test fun addCard() = shot("add-card") { PayAddCardScreen({}, {}) }
     @Test fun myCards() = shot("my-cards") { PayMyCardsScreen("120,500", "842,300", emptyList(), {}, {}, {}) }
     @Test fun myCardsWithCard() = shot("my-cards-visa") { PayMyCardsScreen("120,500", "842,300", listOf(PayNewCard("Visa", "4242", "AMINA UWASE", "12/28")), {}, {}, {}) }
+    @Test fun limits() = shot("limits") { PayLimitsScreen(500_000, 2_000_000, 0, {}, { _, _ -> }) }
     @Test fun couponAdd() = shot("coupon-add") { PayCouponAddScreen({}) }
 }
