@@ -2,6 +2,7 @@ package rw.itunda.feature.pay.impl
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -65,4 +66,21 @@ internal fun PayBtn(
             .pressScaleClickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) { Text(label, color = if (enabled) Color(0xFF17171C) else p.tintFg.copy(alpha = 0.6f), fontSize = size.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.02 * size).sp) }
+}
+
+/** Prototype in-screen keypad: 3 columns x 4 rows of 108.7x62.5dp keys at 32dp inset; bottom-left key is blank, bottom-right deletes. */
+@Composable
+internal fun PayKeypad(p: PayPalette, onKey: (String) -> Unit) {
+    Column(Modifier.padding(horizontal = 32.dp).height(250.dp)) {
+        listOf(listOf("1", "2", "3"), listOf("4", "5", "6"), listOf("7", "8", "9"), listOf("", "0", "⌫")).forEach { row ->
+            Row(Modifier.fillMaxWidth().height(62.5.dp)) {
+                row.forEach { k ->
+                    Box(Modifier.weight(1f).fillMaxSize().pressScaleClickable(enabled = k.isNotEmpty()) { onKey(k) }, contentAlignment = Alignment.Center) {
+                        if (k == "⌫") Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Delete", Modifier.size(30.dp), tint = p.text)
+                        else Text(k, color = p.text, fontSize = 26.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
+            }
+        }
+    }
 }

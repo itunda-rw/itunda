@@ -169,23 +169,7 @@ fun PayAmountScreen(recipient: String, onBack: () -> Unit, onPay: (Long) -> Unit
             Box(Modifier.padding(horizontal = 16.dp).height(68.dp), contentAlignment = Alignment.Center) {
                 PayBtn("Pay", p, enabled = amount > 0, height = 56.dp, radius = 16.dp, size = 17) { onPay(amount) }
             }
-            Column(Modifier.padding(horizontal = 32.dp).height(250.dp)) {
-                listOf(listOf("1", "2", "3"), listOf("4", "5", "6"), listOf("7", "8", "9"), listOf("", "0", "⌫")).forEach { row ->
-                    Row(Modifier.fillMaxWidth().height(62.5.dp)) {
-                        row.forEach { k ->
-                            Box(
-                                Modifier.weight(1f).fillMaxSize().pressScaleClickable(enabled = k.isNotEmpty()) {
-                                    digits = when (k) { "⌫" -> digits.dropLast(1); else -> (digits + k).trimStart('0').take(9) }
-                                },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                if (k == "⌫") androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Outlined.ArrowBack, "Delete", Modifier.size(30.dp), tint = p.text)
-                                else Text(k, color = p.text, fontSize = 26.sp, fontWeight = FontWeight.Medium)
-                            }
-                        }
-                    }
-                }
-            }
+            PayKeypad(p) { k -> digits = if (k == "⌫") digits.dropLast(1) else (digits + k).trimStart('0').take(9) }
             Spacer(Modifier.height(46.dp))
         }
     }
