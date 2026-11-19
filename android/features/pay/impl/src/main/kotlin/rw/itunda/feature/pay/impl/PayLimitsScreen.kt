@@ -93,7 +93,7 @@ fun PayLimitsScreen(perPayment: Int, perDay: Int, usedToday: Int, onBack: () -> 
             LimitField("Per day", day, dayMsg, badDay() || dayMsg.isNotEmpty(), p) { day = it }
             Text(
                 "Per payment: 10,000 to 2,000,000 RWF. Per day: up to 5,000,000 RWF.\nApplies to every payment from itunda Pay or itunda Bank. Lower limits protect you if your phone is lost.",
-                color = p.tt, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 28.dp, bottom = 24.dp),
+                color = p.tt, fontSize = 14.sp, lineHeight = 20.sp, letterSpacing = (-0.18).sp, modifier = Modifier.padding(top = 28.dp, bottom = 24.dp),
             )
         }
     }
@@ -102,7 +102,7 @@ fun PayLimitsScreen(perPayment: Int, perDay: Int, usedToday: Int, onBack: () -> 
 @Composable
 private fun LimitField(label: String, value: Int, message: String, bad: Boolean, p: PayPalette, onChange: (Int) -> Unit) {
     Text(label, color = p.text, fontSize = 16.sp, lineHeight = 22.4.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 32.dp))
-    val style = TextStyle(color = p.text, fontSize = 22.sp, lineHeight = 30.8.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.4).sp)
+    val style = TextStyle(color = p.text, fontSize = 24.sp, lineHeight = 30.8.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.4).sp)
     Row(
         Modifier.padding(top = 10.dp).fillMaxWidth().height(56.dp).clip(RoundedCornerShape(16.dp)).background(p.soft).padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
