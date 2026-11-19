@@ -14,7 +14,7 @@ import kotlinx.coroutines.delay
 import rw.itunda.core.network.GenerateCustomerPaymentCodeRequest
 import rw.itunda.core.network.NetworkClient
 
-internal enum class PaySub { SETTINGS, AMOUNT, TILL, ORDER, DONE, HISTORY, SAVED, POINTS }
+internal enum class PaySub { SETTINGS, AMOUNT, TILL, ORDER, DONE, HISTORY, SAVED, POINTS, RECEIPT }
 
 /** Stateful Pay tab for the prototype layout: real payment code + real PAY account, nothing invented. */
 @Composable
@@ -28,6 +28,7 @@ fun ProtoPayTab(
     var showHub by remember { mutableStateOf(false) }
     var sub by remember { mutableStateOf<PaySub?>(null) }
     var merchant by remember { mutableStateOf("") }
+    var receipt by remember { mutableStateOf(0) }
     var mode by remember { mutableStateOf(ProtoPayMode.SCAN) }
     var code by remember { mutableStateOf<String?>(null) }
     var expiresAt by remember { mutableStateOf(0L) }
@@ -61,7 +62,8 @@ fun ProtoPayTab(
         PaySub.TILL -> { PayTillScreen(onBack = { sub = null }, onNext = { merchant = it.name; sub = PaySub.ORDER }); return }
         PaySub.ORDER -> { PayOrderScreen(merchant, onBack = { sub = null }, onPay = { sub = PaySub.DONE }); return }
         PaySub.DONE -> { PayDoneScreen(merchant, onDone = { sub = null }); return }
-        PaySub.HISTORY -> { PayHistoryScreen(onBack = { sub = null }); return }
+        PaySub.HISTORY -> { PayHistoryScreen(onBack = { sub = null }, onOpen = { receipt = it; sub = PaySub.RECEIPT }); return }
+        PaySub.RECEIPT -> { PayReceiptScreen(receipt, onBack = { sub = PaySub.HISTORY }, onPayAgain = { merchant = it; sub = PaySub.AMOUNT }); return }
         PaySub.SAVED -> { PaySavedMerchantsScreen(onBack = { sub = null }); return }
         PaySub.POINTS -> { PayPointsScreen(onBack = { sub = null }); return }
         null -> Unit

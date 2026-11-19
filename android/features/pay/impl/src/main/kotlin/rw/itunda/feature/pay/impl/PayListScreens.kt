@@ -48,7 +48,7 @@ private fun DayHeader(p: PayPalette, text: String, first: Boolean = false) {
 
 /** Prototype "Payment history": month total, search, filter pills, rows grouped by day (dummy data). */
 @Composable
-fun PayHistoryScreen(onBack: () -> Unit) {
+fun PayHistoryScreen(onBack: () -> Unit, onOpen: (Int) -> Unit = {}) {
     var query by remember { mutableStateOf("") }
     var filter by remember { mutableStateOf(0) }
     PaySubScreen(onBack = onBack, title = "Payment history") { p ->
@@ -88,7 +88,7 @@ fun PayHistoryScreen(onBack: () -> Unit) {
             rows.groupBy { it.day }.entries.forEachIndexed { gi, (day, dayRows) ->
                 DayHeader(p, day, first = false)
                 dayRows.forEach { r ->
-                    Row(Modifier.fillMaxWidth().height(72.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth().height(72.dp).pressScaleClickable { onOpen(payHistory.indexOf(r)) }, verticalAlignment = Alignment.CenterVertically) {
                         Avatar(r.name.take(1), p.soft, p.text)
                         Column(Modifier.weight(1f).padding(start = 16.dp)) {
                             Text(r.name, color = p.text, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp)
