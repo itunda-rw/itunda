@@ -23,9 +23,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
@@ -90,17 +87,8 @@ private fun CardPreview(digits: String, holder: String, expiry: String) {
     val shown = (digits + "••••••••••••••••").take(16).chunked(4).joinToString(" ")
     val line = (if (holder.isNotEmpty()) "$holder  " else "") + expiry.ifEmpty { "MM/YY" }
     Box(
-        Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(20.dp)).drawBehind {
-            // CSS 158deg: direction (sin, -cos), gradient line length |w sin| + |h cos|
-            val dir = Offset(0.3746f, 0.9272f)
-            val half = (size.width * 0.3746f + size.height * 0.9272f) / 2f
-            drawRect(
-                Brush.linearGradient(
-                    0f to Color(0xFFA9A5FF), 0.46f to Color(0xFF7472F4), 1f to Color(0xFF4B43C9),
-                    start = center - dir * half, end = center + dir * half,
-                ),
-            )
-        },
+        Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(20.dp))
+            .cssGradient158(0f to Color(0xFFA9A5FF), 0.46f to Color(0xFF7472F4), 1f to Color(0xFF4B43C9)),
     ) {
         Column(Modifier.align(Alignment.BottomStart).padding(horizontal = 20.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(shown, color = Color.White, fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
