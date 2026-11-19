@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -125,8 +126,8 @@ fun CouponBoxContent(
                 rows.isEmpty() && !usedSelected -> Column(Modifier.fillMaxWidth().padding(top = 57.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     androidx.compose.foundation.Canvas(Modifier.size(72.dp)) {
                         val u = size.width / 72f
-                        androidx.compose.ui.graphics.drawscope.rotate(-8f, center) { drawRoundRect(Color(0xFF1E2230), androidx.compose.ui.geometry.Offset(8f * u, 8f * u), androidx.compose.ui.geometry.Size(40f * u, 46f * u), androidx.compose.ui.geometry.CornerRadius(9f * u)) }
-                        androidx.compose.ui.graphics.drawscope.rotate(6f, center) { drawRoundRect(Color(0xFF3D6BEA).copy(alpha = 0.85f), androidx.compose.ui.geometry.Offset(26f * u, 22f * u), androidx.compose.ui.geometry.Size(38f * u, 40f * u), androidx.compose.ui.geometry.CornerRadius(9f * u)) }
+                        rotate(-8f, center) { drawRoundRect(Color(0xFF1E2230), androidx.compose.ui.geometry.Offset(8f * u, 8f * u), androidx.compose.ui.geometry.Size(40f * u, 46f * u), androidx.compose.ui.geometry.CornerRadius(9f * u)) }
+                        rotate(6f, center) { drawRoundRect(Color(0xFF3D6BEA).copy(alpha = 0.85f), androidx.compose.ui.geometry.Offset(26f * u, 22f * u), androidx.compose.ui.geometry.Size(38f * u, 40f * u), androidx.compose.ui.geometry.CornerRadius(9f * u)) }
                     }
                     Text(stringResource(R.string.pay_coupons_empty_title), color = p.text, fontSize = 19.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.4).sp, modifier = Modifier.padding(top = 27.dp))
                     Text(stringResource(R.string.pay_coupons_empty_subtitle), color = if (p.page == Color(0xFF17171C)) p.tt else Color(0xFF5F6A78), fontSize = 16.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 6.dp))
