@@ -50,6 +50,7 @@ private val Link = Color(0xFF5A51EC)
  * seller + name, discount and price block, shipping line, the Earn / Rating / Delivery / Seller / Draw rows
  * and the pinned heart / bag / Buy now bar. Stateless and demo-backed.
  */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun ShopProductContent(
     index: Int, onBack: () -> Unit = {}, onBuy: () -> Unit = {}, onAddToBag: () -> Unit = {}, onFavourite: () -> Unit = {},
