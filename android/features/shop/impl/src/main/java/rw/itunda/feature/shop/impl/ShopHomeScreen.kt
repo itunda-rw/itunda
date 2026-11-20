@@ -110,7 +110,7 @@ fun ShopHomeContent(
             Row(Modifier.fillMaxWidth().height(56.dp).horizontalScroll(rememberScrollState()).padding(start = 16.dp, top = 12.dp), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 listOf("Home", "Beauty", "Fresh", "Categories", "First-come deals").forEachIndexed { i, label ->
                     Box(
-                        Modifier.height(44.dp).clip(RoundedCornerShape(14.dp)).background(if (i == 0) p.soft else Color.Transparent).padding(horizontal = 20.dp),
+                        Modifier.height(44.dp).clip(RoundedCornerShape(14.dp)).background(if (i == 0) p.soft else Color.Transparent).padding(horizontal = 16.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(label, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = if (i == 0) FontWeight.Bold else FontWeight.SemiBold, color = if (i == 0) p.text else p.tt, maxLines = 1, modifier = Modifier.padding(bottom = 4.dp))
