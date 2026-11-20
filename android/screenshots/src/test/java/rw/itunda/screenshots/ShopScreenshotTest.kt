@@ -17,6 +17,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsTheme
+import rw.itunda.feature.shop.impl.ShopHomeContent
 import rw.itunda.feature.shop.impl.ShopProtoHome
 
 @RunWith(RobolectricTestRunner::class)
@@ -32,5 +33,15 @@ class ShopScreenshotTest {
             }
         }
         rule.onRoot().captureRoboImage("build/screenshots/shop-light.png")
+    }
+
+    @Test fun shopHomeLight() {
+        rule.setContent { IdsTheme(darkTheme = false) { ShopHomeContent(dark = false) } }
+        rule.onRoot().captureRoboImage("build/screenshots/shop-home-light.png")
+    }
+
+    @Test fun shopHomeDark() {
+        rule.setContent { IdsTheme(darkTheme = true) { ShopHomeContent(dark = true) } }
+        rule.onRoot().captureRoboImage("build/screenshots/shop-home-dark.png")
     }
 }
