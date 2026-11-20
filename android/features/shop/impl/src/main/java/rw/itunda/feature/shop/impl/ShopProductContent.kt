@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -68,7 +69,7 @@ fun ShopProductContent(
                     LazyRow(state = gallery, flingBehavior = rememberSnapFlingBehavior(gallery)) {
                         itemsIndexed(GalleryTints) { _, tint ->
                             Box(Modifier.width(390.dp).height(380.dp).background(tint), contentAlignment = Alignment.Center) {
-                                ItundaArt(it.art, ItundaArtSet.Proto, 150.dp, fit = true)
+                                ItundaArt(it.art, ItundaArtSet.Proto, 142.dp, fit = true)
                             }
                         }
                     }
@@ -108,7 +109,7 @@ fun ShopProductContent(
                                 withStyle(SpanStyle(fontSize = 32.sp, fontWeight = FontWeight.Bold, color = p.text)) { append("${fmt(it.price)} RWF") }
                                 withStyle(SpanStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Danger)) { append(" Best price") }
                             },
-                            lineHeight = 39.sp, modifier = Modifier.width(203.2.dp),
+                            lineHeight = 39.sp, modifier = Modifier.width(203.2.dp).wrapContentHeight(Alignment.Top, unbounded = true),
                         )
                         Box(
                             Modifier.padding(top = 9.6.dp).size(138.8.dp, 48.dp).clip(RoundedCornerShape(16.dp)).background(p.soft).padding(horizontal = 16.dp),
@@ -148,7 +149,7 @@ fun ShopProductContent(
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(p.page).padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 28.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(Modifier.size(48.dp, 52.dp).pressScaleClickable(onClick = onFavourite), contentAlignment = Alignment.Center) { ItundaArt("heart", ItundaArtSet.Line, 24.dp, tint = p.text) }
+                Box(Modifier.size(48.dp, 52.dp).pressScaleClickable(onClick = onFavourite), contentAlignment = Alignment.Center) { ItundaArt("heart", ItundaArtSet.Line, 24.dp, tint = p.tt) }
                 Spacer(Modifier.width(10.dp))
                 Box(Modifier.size(56.dp).clip(RoundedCornerShape(18.dp)).background(p.soft).pressScaleClickable(onClick = onAddToBag), contentAlignment = Alignment.Center) {
                     ItundaArt("bag", ItundaArtSet.Proto, 28.dp, fit = true)
@@ -181,8 +182,9 @@ private fun Chip(label: String, p: ShopPalette) {
 private fun InfoRow(label: String, p: ShopPalette, chevron: Boolean = false, value: @Composable () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, color = p.tt, fontSize = 15.sp, lineHeight = 21.sp, modifier = Modifier.width(80.dp))
-        Box(Modifier.weight(1f)) { value() }
-        if (chevron) Canvas(Modifier.padding(start = 8.dp).size(8.dp, 14.dp)) {
+        Box(Modifier.width(230.dp)) { value() }
+        Spacer(Modifier.weight(1f))
+        if (chevron) Canvas(Modifier.padding(end = 4.dp).size(8.dp, 14.dp)) {
             val w = 1.8.dp.toPx()
             drawLine(p.tt, Offset(1.dp.toPx(), 1.dp.toPx()), Offset(7.dp.toPx(), 7.dp.toPx()), w, StrokeCap.Round)
             drawLine(p.tt, Offset(7.dp.toPx(), 7.dp.toPx()), Offset(1.dp.toPx(), 13.dp.toPx()), w, StrokeCap.Round)
