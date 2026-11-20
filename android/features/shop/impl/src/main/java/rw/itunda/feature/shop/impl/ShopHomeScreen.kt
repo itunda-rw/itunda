@@ -43,15 +43,15 @@ import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.PretendardFontFamily
 
 /** Measured from prototype v1038 `shop` (Shop tab), light + dark. */
-private class ShopPalette(val page: Color, val bar: Color, val soft: Color, val text: Color, val tt: Color)
+internal class ShopPalette(val page: Color, val bar: Color, val soft: Color, val text: Color, val tt: Color)
 
-private val Light = ShopPalette(Color.White, Color.White, Color(0xFFF2F4F6), Color(0xFF191F28), Color(0xFF6B7684))
-private val Dark = ShopPalette(Color(0xFF17171C), Color(0xFF18181D), Color(0xFF2C2C35), Color(0xFFF9FAFB), Color(0xFF9EA4AE))
-private val Danger = Color(0xFFF04452)
-private val Brand = Color(0xFF8F89FF)
+internal val Light = ShopPalette(Color.White, Color.White, Color(0xFFF2F4F6), Color(0xFF191F28), Color(0xFF6B7684))
+internal val Dark = ShopPalette(Color(0xFF17171C), Color(0xFF18181D), Color(0xFF2C2C35), Color(0xFFF9FAFB), Color(0xFF9EA4AE))
+internal val Danger = Color(0xFFF04452)
+internal val Brand = Color(0xFF8F89FF)
 
 private class FirstCome(val count: Int, val name: String, val price: String, val art: String, val tint: Color)
-private class Item(val name: String, val art: String, val price: Int, val old: Int, val arrives: String?, val rating: String, val reviews: Int)
+internal class Item(val name: String, val art: String, val price: Int, val old: Int, val arrives: String?, val rating: String, val reviews: Int, val seller: String = "")
 
 private val firstCome = listOf(
     FirstCome(500, "Wireless earphones", "18,500", "celebrate", Color(0xFFFDECEF)),
@@ -61,19 +61,19 @@ private val firstCome = listOf(
 )
 
 // Prototype PRODS (names, prices, glyphs) with the card's arrival / rating lines as rendered.
-private val items = listOf(
-    Item("Mountain coffee, 500 g", "harvest", 6500, 8000, "Arrives today", "4.2", 6),
-    Item("Umuganda tee, cotton", "bag", 9000, 10500, "Arrives tomorrow", "4.9", 43),
-    Item("Agaseke basket, small", "community", 12000, 0, null, "4.8", 80),
-    Item("Phone case, universal", "airtime", 3500, 0, "Arrives today", "4.7", 117),
-    Item("Honey, 250 g", "gift", 4200, 4700, "Arrives tomorrow", "4.6", 154),
-    Item("Kitenge fabric, 2 m", "voucher", 15000, 0, null, "4.5", 191),
+internal val items = listOf(
+    Item("Mountain coffee, 500 g", "harvest", 6500, 8000, "Arrives today", "4.2", 6, "Kigali Coffee Co-op"),
+    Item("Umuganda tee, cotton", "bag", 9000, 10500, "Arrives tomorrow", "4.9", 43, "Umuganda Wear"),
+    Item("Agaseke basket, small", "community", 12000, 0, null, "4.8", 80, "Agaseke Crafts"),
+    Item("Phone case, universal", "airtime", 3500, 0, "Arrives today", "4.7", 117, "Kigali Mobile Hub"),
+    Item("Honey, 250 g", "gift", 4200, 4700, "Arrives tomorrow", "4.6", 154, "Rwanda Honey Co-op"),
+    Item("Kitenge fabric, 2 m", "voucher", 15000, 0, null, "4.5", 191, "Kitenge House"),
 )
 
-private fun fmt(n: Int) = String.format(Locale.US, "%,d", n)
+internal fun fmt(n: Int) = String.format(Locale.US, "%,d", n)
 
 @Composable
-private fun ShopText(content: @Composable () -> Unit) = ProvideTextStyle(
+internal fun ShopText(content: @Composable () -> Unit) = ProvideTextStyle(
     TextStyle(
         fontFamily = PretendardFontFamily, letterSpacing = (-0.176).sp,
         lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
