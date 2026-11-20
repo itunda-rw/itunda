@@ -75,7 +75,7 @@ private fun fmt(n: Int) = String.format(Locale.US, "%,d", n)
 @Composable
 private fun ShopText(content: @Composable () -> Unit) = ProvideTextStyle(
     TextStyle(
-        fontFamily = PretendardFontFamily,
+        fontFamily = PretendardFontFamily, letterSpacing = (-0.176).sp,
         lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
         platformStyle = PlatformTextStyle(includeFontPadding = false),
     ),
@@ -131,7 +131,7 @@ fun ShopHomeContent(
                 listOf("Daily draw" to "celebrate", "Deals" to "money", "My orders" to "bag", "Rewards" to "gift", "Wishlist" to "heart").forEach { (label, art) ->
                     val go = when (label) { "My orders" -> onOrders; "Wishlist" -> onWishlist; else -> null }
                     Column(Modifier.width(70.dp).let { if (go != null) it.pressScaleClickable(onClick = go) else it }, horizontalAlignment = Alignment.CenterHorizontally) {
-                        Box(Modifier.size(60.dp).clip(RoundedCornerShape(20.dp)).background(p.soft), contentAlignment = Alignment.Center) { ItundaArt(art, if (art == "heart") ItundaArtSet.Color else ItundaArtSet.Proto, if (art == "heart") 32.dp else 40.dp) }
+                        Box(Modifier.size(60.dp).clip(RoundedCornerShape(20.dp)).background(p.soft), contentAlignment = Alignment.Center) { ItundaArt(art, if (art == "heart") ItundaArtSet.Color else ItundaArtSet.Proto, if (art == "heart") 32.dp else 36.dp, fit = true) }
                         Text(label, color = p.tt, fontSize = 12.sp, lineHeight = 18.8.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, modifier = Modifier.padding(top = 6.dp))
                     }
                     Spacer(Modifier.width(4.dp))
@@ -158,7 +158,7 @@ private fun FirstComeCard(c: FirstCome) {
         Text(c.name, color = ink, fontSize = 24.sp, lineHeight = 32.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 24.dp, top = 53.dp).width(170.dp))
         Text("${c.price} RWF", color = ink, fontSize = 24.sp, lineHeight = 33.6.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 24.dp, top = if (c.name.length > 17 && c.name != "Yoga mat") 121.dp else 89.dp))
         Text("Max 1 per day", color = Color(0xFF6B7684), fontSize = 13.sp, lineHeight = 18.2.sp, modifier = Modifier.padding(start = 24.dp, top = if (c.name.length > 17) 200.6.dp else 168.6.dp))
-        Box(Modifier.offset(x = 202.dp, y = 64.dp).size(120.dp, 125.dp), contentAlignment = Alignment.Center) { if (c.art == "bolt") ItundaArt("bolt", ItundaArtSet.Line, 64.dp, tint = Color(0xFFF5A524)) else ItundaArt(c.art, ItundaArtSet.Proto, 270.dp) }
+        Box(Modifier.offset(x = 202.dp, y = 64.dp).size(120.dp, 125.dp), contentAlignment = Alignment.Center) { if (c.art == "bolt") ItundaArt("bolt", ItundaArtSet.Line, 64.dp, tint = Color(0xFFF5A524)) else ItundaArt(c.art, ItundaArtSet.Proto, 120.dp, fit = true) }
     }
 }
 
@@ -168,11 +168,11 @@ private fun ItemCard(it: Item, p: ShopPalette, onClick: () -> Unit, onAdd: () ->
     val earn = Math.round(it.price * 0.07f / 10f) * 10
     Column(Modifier.pressScaleClickable(onClick = onClick)) {
         Box(Modifier.fillMaxWidth().height(169.dp).clip(RoundedCornerShape(16.dp)).background(p.soft), contentAlignment = Alignment.Center) {
-            ItundaArt(it.art, ItundaArtSet.Proto, 150.dp)
+            ItundaArt(it.art, ItundaArtSet.Proto, 64.dp, fit = true)
             Box(
                 Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 8.dp).size(38.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.9f)).pressScaleClickable(onClick = onAdd),
                 contentAlignment = Alignment.Center,
-            ) { ItundaArt("bag", ItundaArtSet.Proto, 22.dp) }
+            ) { ItundaArt("bag", ItundaArtSet.Proto, 26.dp, fit = true) }
         }
         Text(it.name, color = p.text, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Medium, maxLines = 1, modifier = Modifier.padding(top = 8.dp))
         Row(Modifier.height(25.2.dp), verticalAlignment = Alignment.CenterVertically) {

@@ -36,7 +36,11 @@ private fun load(context: Context, set: ItundaArtSet, name: String): SVG? {
  * An unknown [name] draws nothing, so a typo shows up as a gap in review rather than a wrong picture.
  */
 @Composable
-fun ItundaArt(name: String, set: ItundaArtSet = ItundaArtSet.Color, size: Dp = 24.dp, tint: Color? = null, modifier: Modifier = Modifier) {
+fun ItundaArt(
+    name: String, set: ItundaArtSet = ItundaArtSet.Color, size: Dp = 24.dp, tint: Color? = null, modifier: Modifier = Modifier,
+    /** Scale the art to fill [size] even when the SVG carries its own width/height (Proto set: 80px natural size). */
+    fit: Boolean = false,
+) {
     val context = LocalContext.current
     val svg = remember(set, name) { load(context, set, name) }
     val css = remember(tint) { tint?.let { "svg { color: #%06X }".format(it.toArgb() and 0xFFFFFF) } }
@@ -44,6 +48,7 @@ fun ItundaArt(name: String, set: ItundaArtSet = ItundaArtSet.Color, size: Dp = 2
         val s = svg ?: return@Canvas
         drawIntoCanvas { c ->
             val o = RenderOptions().viewPort(0f, 0f, this.size.width, this.size.height)
+            if (fit) { s.documentWidth = this.size.width; s.documentHeight = this.size.height }
             if (css != null) o.css(css)
             s.renderToCanvas(c.nativeCanvas, o)
         }
