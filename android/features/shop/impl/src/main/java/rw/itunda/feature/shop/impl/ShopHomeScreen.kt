@@ -113,7 +113,7 @@ fun ShopHomeContent(
                         Modifier.height(44.dp).clip(RoundedCornerShape(14.dp)).background(if (i == 0) p.soft else Color.Transparent).padding(horizontal = 20.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(label, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = if (i == 0) FontWeight.Bold else FontWeight.SemiBold, color = if (i == 0) p.text else p.tt, maxLines = 1)
+                        Text(label, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = if (i == 0) FontWeight.Bold else FontWeight.SemiBold, color = if (i == 0) p.text else p.tt, maxLines = 1, modifier = Modifier.padding(bottom = 4.dp))
                     }
                 }
             }
