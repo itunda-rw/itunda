@@ -116,7 +116,7 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add android/app/src/main/res/mipmap-* android/app/src/main/res/drawable/itunda_adaptive_foreground.png ios/App/Resources/Assets.xcassets/AppIcon.appiconset
+          git add android/app/src/main/res/mipmap-* android/app/src/main/res/drawable-nodpi/itunda_adaptive_foreground.png ios/App/Resources/Assets.xcassets/AppIcon.appiconset
           if git diff --cached --quiet; then echo 'Canonical native raster assets are already current.'; exit 0; fi
           git commit -m 'build(brand): regenerate native launchers from canonical v3'
           git push origin "HEAD:refs/heads/${GITHUB_HEAD_REF}"
@@ -150,7 +150,7 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add android/app/src/main/res/mipmap-* android/app/src/main/res/drawable/itunda_adaptive_foreground.png ios/App/Resources/Assets.xcassets/AppIcon.appiconset packages/brand-assets client/brand client/public/brand ios/Assets/ItundaIcon.svg services/blog/public/brand business/brand business/developers/brand site/brand sites/public/brand site/favicon.svg business/favicon.svg business/developers/favicon.svg services/micro-frontends
+          git add android/app/src/main/res/mipmap-* android/app/src/main/res/drawable-nodpi/itunda_adaptive_foreground.png ios/App/Resources/Assets.xcassets/AppIcon.appiconset packages/brand-assets client/brand client/public/brand ios/Assets/ItundaIcon.svg services/blog/public/brand business/brand business/developers/brand site/brand sites/public/brand site/favicon.svg business/favicon.svg business/developers/favicon.svg services/micro-frontends
           if git diff --cached --quiet; then echo 'Canonical v3 assets already synchronized.'; exit 0; fi
           git commit -m 'build(brand): adopt canonical Itunda brand v3 assets'
           # Other main-branch workflows can commit while this rasterization runs.
