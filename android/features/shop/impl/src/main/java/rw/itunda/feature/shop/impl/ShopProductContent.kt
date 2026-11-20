@@ -131,15 +131,21 @@ fun ShopProductContent(
                             Text(" ${it.rating} (${it.reviews})", color = p.text, fontSize = 16.sp, lineHeight = 22.4.sp)
                         }
                     }
-                    InfoRow("Delivery", p) { Text(it.arrives ?: "Ships in 2-3 days", color = p.text, fontSize = 16.sp, lineHeight = 22.4.sp) }
-                    InfoRow("Seller", p) {
-                        Column(Modifier.fillMaxWidth()) {
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { Chip("Official", p) }
+                    InfoRow("Delivery", p, chevron = true) { Text(it.arrives ?: "Ships in 2-3 days", color = p.text, fontSize = 16.sp, lineHeight = 22.4.sp) }
+                    InfoRow("Seller", p, chevron = true) {
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(it.seller, color = p.text, fontSize = 16.sp, lineHeight = 22.4.sp)
+                                Spacer(Modifier.width(8.dp)); Chip("Official", p)
+                            }
                             Chip("Best seller", p)
                         }
                     }
                     InfoRow("Draw", p, chevron = true) {
-                        Text("Win 500 points", color = if (dark) Brand else Link, fontSize = 16.sp, lineHeight = 22.4.sp, fontWeight = FontWeight.SemiBold)
+                        Text(buildAnnotatedString {
+                            withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = if (dark) Brand else Link)) { append("Win 500 points") }
+                            append(" in the free daily draw")
+                        }, color = p.text, fontSize = 16.sp, lineHeight = 22.4.sp)
                     }
                 }
                 Spacer(Modifier.height(12.dp))
