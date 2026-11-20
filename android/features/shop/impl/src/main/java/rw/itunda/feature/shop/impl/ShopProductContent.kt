@@ -182,7 +182,7 @@ private fun Chip(label: String, p: ShopPalette) {
 private fun InfoRow(label: String, p: ShopPalette, chevron: Boolean = false, value: @Composable () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, color = p.tt, fontSize = 15.sp, lineHeight = 21.sp, modifier = Modifier.width(80.dp))
-        Box(Modifier.width(230.dp)) { value() }
+        Box(Modifier.width(210.dp)) { value() }
         Spacer(Modifier.weight(1f))
         if (chevron) Canvas(Modifier.padding(end = 4.dp).size(8.dp, 14.dp)) {
             val w = 1.8.dp.toPx()
