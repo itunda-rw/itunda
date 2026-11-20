@@ -880,5 +880,5 @@ fun CommerceShopEntryPoint(
     deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
     onMessageSeller: (String) -> Unit = {},
 ) {
-    CommerceShopContent(deviceStepUpHost, onMessageSeller)
+    ProtoShopTab(deviceStepUpHost, onMessageSeller)
 }
