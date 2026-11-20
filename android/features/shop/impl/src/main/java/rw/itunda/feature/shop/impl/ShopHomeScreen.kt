@@ -94,7 +94,7 @@ fun ShopHomeContent(
     val p = if (dark) Dark else Light
     ShopText {
         Column(Modifier.fillMaxSize().background(p.page).verticalScroll(rememberScrollState())) {
-            Row(Modifier.fillMaxWidth().height(80.dp).background(p.bar).padding(start = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().height(80.dp).background(p.bar).padding(start = 6.dp, top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(48.dp).pressScaleClickable(onClick = onBack), contentAlignment = Alignment.Center) { ItundaArt("back", ItundaArtSet.Line, 24.dp, tint = p.text) }
                 Row(
                     Modifier.padding(start = 0.dp).width(214.dp).height(46.dp).clip(RoundedCornerShape(14.dp)).background(p.soft).padding(start = 14.dp),
@@ -107,7 +107,7 @@ fun ShopHomeContent(
                 Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) { ItundaArt("user", ItundaArtSet.Line, 26.dp, tint = p.text) }
                 Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) { ItundaArt("bag", ItundaArtSet.Line, 26.dp, tint = p.text) }
             }
-            Row(Modifier.fillMaxWidth().height(56.dp).horizontalScroll(rememberScrollState()).padding(start = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(Modifier.fillMaxWidth().height(56.dp).horizontalScroll(rememberScrollState()).padding(start = 16.dp, top = 12.dp), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 listOf("Home", "Beauty", "Fresh", "Categories", "First-come deals").forEachIndexed { i, label ->
                     Box(
                         Modifier.height(44.dp).clip(RoundedCornerShape(14.dp)).background(if (i == 0) p.soft else Color.Transparent).padding(horizontal = 20.dp),
@@ -131,13 +131,13 @@ fun ShopHomeContent(
                 listOf("Daily draw" to "celebrate", "Deals" to "money", "My orders" to "bag", "Rewards" to "gift", "Wishlist" to "heart").forEach { (label, art) ->
                     val go = when (label) { "My orders" -> onOrders; "Wishlist" -> onWishlist; else -> null }
                     Column(Modifier.width(70.dp).let { if (go != null) it.pressScaleClickable(onClick = go) else it }, horizontalAlignment = Alignment.CenterHorizontally) {
-                        Box(Modifier.size(60.dp).clip(RoundedCornerShape(20.dp)).background(p.soft), contentAlignment = Alignment.Center) { ItundaArt(art, if (art == "heart") ItundaArtSet.Color else ItundaArtSet.Proto, 32.dp) }
+                        Box(Modifier.size(60.dp).clip(RoundedCornerShape(20.dp)).background(p.soft), contentAlignment = Alignment.Center) { ItundaArt(art, if (art == "heart") ItundaArtSet.Color else ItundaArtSet.Proto, if (art == "heart") 32.dp else 40.dp) }
                         Text(label, color = p.tt, fontSize = 12.sp, lineHeight = 18.8.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, modifier = Modifier.padding(top = 6.dp))
                     }
                     Spacer(Modifier.width(4.dp))
                 }
             }
-            Text("Recommended for you", color = p.text, fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.4).sp, modifier = Modifier.padding(start = 24.dp, top = 28.dp, bottom = 14.dp))
+            Text("Recommended for you", color = p.text, fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.4).sp, modifier = Modifier.padding(start = 24.dp, top = 32.dp, bottom = 14.dp))
             Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(26.dp)) {
                 items.chunked(2).forEachIndexed { r, pair ->
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -157,8 +157,8 @@ private fun FirstComeCard(c: FirstCome) {
         Text("${c.count} first-come", color = Danger, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 24.dp, top = 26.dp))
         Text(c.name, color = ink, fontSize = 24.sp, lineHeight = 32.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 24.dp, top = 53.dp).width(170.dp))
         Text("${c.price} RWF", color = ink, fontSize = 24.sp, lineHeight = 33.6.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 24.dp, top = if (c.name.length > 17 && c.name != "Yoga mat") 121.dp else 89.dp))
-        Text("Max 1 per day", color = ink, fontSize = 13.sp, lineHeight = 18.2.sp, modifier = Modifier.padding(start = 24.dp, top = if (c.name.length > 17) 200.6.dp else 168.6.dp))
-        Box(Modifier.offset(x = 202.dp, y = 64.dp).size(120.dp, 125.dp), contentAlignment = Alignment.Center) { if (c.art == "bolt") ItundaArt("bolt", ItundaArtSet.Line, 64.dp, tint = Color(0xFFF5A524)) else ItundaArt(c.art, ItundaArtSet.Proto, 64.dp) }
+        Text("Max 1 per day", color = Color(0xFF6B7684), fontSize = 13.sp, lineHeight = 18.2.sp, modifier = Modifier.padding(start = 24.dp, top = if (c.name.length > 17) 200.6.dp else 168.6.dp))
+        Box(Modifier.offset(x = 202.dp, y = 64.dp).size(120.dp, 125.dp), contentAlignment = Alignment.Center) { if (c.art == "bolt") ItundaArt("bolt", ItundaArtSet.Line, 64.dp, tint = Color(0xFFF5A524)) else ItundaArt(c.art, ItundaArtSet.Proto, 270.dp) }
     }
 }
 
@@ -168,7 +168,7 @@ private fun ItemCard(it: Item, p: ShopPalette, onClick: () -> Unit, onAdd: () ->
     val earn = Math.round(it.price * 0.07f / 10f) * 10
     Column(Modifier.pressScaleClickable(onClick = onClick)) {
         Box(Modifier.fillMaxWidth().height(169.dp).clip(RoundedCornerShape(16.dp)).background(p.soft), contentAlignment = Alignment.Center) {
-            ItundaArt(it.art, ItundaArtSet.Proto, 64.dp)
+            ItundaArt(it.art, ItundaArtSet.Proto, 150.dp)
             Box(
                 Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 8.dp).size(38.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.9f)).pressScaleClickable(onClick = onAdd),
                 contentAlignment = Alignment.Center,
