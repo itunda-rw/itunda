@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -87,7 +86,7 @@ fun ReportsTab() {
             item {
                 val collectionCount = list.sumOf { it.collectionCount }
                 val channelCounts = list.flatMap { it.byChannel.entries }.groupingBy { it.key }.fold(0.0) { total, entry -> total + entry.value }
-                Card(modifier = Modifier.fillMaxWidth()) {
+                FlatBlock {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("$collectionCount collections", fontWeight = FontWeight.Bold)
                         Text(
@@ -100,7 +99,7 @@ fun ReportsTab() {
             }
         }
         items(list, key = { it.date }) { day ->
-            Card(modifier = Modifier.fillMaxWidth()) {
+            FlatBlock {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(day.date, fontWeight = FontWeight.Bold)
                     Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
@@ -132,7 +131,7 @@ fun ReportsTab() {
             }
         } else {
             items(products, key = { it.productId }) { product ->
-                Card(modifier = Modifier.fillMaxWidth()) {
+                FlatBlock {
                     Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                         Column {
                             Text(product.productName, fontWeight = FontWeight.Bold)

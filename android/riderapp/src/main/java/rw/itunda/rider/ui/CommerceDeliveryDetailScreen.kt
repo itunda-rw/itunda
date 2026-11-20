@@ -1,19 +1,17 @@
 package rw.itunda.rider.ui
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import java.util.Locale
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.components.FixedBottomCta
 import rw.itunda.core.designsystem.components.IdsButton
-import androidx.compose.material3.Card
-import androidx.compose.material3.MaterialTheme
+import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.theme.IdsTypography
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -22,10 +20,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -76,57 +72,51 @@ fun CommerceDeliveryDetailScreen(initialOrder: CommerceOrderDto, onBack: () -> U
 
     Column(modifier = Modifier.fillMaxSize()) {
         BackTopBar(title = "Package delivery", onBack = onBack)
-
-        Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(merchantName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                StatusBadge(order.status)
-                Spacer(modifier = Modifier.height(12.dp))
-                Text("Deliver to", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(order.deliveryAddress, style = MaterialTheme.typography.bodyLarge)
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                    Text("Order total", fontWeight = FontWeight.Bold)
-                    Text("${String.format(Locale.US, "%,.0f", order.totalAmount)} RWF", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                }
-            }
-        }
-
-        if (!locationPermissionGranted && order.status == "SHIPPED") {
-            Text(
-                "Location permission is needed so the buyer can see you're on the way.",
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(horizontal = 16.dp),
-            )
-        }
-
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp)) }
-
-        if (order.status == "SHIPPED") {
-            IdsButton(
-                text = if (advancing) "Updating…" else "I've delivered this order",
-                enabled = !advancing,
-                modifier = Modifier.padding(16.dp),
-                onClick = {
-                    advancing = true
-                    scope.launch {
-                        try {
-                            order = NetworkClient.apiService.completeCommerceDelivery(order.id).order
-                            onBack()
-                        } catch (e: Exception) {
-                            error = "Couldn't mark this delivered. Try again."
-                        } finally {
-                            advancing = false
-                        }
+        // Flat rows + one pinned action, same shape as DeliveryDetailScreen.
+        Box(modifier = Modifier.weight(1f)) {
+            FixedBottomCta(
+                content = {
+                    Text(merchantName, style = IdsTypography.Title1, color = Ids.colors.textPrimary)
+                    StatusBadge(order.status)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    DetailRow("Deliver to", order.deliveryAddress)
+                    DetailRow("Order total", "${String.format(Locale.US, "%,.0f", order.totalAmount)} RWF", emphasize = true)
+                    if (!locationPermissionGranted && order.status == "SHIPPED") {
+                        Text(
+                            "Location permission is needed so the buyer can see you're on the way.",
+                            style = IdsTypography.Body2,
+                            color = Ids.colors.danger,
+                        )
+                    }
+                    error?.let { Text(it, style = IdsTypography.Body2, color = Ids.colors.danger) }
+                    if (order.status == "DELIVERED") {
+                        Text("Delivered.", style = IdsTypography.Subtitle1, color = Ids.colors.brand)
                     }
                 },
-            )
-        } else if (order.status == "DELIVERED") {
-            Text(
-                "Delivered.",
-                modifier = Modifier.padding(16.dp),
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
+                cta = {
+                    if (order.status == "SHIPPED") {
+                        IdsButton(
+                            text = if (advancing) "Updating…" else "I've delivered this order",
+                            enabled = !advancing,
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = {
+                                advancing = true
+                                scope.launch {
+                                    try {
+                                        order = NetworkClient.apiService.completeCommerceDelivery(order.id).order
+                                        onBack()
+                                    } catch (e: Exception) {
+                                        error = "Couldn't mark this delivered. Try again."
+                                    } finally {
+                                        advancing = false
+                                    }
+                                }
+                            },
+                        )
+                    } else {
+                        IdsButton(text = "Back to work", onClick = onBack, modifier = Modifier.fillMaxWidth())
+                    }
+                },
             )
         }
     }

@@ -44,6 +44,12 @@ interface AuthApi {
 data class RiderDto(val id: String, val userId: String, val accountId: String, val status: String, val available: Boolean, val createdAt: String)
 data class RiderResponse(val success: Boolean, val rider: RiderDto)
 
+// Trimmed to what the Earnings wallet row reads; matches core's Account (GET /api/v1/account).
+// A delivered order's fee is credited to the rider's own MAIN account (RiderDto.accountId) --
+// see EatsOrderService's DELIVERED ledger payout.
+data class RiderAccountDto(val id: String, val balance: Double, val currency: String)
+data class RiderAccountsResponse(val accounts: List<RiderAccountDto>)
+
 // Real rider rating (item 142) -- see EatsController.getRiderRating's own doc
 // comment: a real average computed from post-delivery reviews, had zero client on
 // any platform including this dedicated rider app.
@@ -133,6 +139,9 @@ interface ApiService {
 
     @GET("api/v1/eats/riders/me")
     suspend fun getMyRiderProfile(): RiderResponse
+
+    @GET("api/v1/account")
+    suspend fun getAccounts(): RiderAccountsResponse
 
     @GET("api/v1/eats/riders/{riderId}/rating")
     suspend fun getRiderRating(@Path("riderId") riderId: String): RiderRatingResponse
