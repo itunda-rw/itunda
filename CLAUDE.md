@@ -27,6 +27,8 @@ Read [`docs/PROTOTYPE_PARITY_AGENT_PROMPT.md`](docs/PROTOTYPE_PARITY_AGENT_PROMP
 measure -> build -> render -> side-by-side diff method, plus the git/CI pitfalls.
 For the Shop (non-Eats shopping) product also read
 [`docs/PROTOTYPE_PARITY_SHOP_PROMPT.md`](docs/PROTOTYPE_PARITY_SHOP_PROMPT.md).
+For Bank (itunda Bank) also read
+[`docs/PROTOTYPE_PARITY_BANK_PROMPT.md`](docs/PROTOTYPE_PARITY_BANK_PROMPT.md).
 
 ## Real stack, per workspace
 
