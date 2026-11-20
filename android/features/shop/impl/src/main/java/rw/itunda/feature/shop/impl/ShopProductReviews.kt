@@ -56,7 +56,7 @@ internal fun ShopReviewsSection(p: ShopPalette, art: String, seller: String, nam
             Column(Modifier.width(100.6.dp).padding(top = 9.8.dp)) {
                 Text("4.2", color = p.text, fontSize = 44.sp, lineHeight = 48.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp)
                 Row(Modifier.padding(top = 1.dp).height(22.4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    repeat(5) { i -> StarIcon(15.2.dp, if (i < 4) Gold else p.soft); if (i < 4) Spacer(Modifier.width(1.dp)) }
+                    repeat(5) { i -> StarIcon(15.2.dp, Gold); if (i < 4) Spacer(Modifier.width(1.dp)) }
                 }
                 Text("6 reviews", color = p.tt, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 0.dp))
             }

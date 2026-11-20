@@ -19,6 +19,7 @@ import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsTheme
 import rw.itunda.feature.shop.impl.ShopHomeContent
 import rw.itunda.feature.shop.impl.ShopProductContent
+import rw.itunda.feature.shop.impl.ShopCartContent
 import rw.itunda.feature.shop.impl.ShopProtoHome
 
 @RunWith(RobolectricTestRunner::class)
@@ -60,5 +61,15 @@ class ShopScreenshotTest {
     @Test fun shopProductFullLight() {
         rule.setContent { IdsTheme(darkTheme = false) { ShopProductContent(0, dark = false) } }
         rule.onRoot().captureRoboImage("build/screenshots/shop-product-full-light.png")
+    }
+
+    @Test fun shopCartLight() {
+        rule.setContent { IdsTheme(darkTheme = false) { ShopCartContent(listOf(0 to 2, 1 to 1), dark = false) } }
+        rule.onRoot().captureRoboImage("build/screenshots/shop-cart-light.png")
+    }
+
+    @Test fun shopCartDark() {
+        rule.setContent { IdsTheme(darkTheme = true) { ShopCartContent(listOf(0 to 2, 1 to 1), dark = true) } }
+        rule.onRoot().captureRoboImage("build/screenshots/shop-cart-dark.png")
     }
 }
