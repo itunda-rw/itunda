@@ -54,15 +54,15 @@ fun ShopCartContent(
     val sub = lines.sumOf { (i, q) -> items[i].price * q }
     val ship = if (sub >= FREE_SHIPPING_OVER || sub == 0) 0 else SHIPPING_FEE
     val total = sub + ship
-    val count = lines.sumOf { it.second }
+    val count = lines.size
     ShopText {
         Box(Modifier.fillMaxSize().background(p.page)) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 110.dp)) {
-                Row(Modifier.fillMaxWidth().height(70.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().height(70.dp).padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.padding(start = 6.dp).size(48.dp).pressScaleClickable(onClick = onBack), Alignment.Center) { ItundaArt("back", ItundaArtSet.Line, 24.dp, tint = p.text) }
                     Text("Cart", color = p.text, fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.3).sp, modifier = Modifier.padding(start = 4.dp))
                 }
-                Row(Modifier.padding(horizontal = 24.dp).fillMaxWidth().height(52.dp).border(0.5.dp, p.soft)) {
+                Row(Modifier.padding(horizontal = 24.dp).fillMaxWidth().height(52.dp)) {
                     listOf("Cart $count", "Recent", "Wishlist").forEachIndexed { i, l ->
                         Box(Modifier.width(114.dp).height(52.dp), Alignment.Center) {
                             Text(l, color = if (i == 0) p.text else p.tt, fontSize = 16.sp, lineHeight = 22.4.sp, fontWeight = if (i == 0) FontWeight.Bold else FontWeight.SemiBold)
@@ -70,10 +70,11 @@ fun ShopCartContent(
                         }
                     }
                 }
-                Row(Modifier.padding(horizontal = 24.dp).fillMaxWidth().height(56.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Check(p)
-                    Text("Select all (0/${lines.size})", color = p.text, fontSize = 16.sp, lineHeight = 22.4.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 12.dp).weight(1f))
-                    Soft(p, 143.3.dp, 40.dp, 12.dp) { Text("Delete selected", color = p.tt, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold) }
+                Box(Modifier.padding(horizontal = 24.dp).fillMaxWidth().height(0.5.dp).background(p.soft))
+                Row(Modifier.padding(horizontal = 24.dp).fillMaxWidth().height(55.5.dp)) {
+                    Box(Modifier.padding(top = 19.5.dp)) { Check(p) }
+                    Text("Select all (0/${lines.size})", color = p.text, fontSize = 16.sp, lineHeight = 22.4.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 12.dp, top = 22.3.dp).weight(1f))
+                    Soft(p, 143.3.dp, 40.dp, 12.dp, modifier = Modifier.padding(top = 13.5.dp)) { Text("Delete selected", color = p.tt, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold) }
                 }
                 Column(Modifier.padding(top = 12.dp)) {
                     lines.forEach { (i, q) ->
@@ -96,7 +97,7 @@ fun ShopCartContent(
                     "* Up to 100 items fit in your cart.\n* Items added over 90 days ago are removed automatically.",
                     color = p.tt, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 5.dp, bottom = 1.dp),
                 )
-                Row(Modifier.padding(start = 24.dp, end = 24.dp, top = 8.dp).fillMaxWidth().height(44.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(Modifier.padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 6.dp).fillMaxWidth().height(44.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Box(Modifier.weight(1f).height(44.dp).clip(RoundedCornerShape(14.dp)).background(p.soft).padding(start = 14.dp), Alignment.CenterStart) {
                         Text("Promo code", color = p.tt, fontSize = 16.sp, lineHeight = 22.4.sp)
                     }
@@ -157,8 +158,8 @@ fun ShopCartContent(
 @Composable private fun Check(p: ShopPalette) { Box(Modifier.size(28.dp).clip(RoundedCornerShape(9.dp)).border(2.dp, p.soft, RoundedCornerShape(9.dp))) }
 
 @Composable
-private fun Soft(p: ShopPalette, w: Dp, h: Dp, r: Dp, onClick: (() -> Unit)? = null, content: @Composable () -> Unit) {
-    val m = Modifier.size(w, h).clip(RoundedCornerShape(r)).background(p.soft)
+private fun Soft(p: ShopPalette, w: Dp, h: Dp, r: Dp, onClick: (() -> Unit)? = null, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val m = modifier.size(w, h).clip(RoundedCornerShape(r)).background(p.soft)
     Box(if (onClick != null) m.pressScaleClickable(onClick = onClick) else m, Alignment.Center) { content() }
 }
 
