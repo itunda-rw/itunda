@@ -127,7 +127,7 @@ fun ShopProductContent(
                     }
                     InfoRow("Rating", p, chevron = true) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            ItundaArt("star", ItundaArtSet.Color, 16.dp, tint = Color(0xFFFFB800))
+                            StarIcon(16.dp, Gold)
                             Text(" ${it.rating} (${it.reviews})", color = p.text, fontSize = 16.sp, lineHeight = 22.4.sp)
                         }
                     }
