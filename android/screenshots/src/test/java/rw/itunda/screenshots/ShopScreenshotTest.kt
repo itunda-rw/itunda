@@ -55,4 +55,10 @@ class ShopScreenshotTest {
         rule.setContent { IdsTheme(darkTheme = true) { ShopProductContent(0, dark = true) } }
         rule.onRoot().captureRoboImage("build/screenshots/shop-product-dark.png")
     }
+
+    @Config(qualifiers = "w390dp-h2100dp-xxhdpi")
+    @Test fun shopProductFullLight() {
+        rule.setContent { IdsTheme(darkTheme = false) { ShopProductContent(0, dark = false) } }
+        rule.onRoot().captureRoboImage("build/screenshots/shop-product-full-light.png")
+    }
 }

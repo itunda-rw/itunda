@@ -144,6 +144,7 @@ fun ShopProductContent(
                 }
                 Spacer(Modifier.height(12.dp))
                 Box(Modifier.fillMaxWidth().height(12.dp).background(p.soft))
+                ShopReviewsSection(p, it.art, it.seller, it.name)
             }
             Row(
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(p.page).padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 28.dp),
