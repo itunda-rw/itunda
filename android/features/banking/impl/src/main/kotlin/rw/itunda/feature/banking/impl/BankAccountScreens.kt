@@ -153,14 +153,22 @@ internal fun BankStatementScreen(onBack: () -> Unit) {
     Column(Modifier.fillMaxSize().background(Ids.colors.background)) {
         BankSubTopBar("", onBack)
         Column(Modifier.weight(1f).padding(horizontal = 24.dp)) {
-            Text("Choose a period\nand format.", color = Ids.colors.textPrimary, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 38.sp)
-            BankSectionLabel("Period", strong = true)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { periods.forEachIndexed { i, p -> BankChip(p, period == i, { period = i }, Modifier.weight(if (i == 1) 1.2f else 1f)) } }
-            BankSectionLabel("Format", strong = true)
+            Spacer(Modifier.height(12.dp))
+            Text("Choose a period\nand format.", color = Ids.colors.textPrimary, fontSize = 30.sp, fontWeight = FontWeight.Bold, lineHeight = 38.sp, letterSpacing = (-0.6).sp)
+            Spacer(Modifier.height(28.dp))
+            StmtLabel("Period")
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { periods.forEachIndexed { i, p -> BankChip(p, period == i, { period = i }) } }
+            Spacer(Modifier.height(28.dp))
+            StmtLabel("Format")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { formats.forEachIndexed { i, f -> BankChip(f, format == i, { format = i }) } }
         }
         BankSubCta("Download") { done = true }
     }
+}
+
+@Composable
+private fun StmtLabel(text: String) {
+    Text(text, color = Ids.colors.textPrimary, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 12.dp))
 }
 
 private data class Pocket(val name: String, val emoji: String, val amount: Long, val goal: Long? = null)

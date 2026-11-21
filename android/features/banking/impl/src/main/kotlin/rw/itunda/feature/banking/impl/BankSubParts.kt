@@ -49,18 +49,18 @@ internal fun BankSubTopBar(title: String, onBack: () -> Unit, trailing: @Composa
 @Composable
 internal fun BankSubCta(label: String, enabled: Boolean = true, onClick: () -> Unit) {
     Box(
-        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp).height(56.dp).clip(RoundedCornerShape(16.dp))
+        Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 28.dp).height(58.dp).clip(RoundedCornerShape(18.dp))
             .background(if (enabled) Ids.colors.brand else Ids.colors.brand.copy(alpha = 0.12f))
             .then(if (enabled) Modifier.pressScaleClickable(onClick = onClick) else Modifier),
         contentAlignment = Alignment.Center,
-    ) { Text(label, color = if (enabled) Ids.colors.textPrimary else Ids.colors.brand.copy(alpha = 0.7f), fontSize = 17.sp, fontWeight = FontWeight.ExtraBold) }
+    ) { Text(label, color = if (enabled) Ids.colors.textPrimary else Ids.colors.brand.copy(alpha = 0.7f), fontSize = 18.sp, letterSpacing = (-0.36).sp, fontWeight = FontWeight.Bold) }
 }
 
 @Composable
 internal fun BankChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, compact: Boolean = false, art: String? = null) {
     Box(
         modifier.clip(RoundedCornerShape(50)).background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
-            .pressScaleClickable(onClick = onClick).padding(horizontal = if (compact) 4.dp else 12.dp, vertical = 12.dp),
+            .pressScaleClickable(onClick = onClick).height(44.dp).padding(horizontal = if (compact) 4.dp else 18.dp),
         contentAlignment = Alignment.Center,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -72,7 +72,7 @@ internal fun BankChip(label: String, selected: Boolean, onClick: () -> Unit, mod
 
 @Composable
 internal fun BankSectionLabel(text: String, strong: Boolean = false) {
-    Text(text, color = if (strong) Ids.colors.textPrimary else Ids.colors.textTertiary, fontSize = 14.sp, fontWeight = if (strong) FontWeight.Bold else null, modifier = Modifier.padding(top = 24.dp, bottom = 10.dp))
+    Text(text, color = if (strong) Ids.colors.textPrimary else Ids.colors.textTertiary, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = if (strong) FontWeight.Bold else FontWeight.SemiBold, modifier = Modifier.padding(top = 24.dp, bottom = 10.dp))
 }
 
 /** Local confirmation shown after a dummy action, so every flow ends somewhere. */

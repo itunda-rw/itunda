@@ -43,14 +43,14 @@ private const val DEMO_BALANCE = 842_300L
 
 @Composable
 private fun AmountInput(value: Long, onChange: (Long) -> Unit) {
-    Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.fillMaxWidth()) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().height(56.dp)) {
         BasicTextField(
             value = if (value == 0L) "" else rwf(value), onValueChange = { onChange(it.filter(Char::isDigit).take(9).toLongOrNull() ?: 0L) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 44.sp, fontWeight = FontWeight.ExtraBold),
+            textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 40.sp, lineHeight = 56.sp, letterSpacing = (-1).sp, fontWeight = FontWeight.Bold),
             modifier = Modifier.weight(1f),
         )
-        Text("RWF", color = Ids.colors.textTertiary, fontSize = 20.sp, modifier = Modifier.padding(bottom = 8.dp))
+        Text("RWF", color = Ids.colors.textTertiary, fontSize = 20.sp, modifier = Modifier.padding(start = 8.dp, top = 6.dp))
     }
 }
 
@@ -69,19 +69,22 @@ internal fun BankDepositScreen(onBack: () -> Unit) {
     if (done) { BankDone("Deposit requested", "${rwf(amount)} RWF is on its way to itunda Bank.", onBack); return }
     Column(Modifier.fillMaxSize().background(Ids.colors.background)) {
         BankSubTopBar("Deposit to itunda Bank", onBack)
-        Column(Modifier.weight(1f).padding(horizontal = 20.dp)) {
-            Text("Amount", color = Ids.colors.textTertiary, fontSize = 14.sp)
+        Column(Modifier.weight(1f).padding(horizontal = 24.dp)) {
+            Spacer(Modifier.height(12.dp))
+            Text("Amount", color = Ids.colors.textPrimary, fontSize = 14.sp, lineHeight = 20.sp)
+            Spacer(Modifier.height(6.dp))
             AmountInput(amount) { amount = it }
-            Text("Free and instant.", color = Ids.colors.textTertiary, fontSize = 14.sp)
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(6.dp))
+            Text("Free and instant.", color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 20.sp)
+            Spacer(Modifier.height(14.dp))
             AddChips(listOf(10_000, 20_000, 50_000, 100_000)) { amount += it }
-            Text("From", color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 24.dp, bottom = 10.dp))
-            listOf("MTN MoMo" to Color(0xFFFFCC00), "Airtel Money" to Color(0xFFE4262B)).forEachIndexed { i, (name, c) ->
-                Row(Modifier.fillMaxWidth().pressScaleClickable { from = i }.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(36.dp).clip(CircleShape).background(c))
-                    Text(name, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f).padding(start = 16.dp))
-                    Box(Modifier.size(24.dp).clip(CircleShape).background(if (from == i) Ids.colors.brand else Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(14.dp), tint = if (from == i) Color.White else Ids.colors.textTertiary)
+            Text("From", color = Ids.colors.textPrimary, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 28.dp, bottom = 6.dp))
+            listOf("MTN MoMo" to Color(0xFFFFCC00), "Airtel Money" to Color(0xFFE40000)).forEachIndexed { i, (name, c) ->
+                Row(Modifier.fillMaxWidth().height(72.dp).pressScaleClickable { from = i }, verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(40.dp).clip(CircleShape).background(c))
+                    Text(name, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f).padding(start = 30.dp))
+                    Box(Modifier.size(28.dp).clip(CircleShape).background(if (from == i) Ids.colors.brand else Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp), tint = if (from == i) Color.White else Ids.colors.textTertiary)
                     }
                 }
             }
