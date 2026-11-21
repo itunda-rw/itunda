@@ -126,9 +126,9 @@ internal fun CommunityPostDetailScreen(postId: String, onBack: () -> Unit) {
             // Real fix (flat-design sweep): dropped the Card wrapper -- this is the
             // screen's own main content, not a separate module.
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    CommunityPostHeader(authorName.ifBlank { "Neighbour" }, listOfNotNull(p.neighborhood, rw.itunda.core.designsystem.components.relativeTimeAgo(p.createdAt)).joinToString(" · "), communityCategoryTag(p.category))
                     Text(p.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                    Text("by $authorName", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                    Text(p.body, color = Ids.colors.textPrimary, fontSize = 14.sp)
+                    Text(p.body, color = Ids.colors.textPrimary, fontSize = 15.sp)
                     ListingActionButton("${p.likeCount}", liking, icon = { WishlistHeart(favorited = likedByMe, size = 14.dp) }) {
                         liking = true
                         coroutineScope.launch {
@@ -148,7 +148,7 @@ internal fun CommunityPostDetailScreen(postId: String, onBack: () -> Unit) {
         post?.takeIf { it.category == "meetup" }?.let { p -> MeetupSessionsSection(post = p, currentUserId = currentUserId) }
         post?.takeIf { it.category == "group_buy" }?.let { p -> GroupBuyFinalizeSection(post = p, currentUserId = currentUserId) }
         Spacer(modifier = Modifier.height(16.dp))
-        Text("Comments", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Text("Replies · ${comments?.size ?: 0}", color = Ids.colors.textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
         Spacer(modifier = Modifier.height(8.dp))
         LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (comments == null) {
@@ -159,10 +159,7 @@ internal fun CommunityPostDetailScreen(postId: String, onBack: () -> Unit) {
                 items(comments!!, key = { it.comment.id }) { c ->
                     // Real fix (flat-design sweep): dropped the per-row Card -- a
                     // comment list separates entries with spacing alone.
-                    Column {
-                            Text(c.authorName, color = Ids.colors.textSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                            Text(c.comment.body, color = Ids.colors.textPrimary, fontSize = 13.sp)
-                    }
+                    CommunityReplyRow(c.authorName, c.comment.body)
                 }
                 if (commentsHasMore) {
                     item {
@@ -179,12 +176,12 @@ internal fun CommunityPostDetailScreen(postId: String, onBack: () -> Unit) {
         }
         Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             IdsTextField(
-                value = commentBody, onValueChange = { commentBody = it }, label = "Add a comment",
+                value = commentBody, onValueChange = { commentBody = it }, label = "Write a reply",
                 singleLine = true, modifier = Modifier.weight(1f),
             )
             Box(
                 modifier = Modifier
-                    .background(if (commentBody.isBlank()) Ids.colors.textSecondary else Ids.colors.brand, RoundedCornerShape(10.dp))
+                    .background(if (commentBody.isBlank()) Ids.colors.textSecondary else Ids.colors.brand, RoundedCornerShape(14.dp))
                     .pressScaleClickable(enabled = !commenting && commentBody.isNotBlank()) {
                         commenting = true
                         coroutineScope.launch {

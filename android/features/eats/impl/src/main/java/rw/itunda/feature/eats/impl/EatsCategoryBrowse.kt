@@ -108,20 +108,23 @@ internal fun EatsCategoryIconRow(categories: List<String>, selectedCategory: Str
 // Real Baemin/Coupang Eats-style sort chip (itunda Eats redesign, 2026-08-28) --
 // see EatsScreen.kt's own sortMode doc comment for the full account.
 @Composable
-internal fun EatsSortChip(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector?, active: Boolean, onClick: () -> Unit) {
+fun EatsSortChip(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector?, active: Boolean, onClick: () -> Unit) {
+    val palette = eatsPrototypePalette()
     Row(
-        modifier = Modifier.pressScaleClickable(onClick = onClick),
+        modifier = Modifier.height(36.dp).clip(RoundedCornerShape(18.dp)).background(if (active) palette.selected else palette.surfaceSoft)
+            .pressScaleClickable(onClick = onClick).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
-            Icon(icon, contentDescription = null, tint = if (active) Ids.colors.brand else Ids.colors.textSecondary, modifier = Modifier.size(16.dp))
+            Icon(icon, contentDescription = null, tint = if (active) palette.selectedText else palette.secondary, modifier = Modifier.size(16.dp))
             Spacer(modifier = Modifier.width(4.dp))
         }
         Text(
             label,
-            color = if (active) Ids.colors.brand else Ids.colors.textSecondary,
-            fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
-            fontSize = 13.sp,
+            color = if (active) palette.selectedText else palette.secondary,
+            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp,
+            maxLines = 1, softWrap = false,
         )
     }
 }
@@ -312,17 +315,23 @@ internal fun MenuItemThumb(imageUrl: String?, size: androidx.compose.ui.unit.Dp)
     }
 }
 
+// Gson may bypass Kotlin constructors, leaving defaulted collection fields null when
+// older API payloads omit them. Normalize both levels before menu/cart UI reads them.
+internal fun MerchantProductDto.eatsOptionGroups() = optionGroups.orEmpty().map { group ->
+    group.copy(choices = group.choices.orEmpty())
+}
+
 // Real, human-readable summary of a resolved cart line's selected options -- mirrors
 // the backend's own EatsOrderService.buildSelectedOptionsJson, but purely for display;
 // pricing always comes from the real menu item + real choice deltas, never this string.
 internal fun eatsOptionsSummary(item: MerchantProductDto, choiceIds: List<String>): String {
     if (choiceIds.isEmpty()) return ""
-    val names = item.optionGroups.flatMap { it.choices }.filter { it.id in choiceIds }.map { it.name }
+    val names = item.eatsOptionGroups().flatMap { it.choices }.filter { it.id in choiceIds }.map { it.name }
     return if (names.isEmpty()) "" else " (${names.joinToString(", ")})"
 }
 
 internal fun eatsLineUnitPrice(item: MerchantProductDto, choiceIds: List<String>): Double {
-    val delta = item.optionGroups.flatMap { it.choices }.filter { it.id in choiceIds }.sumOf { it.priceDelta }
+    val delta = item.eatsOptionGroups().flatMap { it.choices }.filter { it.id in choiceIds }.sumOf { it.priceDelta }
     return item.price + delta
 }
 

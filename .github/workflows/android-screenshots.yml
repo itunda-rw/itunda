@@ -1,0 +1,95 @@
+name: Android Screenshots
+
+# Renders Compose screens to PNG (Robolectric + Roborazzi, no emulator) and pushes
+# them to the `ci-screenshots` branch so they can be compared with the HTML prototype.
+on:
+  push:
+    branches: ["integration/prototype-parity", "feat/screenshot-loop"]
+    paths: ["android/**", "scripts/measure-prototype-eats.js", ".github/workflows/android-screenshots.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: android-screenshots-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check file-size limits
+        run: python3 scripts/file-size-lint.py
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - run: corepack enable
+      - name: Install Saronite dependencies (settings.gradle autolinking needs them)
+        working-directory: packages/saronite
+        run: yarn install --no-immutable
+
+      - name: Measure prototype Eats at 3x (light and dark)
+        if: github.event_name == 'push' && contains(github.event.head_commit.message, '[measure-eats]')
+        run: |
+          PROTO="$GITHUB_WORKSPACE/itunda_clickable_prototype_v1038.html"
+          test -s "$PROTO"
+          cp "$PROTO" /tmp/itunda_clickable_prototype_v1038.html
+          echo "Prototype source: $(git rev-parse HEAD):itunda_clickable_prototype_v1038.html"
+          mkdir -p /tmp/prototype-playwright
+          cd /tmp/prototype-playwright
+          npm init -y
+          npm install --no-audit --no-fund playwright
+          npx playwright install chromium --with-deps
+          cd "$GITHUB_WORKSPACE"
+          PROTO=/tmp/itunda_clickable_prototype_v1038.html \
+          OUT_DIR="$GITHUB_WORKSPACE/android/screenshots/build/screenshots/prototype-eats" \
+          PLAYWRIGHT_ENTRY=/tmp/prototype-playwright/node_modules/playwright/index.mjs \
+          node scripts/measure-prototype-eats.js
+
+      - name: Upload prototype Eats measurements
+        if: always() && github.event_name == 'push' && contains(github.event.head_commit.message, '[measure-eats]')
+        uses: actions/upload-artifact@v4
+        with:
+          name: eats-prototype-measurements-${{ github.sha }}
+          path: android/screenshots/build/screenshots/prototype-eats/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Render screenshots
+        working-directory: android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :screenshots:testDebugUnitTest -Proborazzi.test.record=true --stacktrace
+      - name: Upload Android screenshot renders
+        if: always() && github.event_name == 'push' && contains(github.event.head_commit.message, '[measure-eats]')
+        uses: actions/upload-artifact@v4
+        with:
+          name: eats-android-screenshots-${{ github.sha }}
+          path: android/screenshots/build/screenshots/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Push PNGs to ci-screenshots branch
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          rm -rf /tmp/shots-repo && mkdir -p /tmp/shots-repo/${GITHUB_SHA::7}
+          cp -r android/screenshots/build/screenshots/. /tmp/shots-repo/${GITHUB_SHA::7}/ 2>/dev/null || true
+          cd /tmp/shots-repo
+          ls -R . | head -50
+          git init -q -b ci-screenshots
+          git config user.name "ci-screenshots"
+          git config user.email "ci-screenshots@users.noreply.github.com"
+          git add -A
+          git commit -q -m "screenshots for ${GITHUB_SHA}" || exit 0
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push -f origin ci-screenshots

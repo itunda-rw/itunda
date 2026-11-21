@@ -162,75 +162,41 @@ fun SettingsScreen(
         if (!isLoadingSettings) pullToRefreshState.endRefresh()
     }
 
-    // Real theme picker, relocated (2026-08-12) -- previously its own "Display" card
-    // with an always-visible 3-way selector; the real screenshot shows "Theme &
-    // vibration" as a plain row in the first card, so the same real, working
-    // ThemePreference selector now opens as a dialog from that row instead.
+    // Theme and text size open as full-screen pickers (prototype), applying on tap.
     var showThemeDialog by remember { mutableStateOf(false) }
     if (showThemeDialog) {
         val themeMode by ThemePreference.mode.collectAsState()
-        AlertDialog(
-            onDismissRequest = { showThemeDialog = false },
-            title = { Text(stringResource(R.string.settings_theme_vibration)) },
-            text = {
-                Column {
-                    listOf(
-                        ThemeMode.SYSTEM to stringResource(R.string.settings_theme_system),
-                        ThemeMode.LIGHT to stringResource(R.string.settings_theme_light),
-                        ThemeMode.DARK to stringResource(R.string.settings_theme_dark),
-                    ).forEach { (mode, label) ->
-                        val selected = themeMode == mode
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .pressScaleClickable { ThemePreference.set(mode) }
-                                .padding(vertical = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(label, color = Ids.colors.textPrimary, fontSize = 15.sp)
-                            if (selected) Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.brand)
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showThemeDialog = false }) { Text(stringResource(R.string.settings_confirm)) }
-            },
+        SettingsPickerScreen(
+            title = stringResource(R.string.settings_theme_vibration),
+            options = listOf(
+                ThemeMode.SYSTEM to stringResource(R.string.settings_theme_system),
+                ThemeMode.LIGHT to stringResource(R.string.settings_theme_light),
+                ThemeMode.DARK to stringResource(R.string.settings_theme_dark),
+            ).map { (mode, label) -> PickerOption(label, themeMode == mode) { ThemePreference.set(mode) } },
+            onBack = { showThemeDialog = false },
         )
+        return
     }
-
-    // Real Uber Simple Mode-style text-scale accessibility picker (2026-08-15) --
-    // see docs/DESIGN_REFERENCES.md Section 69 and TextScalePreference's own doc
-    // comment. Same dialog-from-a-row shape as the theme picker directly above.
+    var showLanguagePicker by remember { mutableStateOf(false) }
+    if (showLanguagePicker) {
+        SettingsPickerScreen(
+            title = stringResource(R.string.settings_language),
+            options = listOf("en" to "English", "rw" to "Kinyarwanda", "fr" to "Français").map { (code, name) ->
+                PickerOption(name, locale == code) { AppLocalePreference.set(baseContext, code) }
+            },
+            onBack = { showLanguagePicker = false },
+        )
+        return
+    }
     var showTextScaleDialog by remember { mutableStateOf(false) }
     if (showTextScaleDialog) {
         val textScale by TextScalePreference.option.collectAsState()
-        AlertDialog(
-            onDismissRequest = { showTextScaleDialog = false },
-            title = { Text(stringResource(R.string.settings_text_size)) },
-            text = {
-                Column {
-                    TextScaleOption.values().forEach { option ->
-                        val selected = textScale == option
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .pressScaleClickable { TextScalePreference.set(option) }
-                                .padding(vertical = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(option.label, color = Ids.colors.textPrimary, fontSize = (15 * option.multiplier).sp)
-                            if (selected) Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.brand)
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showTextScaleDialog = false }) { Text(stringResource(R.string.settings_confirm)) }
-            },
+        SettingsPickerScreen(
+            title = stringResource(R.string.settings_text_size),
+            options = TextScaleOption.values().map { o -> PickerOption(o.label, textScale == o, 17f * o.multiplier) { TextScalePreference.set(o) } },
+            onBack = { showTextScaleDialog = false },
         )
+        return
     }
 
     Box(Modifier.fillMaxSize().nestedScroll(pullToRefreshState.nestedScrollConnection)) {
@@ -273,8 +239,8 @@ fun SettingsScreen(
               // real, already-working AppLocalePreference, just relocated.
             item {
                 SettingsCard {
-                    Text(stringResource(R.string.settings_my_info), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(stringResource(R.string.settings_my_info), color = Ids.colors.textTertiary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Spacer(modifier = Modifier.height(4.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -300,21 +266,12 @@ fun SettingsScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .pressScaleClickable {
-                                // Real 3-way cycle (2026-08-15), widened from the
-                                // original EN/RW toggle when French (values-fr/) was
-                                // added as itunda's third real locale -- see
-                                // LoginScreen.kt's LanguageSwitcher doc comment for
-                                // the full account of this same fix made there.
-                                val locales = listOf("en", "rw", "fr")
-                                val next = locales[(locales.indexOf(locale).coerceAtLeast(0) + 1) % locales.size]
-                                AppLocalePreference.set(baseContext, next)
-                            }
+                            .pressScaleClickable { showLanguagePicker = true }
                             .padding(vertical = 14.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(stringResource(R.string.settings_language), color = Ids.colors.textPrimary, fontSize = 15.sp)
+                        Text(stringResource(R.string.settings_language), color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
                         // Real Toss row shape (2026-08-12, direct screenshot comparison)
                         // -- every row in this card ends with a chevron, including this
                         // one (value + chevron together), not just a bare value.
@@ -337,7 +294,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(stringResource(R.string.settings_notifications), color = Ids.colors.textPrimary, fontSize = 15.sp)
+                        Text(stringResource(R.string.settings_notifications), color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             if (unreadCount > 0) {
                                 Text(unreadCount.toString(), color = Ids.colors.brand, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
@@ -369,8 +326,8 @@ fun SettingsScreen(
                     // Real Toss section name (2026-08-12) -- "Authentication & Security"
                     // is the real header on the real Toss Settings screenshot; itunda's
                     // own shorter "Security" was close but not the actual real label.
-                    Text(stringResource(R.string.settings_authentication_security), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(stringResource(R.string.settings_authentication_security), color = Ids.colors.textTertiary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Spacer(modifier = Modifier.height(4.dp))
                 if (biometricAvailable) {
                     val tokenStore = remember { NetworkClient.currentTokenStore() }
                     var appLockEnabled by remember { mutableStateOf(tokenStore.isAppLockEnabled()) }
@@ -378,15 +335,8 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Box(
-                            modifier = Modifier.size(44.dp).clip(CircleShape).background(Ids.colors.chip),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(Icons.Outlined.Fingerprint, contentDescription = null, tint = Ids.colors.textPrimary)
-                        }
-                        Spacer(modifier = Modifier.width(14.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(stringResource(R.string.settings_unlock_biometrics), color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.settings_unlock_biometrics), color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
                             Text(stringResource(R.string.settings_unlock_biometrics_body), color = Ids.colors.textTertiary, fontSize = 13.sp)
                         }
                         rw.itunda.core.designsystem.components.IdsSwitch(
@@ -420,15 +370,8 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Box(
-                            modifier = Modifier.size(44.dp).clip(CircleShape).background(Ids.colors.chip),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(Icons.Outlined.Fingerprint, contentDescription = null, tint = Ids.colors.textPrimary)
-                        }
-                        Spacer(modifier = Modifier.width(14.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(stringResource(R.string.settings_verify_biometrics), color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.settings_verify_biometrics), color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
                             Text(stringResource(R.string.settings_verify_biometrics_body), color = Ids.colors.textTertiary, fontSize = 13.sp)
                         }
                         Switch(
@@ -556,8 +499,8 @@ fun SettingsScreen(
             // the same real, already-shipped screens, nothing new built here.
             item {
                 SettingsCard {
-                    Text(stringResource(R.string.settings_transfer_payment), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(stringResource(R.string.settings_transfer_payment), color = Ids.colors.textTertiary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Spacer(modifier = Modifier.height(4.dp))
                     SettingsChevronRow(stringResource(R.string.settings_send), onClick = onOpenSend)
                     SettingsChevronRow(stringResource(R.string.settings_pay), onClick = onOpenPay)
                 }
@@ -573,8 +516,8 @@ fun SettingsScreen(
             // now (no document screen existed to link to).
             item {
                 SettingsCard {
-                    Text(stringResource(R.string.settings_legal_documents), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(stringResource(R.string.settings_legal_documents), color = Ids.colors.textTertiary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Spacer(modifier = Modifier.height(4.dp))
                     SettingsChevronRow(stringResource(R.string.settings_credit_data_policy)) {
                         openLegalDocument = "credit_data_policy" to baseContext.getString(R.string.settings_credit_data_policy)
                     }
@@ -629,6 +572,18 @@ internal fun DeviceListScreen(
             items(devices, key = { it.deviceId }) { device ->
                 DeviceRow(device, onRevoke = { onRevoke(device.deviceId) })
             }
+            item {
+                // Real bulk action: revokes every other device one by one through the same endpoint.
+                val thisId = remember { NetworkClient.currentDeviceStore().getOrCreateDeviceId() }
+                val others = devices.filter { it.deviceId != thisId }
+                if (others.isNotEmpty()) {
+                    Box(
+                        Modifier.padding(top = 16.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Ids.colors.brand.copy(alpha = 0.12f))
+                            .pressScaleClickable { others.forEach { onRevoke(it.deviceId) } }.padding(vertical = 18.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text(stringResource(R.string.settings_sign_out_others), color = Ids.colors.textBrand, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
+                }
+            }
         }
     }
 }
@@ -650,16 +605,17 @@ private fun NotificationSettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     Column(modifier = Modifier.fillMaxSize().background(Ids.colors.background)) {
         SettingsSubScreenHeader(stringResource(R.string.settings_manage_notifications), onBack)
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp)) {
-            SettingsCard {
-                Text(stringResource(R.string.settings_notifications), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                Spacer(modifier = Modifier.height(8.dp))
-                SettingsChevronRow(stringResource(R.string.settings_channel_money)) {
-                    context.startActivity(channelSettingsIntent(context, rw.itunda.app.push.NotificationChannels.CHANNEL_MONEY))
+        Text("Choose what itunda can notify you about.", color = Ids.colors.textTertiary, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp))
+        listOf(
+            Triple(stringResource(R.string.settings_channel_money), "Money in, money out, bills", rw.itunda.app.push.NotificationChannels.CHANNEL_MONEY),
+            Triple(stringResource(R.string.settings_channel_general), "Offers, community and map updates", rw.itunda.app.push.NotificationChannels.CHANNEL_GENERAL),
+        ).forEach { (title, sub, channel) ->
+            Row(Modifier.fillMaxWidth().pressScaleClickable { context.startActivity(channelSettingsIntent(context, channel)) }.padding(horizontal = 24.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(title, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                    Text(sub, color = Ids.colors.textTertiary, fontSize = 14.sp)
                 }
-                SettingsChevronRow(stringResource(R.string.settings_channel_general)) {
-                    context.startActivity(channelSettingsIntent(context, rw.itunda.app.push.NotificationChannels.CHANNEL_GENERAL))
-                }
+                Text("Manage", color = Ids.colors.textBrand, fontSize = 15.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -716,19 +672,18 @@ internal fun NotificationListScreen(
 // same screen family, not a different pattern.
 @Composable
 internal fun SettingsSubScreenHeader(title: String, onBack: () -> Unit, trailing: @Composable () -> Unit = {}) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    // Prototype header: back arrow on its own row, then a large title underneath.
+    Column {
         Box(
-            modifier = Modifier.size(44.dp).clip(CircleShape).pressScaleClickable(onClick = onBack),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp).size(44.dp).clip(CircleShape).pressScaleClickable(onClick = onBack),
             contentAlignment = Alignment.Center,
         ) {
             Icon(IdsIcons.Back, contentDescription = stringResource(R.string.settings_back), modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
         }
-        Text(title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary, modifier = Modifier.weight(1f))
-        trailing()
-        Spacer(modifier = Modifier.width(8.dp))
+        Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(title, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Ids.colors.textPrimary, modifier = Modifier.weight(1f))
+            trailing()
+        }
     }
 }
 
@@ -738,13 +693,7 @@ internal fun SettingsSubScreenHeader(title: String, onBack: () -> Unit, trailing
 // continuous scrolling list with inline dividers between sections.
 @Composable
 private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
-    androidx.compose.material3.Card(
-        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = Ids.colors.surface),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(modifier = Modifier.padding(20.dp), content = content)
-    }
+    Column(modifier = Modifier.fillMaxWidth(), content = content)
 }
 
 // Plain chevron row (2026-08-12) -- the real Toss Settings screenshot's second row
@@ -757,7 +706,7 @@ private fun SettingsChevronRow(label: String, onClick: () -> Unit) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, color = Ids.colors.textPrimary, fontSize = 15.sp)
+        Text(label, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
         Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
     }
 }
@@ -767,37 +716,23 @@ private fun SettingsChevronRow(label: String, onClick: () -> Unit) {
 @Composable
 private fun DeviceRow(device: rw.itunda.core.network.TrustedDeviceDto, onRevoke: () -> Unit) {
     val isThisDevice = remember { device.deviceId == NetworkClient.currentDeviceStore().getOrCreateDeviceId() }
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier.size(44.dp).clip(CircleShape).background(Ids.colors.chip),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Outlined.PhoneAndroid, contentDescription = null, tint = Ids.colors.textPrimary)
-        }
-        Spacer(modifier = Modifier.width(14.dp))
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 (device.deviceName ?: stringResource(R.string.settings_unknown_device)) + if (isThisDevice) stringResource(R.string.settings_this_device_suffix) else "",
-                color = Ids.colors.textPrimary,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
+                color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
             )
             Text(
                 if (device.trusted) stringResource(R.string.settings_trusted) else stringResource(R.string.settings_not_verified),
-                color = if (device.trusted) Ids.colors.textTertiary else Ids.colors.danger,
-                fontSize = 12.sp,
+                color = if (device.trusted) Ids.colors.textTertiary else Ids.colors.danger, fontSize = 13.sp,
             )
         }
-        Text(
-            stringResource(R.string.settings_remove),
-            color = Ids.colors.danger,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.pressScaleClickable(onClick = onRevoke),
-        )
+        // The device you are using is never removable from here (prototype shows no button on it).
+        if (!isThisDevice) {
+            Box(
+                Modifier.clip(RoundedCornerShape(16.dp)).background(Ids.colors.surfaceSoft).pressScaleClickable(onClick = onRevoke).padding(horizontal = 18.dp, vertical = 12.dp),
+            ) { Text(stringResource(R.string.settings_remove), color = Ids.colors.danger, fontSize = 14.sp, fontWeight = FontWeight.Bold) }
+        }
     }
 }
 

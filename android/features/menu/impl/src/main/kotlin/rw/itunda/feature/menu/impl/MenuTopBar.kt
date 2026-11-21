@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.HelpOutline
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -20,10 +23,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import rw.itunda.core.designsystem.components.IdsAppBarTitle
+import rw.itunda.core.designsystem.components.IdsIconButton
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsIcons
@@ -32,41 +38,29 @@ import rw.itunda.core.designsystem.theme.IdsIcons
 // decomposition) -- confirmed used only by MenuScreen, which moved to this same
 // module in the same slice.
 
-// CORRECTED 2026-08-12: the real Toss All-tab header is exactly a 3-link text row:
-// "Authentication | Help | Settings".
+// Prototype v1004 (2026-11-09): the Explore app bar follows Home and Pay -- the shared
+// "itunda mini apps >" title (opens Mini apps) with Support and Settings as icons,
+// replacing the earlier "Authentication | Help | Settings" text-link row (2026-08-12).
+// Authentication is still reachable from the Verify shortcut below, so
+// `onOpenAuthentication` stays in the signature but is no longer shown in the bar.
 @Composable
-internal fun AllTopBar(onOpenAuthentication: () -> Unit = {}, onOpenHelp: () -> Unit = {}, onOpenSettings: () -> Unit = {}) {
+internal fun AllTopBar(
+    onOpenAuthentication: () -> Unit = {},
+    onOpenHelp: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
+    onOpenMiniApps: () -> Unit = {},
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.End,
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            "Authentication",
-            color = Ids.colors.textSecondary,
-            fontSize = 15.sp,
-            modifier = Modifier.pressScaleClickable(onClick = onOpenAuthentication),
-        )
-        VerticalDivider(
-            modifier = Modifier.padding(horizontal = 10.dp).height(14.dp),
-            color = Ids.colors.textTertiary,
-        )
-        Text(
-            "Help",
-            color = Ids.colors.textSecondary,
-            fontSize = 15.sp,
-            modifier = Modifier.pressScaleClickable(onClick = onOpenHelp),
-        )
-        VerticalDivider(
-            modifier = Modifier.padding(horizontal = 10.dp).height(14.dp),
-            color = Ids.colors.textTertiary,
-        )
-        Text(
-            "Settings",
-            color = Ids.colors.textSecondary,
-            fontSize = 15.sp,
-            modifier = Modifier.pressScaleClickable(onClick = onOpenSettings),
-        )
+        IdsAppBarTitle(area = "mini apps", brandWord = false, onClick = onOpenMiniApps)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Outlined.HelpOutline, "Support", Modifier.size(28.dp).pressScaleClickable(onClick = onOpenHelp), tint = Color(0xFF7C8594))
+            Spacer(Modifier.width(16.dp))
+            Icon(Icons.Outlined.Settings, "Settings", Modifier.size(28.dp).pressScaleClickable(onClick = onOpenSettings), tint = Color(0xFF7C8594))
+        }
     }
 }
 
@@ -78,15 +72,15 @@ internal fun MenuSearchBar(query: String, onQueryChange: (String) -> Unit, place
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(Ids.colors.surfaceSoft)
+            .clip(RoundedCornerShape(22.dp))
+            .background(Ids.colors.surface)
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        Icon(IdsIcons.Search, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(18.dp))
-        Spacer(modifier = Modifier.width(10.dp))
+        Icon(IdsIcons.Search, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(22.dp))
+        Spacer(modifier = Modifier.width(12.dp))
         Box(modifier = Modifier.weight(1f)) {
             if (query.isEmpty()) {
-                Text(placeholder, color = Ids.colors.textSecondary, fontSize = 16.sp)
+                Text(placeholder, color = Ids.colors.textTertiary, fontSize = 18.sp)
             }
             BasicTextField(
                 value = query,

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
@@ -59,6 +60,8 @@ import rw.itunda.core.designsystem.theme.AccentIndigo
 import rw.itunda.core.designsystem.theme.AccentOrange
 import rw.itunda.core.designsystem.theme.AccentPurple
 import rw.itunda.core.designsystem.theme.AccentTeal
+import rw.itunda.core.designsystem.components.ItundaArt
+import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.network.BucketDetailTarget
@@ -211,41 +214,27 @@ fun BankHubEntryPoint(
         }
     }
 
+    var bankSub by remember { mutableStateOf<BankSub?>(null) }
+    Box(Modifier.fillMaxSize()) {
     Column(modifier = Modifier.fillMaxSize()) {
-        Row(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
-            BackTopBar(title = stringResource(R.string.bank_title), onBack = onBack)
-        }
+        BankHubBar(stringResource(R.string.bank_title), onBack, onSettings = { bankSub = BankSub.MANAGE })
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal),
+            modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
         ) {
-            if (primaryAccount != null) {
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpenAccountDetail).padding(vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column {
-                            Text(stringResource(R.string.bank_account_account), fontSize = 13.sp, color = Ids.colors.textSecondary)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            val animatedBalance = rememberCountUp(primaryAccount!!.balance)
-                            Text(
-                                String.format(Locale.US, "%,.0f ${primaryAccount!!.currency}", animatedBalance),
-                                fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary,
-                            )
-                        }
-                        Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
-                    }
-                }
+            if (primaryAccount != null) item {
+                BankHubBalance(
+                    title = stringResource(R.string.bank_title), accountNumber = primaryAccount.accountNumber,
+                    balance = rememberCountUp(primaryAccount.balance), currency = primaryAccount.currency,
+                    onOpenAccountDetail = { bankSub = BankSub.ACCOUNT }, onDeposit = { bankSub = BankSub.DEPOSIT }, onSend = { bankSub = BankSub.SEND },
+                )
             }
             // Dual-balance UI (2026-08-29): a small flat secondary "itunda Pay" line,
             // matching bank-mfe's identical AccountSummaryRow.tsx fix.
             if (payAccount != null) {
                 item {
                     Row(
-                        modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpenPay).padding(vertical = 4.dp),
+                        modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpenPay).padding(horizontal = 20.dp, vertical = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -261,39 +250,21 @@ fun BankHubEntryPoint(
                 }
             }
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpenAutoTransfers).padding(vertical = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier.size(32.dp).clip(CircleShape).background(Ids.colors.chip),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(Icons.Outlined.Autorenew, contentDescription = null, tint = Ids.colors.textPrimary, modifier = Modifier.size(16.dp))
-                        }
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(stringResource(R.string.home_auto_transfer_title), color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            if (autoTransferCount > 0) stringResource(R.string.home_auto_transfer_active, autoTransferCount) else stringResource(R.string.home_auto_transfer_setup),
-                            color = Ids.colors.textSecondary,
-                            fontSize = 13.sp,
-                        )
-                        Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(18.dp))
-                    }
+                Column {
+                    HubRow(hubArtFor("Card"), "Card", chevron = true, tile = true) { bankSub = BankSub.CARDS }
+                    HubRow(hubArtFor("Pockets"), "Pockets", value = "3", chevron = true, tile = true) { bankSub = BankSub.POCKETS }
+                    HubRow(hubArtFor("Auto-transfer"), stringResource(R.string.home_auto_transfer_title), value = if (autoTransferCount > 0) "$autoTransferCount" else "", chevron = true, tile = true, onClick = onOpenAutoTransfers)
                 }
-                androidx.compose.material3.HorizontalDivider(color = Ids.colors.divider, thickness = 0.5.dp)
             }
+            item { BankComingUp() }
+            if (savingsGoals.isEmpty()) item { BankSavingsGoalCard(onStart = { showNewGoalDialog = true }, modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp)) }
             if (recommendationItems.isNotEmpty()) {
                 item {
                     ShellSection(
                         title = stringResource(R.string.bank_recommendations),
                         rows = recommendationItems.mapNotNull { discoverItem ->
                             when (discoverItem.id) {
-                                "p_first_goal" -> ShellRow(discoverItem.title, discoverItem.subtitle, ">", Icons.Outlined.Savings, AccentTeal, onClick = { showNewGoalDialog = true })
+                                "p_first_goal" -> if (savingsGoals.isEmpty()) null else ShellRow(discoverItem.title, discoverItem.subtitle, ">", Icons.Outlined.Savings, AccentTeal, onClick = { showNewGoalDialog = true })
                                 "p_try_sacco" -> ShellRow(discoverItem.title, discoverItem.subtitle, ">", Icons.Outlined.AccountBalance, AccentPurple, onClick = onOpenSacco)
                                 "p_try_ikimina" -> ShellRow(discoverItem.title, discoverItem.subtitle, ">", Icons.Outlined.Groups, AccentTeal, onClick = onOpenIkimina)
                                 "p_try_loan" -> ShellRow(discoverItem.title, discoverItem.subtitle, ">", Icons.Outlined.AccountBalanceWallet, AccentIndigo, onClick = onOpenLoans)
@@ -315,23 +286,17 @@ fun BankHubEntryPoint(
                 ShellSection(
                     title = stringResource(R.string.bank_save_grow),
                     rows = buildList {
-                        interestJar?.let { jar ->
+                        run {
+                            val jarRate = interestJar?.rate ?: 4.0
                             add(
                                 ShellRow(
                                     interestJarLabel,
-                                    if (jar.earnedTotal > 0.0) {
-                                        stringResource(
-                                            R.string.home_interest_jar_rate_subtitle_total,
-                                            String.format(Locale.US, "%.1f", jar.rate),
-                                            String.format(Locale.US, "%,.0f", jar.earnedTotal),
-                                        )
-                                    } else {
-                                        stringResource(R.string.home_interest_jar_rate_subtitle, String.format(Locale.US, "%.1f", jar.rate))
-                                    },
-                                    String.format(Locale.US, "%,.0f RWF", jar.earnedThisMonth),
+                                    "",
+                                    String.format(Locale.US, "%.1f%%", jarRate),
                                     Icons.Outlined.Savings,
                                     AccentOrange,
                                     onClick = { onOpenBucketDetail(BucketDetailTarget.InterestJar) },
+                                    caption = "a year",
                                 )
                             )
                         }
@@ -363,6 +328,12 @@ fun BankHubEntryPoint(
                                 )
                             )
                         }
+                        add(ShellRow("26-week savings", "", "${BANK_HUB_WEEKLY_SAVINGS_BASE_RATE.toInt()}%+", Icons.Outlined.CalendarMonth, AccentIndigo, onClick = onOpenWeeklySavings, caption = "base rate"))
+                        add(ShellRow("31-day savings", "", "Up to ${BANK_HUB_GROW31_MAX_BONUS_RATE.toInt()}%", Icons.Outlined.Bolt, AccentOrange, onClick = onOpenGrow31Savings))
+                        add(ShellRow("12-month deposit", "", "$BANK_HUB_UPFRONT_DEPOSIT_ANNUAL_RATE%", Icons.Outlined.Lock, AccentPurple, onClick = onOpenUpfrontDeposit, caption = "12 months"))
+                        add(ShellRow("SACCO shares", "", "6%", Icons.Outlined.AccountBalance, AccentPurple, onClick = onOpenSacco, caption = "dividend"))
+                        add(ShellRow("Investments", "", ">", Icons.Outlined.TrendingUp, AccentTeal, onClick = onOpenInvest))
+                        add(ShellRow("School fees", "", "40%", Icons.Outlined.School, AccentTeal, onClick = { bankSub = BankSub.POCKETS }))
                         add(
                             ShellRow(
                                 stringResource(R.string.savings_new_goal_title),
@@ -373,7 +344,7 @@ fun BankHubEntryPoint(
                                 onClick = { showNewGoalDialog = true },
                             )
                         )
-                        if (savingsGoals.isNotEmpty()) {
+                        run {
                             add(
                                 ShellRow(
                                     roundUpTitle,
@@ -387,58 +358,13 @@ fun BankHubEntryPoint(
                                 )
                             )
                         }
-                        add(ShellRow("26-week savings", "$BANK_HUB_WEEKLY_SAVINGS_BASE_RATE% base rate, escalates weekly", ">", Icons.Outlined.CalendarMonth, AccentIndigo, onClick = onOpenWeeklySavings))
-                        add(ShellRow("31-day savings", "Daily streak, up to $BANK_HUB_GROW31_MAX_BONUS_RATE% bonus rate", ">", Icons.Outlined.Bolt, AccentOrange, onClick = onOpenGrow31Savings))
-                        add(ShellRow("12-month deposit", "$BANK_HUB_UPFRONT_DEPOSIT_ANNUAL_RATE%/yr interest paid upfront, principal locked", ">", Icons.Outlined.Lock, AccentPurple, onClick = onOpenUpfrontDeposit))
-                        add(ShellRow("Youth account", "A starter account for under-18s, parent-supervised", ">", Icons.Outlined.ChildCare, AccentOrange, onClick = onOpenYouthAccount))
-                        add(ShellRow("Group accounts", "Shared savings for family, church or cooperative groups", ">", Icons.Outlined.SupervisorAccount, AccentIndigo, onClick = onOpenGroupAccounts))
-                        add(ShellRow(stringResource(R.string.home_coop_rail_ikimina_title), stringResource(R.string.home_coop_rail_ikimina_subtitle), ">", Icons.Outlined.Groups, AccentTeal, onClick = onOpenIkimina))
-                        add(ShellRow(stringResource(R.string.home_coop_rail_sacco_title), stringResource(R.string.home_coop_rail_sacco_subtitle), ">", Icons.Outlined.AccountBalance, AccentPurple, onClick = onOpenSacco))
-                        add(ShellRow("Investments", "RSE stocks, bonds & fixed income, IPOs", ">", Icons.Outlined.TrendingUp, AccentTeal, onClick = onOpenInvest))
                     }
                 )
             }
-            item {
-                ShellSection(
-                    title = stringResource(R.string.bank_borrow),
-                    rows = listOf(
-                        ShellRow("Get a loan", "Personal, salary-backed, SME working capital", ">", Icons.Outlined.AccountBalanceWallet, AccentIndigo, onClick = onOpenLoans),
-                        ShellRow(stringResource(R.string.home_coop_rail_harvest_title), stringResource(R.string.home_coop_rail_harvest_subtitle), ">", Icons.Outlined.Agriculture, AccentTeal, onClick = onOpenHarvestAdvance),
-                        ShellRow("VUP Financial Services", "Means-tested government microloan for farming, livestock, business", ">", IdsIcons.ShieldCheck, AccentIndigo, onClick = onOpenVupLoan),
-                        ShellRow("Student loan", "BRD higher-education loan -- 11% undergraduate, 12% postgraduate", ">", Icons.Outlined.School, AccentPurple, onClick = onOpenStudentLoan),
-                        ShellRow(stringResource(R.string.home_coop_rail_moto_title), "Save a 30% down payment, then convert to a loan for your own bike", ">", Icons.Outlined.DirectionsBike, AccentTeal, onClick = onOpenMotoOwnership),
-                    )
-                )
-            }
-            item {
-                ShellSection(
-                    title = stringResource(R.string.bank_insights),
-                    rows = buildList {
-                        if ((spendingInsight?.totalSpent?.toDouble() ?: 0.0) > 0.0) {
-                            add(
-                                ShellRow(
-                                    String.format(Locale.US, "%,.0f RWF", spendingInsight?.totalSpent?.toDouble() ?: 0.0),
-                                    if (spendingTopCategory != null) stringResource(R.string.home_spent_period_category, spendingTopCategory.name) else stringResource(R.string.home_spent_period),
-                                    ">",
-                                    Icons.Outlined.PieChart,
-                                    AccentPurple,
-                                    onClick = onOpenSpendingInsight,
-                                ),
-                            )
-                        }
-                        add(
-                            ShellRow(
-                                stringResource(R.string.home_credit_score_title),
-                                creditScore?.let { stringResource(R.string.home_credit_score_value, it.score) } ?: stringResource(R.string.home_credit_score_subtitle),
-                                stringResource(R.string.home_credit_score_action),
-                                Icons.Outlined.TrendingUp,
-                                AccentPurple,
-                                onClick = onOpenCreditScore,
-                            ),
-                        )
-                    },
-                )
-            }
+            item { BankTogetherSection(onGroups = onOpenGroupAccounts, onYouth = onOpenYouthAccount, onIkimina = onOpenIkimina) }
+            item { BankLoansSection(onOpenLoans, onOpenHarvestAdvance, onOpenStudentLoan, onOpenVupLoan, onOpenMotoOwnership) }
+            item { BankServicesSection({ bankSub = it }, onSpending = onOpenSpendingInsight, onDetails = onOpenAccountDetail) }
+            item { BankGoodToKnowSection(onOpenCreditScore) }
             // Real licensed-bank/deposit-insurance disclosure (2026-08-11) -- see
             // docs/TOSS_PARITY_MATRIX.md's own confirmation of "zero real banking-
             // license implementation anywhere". Real Deposit Protection Fund card
@@ -492,5 +418,7 @@ fun BankHubEntryPoint(
                 onCreated = { showNewGoalDialog = false },
             )
         }
+    }
+    BankSubOverlay(bankSub, onClose = { bankSub = null }, onOpen = { bankSub = it }, onAutoTransfers = onOpenAutoTransfers)
     }
 }

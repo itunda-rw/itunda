@@ -59,9 +59,9 @@ import java.io.IOException
 // this (item 184); this is the first Android client. Mirrors ProductRatingBadge's own
 // expand-on-click pattern exactly (ShopScreen.kt, this app's Commerce equivalent).
 @Composable
-internal fun RestaurantRatingBadge(restaurantId: String) {
+internal fun RestaurantRatingBadge(restaurantId: String, initiallyExpanded: Boolean = false) {
     var rating by remember { mutableStateOf<EatsRatingResponse?>(null) }
-    var open by remember { mutableStateOf(false) }
+    var open by remember { mutableStateOf(initiallyExpanded) }
     var reviews by remember { mutableStateOf<List<EatsReviewDto>?>(null) }
     // Real pagination-discard fix (2026-09-13, porting web's own fix -- see
     // project_itunda_pagination_discard_sweep memory) -- getRestaurantReviews
@@ -112,10 +112,23 @@ internal fun RestaurantRatingBadge(restaurantId: String) {
             // Real, non-critical -- a rating fetch failure shouldn't block browsing the menu.
         }
     }
+    LaunchedEffect(restaurantId, initiallyExpanded) {
+        open = initiallyExpanded
+        if (initiallyExpanded && reviews == null) {
+            try {
+                val res = NetworkClient.apiService.getRestaurantReviews(restaurantId)
+                reviews = res.reviews
+                reviewsPage = res.page
+                reviewsHasMore = res.page + 1 < res.totalPages
+            } catch (e: Exception) {
+                reviews = emptyList()
+            }
+        }
+    }
     val r = rating
-    if (r != null && r.count > 0) {
+    if (r != null && (r.count > 0 || initiallyExpanded)) {
         Column {
-            Row(
+            if (r.count > 0) Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.pressScaleClickable {
                     val next = !open

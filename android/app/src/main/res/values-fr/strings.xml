@@ -355,4 +355,10 @@
     <string name="family_sent">Envoyé.</string>
     <string name="family_your_guardians">Vos tuteurs</string>
     <string name="family_empty_state">Aucun membre de la famille associé pour le moment -- invitez-en un ci-dessus.</string>
+    <string name="account_manage_title">Gérer le compte</string>
+    <string name="account_manage_bank">itunda Bank</string>
+    <string name="account_manage_copy">Copier le numéro</string>
+    <string name="account_manage_share">Partager</string>
+    <string name="account_manage_copied">Numéro de compte copié</string>
+    <string name="settings_sign_out_others">Déconnecter tous les autres appareils</string>
 </resources>

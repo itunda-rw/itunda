@@ -50,16 +50,12 @@ import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
-import rw.itunda.core.designsystem.components.SearchAndCategoryChips
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.DineInOrderDto
-import rw.itunda.core.network.EatsDishDto
 import rw.itunda.core.network.EatsOrderDto
 import rw.itunda.core.network.MerchantProductDto
 import rw.itunda.core.network.NetworkClient
-import rw.itunda.core.network.RecentlyViewedRestaurantDto
-import rw.itunda.core.network.RecentlyViewedRestaurantsStore
 import rw.itunda.core.network.ShoppingMerchantDto
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
@@ -74,9 +70,7 @@ import java.io.IOException
 // a single-slice extraction). Deliver's own DeliverContent stays in
 // EatsDeliver.kt, unaffected by this split.
 
-internal enum class EatsMode { ORDER, DELIVER }
-
-internal enum class OrderFoodView { BROWSE, FAVORITES, ORDERS, GROUP }
+internal enum class OrderFoodView { BROWSE, ORDERS, GROUP, TRACKING }
 
 @Composable
 internal fun OrderFoodContent(
@@ -84,13 +78,13 @@ internal fun OrderFoodContent(
     pendingMerchantId: String? = null,
     pendingMerchantName: String? = null,
     onPendingMerchantConsumed: () -> Unit = {},
+    onReportIssue: (String) -> Unit = {},
 ) {
     var view by remember { mutableStateOf(OrderFoodView.BROWSE) }
     var restaurants by remember { mutableStateOf<List<ShoppingMerchantDto>?>(null) }
     // Unfiltered, fetched once -- used to resolve a past order's restaurant for Reorder
     // even when that restaurant has been filtered out of the currently-browsed list.
     var allRestaurants by remember { mutableStateOf<List<ShoppingMerchantDto>?>(null) }
-    var categories by remember { mutableStateOf<List<String>>(emptyList()) }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     var searchInput by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
@@ -99,6 +93,7 @@ internal fun OrderFoodContent(
     val cart = remember { mutableStateMapOf<String, EatsCartLine>() }
     var showCheckout by remember { mutableStateOf(false) }
     var confirmedOrder by remember { mutableStateOf<EatsOrderDto?>(null) }
+    var selectedOrder by remember { mutableStateOf<EatsOrderDto?>(null) }
     var confirmedDineInOrder by remember { mutableStateOf<DineInOrderDto?>(null) }
     var reorderingId by remember { mutableStateOf<String?>(null) }
     var reorderError by remember { mutableStateOf<String?>(null) }
@@ -106,20 +101,7 @@ internal fun OrderFoodContent(
     // a fast star-toggle lookup on each browse card.
     var favoriteIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var favoritingId by remember { mutableStateOf<String?>(null) }
-    // Real dish grid (2026-08-03) -- see EatsDishGrid's own doc comment.
-    var dishes by remember { mutableStateOf<List<EatsDishDto>>(emptyList()) }
-    // Real "Popular now" rail (itunda Eats redesign, 2026-08-28) -- see
-    // EatsDishRecommendationService.getDishes' own doc comment.
-    var popularDishes by remember { mutableStateOf<List<EatsDishDto>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
-    // Real "recently viewed restaurants" rail (2026-08-23) -- Baemin/Coupang Eats both
-    // show this; itunda already shipped the identical real feature for Shop's own
-    // product catalog (RecentlyViewedProductsStore.kt) and never ported it to this
-    // sibling product. Purely local, same as that file's own doc comment (no
-    // account-wide sync, no backend needed).
-    val recentlyViewedContext = LocalContext.current
-    val recentlyViewedStore = remember { RecentlyViewedRestaurantsStore(recentlyViewedContext) }
-    var recentlyViewedRestaurants by remember { mutableStateOf(recentlyViewedStore.getAll()) }
 
     // Real distance/ETA enrichment (2026-08-14) -- see ShoppingMerchantDto's own
     // buyerLat/buyerLng doc comment: the backend has real distanceKm/
@@ -148,23 +130,8 @@ internal fun OrderFoodContent(
     // reference's own 최대할인/최소주문낮은매장 quick-filter chips onto itunda's own
     // real per-merchant data (see ShoppingMerchantBrowseService.browse's own doc
     // comment on both).
-    var sortMode by remember { mutableStateOf<String?>(null) }
-
-    fun loadDishes() {
-        coroutineScope.launch {
-            try {
-                val res = NetworkClient.apiService.getEatsDishes(selectedCategory)
-                if (res.success) dishes = res.dishes
-            } catch (e: Exception) { /* non-critical -- the restaurant list below still works */ }
-        }
-        coroutineScope.launch {
-            try {
-                val res = NetworkClient.apiService.getEatsDishes(selectedCategory, sortBy = "popular")
-                if (res.success) popularDishes = res.dishes
-            } catch (e: Exception) { /* non-critical -- the restaurant list below still works */ }
-        }
-    }
-    LaunchedEffect(selectedCategory) { loadDishes() }
+    val browseFilters = rememberEatsBrowseFilters()
+    val browseState = rememberEatsBrowseState()
 
     fun loadFavorites() {
         coroutineScope.launch {
@@ -198,9 +165,15 @@ internal fun OrderFoodContent(
                 val res = NetworkClient.apiService.getShoppingMerchants(
                     category = selectedCategory, businessType = "RESTAURANT", q = searchInput.trim().ifBlank { null },
                     buyerLat = browseLocation?.first, buyerLng = browseLocation?.second,
-                    sortBy = sortMode,
+                    sortBy = when (browseFilters.sortMode) { "delivery_time" -> "delivery_time"; "rating" -> "rating"; "free_delivery" -> "free_delivery"; "nearest" -> "distance"; else -> null },
                 )
-                if (res.success) restaurants = res.merchants
+                if (res.success) restaurants = when (browseFilters.sortMode) {
+                    "rating" -> res.merchants.sortedByDescending { it.rating ?: 0.0 }
+                    "free_delivery" -> res.merchants.sortedBy { it.toEatsPrototypeRestaurant().deliveryFeeRwf }
+                    "nearest" -> res.merchants.sortedBy { it.distanceKm ?: Double.MAX_VALUE }
+                    "delivery_time" -> res.merchants.sortedBy { it.deliveryTimeMinutes ?: Int.MAX_VALUE }
+                    else -> res.merchants
+                }
                 error = null
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
@@ -220,24 +193,18 @@ internal fun OrderFoodContent(
             val allRes = NetworkClient.apiService.getShoppingMerchants(businessType = "RESTAURANT")
             if (allRes.success) allRestaurants = allRes.merchants
         } catch (e: Exception) { /* non-critical, only backs the Reorder lookup */ }
-        try {
-            val catRes = NetworkClient.apiService.getMerchantCategories(businessType = "RESTAURANT")
-            if (catRes.success) categories = catRes.categories
-        } catch (e: Exception) { /* non-critical, only backs the category chip row */ }
     }
     // Real category/search filter (2026-07-19), debounced so typing doesn't re-fetch on
     // every keystroke -- LaunchedEffect's own cancel-and-restart-on-key-change is the
     // debounce mechanism here.
-    LaunchedEffect(selectedCategory, searchInput, sortMode) {
+    LaunchedEffect(selectedCategory, searchInput, browseFilters.sortMode) {
         delay(rw.itunda.core.network.SEARCH_DEBOUNCE_MS)
         loadRestaurants()
     }
 
     fun openRestaurant(m: ShoppingMerchantDto) {
         selectedRestaurant = m
-        recentlyViewedRestaurants = recentlyViewedStore.add(
-            RecentlyViewedRestaurantDto(m.merchantId, m.businessName, m.category, m.photoUrl, m.rating),
-        )
+        browseState.cartRestaurant = m
         cart.clear()
         menu = null
         coroutineScope.launch {
@@ -250,17 +217,6 @@ internal fun OrderFoodContent(
                 error = "Couldn't reach itunda. Check your connection and try again."
             }
         }
-    }
-
-    // Real dish-grid tap-through (2026-08-03) -- see EatsDishGrid's own doc comment on
-    // why this opens the restaurant rather than a standalone dish page. Resolves against
-    // the already-loaded allRestaurants for the real category/cashbackRate, falling back
-    // to a minimal stub built from the dish's own merchantId/merchantName -- same
-    // fallback shape FavoriteRestaurantsView's onOpen already uses below.
-    fun openDish(dish: EatsDishDto) {
-        val restaurant = allRestaurants?.find { it.merchantId == dish.merchantId }
-            ?: ShoppingMerchantDto(merchantId = dish.merchantId, businessName = dish.merchantName, category = null, cashbackRate = "1%")
-        openRestaurant(restaurant)
     }
 
     // Real "Delivery" pill deep-link from Maps (2026-08-09) -- same real fallback shape
@@ -305,7 +261,7 @@ internal fun OrderFoodContent(
                 val newCart = mutableMapOf<String, EatsCartLine>()
                 orderDetail.items.forEach { item ->
                     val product = activeProducts[item.productId]
-                    if (product != null && product.optionGroups.isEmpty()) {
+                    if (product != null && product.eatsOptionGroups().isEmpty()) {
                         val key = eatsCartKey(item.productId, emptyList())
                         newCart[key] = EatsCartLine(item.productId, (newCart[key]?.quantity ?: 0) + item.quantity)
                     }
@@ -315,6 +271,7 @@ internal fun OrderFoodContent(
                     return@launch
                 }
                 selectedRestaurant = restaurant
+                browseState.cartRestaurant = restaurant
                 menu = menuRes.products
                 cart.clear()
                 cart.putAll(newCart)
@@ -333,23 +290,42 @@ internal fun OrderFoodContent(
             confirmedOrder = confirmedOrder,
             confirmedDineInOrder = confirmedDineInOrder,
             selectedRestaurant = selectedRestaurant,
+            pickupInitially = browseState.isPickup,
+            deliveryAddress = browseState.address,
+            initialDeliveryNotes = browseState.kitchenNote,
+            onItemPreferences = { preference ->
+                browseState.kitchenNote = listOf(browseState.kitchenNote, preference)
+                    .filter { it.isNotBlank() }.joinToString("; ").take(80)
+            },
+            savedCoupon = browseState.selectedCoupon,
+            onCheckoutModeChange = { mode ->
+                browseState.isPickup = mode == rw.itunda.feature.eats.impl.EatsCheckoutMode.PICKUP
+                if (mode != rw.itunda.feature.eats.impl.EatsCheckoutMode.DELIVERY && browseState.selectedCoupon == "FREEDEL") {
+                    browseState.selectedCoupon = null
+                }
+            },
             showCheckout = showCheckout,
             menu = menu,
             cart = cart,
             deviceStepUpHost = deviceStepUpHost,
-            onOrderConfirmationDone = {
+            onOrderConfirmationDone = { order ->
                 confirmedOrder = null; selectedRestaurant = null; menu = null
-                cart.clear(); showCheckout = false; view = OrderFoodView.ORDERS
+                cart.clear(); browseState.cartRestaurant = null; showCheckout = false
+                selectedOrder = order; view = OrderFoodView.TRACKING
             },
             onDineInConfirmationDone = {
                 confirmedDineInOrder = null; selectedRestaurant = null; menu = null
-                cart.clear(); showCheckout = false; view = OrderFoodView.ORDERS
+                cart.clear(); browseState.cartRestaurant = null; showCheckout = false; view = OrderFoodView.ORDERS
             },
             onCheckoutBack = { showCheckout = false },
             onOrderPlaced = { order -> confirmedOrder = order },
             onDineInOrderPlaced = { order -> confirmedDineInOrder = order },
             onMenuBack = { selectedRestaurant = null },
             onCheckoutRequested = { showCheckout = true },
+            onGroupOrder = {
+                selectedRestaurant = null; menu = null; cart.clear()
+                browseState.cartRestaurant = null; showCheckout = false; view = OrderFoodView.GROUP
+            },
         )
     ) return
 
@@ -358,44 +334,32 @@ internal fun OrderFoodContent(
     // shipped version) -- see ScrollPressTracker.kt's own doc comment.
     val eatsListState = rememberLazyListState()
     val eatsTouchedKey = remember { mutableStateOf<Any?>(null) }
-    LazyColumn(
-        state = eatsListState,
-        modifier = Modifier.fillMaxSize().trackScrollPressedKey(eatsListState, eatsTouchedKey),
-        verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
-    ) {
-        item { PlatformMembershipCard() }
-        item { EatsMembershipCard() }
-        item {
-            // Flat, horizontally-scrolling category strip (2026-07-24), same
-            // Karrot/Toss-Shopping-style treatment as Hood's own nav rows --
-            // replacing a filled-pill segmented control.
-            Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
-            ) {
-                listOf(OrderFoodView.BROWSE to "Restaurants", OrderFoodView.FAVORITES to "Favorites", OrderFoodView.ORDERS to "My orders", OrderFoodView.GROUP to "Order together").forEach { (v, label) ->
-                    val selected = v == view
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.pressScaleClickable { view = v }) {
-                        Text(
-                            label,
-                            color = if (selected) Ids.colors.textPrimary else Ids.colors.textSecondary,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                            fontSize = 15.sp,
-                            modifier = Modifier.padding(top = 8.dp, bottom = 6.dp),
-                        )
-                        Box(
-                            modifier = Modifier
-                                .height(2.dp)
-                                .width(18.dp)
-                                .background(if (selected) Ids.colors.brand else Color.Transparent, RoundedCornerShape(1.dp)),
-                        )
-                    }
-                }
-            }
-        }
+    Column(modifier = Modifier.fillMaxSize().background(eatsPrototypePalette().background)) {
+        if (view == OrderFoodView.TRACKING && selectedOrder != null) {
+            EatsTrackingScreen(
+                order = selectedOrder!!,
+                restaurant = allRestaurants?.firstOrNull { it.merchantId == selectedOrder!!.restaurantId },
+                onBack = { selectedOrder = null; view = OrderFoodView.ORDERS },
+                onDone = { selectedOrder = null; view = OrderFoodView.ORDERS },
+                onReportIssue = onReportIssue,
+                modifier = Modifier.weight(1f),
+            )
+        } else {
+        EatsBrowseHeader(
+            state = browseState,
+            searchInput = searchInput,
+            cartCount = cart.values.sumOf { it.quantity },
+            onSearchChange = { searchInput = it },
+            onOrdersClick = { view = if (view == OrderFoodView.ORDERS) OrderFoodView.BROWSE else OrderFoodView.ORDERS },
+            onCartClick = { selectedRestaurant = browseState.cartRestaurant; showCheckout = true },
+        )
+        LazyColumn(
+            state = eatsListState, modifier = Modifier.weight(1f).padding(horizontal = Ids.layout.screenHorizontal).trackScrollPressedKey(eatsListState, eatsTouchedKey),
+            verticalArrangement = Arrangement.Top,
+        ) {
         if (view == OrderFoodView.ORDERS) {
             item {
-                MyEatsOrdersView(onReorder = ::handleReorder, reorderingId = reorderingId, restaurants = allRestaurants)
+                MyEatsOrdersView(onReorder = ::handleReorder, onTrack = { selectedOrder = it; view = OrderFoodView.TRACKING }, reorderingId = reorderingId, restaurants = allRestaurants)
                 val reorderErr = reorderError
                 if (reorderErr != null) {
                     Spacer(Modifier.height(8.dp))
@@ -403,106 +367,32 @@ internal fun OrderFoodContent(
                 }
                 MyDineInOrdersView()
             }
-        } else if (view == OrderFoodView.FAVORITES) {
-            item {
-                FavoriteRestaurantsView(
-                    onOpen = { fav ->
-                        val restaurant = allRestaurants?.find { it.merchantId == fav.restaurantId }
-                            ?: ShoppingMerchantDto(merchantId = fav.restaurantId, businessName = fav.businessName, category = fav.category, cashbackRate = "1%")
-                        openRestaurant(restaurant)
-                    },
-                    onChanged = ::loadFavorites,
-                )
-            }
         } else if (view == OrderFoodView.GROUP) {
             item { GroupEatsOrderView(restaurants = allRestaurants) }
         } else {
-            // Real Coupang Eats category icon row (2026-08-12, direct user screenshot)
-            // -- the real reference shows a horizontally-scrolling row of round
-            // category icons (일식/회해물/구이/찜탕/한식 -- Japanese/Seafood/Grilled/
-            // Stew/Korean) above the search bar, not just the plain text chips below.
-            // Uses itunda's own real merchant categories (getMerchantCategories,
-            // already fetched above -- real values like "Rwandan"/"Fast Food"/"Coffee
-            // & Bakery" from real seeded merchants, not fabricated Korean cuisine
-            // names) mapped to real Material icons -- no invented dish photography
-            // itunda has no license or real source for. Additive: the text chip row
-            // below still does the actual filtering; this is the same real
-            // selectedCategory state, just a second, visually-matched way to reach it.
-            if (categories.isNotEmpty()) {
-                item { EatsCategoryIconRow(categories, selectedCategory) { c -> selectedCategory = if (c == selectedCategory) null else c } }
-            }
-            item {
-                SearchAndCategoryChips(
-                    searchInput = searchInput,
-                    onSearchChange = { searchInput = it },
-                    placeholder = "Search restaurants",
-                    categories = categories,
-                    selectedCategory = selectedCategory,
-                    onSelectCategory = { c -> selectedCategory = if (c == selectedCategory) null else c },
-                )
-            }
-            // Real Baemin/Coupang Eats-style sort chip row (itunda Eats redesign,
-            // 2026-08-28) -- "Fastest delivery" only shown once a real browseLocation
-            // exists (the sort is a no-op without one, see
-            // ShoppingController.getEligibleMerchants's own doc comment);
-            // "Discount"/"Low min order" are real, always-available signals adapting
-            // the reference's own quick-filter chip row.
-            item {
-                Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    if (browseLocation != null) {
-                        EatsSortChip("Fastest delivery", Icons.Outlined.Bolt, active = sortMode == "delivery_time") {
-                            sortMode = if (sortMode == "delivery_time") null else "delivery_time"
-                        }
-                    }
-                    EatsSortChip("Max discount", null, active = sortMode == "discount") { sortMode = if (sortMode == "discount") null else "discount" }
-                    EatsSortChip("Low min order", null, active = sortMode == "min_order") { sortMode = if (sortMode == "min_order") null else "min_order" }
-                }
-            }
-            if (searchInput.isBlank() && dishes.isNotEmpty()) {
-                item { EatsDishGrid(dishes, onOpen = ::openDish) }
-            }
-            // Real "Popular now" rail (itunda Eats redesign, 2026-08-28) -- see backend
-            // EatsDishRecommendationService.getDishes' own doc comment: a real, order-
-            // count-derived popularity ranking, distinct from the dish grid above's
-            // real personal-history "recommended" re-sort.
-            if (searchInput.isBlank() && popularDishes.isNotEmpty()) {
-                item {
-                    Text("🔥 Popular now", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.padding(top = 6.dp, bottom = 4.dp))
-                }
-                item { EatsDishGrid(popularDishes, onOpen = ::openDish) }
-            }
-            // Real "recently viewed restaurants" rail -- see RecentlyViewedRestaurantsRail's
-            // own doc comment (EatsRecentlyViewed.kt). Hidden once the user starts
-            // filtering, same "merchandising above the raw list, gone once actively
-            // searching" discipline Shop's own identical rail already established.
-            if (selectedCategory == null && searchInput.isBlank() && recentlyViewedRestaurants.isNotEmpty()) {
-                item { RecentlyViewedRestaurantsRail(recentlyViewedRestaurants, onOpen = ::openRestaurant) }
-            }
-            if (error != null) {
-                item { ErrorCard(error!!, onRetry = ::loadRestaurants) }
-            } else if (restaurants == null) {
-                item { SkeletonBlock() }
-            } else if (restaurants!!.isEmpty()) {
-                item {
-                    EmptyState(
-                        // Real copy-voice fix (item 244, round 5 of the empty-state pass):
-                        // the "registered yet" case is honest about whose gap this is --
-                        // no restaurant has joined yet, not something the reader is missing
-                        // a step on, matching docs/COPY_VOICE.md's "when the cause is
-                        // someone else's, say so honestly" rule.
-                        if (selectedCategory != null || searchInput.isNotBlank()) "No restaurants match your search — try a different category or search term." else "No restaurants registered yet — check back once restaurants in your area join itunda Eats.",
-                        icon = Icons.Outlined.Restaurant,
-                    )
-                }
-            } else {
-                items(restaurants!!, key = { it.merchantId }) { m ->
-                    RestaurantCard(
-                        m, isFavorite = m.merchantId in favoriteIds, favoriteBusy = favoritingId == m.merchantId,
-                        onOpen = { openRestaurant(m) }, onToggleFavorite = { toggleFavorite(m.merchantId) },
-                        isScrollTouched = eatsTouchedKey.value == m.merchantId,
-                    )
-                }
-            }
+            eatsBrowseItems(
+                state = browseState,
+                searchInput = searchInput,
+                onSearchChange = { searchInput = it },
+                selectedCategory = selectedCategory,
+                onSelectCategory = { category -> selectedCategory = if (category == selectedCategory) null else category },
+                filters = browseFilters,
+                restaurants = restaurants,
+                favoriteIds = favoriteIds,
+                error = error,
+                onRetry = ::loadRestaurants,
+                onOpen = ::openRestaurant,
+                onToggleFavorite = ::toggleFavorite,
+                onClearFilters = {
+                    searchInput = ""
+                    selectedCategory = null
+                    browseFilters.openNowOnly = false
+                    browseFilters.favoritesOnly = false
+                    browseFilters.sortMode = "delivery_time"
+                },
+            )
+        }
+        }
         }
     }
 }

@@ -14,7 +14,6 @@ import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsSegmentedControl
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
@@ -64,7 +63,7 @@ fun CouponsTab() {
     LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { CreateCouponCard(onCreated = ::load) }
         item {
-            Card(modifier = Modifier.fillMaxWidth()) {
+            FlatBlock {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Your coupons", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                     Text(
@@ -99,7 +98,7 @@ private fun CreateCouponCard(onCreated: () -> Unit) {
     var submitting by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    FlatBlock {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Create a coupon", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             IdsTextField(value = title, onValueChange = { title = it }, label = "Title", modifier = Modifier.fillMaxWidth())
@@ -165,7 +164,7 @@ private fun CouponRow(coupon: MerchantCouponDto, onChanged: () -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    FlatBlock {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Text(coupon.title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)

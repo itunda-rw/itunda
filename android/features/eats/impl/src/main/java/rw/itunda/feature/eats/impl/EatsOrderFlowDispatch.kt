@@ -19,20 +19,27 @@ internal fun EatsOrderFlowDispatch(
     confirmedOrder: EatsOrderDto?,
     confirmedDineInOrder: DineInOrderDto?,
     selectedRestaurant: ShoppingMerchantDto?,
+    pickupInitially: Boolean,
+    deliveryAddress: String,
+    initialDeliveryNotes: String = "",
+    onItemPreferences: (String) -> Unit = {},
+    savedCoupon: String? = null,
+    onCheckoutModeChange: (EatsCheckoutMode) -> Unit = {},
     showCheckout: Boolean,
     menu: List<MerchantProductDto>?,
     cart: SnapshotStateMap<String, EatsCartLine>,
     deviceStepUpHost: @Composable (Boolean, () -> Unit, suspend () -> Unit) -> Unit,
-    onOrderConfirmationDone: () -> Unit,
+    onOrderConfirmationDone: (EatsOrderDto) -> Unit,
     onDineInConfirmationDone: () -> Unit,
     onCheckoutBack: () -> Unit,
     onOrderPlaced: (EatsOrderDto) -> Unit,
     onDineInOrderPlaced: (DineInOrderDto) -> Unit,
     onMenuBack: () -> Unit,
     onCheckoutRequested: () -> Unit,
+    onGroupOrder: () -> Unit = {},
 ): Boolean {
     if (confirmedOrder != null) {
-        EatsOrderConfirmationView(confirmedOrder, onDone = onOrderConfirmationDone)
+        EatsOrderConfirmationView(confirmedOrder, onDone = { onOrderConfirmationDone(confirmedOrder) })
         return true
     }
     if (confirmedDineInOrder != null) {
@@ -45,6 +52,11 @@ internal fun EatsOrderFlowDispatch(
                 restaurant = selectedRestaurant,
                 cart = cart,
                 menu = menu.orEmpty(),
+                initialMode = if (pickupInitially) EatsCheckoutMode.PICKUP else EatsCheckoutMode.DELIVERY,
+                initialAddress = deliveryAddress,
+                initialDeliveryNotes = initialDeliveryNotes,
+                savedCoupon = savedCoupon,
+                onModeChange = onCheckoutModeChange,
                 onBack = onCheckoutBack,
                 onOrderPlaced = onOrderPlaced,
                 onDineInOrderPlaced = onDineInOrderPlaced,
@@ -57,6 +69,10 @@ internal fun EatsOrderFlowDispatch(
                 cart = cart,
                 onBack = onMenuBack,
                 onCheckout = onCheckoutRequested,
+                isPickup = pickupInitially,
+                onModeChange = onCheckoutModeChange,
+                onGroupOrder = onGroupOrder,
+                onItemPreferences = onItemPreferences,
             )
         }
         return true

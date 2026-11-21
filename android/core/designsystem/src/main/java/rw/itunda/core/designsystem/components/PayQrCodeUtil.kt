@@ -14,8 +14,8 @@ import com.google.zxing.qrcode.QRCodeWriter
  * since :app and :merchantapp are separate Gradle applications with no shared
  * "ui utils" module between them.
  */
-fun generatePayQrBitmap(content: String, size: Int = 512): ImageBitmap {
-    val matrix = QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, size, size)
+fun generatePayQrBitmap(content: String, size: Int = 512, margin: Int = 4): ImageBitmap {
+    val matrix = QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, size, size, mapOf(com.google.zxing.EncodeHintType.MARGIN to margin))
     val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.RGB_565)
     for (x in 0 until size) {
         for (y in 0 until size) {

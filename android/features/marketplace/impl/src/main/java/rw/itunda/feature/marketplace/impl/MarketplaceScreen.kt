@@ -470,6 +470,7 @@ fun MarketplaceContent(
     // stays null (not emptyList) while blank so it never shadows the real view-based
     // feed above.
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    var categoryFilter by rememberSaveable { mutableStateOf<String?>(null) }
     var searchResults by remember { mutableStateOf<List<ListingDto>?>(null) }
     LaunchedEffect(searchQuery) {
         if (searchQuery.isBlank()) {
@@ -560,30 +561,9 @@ fun MarketplaceContent(
         state = marketplaceListState,
         modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal)
             .trackScrollPressedKey(marketplaceListState, marketplaceTouchedKey),
-        // Real fix, 2026-08-03: a real device screenshot showed the last-visible
-        // listing's own action row (Message seller/Make an offer) sitting directly
-        // under HoodTab's floating Write FAB, genuinely overlapping and unreadable.
-        // contentPadding (not a Modifier padding, which would just shrink the visible
-        // viewport permanently) so the list can still scroll its last item clear of
-        // the FAB. 96dp covers the real FAB's height (~48dp) plus its own 20dp margin
-        // plus slack.
         contentPadding = PaddingValues(top = Ids.layout.screenVertical, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
-        // No TabHeader here (2026-07-24, was `TabHeader("Hood")`): the bottom nav
-        // already highlights "Hood" and HoodTab's own Market/Life/Jobs/Home strip
-        // sits right above this screen, so a third "Hood" label was pure repeat
-        // noise, not information.
-        //
-        // Real fix, 2026-08-03, third correction same day: the Browse/Near me/
-        // Neighborhood chip row that used to render here is gone -- verified via
-        // search (a real 당근 FAQ result) that real Karrot has no such chip trio at
-        // all. The feed source is now auto-detected (see neighborhoodRefreshSignal's
-        // own doc comment) and neighborhoods are changed by tapping the neighborhood
-        // name in HoodTab's own top bar, not a chip here. This closes the "two
-        // stacked chip rows" gap for real, not just visually -- Hood's Market mode
-        // now has exactly one chip row (HoodTab's Market/Life/Jobs/Home), matching
-        // real Karrot.
         item {
             IdsTextField(
                 value = searchQuery,
@@ -591,6 +571,9 @@ fun MarketplaceContent(
                 label = "Search",
                 placeholder = "Search marketplace listings",
             )
+        }
+        if (!isSearching && view in setOf(HoodView.BROWSE, HoodView.NEARBY, HoodView.NEIGHBORHOOD) && !listings.isNullOrEmpty()) {
+            item { MarketplaceCategoryChips(listings!!.map { it.category }.distinct(), categoryFilter) { categoryFilter = it } }
         }
         if (!isSearching && recentlyViewedListings.isNotEmpty()) {
             item {
@@ -700,7 +683,7 @@ fun MarketplaceContent(
                 )
             }
         } else if (listings!!.isNotEmpty()) {
-            items(listings!!, key = { it.id }) { listing ->
+            items(listings!!.filter { categoryFilter == null || it.category == categoryFilter }, key = { it.id }) { listing ->
                 ListingRow(
                     listing = listing,
                     isMine = view == HoodView.MINE || listing.sellerId == currentUserId,
@@ -785,7 +768,7 @@ private fun isListingBoosted(boostedUntil: String?): Boolean {
 // in-place expansion (an earlier pass here guessed at in-place expand without
 // checking; this replaces that guess with the verified real behavior).
 @Composable
-private fun ListingRow(
+fun ListingRow(
     listing: ListingDto, isMine: Boolean,
     favorited: Boolean = false, favoriteBusy: Boolean = false, onToggleFavorite: () -> Unit = {},
     viewerLocation: Pair<Double, Double>? = null,
@@ -801,27 +784,11 @@ private fun ListingRow(
     // never leaks through.
     var displayedLikeCount by remember(listing.id, listing.likeCount) { mutableStateOf(listing.likeCount) }
     Column(modifier = Modifier.fillMaxWidth()) {
-            // Real Karrot list-row layout (2026-08-03, user-provided real 당근마켓
-            // screenshots, light + dark) -- corrects the 2026-07-24 comment this
-            // replaced, which claimed a large full-width hero photo led Karrot's real
-            // card and price came before title; neither holds up against the actual
-            // screenshots: every real row is a small square thumbnail beside the text,
-            // and the real order is title (bold) -> location/time (muted) -> price
-            // (bold, largest). The full-width hero-image version wasn't sourced from a
-            // real screenshot at the time it was written.
-            // Real fix (2026-08-25, direct user directive: "implant that into our
-            // designs and apply it across our ecosystems") -- matches Shop/Eats'
-            // own identical fix; see IdsInteractions.kt's pressScaleClickable doc
-            // comment for the full sourced account.
             Row(
                 modifier = Modifier.fillMaxWidth().pressScaleClickable(isScrollTouched = isScrollTouched, onClick = onOpen).padding(vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                // Real fix, 2026-08-03: was 96.dp -- a fresh real 당근마켓 screenshot
-                // (user-provided) measured the actual thumbnail at ~124dp square on an
-                // equivalent screen (326px of a 1080px-wide capture), notably more
-                // prominent than itunda's first pass.
-                Box(modifier = Modifier.size(124.dp).clip(RoundedCornerShape(12.dp))) {
+                Box(modifier = Modifier.size(84.dp).clip(RoundedCornerShape(14.dp))) {
                     if (listing.photoUrl != null) {
                         // SubcomposeAsyncImage, not AsyncImage (2026-07-24): plain AsyncImage
                         // renders nothing at all while loading or on a failed fetch -- a
@@ -874,19 +841,11 @@ private fun ListingRow(
                             color = Ids.colors.textPrimary,
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
-                            maxLines = 1,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
                         )
                         if (!isMine) {
-                            Text(
-                                if (hiding) "…" else "Hide",
-                                color = Ids.colors.textSecondary,
-                                fontSize = 11.sp,
-                                modifier = Modifier.padding(end = 8.dp)
-                                    .semantics { contentDescription = "Hide this listing -- you won't see it again" }
-                                    .pressScaleClickable(enabled = !hiding, onClick = onHide),
-                            )
                             WishlistHeart(
                                 favorited = favorited,
                                 size = 20.dp,
@@ -920,22 +879,32 @@ private fun ListingRow(
                     // same pattern this file's own CommunityPostCard-equivalent ❤️/💬
                     // counts already use, not a deviation from "themes stay common."
                     if (listing.price <= 0.0) {
-                        Text("Free 🧡", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text("Free 🧡", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     } else {
-                        Text(String.format(Locale.US, "%,.0f RWF", listing.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text(String.format(Locale.US, "%,.0f RWF", listing.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
                 }
             }
-            // Real like count (2026-08-03) -- matches a real 당근마켓 screenshot's
-            // bottom-right heart count on every row. Comment count is deliberately
-            // NOT shown alongside it (unlike the real reference) -- there is no real
-            // comment-thread feature on listings yet, and this app doesn't fabricate
-            // a count for a feature that doesn't exist.
             Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+                modifier = Modifier.fillMaxWidth().padding(start = 96.dp, bottom = 10.dp),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                if (!isMine && listing.price > 0.0) {
+                    Text("Safe pay", color = Ids.colors.textBrand, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                } else {
+                    androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+                }
+                if (!isMine) {
+                            Text(
+                                if (hiding) "…" else "Hide",
+                                color = Ids.colors.textSecondary,
+                                fontSize = 11.sp,
+                                modifier = Modifier.padding(end = 12.dp)
+                                    .semantics { contentDescription = "Hide this listing -- you won't see it again" }
+                                    .pressScaleClickable(enabled = !hiding, onClick = onHide),
+                            )
+                }
                 WishlistHeart(
                     favorited = liked,
                     size = 16.dp,
@@ -962,7 +931,8 @@ private fun ListingRow(
 // inline into every row of the browse list -- moved here unchanged, just reached by
 // navigation instead of always being visible.
 @Composable
-private fun ListingDetailScreen(
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+fun ListingDetailScreen(
     listing: ListingDto, isMine: Boolean, onBack: () -> Unit, onChanged: () -> Unit, onMessageSeller: (String) -> Unit, onMakeOffer: (String, Double) -> Unit,
     favorited: Boolean = false, favoriteBusy: Boolean = false, onToggleFavorite: () -> Unit = {},
     sellerTrustScore: Int? = null,
@@ -1151,6 +1121,8 @@ private fun ListingDetailScreen(
             if (!isMine && sellerTrustScore != null) {
                 TrustBadge(sellerTrustScore)
             }
+            Text(listing.category, color = Ids.colors.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 12.dp, vertical = 6.dp))
             Text(listing.description, color = Ids.colors.textSecondary, fontSize = 13.sp)
             VehicleDetailSection(listing)
             listing.meetingPlace?.let {
@@ -1336,7 +1308,7 @@ private fun ListingDetailScreen(
                     }
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (isMine) {
                     if (listing.status == "ACTIVE" && !markingSold && !editingPrice) {
                         ListingActionButton("Mark sold", busy) { markingSold = true }
@@ -1420,6 +1392,9 @@ private fun ListingDetailScreen(
                         }
                     }
                 }
+            }
+            if (!isMine && listing.status == "ACTIVE" && !offering) {
+                Text("Buy with itunda: your money is held until you confirm pickup.", color = Ids.colors.textTertiary, fontSize = 12.sp)
             }
             // Real escrow status (2026-07-25) -- Confirm receipt releases payment to the
             // seller; Report a problem flags it for real human admin review instead of

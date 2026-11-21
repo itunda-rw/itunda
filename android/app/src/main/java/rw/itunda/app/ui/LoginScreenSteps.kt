@@ -56,6 +56,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import rw.itunda.app.R
@@ -100,15 +101,24 @@ internal fun LanguageSwitcher(locale: String, onLocaleChange: (String) -> Unit) 
     val label = stringResource(R.string.login_language_switcher_label)
     val currentIndex = SUPPORTED_LOCALES.indexOf(locale).coerceAtLeast(0)
     Text(
-        text = locale.uppercase(),
+        text = when (locale) { "rw" -> "Kinyarwanda"; "fr" -> "Français"; else -> "English" },
         style = IdsTypography.Body2.copy(fontWeight = FontWeight.SemiBold),
-        color = Ids.colors.textSecondary,
+        color = Ids.colors.textPrimary,
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(20.dp))
+            .background(Ids.colors.surfaceSoft)
             .pressScaleClickable { onLocaleChange(SUPPORTED_LOCALES[(currentIndex + 1) % SUPPORTED_LOCALES.size]) }
-            .padding(horizontal = 10.dp, vertical = 6.dp)
+            .padding(horizontal = 16.dp, vertical = 10.dp)
             .semantics { contentDescription = label },
     )
+}
+
+/** Thin brand progress line along the very top of the screen, as in the prototype's create-account flow. */
+@Composable
+internal fun StepProgress(total: Int, current: Int, modifier: Modifier = Modifier) {
+    Box(modifier.fillMaxWidth().height(3.dp).background(Ids.colors.surfaceSoft)) {
+        Box(Modifier.fillMaxWidth((current + 1f) / total).height(3.dp).background(Ids.colors.brand))
+    }
 }
 
 @Composable
@@ -127,10 +137,10 @@ internal fun StepDots(total: Int, current: Int) {
 
 @Composable
 private fun StepHeadline(headline: String, subtitle: String? = null) {
-    Text(text = headline, style = IdsTypography.Title1, color = Ids.colors.textPrimary)
+    Text(text = headline, color = Ids.colors.textPrimary, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold)
     if (subtitle != null) {
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(text = subtitle, style = IdsTypography.Body1, color = Ids.colors.textSecondary)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(text = subtitle, fontSize = 15.sp, color = Ids.colors.textTertiary)
     }
     Spacer(modifier = Modifier.height(32.dp))
 }
@@ -143,24 +153,11 @@ private fun StepHeadline(headline: String, subtitle: String? = null) {
  */
 @Composable
 internal fun CompletedFieldRow(label: String, value: String, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(Ids.colors.surfaceSoft)
-            .pressScaleClickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = label, style = IdsTypography.Typography7, color = Ids.colors.textTertiary)
-            Text(text = value, style = IdsTypography.Body1, color = Ids.colors.textPrimary)
-        }
-        Icon(
-            imageVector = IdsIcons.ChevronRight,
-            contentDescription = null,
-            tint = Ids.colors.textTertiary,
-        )
+    // Flat answered-field row (prototype): small grey label, 18sp value, hairline underneath.
+    Column(Modifier.fillMaxWidth().pressScaleClickable(onClick = onClick).padding(top = 14.dp)) {
+        Text(text = label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textTertiary)
+        Text(text = value, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textTertiary, modifier = Modifier.padding(top = 2.dp, bottom = 14.dp))
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Ids.colors.surfaceSoft))
     }
 }
 
@@ -193,16 +190,12 @@ internal fun PhoneStep(
     headline: String,
     subtitle: String,
 ) {
-    val focusRequester = rememberAutoFocus("phone")
     Column {
-        StepHeadline(headline, subtitle)
-        IdsTextField(
-            value = phoneNumber,
-            onValueChange = onPhoneNumberChange,
-            label = stringResource(R.string.login_label_phone_number),
-            keyboardType = KeyboardType.Phone,
-            modifier = Modifier.focusRequester(focusRequester),
-        )
+        Text(text = headline, color = Ids.colors.textPrimary, fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 42.sp)
+        Spacer(modifier = Modifier.height(24.dp))
+        PhoneDisplay(phoneNumber)
+        Spacer(modifier = Modifier.height(18.dp))
+        Text(text = subtitle, style = IdsTypography.Body1, color = Ids.colors.textPrimary)
     }
 }
 
@@ -348,6 +341,7 @@ internal fun PasswordStep(
     onPinCreated: (String) -> Unit,
     onPinConfirmed: (String) -> Unit,
     onPinEntered: (String) -> Unit,
+    onUseDifferentNumber: () -> Unit = {},
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
         if (attemptingPasswordless) {
@@ -391,9 +385,21 @@ internal fun PasswordStep(
             }
         } else {
             AccountPinPad(
-                headline = stringResource(R.string.login_headline_password_login),
+                headline = "Welcome back",
+                subtitle = "Enter your PIN to sign in",
                 errorMessage = errorMessage,
                 busy = isSubmitting,
+                leading = {
+                    Box(Modifier.size(52.dp).clip(CircleShape).background(Ids.colors.brand.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
+                        rw.itunda.core.designsystem.components.ItundaArt("shopkeeper", rw.itunda.core.designsystem.components.ItundaArtSet.Face, 40.dp)
+                    }
+                },
+                footer = {
+                    Text(
+                        "Use a different number", color = Ids.colors.textTertiary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.pressScaleClickable(onClick = onUseDifferentNumber).padding(vertical = 4.dp),
+                    )
+                },
                 onComplete = onPinEntered,
             )
         }

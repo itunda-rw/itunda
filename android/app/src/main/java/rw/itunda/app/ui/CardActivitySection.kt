@@ -105,6 +105,18 @@ fun CardActionButton(label: String, enabled: Boolean, onClick: () -> Unit) {
     }
 }
 
+/** Prototype card action tile: soft background, brand-coloured bold label. */
+@Composable
+fun CardActionTile(label: String, enabled: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Box(
+        modifier = modifier.clip(RoundedCornerShape(16.dp)).background(Ids.colors.surfaceSoft)
+            .pressScaleClickable(enabled = enabled, onClick = onClick).padding(vertical = 16.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, color = Ids.colors.textBrand, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+    }
+}
+
 @Composable
 private fun FundingAccountChip(label: String, selected: Boolean, onClick: () -> Unit) {
     Text(

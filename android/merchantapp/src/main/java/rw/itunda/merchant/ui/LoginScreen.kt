@@ -1,6 +1,12 @@
 package rw.itunda.merchant.ui
 
 import rw.itunda.core.designsystem.components.pressScaleClickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.Alignment
+import rw.itunda.core.designsystem.components.AccountPinPad
+import rw.itunda.core.designsystem.components.FixedBottomCta
+import rw.itunda.core.designsystem.components.PetalMark
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -41,7 +47,14 @@ enum class MerchantAppLocale { EN, RW, FR }
 
 private val merchantLoginStrings: Map<MerchantAppLocale, Map<String, String>> = mapOf(
     MerchantAppLocale.EN to mapOf(
-        "title" to "Itunda Merchant",
+        "next" to "Next",
+        "enterPin" to "Enter your 6-digit PIN",
+        "usePassword" to "Use my password instead",
+        "usePin" to "Use my 6-digit PIN",
+        "changeNumber" to "Change phone number",
+        "emptyPhone" to "Enter your phone number.",
+        "headline" to "Run your shop",
+        "title" to "itunda business",
         "subtitle" to "Log in with your existing itunda account to run your shop.",
         "phoneNumber" to "Phone number",
         "password" to "Password",
@@ -53,7 +66,14 @@ private val merchantLoginStrings: Map<MerchantAppLocale, Map<String, String>> = 
         "connectionError" to "Couldn't reach itunda. Check your connection and try again.",
     ),
     MerchantAppLocale.RW to mapOf(
-        "title" to "Itunda Merchant",
+        "next" to "Komeza",
+        "enterPin" to "Andika PIN yawe y'imibare 6",
+        "usePassword" to "Koresha ijambo ry'ibanga",
+        "usePin" to "Koresha PIN y'imibare 6",
+        "changeNumber" to "Hindura numero ya telefoni",
+        "emptyPhone" to "Andika numero yawe ya telefoni.",
+        "headline" to "Ayobora iduka ryawe",
+        "title" to "itunda business",
         "subtitle" to "Injira ukoresheje konti yawe ya itunda kugira ngo utangire gucunga iduka ryawe.",
         "phoneNumber" to "Numero ya telefoni",
         "password" to "Ijambo ry'ibanga",
@@ -65,7 +85,14 @@ private val merchantLoginStrings: Map<MerchantAppLocale, Map<String, String>> = 
         "connectionError" to "Ntibishoboka kugera kuri itunda. Reba interineti yawe hanyuma ugerageze nanone.",
     ),
     MerchantAppLocale.FR to mapOf(
-        "title" to "Itunda Merchant",
+        "next" to "Suivant",
+        "enterPin" to "Entrez votre code PIN à 6 chiffres",
+        "usePassword" to "Utiliser mon mot de passe",
+        "usePin" to "Utiliser mon code PIN à 6 chiffres",
+        "changeNumber" to "Changer de numéro",
+        "emptyPhone" to "Entrez votre numéro de téléphone.",
+        "headline" to "Gérez votre boutique",
+        "title" to "itunda business",
         "subtitle" to "Connectez-vous avec votre compte itunda existant pour gérer votre boutique.",
         "phoneNumber" to "Numéro de téléphone",
         "password" to "Mot de passe",
@@ -94,124 +121,177 @@ private fun loadMerchantStoredLocale(context: android.content.Context): Merchant
     }
 }
 
+private enum class LoginStep { PHONE, PIN, PASSWORD }
+
 @Composable
 fun LoginScreen(onLoggedIn: () -> Unit) {
-    val context = LocalContext.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     var locale by remember { mutableStateOf(loadMerchantStoredLocale(context)) }
     fun t(key: String) = merchantLoginStrings[locale]?.get(key) ?: merchantLoginStrings[MerchantAppLocale.EN]?.get(key) ?: key
 
+    var step by remember { mutableStateOf(LoginStep.PHONE) }
     var phoneNumber by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(t("title"), style = IdsTypography.Title1, color = Ids.colors.textPrimary)
-            Text(
-                locale.name,
-                style = IdsTypography.Body2,
-                color = Ids.colors.textSecondary,
-                modifier = Modifier.pressScaleClickable {
-                    val currentIndex = merchantSupportedLocales.indexOf(locale).coerceAtLeast(0)
-                    locale = merchantSupportedLocales[(currentIndex + 1) % merchantSupportedLocales.size]
-                    context.getSharedPreferences("itunda_merchant_locale_prefs", android.content.Context.MODE_PRIVATE)
-                        .edit().putString(MERCHANT_LOCALE_KEY, locale.name).apply()
-                },
-            )
-        }
-        Text(t("subtitle"), style = IdsTypography.Body1, color = Ids.colors.textSecondary)
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        IdsTextField(
-            value = phoneNumber,
-            onValueChange = { phoneNumber = it },
-            label = t("phoneNumber"),
-            keyboardType = KeyboardType.Phone,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        IdsTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = t("password"),
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        error?.let {
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(it, color = Ids.colors.danger, style = IdsTypography.Body2)
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-        IdsButton(
-            text = if (busy) t("loggingIn") else t("logIn"),
-            enabled = !busy,
-            loading = busy,
-            onClick = {
-                if (phoneNumber.isBlank() || password.isBlank()) {
-                    error = t("emptyFields")
-                    return@IdsButton
-                }
-                busy = true
-                error = null
+    // One sign-in path for both credentials: the backend hashes the 6-digit PIN into the
+    // same field as a password (AuthService.login / User.pinSet), so the PIN is simply sent
+    // as `password`. Accounts that predate the PIN scheme still have a free-form password,
+    // which is why the password step stays reachable.
+    fun signIn(credential: String) {
+        busy = true
+        error = null
+        scope.launch {
+            try {
+                val deviceStore = NetworkClient.currentDeviceStore()
+                val res = NetworkClient.authApi.login(
+                    LoginRequest(phoneNumber.trim(), credential, deviceStore.getOrCreateDeviceId(), deviceStore.getDeviceName()),
+                )
+                NetworkClient.currentTokenStore().saveSession(res.user.id, res.accessToken, res.refreshToken)
+                // Real push device-token registration (item 130) -- best-effort,
+                // fire-and-forget: a registration failure must never block an
+                // otherwise successful login. See ApiService.kt's own doc comment.
                 scope.launch {
                     try {
-                        val deviceStore = NetworkClient.currentDeviceStore()
-                        val res = NetworkClient.authApi.login(
-                            LoginRequest(phoneNumber.trim(), password, deviceStore.getOrCreateDeviceId(), deviceStore.getDeviceName()),
+                        NetworkClient.apiService.registerDeviceToken(
+                            RegisterDeviceTokenRequest(DevicePlatform.ANDROID, deviceStore.getOrCreateDeviceId()),
                         )
-                        NetworkClient.currentTokenStore().saveSession(res.user.id, res.accessToken, res.refreshToken)
-                        // Real push device-token registration (item 130) -- best-effort,
-                        // fire-and-forget: a registration failure must never block an
-                        // otherwise successful login. See ApiService.kt's own doc comment.
-                        scope.launch {
-                            try {
-                                NetworkClient.apiService.registerDeviceToken(
-                                    RegisterDeviceTokenRequest(DevicePlatform.ANDROID, deviceStore.getOrCreateDeviceId()),
-                                )
-                            } catch (e: Exception) {
-                                // Best-effort, see doc comment above.
-                            }
-                        }
-                        onLoggedIn()
-                    } catch (e: HttpException) {
-                        // Real Toss-style error handling (2026-08-12) -- 401 stays a
-                        // real, friendly, specific message (not itunda's own to
-                        // second-guess), but every OTHER real HTTP error (429 rate
-                        // limit, 403 account suspended, 5xx, etc.) was discarding any
-                        // real backend message for a vague "Couldn't reach itunda" --
-                        // wrong on two counts: it wasn't a reachability problem if a
-                        // real response came back, and it silently dropped whatever
-                        // specific reason the backend actually gave.
-                        error = if (e.code() == 401) {
-                            t("incorrectCredentials")
-                        } else {
-                            rw.itunda.merchant.network.apiErrorMessage(e)
-                                ?: "itunda is having a brief hiccup on our end -- not something you did. Try again in a moment."
-                        }
-                    } catch (e: IOException) {
-                        error = t("connectionError")
-                    } finally {
-                        busy = false
+                    } catch (e: Exception) {
+                        // Best-effort, see doc comment above.
                     }
                 }
-            },
-        )
+                onLoggedIn()
+            } catch (e: HttpException) {
+                // Real Toss-style error handling (2026-08-12) -- 401 stays a friendly,
+                // specific message; every OTHER real HTTP error (429 rate limit, 403
+                // suspended, 5xx) keeps whatever real reason the backend gave.
+                error = if (e.code() == 401) {
+                    t("incorrectCredentials")
+                } else {
+                    rw.itunda.merchant.network.apiErrorMessage(e)
+                        ?: "itunda is having a brief hiccup on our end -- not something you did. Try again in a moment."
+                }
+            } catch (e: IOException) {
+                error = t("connectionError")
+            } finally {
+                busy = false
+            }
+        }
+    }
 
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            t("noAccount"),
-            style = IdsTypography.Typography7,
-            color = Ids.colors.textSecondary,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
+    when (step) {
+        LoginStep.PIN -> Column(
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(48.dp))
+            AccountPinPad(
+                headline = t("enterPin"),
+                subtitle = phoneNumber.trim(),
+                errorMessage = error,
+                busy = busy,
+                onComplete = { signIn(it) },
+            )
+            androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                t("usePassword"),
+                style = IdsTypography.Body2,
+                color = Ids.colors.textSecondary,
+                modifier = Modifier.pressScaleClickable(enabled = !busy) { error = null; step = LoginStep.PASSWORD }.padding(12.dp),
+            )
+            Text(
+                t("changeNumber"),
+                style = IdsTypography.Body2,
+                color = Ids.colors.textSecondary,
+                modifier = Modifier.pressScaleClickable(enabled = !busy) { error = null; step = LoginStep.PHONE }.padding(12.dp),
+            )
+        }
+        else -> FixedBottomCta(
+            content = {
+                androidx.compose.foundation.layout.Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    PetalMark(size = 40.dp, color = Ids.colors.brand)
+                    Text(
+                        locale.name,
+                        style = IdsTypography.Body2,
+                        color = Ids.colors.textSecondary,
+                        modifier = Modifier.pressScaleClickable {
+                            val currentIndex = merchantSupportedLocales.indexOf(locale).coerceAtLeast(0)
+                            locale = merchantSupportedLocales[(currentIndex + 1) % merchantSupportedLocales.size]
+                            context.getSharedPreferences("itunda_merchant_locale_prefs", android.content.Context.MODE_PRIVATE)
+                                .edit().putString(MERCHANT_LOCALE_KEY, locale.name).apply()
+                        },
+                    )
+                }
+                androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(24.dp))
+                Text(t("title"), style = IdsTypography.Title1, color = Ids.colors.brand)
+                Text(t("headline"), style = IdsTypography.Title1, color = Ids.colors.textPrimary)
+                Text(t("subtitle"), style = IdsTypography.Body1, color = Ids.colors.textSecondary)
+                androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(16.dp))
+                IdsTextField(
+                    value = phoneNumber,
+                    onValueChange = { phoneNumber = it },
+                    label = t("phoneNumber"),
+                    keyboardType = KeyboardType.Phone,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (step == LoginStep.PASSWORD) {
+                    IdsTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = t("password"),
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(
+                        t("usePin"),
+                        style = IdsTypography.Body2,
+                        color = Ids.colors.textSecondary,
+                        modifier = Modifier.pressScaleClickable { error = null; step = LoginStep.PIN }.padding(vertical = 8.dp),
+                    )
+                }
+                error?.let { Text(it, color = Ids.colors.danger, style = IdsTypography.Body2) }
+                Text(
+                    t("noAccount"),
+                    style = IdsTypography.Typography7,
+                    color = Ids.colors.textSecondary,
+                )
+            },
+            cta = {
+                if (step == LoginStep.PASSWORD) {
+                    IdsButton(
+                        text = if (busy) t("loggingIn") else t("logIn"),
+                        enabled = !busy,
+                        loading = busy,
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = {
+                            if (phoneNumber.isBlank() || password.isBlank()) {
+                                error = t("emptyFields")
+                            } else {
+                                signIn(password)
+                            }
+                        },
+                    )
+                } else {
+                    IdsButton(
+                        text = t("next"),
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = {
+                            if (phoneNumber.isBlank()) {
+                                error = t("emptyPhone")
+                            } else {
+                                error = null
+                                step = LoginStep.PIN
+                            }
+                        },
+                    )
+                }
+            },
         )
     }
 }

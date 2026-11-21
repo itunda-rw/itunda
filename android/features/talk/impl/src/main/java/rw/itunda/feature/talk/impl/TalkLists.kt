@@ -94,6 +94,8 @@ internal fun DirectMessagesList(
     archivedLoadingMore: Boolean = false,
     onLoadMore: () -> Unit = {},
     onLoadMoreArchived: () -> Unit = {},
+    // Rendered as the last items of the list (itunda + itunda AI rows; the prototype puts its itunda row last).
+    footer: @Composable () -> Unit = {},
 ) {
     var startPhoneNumber by remember { mutableStateOf("") }
     var startError by remember { mutableStateOf<String?>(null) }
@@ -159,10 +161,10 @@ internal fun DirectMessagesList(
         }
     }
 
+    var showNewChat by remember { mutableStateOf(false) }
     LazyColumn(verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)) {
-        item {
-            // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
-            // this screen's own main content, a lone form (docs/UI_UX_GUIDELINES.md §10).
+        if (showNewChat) item {
+            // Flat form, shown on demand so the list matches the prototype's Messages screen.
             Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
                     Text("New chat", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Text("Choose a saved contact, or enter their phone number.", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp, bottom = 12.dp))
@@ -241,12 +243,6 @@ internal fun DirectMessagesList(
                     startError?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
             }
         }
-        val archivedCount = archivedConversations?.size ?: 0
-        if (archivedCount > 0) item {
-            TextButton(onClick = { showArchived = !showArchived }) {
-                Text(if (showArchived) "Show active chats" else "Archived ($archivedCount)", color = Ids.colors.textSecondary)
-            }
-        }
         // Real KakaoTalk pinned-rooms-float-to-top behavior (2026-08-18) -- see
         // ConversationSummaryDto.pinnedToTop's own doc comment. sortedByDescending uses
         // a stable sort (Kotlin delegates to Collections.sort/TimSort on List), so
@@ -300,6 +296,23 @@ internal fun DirectMessagesList(
                 }
             }
         }
+        item {
+            val archivedCount = archivedConversations?.size ?: 0
+            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (showNewChat) "Hide new chat" else "New chat",
+                    color = Ids.colors.textBrand, fontWeight = FontWeight.Bold, fontSize = 16.sp,
+                    modifier = Modifier.pressScaleClickable { showNewChat = !showNewChat }.padding(vertical = 8.dp),
+                )
+                Spacer(Modifier.weight(1f))
+                if (archivedCount > 0) Text(
+                    if (showArchived) "Show active chats" else "Archived ($archivedCount)",
+                    color = Ids.colors.textTertiary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.pressScaleClickable { showArchived = !showArchived }.padding(vertical = 8.dp),
+                )
+            }
+        }
+        item { footer() }
     }
 }
 
@@ -359,17 +372,7 @@ internal fun SwipeableConversationRow(
         // to actually cover backgroundContent at rest; without this the red/blue swipe
         // reveal showed through underneath the row even when not swiping.
         Box(modifier = Modifier.background(Ids.colors.background)) {
-            ConversationRow(
-                conversation,
-                online = online,
-                onClick = onClick,
-                // Real KakaoTalk pin-to-top toggle (2026-08-18) -- only offered on the
-                // active list, matching the swipe-to-archive action above and bank-mfe's
-                // own active-list-only gating (pinning an archived room to the top of
-                // the active list would be a confusing, silently-unarchiving side effect).
-                onPinToggle = if (isArchived) null else onPinToggle,
-                onFavoriteToggle = if (isArchived) null else onFavoriteToggle,
-            )
+            ProtoChatRow(conversation, online, onClick, if (isArchived) null else onPinToggle)
         }
     }
 }

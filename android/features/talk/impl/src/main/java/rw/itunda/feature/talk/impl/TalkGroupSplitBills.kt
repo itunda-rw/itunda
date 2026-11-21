@@ -311,8 +311,7 @@ internal fun GroupSplitBillsView(
                 val myShare = entry.participants.find { it.userId == currentUserId }
                 val isOrganizer = entry.splitBill.organizerId == currentUserId
                 val hasPending = entry.participants.any { it.status == "PENDING" }
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp)) {
                         Text(entry.splitBill.description, fontWeight = FontWeight.SemiBold)
                         val roundLabel = if (entry.splitBill.currentRound > 1) " · Round ${entry.splitBill.currentRound}" else ""
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -406,7 +405,6 @@ internal fun GroupSplitBillsView(
                                 },
                             )
                         }
-                    }
                 }
             }
         }

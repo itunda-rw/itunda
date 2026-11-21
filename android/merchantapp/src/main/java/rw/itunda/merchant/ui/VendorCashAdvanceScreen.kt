@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import java.util.Locale
 import rw.itunda.core.designsystem.components.IdsButton
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
@@ -130,7 +129,7 @@ fun VendorCashAdvanceTab(merchantId: String) {
     }
 
     Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Card(modifier = Modifier.fillMaxWidth()) {
+        FlatBlock {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Isoko Vendor Cash Advance", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, fontSize = 16.sp)
                 Text(
@@ -154,7 +153,7 @@ fun VendorCashAdvanceTab(merchantId: String) {
         val currentOffer = offer
 
         if (currentAdvance == null && currentOffer?.eligible == true) {
-            Card(modifier = Modifier.fillMaxWidth()) {
+            FlatBlock {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("You're eligible for", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("${String.format(Locale.US, "%,.0f", currentOffer.offerAmount)} RWF", style = MaterialTheme.typography.headlineSmall)
@@ -171,7 +170,7 @@ fun VendorCashAdvanceTab(merchantId: String) {
         }
 
         if (currentAdvance == null && currentOffer != null && !currentOffer.eligible) {
-            Card(modifier = Modifier.fillMaxWidth()) {
+            FlatBlock {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         "Not eligible yet -- ${currentOffer.reason}. Keep collecting real QR/card sales through itunda and check back.",
@@ -183,7 +182,7 @@ fun VendorCashAdvanceTab(merchantId: String) {
         }
 
         if (currentAdvance != null && currentAdvance.status == "REQUESTED") {
-            Card(modifier = Modifier.fillMaxWidth()) {
+            FlatBlock {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
                         "Your ${String.format(Locale.US, "%,.0f", currentAdvance.principalAmount)} RWF advance was approved and is ready to disburse to your account.",
@@ -196,7 +195,7 @@ fun VendorCashAdvanceTab(merchantId: String) {
         }
 
         if (currentAdvance != null && currentAdvance.status == "DISBURSED") {
-            Card(modifier = Modifier.fillMaxWidth()) {
+            FlatBlock {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Remaining owed", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("${String.format(Locale.US, "%,.0f", currentAdvance.remainingOwed)} RWF", style = MaterialTheme.typography.headlineSmall)
@@ -221,7 +220,7 @@ fun VendorCashAdvanceTab(merchantId: String) {
                     )
                 }
             }
-            Card(modifier = Modifier.fillMaxWidth()) {
+            FlatBlock {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("Repay early", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                     IdsTextField(value = repayAmount, onValueChange = { repayAmount = it }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())

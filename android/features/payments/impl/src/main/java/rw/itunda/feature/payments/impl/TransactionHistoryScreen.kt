@@ -8,7 +8,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowDownward
-import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.ReceiptLong
 import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -17,6 +16,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
+import rw.itunda.core.designsystem.components.ItundaArt
+import rw.itunda.core.designsystem.components.ItundaArtSet
+import rw.itunda.core.designsystem.components.pressScaleClickable
+import rw.itunda.core.designsystem.theme.IdsIcons
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -69,9 +79,11 @@ fun TransactionHistoryScreen(
     onRefresh: () -> Unit = {},
     isRefreshing: Boolean = false,
 ) {
-    val spentThisMonth = transactions
-        .filter { it.isOutgoing && it.status == "COMPLETED" }
-        .sumOf { it.amount }
+    var query by rememberSaveable { mutableStateOf("") }
+    var filter by rememberSaveable { mutableStateOf(0) } // 0 All, 1 Sent, 2 Received
+    val shown = transactions.filter {
+        (filter == 0 || (filter == 1) == it.isOutgoing) && it.description.contains(query.trim(), ignoreCase = true)
+    }
 
     val pullToRefreshState = rememberPullToRefreshState()
     LaunchedEffect(pullToRefreshState.isRefreshing) {
@@ -92,25 +104,35 @@ fun TransactionHistoryScreen(
                 .background(Ids.colors.background)
         ) {
             FlowTopBar(onBack)
-
-            Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-                Text("Spent this month", color = Ids.colors.textSecondary, fontSize = 15.sp)
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    "${rwfFormatter.format(spentThisMonth.toLong())} RWF",
-                    color = Ids.colors.textPrimary,
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold
+            Text("Activity", color = Ids.colors.textPrimary, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp).clip(RoundedCornerShape(16.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(IdsIcons.Search, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(12.dp))
+                BasicTextField(
+                    value = query, onValueChange = { query = it.take(40) }, singleLine = true,
+                    textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 16.sp),
+                    cursorBrush = SolidColor(Ids.colors.brand), modifier = Modifier.fillMaxWidth(),
+                    decorationBox = { inner -> if (query.isEmpty()) Text("Search activity", color = Ids.colors.textTertiary, fontSize = 16.sp); inner() },
                 )
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            if (transactions.isEmpty()) {
+            Row(Modifier.padding(horizontal = 24.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("All", "Sent", "Received").forEachIndexed { i, label ->
+                    val on = filter == i
+                    Box(
+                        Modifier.height(40.dp).clip(RoundedCornerShape(20.dp)).background(if (on) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
+                            .pressScaleClickable { filter = i }.padding(horizontal = 18.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text(label, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = if (on) Ids.colors.background else Ids.colors.textTertiary) }
+                }
+            }
+            if (shown.isEmpty()) {
                 EmptyState("No transactions yet — sends, receives, and payments will show up here.", icon = Icons.Outlined.ReceiptLong)
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
-                    items(transactions, key = { it.id }) { tx -> TransactionRow(tx) }
+                    items(shown, key = { it.id }) { tx -> TransactionRow(tx) }
                 }
             }
         }
@@ -125,29 +147,25 @@ private fun TransactionRow(tx: TransactionDisplayItem) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(if (tx.isOutgoing) Ids.colors.dangerTint else Ids.colors.successTint),
+            modifier = Modifier.size(40.dp).clip(CircleShape).background(if (tx.isOutgoing) Ids.colors.surfaceSoft else Ids.colors.successTint),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                if (tx.isOutgoing) Icons.Outlined.ArrowUpward else Icons.Outlined.ArrowDownward,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint = if (tx.isOutgoing) Ids.colors.danger else Ids.colors.success
-            )
+            if (tx.isOutgoing) ItundaArt("send", ItundaArtSet.Color, 26.dp)
+            else Icon(Icons.Outlined.ArrowDownward, contentDescription = null, modifier = Modifier.size(20.dp), tint = Ids.colors.success)
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(tx.description, color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            Text(tx.status.lowercase().replaceFirstChar { it.uppercase() }, color = Ids.colors.textTertiary, fontSize = 13.sp)
+            Text(tx.description, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            Text(
+                (if (tx.isOutgoing) "Sent" else "Received") + " · " + tx.status.lowercase().replaceFirstChar { it.uppercase() },
+                color = Ids.colors.textTertiary, fontSize = 13.sp,
+            )
         }
         Text(
-            "${if (tx.isOutgoing) "-" else "+"}${rwfFormatter.format(tx.amount.toLong())} ${tx.currency}",
-            color = if (tx.isOutgoing) Ids.colors.textPrimary else Ids.colors.success,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.SemiBold
+            (if (tx.isOutgoing) "−" else "+") + rwfFormatter.format(tx.amount.toLong()),
+            color = if (tx.isOutgoing) Ids.colors.textPrimary else Ids.colors.textBrand,
+            fontSize = 16.sp, fontWeight = FontWeight.ExtraBold,
         )
+        Text(" " + tx.currency, color = Ids.colors.textTertiary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     }
 }

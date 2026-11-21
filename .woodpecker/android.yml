@@ -32,5 +32,6 @@ steps:
       - echo "kotlin.daemon.jvmargs=-Xmx2048m" >> ~/.gradle/gradle.properties
       - ./gradlew :architecture-test:test --no-daemon
       - ./gradlew :app:assembleDebug --no-daemon --stacktrace
+      - ./gradlew :riderapp:assembleDebug :merchantapp:assembleDebug --no-daemon --stacktrace
     when:
       - event: [push, pull_request]

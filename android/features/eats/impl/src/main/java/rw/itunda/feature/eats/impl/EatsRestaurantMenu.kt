@@ -2,6 +2,7 @@ package rw.itunda.feature.eats.impl
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import java.util.Locale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,7 +46,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
-import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.StatusBadge
 import rw.itunda.core.designsystem.components.IdsTextField
@@ -61,28 +62,24 @@ import rw.itunda.core.network.ShoppingMerchantDto
 
 
 @Composable
-internal fun RestaurantMenuView(
+fun RestaurantMenuView(
     restaurant: ShoppingMerchantDto,
     menu: List<MerchantProductDto>?,
     cart: SnapshotStateMap<String, EatsCartLine>,
     onBack: () -> Unit,
     onCheckout: () -> Unit,
+    isPickup: Boolean = false,
+    onModeChange: (EatsCheckoutMode) -> Unit = {},
+    onGroupOrder: () -> Unit = {},
+    onItemPreferences: (String) -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
     // Real menu-options selection UI (2026-07-21, v1: required single-select only) --
     // ports bank-mfe's own MenuView 1:1. Only one item's option panel is expanded at a
     // time, matching this file's own established "inline-card-replaces-trigger"
     // convention (no modal-overlay pattern exists anywhere in this app).
-    var expandedProductId by remember { mutableStateOf<String?>(null) }
-    // Real optional/multi-select menu option groups (itunda Eats redesign,
-    // 2026-08-28) -- the backend has always supported 4 real group combinations
-    // (required x multiSelect, see MenuOptionGroup.kt's own doc comment), but this
-    // UI only ever rendered required-single-select radios. groupId -> the real
-    // selected choiceIds for that group (0 or 1 for a single-select group, 0+ for
-    // multiSelect) -- eatsCartKey/eatsLineUnitPrice/eatsOptionsSummary already
-    // operate on a plain choiceIds list with no single-choice assumption, so this
-    // is a real UI-layer fix, not a pricing/cart-model change.
-    val pendingChoices = remember { mutableStateMapOf<String, List<String>>() }
+    var selectedTab by remember { mutableStateOf("Menu") }
+    var selectedItemForDetails by remember { mutableStateOf<MerchantProductDto?>(null) }
     val cartCount = cart.values.sumOf { it.quantity }
     // Real cart-bar subtotal + savings breakdown (2026-08-28) -- the fixed bottom
     // bar previously only showed the item count. Purely a client-side sum over
@@ -97,160 +94,118 @@ internal fun RestaurantMenuView(
     }
 
     fun setSimpleQty(productId: String, qty: Int) {
-        val key = eatsCartKey(productId, emptyList())
-        cart[key] = EatsCartLine(productId, maxOf(0, qty))
+        val productLines = cart.entries.filter { it.value.productId == productId }
+        val currentQuantity = productLines.sumOf { it.value.quantity }
+        val difference = maxOf(0, qty) - currentQuantity
+        if (difference > 0) {
+            val key = eatsCartKey(productId, emptyList())
+            cart[key] = EatsCartLine(productId, (cart[key]?.quantity ?: 0) + difference)
+        } else if (difference < 0) {
+            var remaining = -difference
+            productLines.asReversed().forEach { entry ->
+                if (remaining > 0) {
+                    val removed = minOf(entry.value.quantity, remaining)
+                    val nextQuantity = entry.value.quantity - removed
+                    if (nextQuantity == 0) cart.remove(entry.key)
+                    else cart[entry.key] = entry.value.copy(quantity = nextQuantity)
+                    remaining -= removed
+                }
+            }
+        }
     }
 
-    fun toggleExpand(productId: String) {
-        pendingChoices.clear()
-        expandedProductId = if (expandedProductId == productId) null else productId
-    }
-
-    fun addConfiguredToCart(item: MerchantProductDto) {
-        val groups = item.optionGroups
-        if (groups.any { it.required && pendingChoices[it.id].isNullOrEmpty() }) return
-        val choiceIds = groups.flatMap { pendingChoices[it.id] ?: emptyList() }
-        val key = eatsCartKey(item.id, choiceIds)
-        cart[key] = EatsCartLine(item.id, (cart[key]?.quantity ?: 0) + 1, choiceIds)
-        pendingChoices.clear()
-        expandedProductId = null
-    }
-
-    Column(modifier = Modifier.fillMaxSize().padding(vertical = Ids.layout.screenVertical)) {
-        BackTopBar(restaurant.businessName, onBack)
-        RestaurantRatingBadge(restaurant.merchantId)
-        LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
+    Column(modifier = Modifier.fillMaxSize().padding(bottom = Ids.layout.screenVertical)) {
+        val eta = restaurant.deliveryTimeMinutes?.let { if (isPickup) maxOf(10, it - 10) else it }
+        val heroMeta = buildList {
+            eta?.let { add(if (isPickup) "Ready in $it min" else "$it min") }
+            restaurant.distanceKm?.let { add(String.format(Locale.US, "%.1f km", it)) }
+            if (isPickup) add("Pickup · No delivery fee")
+            else if (restaurant.participatesInEatsMembership) add("Free delivery")
+        }.joinToString(" · ").ifBlank { if (isPickup) "Pickup · No delivery fee" else "Delivery" }
+        EatsRestaurantHero(restaurant.businessName, onBack, meta = heroMeta, category = restaurant.category, photoUrl = restaurant.photoUrl)
+        if (selectedTab != "Reviews") RestaurantRatingBadge(restaurant.merchantId)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            EatsModeSwitch(isPickup, { pickup -> onModeChange(if (pickup) EatsCheckoutMode.PICKUP else EatsCheckoutMode.DELIVERY) }, Modifier.weight(1f))
+            Text("Group order ›", color = Ids.colors.textBrand, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.pressScaleClickable(onClick = onGroupOrder))
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
+        ) {
+            listOf("Menu", "Info", "Reviews").forEach { tab ->
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.pressScaleClickable { selectedTab = tab },
+                ) {
+                    Text(
+                        tab,
+                        color = if (selectedTab == tab) Ids.colors.textPrimary else Ids.colors.textSecondary,
+                        fontSize = 15.sp,
+                        fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Normal,
+                        modifier = Modifier.padding(top = 8.dp, bottom = 6.dp),
+                    )
+                    Box(
+                        Modifier.width(22.dp).height(2.dp)
+                            .background(if (selectedTab == tab) Ids.colors.brand else Color.Transparent, RoundedCornerShape(1.dp)),
+                    )
+                }
+            }
+        }
+        if (selectedTab == "Info") {
+            val details = listOfNotNull(
+                restaurant.category?.let { "Category" to it },
+                restaurant.openingHours?.let { "Opening hours" to it },
+                restaurant.phoneNumber?.let { "Phone" to it },
+                restaurant.distanceKm?.let { "Distance" to String.format(Locale.US, "%.1f km", it) },
+                restaurant.minOrderAmount?.let { "Minimum order" to String.format(Locale.US, "%,.0f RWF", it) },
+            )
+            Column(
+                modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 4.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Text("About this restaurant", color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                if (details.isEmpty()) {
+                    Text("Restaurant details aren't available yet.", color = Ids.colors.textSecondary, fontSize = 14.sp)
+                } else {
+                    details.forEach { (label, value) ->
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(label, color = Ids.colors.textTertiary, fontSize = 12.sp)
+                            Text(value, color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                }
+            }
+        } else if (selectedTab == "Reviews") {
+            Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 4.dp, vertical = 12.dp)) {
+                RestaurantRatingBadge(restaurant.merchantId, initiallyExpanded = true)
+            }
+        } else {
+            LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
             if (menu == null) {
                 item { SkeletonBlock(height = 72.dp) }
             } else if (menu.isEmpty()) {
                 item { EmptyState("This restaurant hasn't added menu items yet — check back soon.", icon = Icons.Outlined.RestaurantMenu) }
             } else {
+                item { Text("Popular", color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)) }
                 items(menu, key = { it.id }) { p ->
-                    val hasOptions = p.optionGroups.isNotEmpty()
-                    val simpleKey = eatsCartKey(p.id, emptyList())
-                    val simpleQty = if (hasOptions) 0 else (cart[simpleKey]?.quantity ?: 0)
-                    val isExpanded = expandedProductId == p.id
-                    val allGroupsChosen = p.optionGroups.all { !it.required || !pendingChoices[it.id].isNullOrEmpty() }
-                    Column(
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(Ids.colors.surface).padding(16.dp),
-                    ) {
-                        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            // Real Coupang Eats-style photo-forward menu card (2026-08-12,
-                            // direct user screenshot) -- the real reference shows every
-                            // menu item as a photo card with a real discount badge, not a
-                            // plain text row. Uses MerchantProductDto's own already-real
-                            // imageUrl/discountPercent/originalPrice fields (Shop's own
-                            // Deals rail already relies on the same fields), no new
-                            // backend data needed.
-                            Box {
-                                MenuItemThumb(p.imageUrl, size = 64.dp)
-                                val discountPercent = p.discountPercent
-                                if (discountPercent != null && discountPercent > 0) {
-                                    StatusBadge("$discountPercent%", tint = Ids.colors.danger, modifier = Modifier.align(Alignment.TopStart).padding(2.dp))
-                                } else if (p.isBestSeller) {
-                                    // Real "Best seller" badge (2026-08-28) -- a genuine,
-                                    // derived signal (real gross order count per product,
-                                    // see backend ShoppingController.bestSellerProductIds'
-                                    // own doc comment), not fabricated marketing copy.
-                                    StatusBadge("Best seller", tint = Ids.colors.brand, modifier = Modifier.align(Alignment.TopStart).padding(2.dp))
-                                }
-                            }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(p.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(String.format(Locale.US, "%,.0f RWF", p.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                    val originalPrice = p.originalPrice
-                                    if (originalPrice != null && originalPrice > p.price) {
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            String.format(Locale.US, "%,.0f RWF", originalPrice),
-                                            color = Ids.colors.textTertiary,
-                                            fontSize = 11.sp,
-                                            textDecoration = TextDecoration.LineThrough,
-                                        )
-                                    }
-                                }
-                                if (hasOptions) {
-                                    Text("Options required", color = Ids.colors.textSecondary, fontSize = 11.sp)
-                                }
-                            }
-                            if (hasOptions) {
-                                Box(
-                                    modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).pressScaleClickable { toggleExpand(p.id) }.padding(horizontal = 12.dp, vertical = 8.dp),
-                                ) {
-                                    Text(if (isExpanded) "Close" else "Choose options", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                }
-                            } else {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    QtyButton("-") { if (simpleQty > 0) setSimpleQty(p.id, simpleQty - 1) }
-                                    Text(simpleQty.toString(), modifier = Modifier.width(28.dp), textAlign = TextAlign.Center, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
-                                    QtyButton("+") { setSimpleQty(p.id, simpleQty + 1) }
-                                }
-                            }
-                        }
-                        if (hasOptions && isExpanded) {
-                            Column(modifier = Modifier.padding(top = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                p.optionGroups.forEach { group ->
-                                    val selectedIds = pendingChoices[group.id] ?: emptyList()
-                                    // Real optional/multi-select labels (2026-08-28) -- honest
-                                    // about what this group actually requires, matching its own
-                                    // real required/multiSelect flags rather than always
-                                    // claiming "choose 1".
-                                    val groupHint = if (group.multiSelect) {
-                                        if (group.required) "choose at least 1" else "choose any (optional)"
-                                    } else {
-                                        if (group.required) "choose 1" else "choose 1 (optional)"
-                                    }
-                                    Column {
-                                        Row {
-                                            Text(group.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text("· $groupHint", color = Ids.colors.textTertiary, fontSize = 13.sp)
-                                        }
-                                        Column(modifier = Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            group.choices.forEach { choice ->
-                                                val selected = choice.id in selectedIds
-                                                fun toggle() {
-                                                    pendingChoices[group.id] = if (group.multiSelect) {
-                                                        if (selected) selectedIds - choice.id else selectedIds + choice.id
-                                                    } else {
-                                                        // Single-select: re-tapping the current choice
-                                                        // clears it when the group is optional (a real
-                                                        // "none of these"), never for a required group.
-                                                        if (selected && !group.required) emptyList() else listOf(choice.id)
-                                                    }
-                                                }
-                                                Row(
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    modifier = Modifier.fillMaxWidth().pressScaleClickable { toggle() },
-                                                ) {
-                                                    if (group.multiSelect) {
-                                                        androidx.compose.material3.Checkbox(checked = selected, onCheckedChange = { toggle() })
-                                                    } else {
-                                                        androidx.compose.material3.RadioButton(selected = selected, onClick = { toggle() })
-                                                    }
-                                                    Text(
-                                                        choice.name + if (choice.priceDelta > 0) String.format(Locale.US, " (+%,.0f RWF)", choice.priceDelta) else "",
-                                                        color = Ids.colors.textPrimary, fontSize = 13.sp,
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(if (allGroupsChosen) Ids.colors.brand else Ids.colors.textTertiary)
-                                        .pressScaleClickable(enabled = allGroupsChosen) { addConfiguredToCart(p) }
-                                        .padding(vertical = 12.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) { Text("Add to cart", color = Color.White, fontWeight = FontWeight.Bold) }
-                            }
-                        }
-                    }
+                    val itemQuantity = cart.values.filter { it.productId == p.id }.sumOf { it.quantity }
+                    EatsMenuItemRow(
+                        name = p.name,
+                        description = p.description,
+                        price = String.format(Locale.US, "%,.0f RWF", p.price),
+                        originalPrice = p.originalPrice?.takeIf { it > p.price }?.let { String.format(Locale.US, "%,.0f RWF", it) },
+                        imageUrl = p.imageUrl,
+                        qty = itemQuantity,
+                        optionsHint = null,
+                        onOpenDetails = { selectedItemForDetails = p },
+                        art = eatsMenuItemArt(p.name),
+                        onAdd = { setSimpleQty(p.id, itemQuantity + 1) },
+                        onMinus = { if (itemQuantity > 0) setSimpleQty(p.id, itemQuantity - 1) },
+                    )
                 }
             }
         }
@@ -259,8 +214,28 @@ internal fun RestaurantMenuView(
         // EatsFrequentlyOrderedWith's own doc comment.
         cart.values.filter { it.quantity > 0 }.lastOrNull()?.let { lastLine ->
             EatsFrequentlyOrderedWith(productId = lastLine.productId) { item ->
-                setSimpleQty(item.id, (cart[eatsCartKey(item.id, emptyList())]?.quantity ?: 0) + 1)
+                val currentQuantity = cart.values.filter { it.productId == item.id }.sumOf { it.quantity }
+                setSimpleQty(item.id, currentQuantity + 1)
             }
+        }
+        selectedItemForDetails?.let { item ->
+            EatsMenuItemSheet(
+                name = item.name,
+                description = item.description,
+                price = item.price,
+                optionGroups = item.eatsOptionGroups(),
+                art = eatsMenuItemArt(item.name),
+                onDismiss = { selectedItemForDetails = null },
+                onAdd = { quantity, choiceIds, preferences ->
+                    val normalizedChoiceIds = choiceIds.sorted()
+                    val key = eatsCartKey(item.id, normalizedChoiceIds)
+                    cart[key] = EatsCartLine(item.id, (cart[key]?.quantity ?: 0) + quantity, normalizedChoiceIds)
+                    if (preferences.isNotEmpty()) {
+                        onItemPreferences(item.name + ": " + preferences.joinToString(", "))
+                    }
+                    selectedItemForDetails = null
+                },
+            )
         }
         if (cartCount > 0) {
             Box(
@@ -286,6 +261,7 @@ internal fun RestaurantMenuView(
                 }
             }
         }
+    }
     }
 }
 

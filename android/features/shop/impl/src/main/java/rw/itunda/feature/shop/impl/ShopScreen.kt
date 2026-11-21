@@ -508,7 +508,7 @@ fun CommerceShopContent(
             .trackScrollPressedKey(shopListState, shopTouchedKey),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
-        item {
+        if (view != CommerceView.BROWSE) item {
             // No TabHeader here (2026-07-24, was `TabHeader("Shop")`): the bottom
             // nav / ShopTab's own Shop/Eats row already establish where the user
             // is, same redundant-title fix as Hood. Flat category strip below,
@@ -567,8 +567,8 @@ fun CommerceShopContent(
             // "Recommended for you" 2-column grid -- all three real, backend-connected,
             // shown only on the unfiltered landing state (same discipline the Deals/
             // Time Deals/Nearby/Recently-viewed rails below already established).
-            if (selectedCategory == null && searchInput.isBlank() && banners.isNotEmpty()) {
-                item { ShoppingBannerCarousel(banners) }
+            if (selectedCategory == null && searchInput.isBlank()) {
+                item { if (banners.isNotEmpty()) ShoppingBannerCarousel(banners) else ShopProtoHome(onOrders = { view = CommerceView.ORDERS }, onWishlist = { view = CommerceView.WISHLIST }) }
             }
             if (selectedCategory == null && searchInput.isBlank() && missions.isNotEmpty()) {
                 item {
@@ -880,5 +880,5 @@ fun CommerceShopEntryPoint(
     deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
     onMessageSeller: (String) -> Unit = {},
 ) {
-    CommerceShopContent(deviceStepUpHost, onMessageSeller)
+    ProtoShopTab(deviceStepUpHost, onMessageSeller)
 }
