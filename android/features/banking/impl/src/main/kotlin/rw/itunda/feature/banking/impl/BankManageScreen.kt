@@ -51,10 +51,10 @@ internal fun BankManageScreen(onBack: () -> Unit, onOpen: (BankSub) -> Unit, onA
     Column(Modifier.fillMaxSize().background(Ids.colors.background)) {
         BankSubTopBar("Manage account", onBack)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            Column(Modifier.fillMaxWidth().background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Ids.colors.brand.copy(alpha = 0.10f), Ids.colors.background))).padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 4.dp)) {
+            Column(Modifier.fillMaxWidth().background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Ids.colors.brand.copy(alpha = 0.10f), Ids.colors.background))).padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 4.dp)) {
                 Text("itunda Bank", color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 20.sp, letterSpacing = (-0.176).sp)
                 Text("Amina Uwase", color = Ids.colors.textPrimary, fontSize = 28.sp, lineHeight = 39.2.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.6).sp, modifier = Modifier.padding(top = 4.dp))
-                Text("0214-3058-1980", color = Ids.colors.textTertiary, fontSize = 16.sp, lineHeight = 22.4.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp, modifier = Modifier.padding(top = 2.dp, bottom = 14.dp))
+                Text("0214-3058-1980", color = Ids.colors.textTertiary, fontSize = 16.sp, lineHeight = 22.4.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp, modifier = Modifier.padding(top = 2.dp, bottom = 10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     BankChip("Copy number", false, { clipboard.setText(AnnotatedString("0214-3058-1980")) })
                     BankChip("Share", false, {
@@ -62,6 +62,7 @@ internal fun BankManageScreen(onBack: () -> Unit, onOpen: (BankSub) -> Unit, onA
                     })
                 }
             }
+            Spacer(Modifier.height(10.dp))
             Column(Modifier.padding(horizontal = 24.dp)) {
                 Section("Account", accountRows, onOpen, onAutoTransfers)
                 Section("Money", moneyRows, onOpen, onAutoTransfers)
@@ -90,7 +91,7 @@ private fun Section(title: String, rows: List<ManageRow>, onOpen: (BankSub) -> U
                 Text(r.subtitle, color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 21.sp, letterSpacing = (-0.2).sp, modifier = Modifier.padding(top = 3.dp))
             }
             if (r.trailing.isNotEmpty()) Text(r.trailing, color = Ids.colors.textPrimary, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Black)
-            else if (tappable) rw.itunda.core.designsystem.components.ItundaArt("chev", rw.itunda.core.designsystem.components.ItundaArtSet.Line, 16.dp, tint = Ids.colors.textPrimary)
+            else if (tappable) rw.itunda.core.designsystem.components.ItundaArt("chev", rw.itunda.core.designsystem.components.ItundaArtSet.Line, 16.dp, tint = Ids.colors.textTertiary)
         }
     }
     Spacer(Modifier.height(4.dp))
