@@ -36,7 +36,7 @@ internal fun rwf(n: Long): String = String.format(Locale.US, "%,d", n)
 /** Prototype `.bar`: 70dp tall, 48dp back button at x=6, 20sp/700 title at x=58 with -0.3sp tracking. */
 @Composable
 internal fun BankSubTopBar(title: String, onBack: () -> Unit, trailing: @Composable RowScope.() -> Unit = {}) {
-    Row(Modifier.fillMaxWidth().height(70.dp).padding(start = 6.dp, end = 20.dp, top = 13.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().height(70.dp).padding(start = 6.dp, end = 12.dp, top = 13.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(48.dp).pressScaleClickable(onClick = onBack), contentAlignment = Alignment.Center) {
             ItundaArt("back", ItundaArtSet.Line, 24.dp, tint = Ids.colors.textPrimary)
         }

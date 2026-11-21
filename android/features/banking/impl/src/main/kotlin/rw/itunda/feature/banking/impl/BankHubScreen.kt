@@ -217,26 +217,24 @@ fun BankHubEntryPoint(
     var bankSub by remember { mutableStateOf<BankSub?>(null) }
     Box(Modifier.fillMaxSize()) {
     Column(modifier = Modifier.fillMaxSize()) {
-        if (primaryAccount != null) {
-            BankHubHeader(
-                title = stringResource(R.string.bank_title), accountNumber = primaryAccount.accountNumber,
-                balance = rememberCountUp(primaryAccount.balance), currency = primaryAccount.currency,
-                onBack = onBack, onOpenAccountDetail = { bankSub = BankSub.ACCOUNT }, onDeposit = { bankSub = BankSub.DEPOSIT }, onSend = { bankSub = BankSub.SEND }, onSettings = { bankSub = BankSub.MANAGE },
-            )
-        } else {
-            Row(modifier = Modifier.fillMaxWidth().padding(20.dp)) { BackTopBar(title = stringResource(R.string.bank_title), onBack = onBack) }
-        }
+        BankHubBar(stringResource(R.string.bank_title), onBack, onSettings = { bankSub = BankSub.MANAGE })
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal),
+            modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
         ) {
+            if (primaryAccount != null) item {
+                BankHubBalance(
+                    title = stringResource(R.string.bank_title), accountNumber = primaryAccount.accountNumber,
+                    balance = rememberCountUp(primaryAccount.balance), currency = primaryAccount.currency,
+                    onOpenAccountDetail = { bankSub = BankSub.ACCOUNT }, onDeposit = { bankSub = BankSub.DEPOSIT }, onSend = { bankSub = BankSub.SEND },
+                )
+            }
             // Dual-balance UI (2026-08-29): a small flat secondary "itunda Pay" line,
             // matching bank-mfe's identical AccountSummaryRow.tsx fix.
             if (payAccount != null) {
                 item {
                     Row(
-                        modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpenPay).padding(vertical = 4.dp),
+                        modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpenPay).padding(horizontal = 20.dp, vertical = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -251,32 +249,15 @@ fun BankHubEntryPoint(
                     }
                 }
             }
-            item { BankCardRow { bankSub = BankSub.CARDS } }
-            item { BankPocketsRow(count = 3) { bankSub = BankSub.POCKETS } }
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpenAutoTransfers).padding(vertical = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(40.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) { ItundaArt("auto-transfer", ItundaArtSet.Color, 26.dp) }
-                        Spacer(modifier = Modifier.width(14.dp))
-                        Text(stringResource(R.string.home_auto_transfer_title), color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            if (autoTransferCount > 0) "$autoTransferCount" else stringResource(R.string.home_auto_transfer_setup),
-                            color = Ids.colors.textSecondary,
-                            fontSize = 13.sp,
-                        )
-                        Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(18.dp))
-                    }
+                Column {
+                    HubRow(hubArtFor("Card"), "Card", chevron = true) { bankSub = BankSub.CARDS }
+                    HubRow(hubArtFor("Pockets"), "Pockets", value = "3", chevron = true) { bankSub = BankSub.POCKETS }
+                    HubRow(hubArtFor("Auto-transfer"), stringResource(R.string.home_auto_transfer_title), value = if (autoTransferCount > 0) "$autoTransferCount" else "", chevron = true, onClick = onOpenAutoTransfers)
                 }
-                androidx.compose.material3.HorizontalDivider(color = Ids.colors.divider, thickness = 0.5.dp)
             }
             item { BankComingUp() }
-            if (savingsGoals.isEmpty()) item { BankSavingsGoalCard(onStart = { showNewGoalDialog = true }) }
+            if (savingsGoals.isEmpty()) item { BankSavingsGoalCard(onStart = { showNewGoalDialog = true }, modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp)) }
             if (recommendationItems.isNotEmpty()) {
                 item {
                     ShellSection(

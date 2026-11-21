@@ -22,18 +22,21 @@ import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 
-/** Prototype "Start a savings goal" card: soft brand tint, art tile, one line of copy, a Start link. */
+/** Prototype `.b7p`: 20dp-radius tint card, 56dp white art tile at x=16, 17sp/700 title, two-line caption, Start link. */
 @Composable
 fun BankSavingsGoalCard(onStart: () -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Ids.colors.brand.copy(alpha = 0.14f)).pressScaleClickable(onClick = onStart).padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(52.dp).clip(RoundedCornerShape(16.dp)).background(Color.White), contentAlignment = Alignment.Center) { ItundaArt("savings-goal", ItundaArtSet.Color, 34.dp) }
+        Box(Modifier.size(56.dp).clip(RoundedCornerShape(16.dp)).background(Color.White), contentAlignment = Alignment.Center) { ItundaArt("new-savings-goal", ItundaArtSet.Proto, 38.dp, fit = true) }
         Column(Modifier.weight(1f).padding(start = 14.dp)) {
-            Text("Start a savings goal", color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
-            Text("A target and a date make saving easier", color = Ids.colors.textSecondary, fontSize = 14.sp, modifier = Modifier.padding(top = 2.dp))
-            Text("Start  ›", color = Ids.colors.textBrand, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp))
+            Text("Start a savings goal", color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.4).sp)
+            Text("A target and a date make saving easier", color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 2.dp))
+            Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Start", color = Ids.colors.textBrand, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold)
+                ItundaArt("chev", ItundaArtSet.Line, 14.dp, tint = Ids.colors.textBrand)
+            }
         }
     }
 }

@@ -76,52 +76,17 @@ private fun shellArtFor(title: String): String? = when {
 @Composable
 internal fun ShellSection(title: String, rows: List<ShellRow>) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        if (title.isNotEmpty()) {
-            Text(title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
-            Spacer(modifier = Modifier.height(4.dp))
-        }
+        if (title.isNotEmpty()) HubHeading(title)
         rows.forEach { row ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .then(if (row.onClick != null) Modifier.pressScaleClickable(onClick = row.onClick) else Modifier)
-                    .padding(vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val art = row.art ?: shellArtFor(row.title)
-                if (art != null) {
-                    Box(Modifier.size(40.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
-                        if (art == "svc-26-week-savings") ItundaArt(art, ItundaArtSet.Orig, 26.dp) else ItundaArt(art, ItundaArtSet.Color, 26.dp)
-                    }
-                } else Box(modifier = Modifier.size(38.dp).clip(CircleShape).background(row.iconColor), contentAlignment = Alignment.Center) {
-                    Icon(row.icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.White)
-                }
-                Spacer(modifier = Modifier.width(14.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(row.title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
-                        if (row.badge != null) Text(row.badge, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.success, modifier = Modifier.padding(start = 8.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp)).background(Ids.colors.success.copy(alpha = 0.14f)).padding(horizontal = 8.dp, vertical = 3.dp))
-                    }
-                    if (row.subtitle.isNotEmpty()) {
-                        Text(row.subtitle, fontSize = 14.sp, color = Ids.colors.textSecondary)
-                    }
-                }
-                if (row.action == ">") {
-                    Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
-                } else if (row.caption.isNotEmpty() || (row.action.isNotBlank() && row.action.any { it.isDigit() })) {
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(row.action, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textSecondary)
-                        if (row.caption.isNotEmpty()) Text(row.caption, fontSize = 12.sp, color = Ids.colors.textTertiary)
-                    }
-                    if (row.onClick != null) Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
-                } else if (row.action.isNotBlank()) {
-                    IdsButton(row.action, onClick = row.onClick ?: {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
-                }
-                if (row.secondaryAction != null) {
-                    Spacer(modifier = Modifier.width(6.dp))
-                    IdsButton(row.secondaryAction, onClick = row.onSecondaryClick ?: {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
-                }
+            val art = row.art?.let { HubArt(it, ItundaArtSet.Color) } ?: hubArtFor(row.title)
+            val value = when {
+                row.action == ">" || row.action == "+" -> ""
+                row.action.isNotBlank() && (row.caption.isNotEmpty() || row.action.any { it.isDigit() } || row.action.length <= 12) -> row.action
+                else -> ""
             }
+            // Prototype shows a chevron after the value on drill-down rows, but not on pure rate rows (jar, 26-week, 31-day, 12-month, SACCO).
+            val rateRow = row.caption.isNotEmpty() || row.title.startsWith("31-day")
+            HubRow(art, row.title, value, row.caption, row.badge, chevron = row.onClick != null && !rateRow, onClick = row.onClick)
         }
     }
 }
