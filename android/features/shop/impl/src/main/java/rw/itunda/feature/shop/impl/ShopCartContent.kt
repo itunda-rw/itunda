@@ -124,19 +124,19 @@ fun ShopCartContent(
                 Option(p, "Rider delivery", "1 to 2 days", if (ship == 0) "Free" else "${fmt(ship)} RWF", selected = true, link)
                 Spacer(Modifier.height(8.dp))
                 Option(p, "Pickup point", "Kimironko, ready tomorrow", "Free", selected = false, link)
-                Card(p, Modifier.padding(top = 12.dp), 70.4.dp, 20.dp) {
+                Card(p, Modifier.padding(top = 20.dp), 70.4.dp, 20.dp) {
                     Column(Modifier.weight(1f)) {
                         Text("Use points", color = p.text, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold)
                         Text("453 pts available", color = p.tt, fontSize = 14.sp, lineHeight = 20.sp)
                     }
-                    Box(Modifier.size(52.dp, 32.dp).clip(RoundedCornerShape(16.dp)).background(if (dark) Color(0xFF3A3A45) else Color(0xFFD1D6DB)).padding(3.dp)) {
+                    Box(Modifier.size(52.dp, 32.dp).clip(RoundedCornerShape(16.dp)).background(p.soft).padding(3.dp)) {
                         Box(Modifier.size(26.dp).clip(CircleShape).background(Color.White))
                     }
                 }
                 Column(Modifier.padding(horizontal = 24.dp).padding(top = 8.dp)) {
                     Sum(p, "Subtotal", "${fmt(sub)} RWF")
                     Sum(p, "Delivery", if (ship == 0) "Free" else "${fmt(ship)} RWF")
-                    Row(Modifier.fillMaxWidth().height(45.2.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.padding(top = 2.5.dp).fillMaxWidth().height(45.2.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text("Total", color = p.text, fontSize = 18.sp, lineHeight = 25.2.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                         Text("${fmt(total)} RWF", color = p.text, fontSize = 28.sp, lineHeight = 39.2.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp)
                     }

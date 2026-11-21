@@ -91,7 +91,7 @@ fun ShopProductContent(
                         contentAlignment = Alignment.Center,
                     ) { Text("${gallery.firstVisibleItemIndex + 1}|${GalleryTints.size}", color = Color(0xFF191F28), fontSize = 13.sp, lineHeight = 18.2.sp, fontWeight = FontWeight.SemiBold) }
                 }
-                Column(Modifier.padding(start = 24.dp, end = 24.dp, top = 18.dp)) {
+                Column(Modifier.padding(start = 24.dp, end = 24.dp, top = 20.dp)) {
                     Text(it.seller, color = p.tt, fontSize = 14.sp, lineHeight = 20.sp)
                     Text(it.name, color = p.text, fontSize = 21.sp, lineHeight = 29.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
                     Text("Origin: see product details", color = p.tt, fontSize = 15.sp, lineHeight = 21.sp, modifier = Modifier.padding(top = 3.dp))
