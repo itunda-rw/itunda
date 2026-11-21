@@ -104,9 +104,10 @@ internal fun BankSendScreen(onBack: () -> Unit) {
     Column(Modifier.fillMaxSize().background(Ids.colors.background)) {
         BankSubTopBar("Send to a bank account", onBack)
         Column(Modifier.weight(1f).padding(horizontal = 20.dp)) {
+            Spacer(Modifier.height(10.dp))
             BankSectionLabel("Bank")
             banks.chunked(2).forEachIndexed { r, pair ->
-                Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     pair.forEachIndexed { c, b -> BankChip(b, bank == r * 2 + c, { bank = r * 2 + c }, Modifier.weight(1f), art = "bank") }
                 }
             }
@@ -115,7 +116,7 @@ internal fun BankSendScreen(onBack: () -> Unit) {
                 value = account, onValueChange = { account = it.filter(Char::isDigit).take(10) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 24.sp, fontWeight = FontWeight.SemiBold),
-                decorationBox = { inner -> if (account.isEmpty()) Text("0000000000", color = Ids.colors.divider, fontSize = 24.sp) else inner(); },
+                decorationBox = { inner -> if (account.isEmpty()) Text("0000000000", color = Ids.colors.textTertiary.copy(alpha = 0.75f), fontSize = 24.sp) else inner(); },
             )
             Text("${account.length}/10", color = Ids.colors.textTertiary, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
             BankSectionLabel("Amount")
