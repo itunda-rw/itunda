@@ -76,7 +76,7 @@ internal fun BankAccountScreen(onBack: () -> Unit, onOpen: (BankSub) -> Unit) {
             var menu by remember { mutableStateOf(false) }
             var searching by remember { mutableStateOf(false) }
             var query by remember { mutableStateOf("") }
-            Box(Modifier.fillMaxWidth().height(76.dp)) {
+            Box(Modifier.fillMaxWidth().height(66.dp)) {
                 Box(Modifier.offset(48.dp, 34.dp)) {
                     Row(
                         Modifier.height(36.dp).clip(RoundedCornerShape(18.dp)).background(Ids.colors.surfaceSoft).pressScaleClickable { menu = true }.padding(start = 14.dp, end = 10.dp),
@@ -103,10 +103,10 @@ internal fun BankAccountScreen(onBack: () -> Unit, onOpen: (BankSub) -> Unit) {
                 )
             }
             demoTx.filter { (filter == 0 || (filter == 1) == it.incoming) && it.name.contains(query, ignoreCase = true) }.forEach { t ->
-                Text(t.day, color = Ids.colors.textTertiary, fontSize = 13.sp, lineHeight = 18.2.sp, fontWeight = FontWeight.Medium, letterSpacing = (-0.1).sp, modifier = Modifier.padding(start = 24.dp, top = 16.dp, bottom = 10.dp))
+                Text(t.day, color = Ids.colors.textTertiary, fontSize = 13.sp, lineHeight = 18.2.sp, fontWeight = FontWeight.Medium, letterSpacing = (-0.1).sp, modifier = Modifier.padding(start = 24.dp, top = 21.dp, bottom = 15.dp))
                 Row(Modifier.fillMaxWidth().height(76.dp).padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(52.dp).clip(RoundedCornerShape(16.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
-                        ItundaArt(if (t.incoming) "cashin3d" else "send", ItundaArtSet.Proto, if (t.incoming) 31.dp else 26.dp, fit = true)
+                        if (t.incoming) IncomingGlyph() else ItundaArt("send", ItundaArtSet.Proto, 26.dp, fit = true)
                     }
                     Column(Modifier.weight(1f).padding(start = 14.dp)) {
                         Text(t.name, color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = FontWeight.Bold)
@@ -163,6 +163,22 @@ internal fun BankStatementScreen(onBack: () -> Unit) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { formats.forEachIndexed { i, f -> BankChip(f, format == i, { format = i }) } }
         }
         BankSubCta("Download") { done = true }
+    }
+}
+
+/** Prototype incoming tile: mint circle with a white download arrow. */
+@Composable
+private fun IncomingGlyph() {
+    androidx.compose.foundation.Canvas(Modifier.size(38.dp)) {
+        drawCircle(Color(0xFF3DCCA0))
+        val w = size.width
+        val st = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.075f, cap = androidx.compose.ui.graphics.StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round)
+        val path = androidx.compose.ui.graphics.Path().apply {
+            moveTo(w * 0.5f, w * 0.26f); lineTo(w * 0.5f, w * 0.58f)
+            moveTo(w * 0.37f, w * 0.46f); lineTo(w * 0.5f, w * 0.59f); lineTo(w * 0.63f, w * 0.46f)
+            moveTo(w * 0.34f, w * 0.72f); lineTo(w * 0.66f, w * 0.72f)
+        }
+        drawPath(path, Color.White, style = st)
     }
 }
 
