@@ -58,7 +58,7 @@ fun ShopCartContent(
     ShopText {
         Box(Modifier.fillMaxSize().background(p.page)) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 110.dp)) {
-                Row(Modifier.fillMaxWidth().height(70.dp).padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().height(70.dp).padding(top = 13.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.padding(start = 6.dp).size(48.dp).pressScaleClickable(onClick = onBack), Alignment.Center) { ItundaArt("back", ItundaArtSet.Line, 24.dp, tint = p.text) }
                     Text("Cart", color = p.text, fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.3).sp, modifier = Modifier.padding(start = 4.dp))
                 }
@@ -87,9 +87,9 @@ fun ShopCartContent(
                                 Text("${fmt(it.price)} RWF", color = p.tt, fontSize = 14.sp, lineHeight = 20.sp)
                             }
                             Spacer(Modifier.weight(1f))
-                            Soft(p, 36.dp, 36.dp, 12.dp, { onAdjust(i, -1) }) { Text("−", color = p.text, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+                            Soft(p, 36.dp, 36.dp, 12.dp, { onAdjust(i, -1) }) { Text("−", color = p.text, fontSize = 18.sp, fontWeight = FontWeight.Normal) }
                             Text("$q", color = p.text, fontSize = 16.sp, lineHeight = 22.4.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.width(56.dp))
-                            Soft(p, 36.dp, 36.dp, 12.dp, { onAdjust(i, 1) }) { Text("+", color = p.text, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+                            Soft(p, 36.dp, 36.dp, 12.dp, { onAdjust(i, 1) }) { Text("+", color = p.text, fontSize = 18.sp, fontWeight = FontWeight.Normal) }
                         }
                     }
                 }
