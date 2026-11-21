@@ -72,4 +72,16 @@ class ShopScreenshotTest {
         rule.setContent { IdsTheme(darkTheme = true) { ShopCartContent(listOf(0 to 2, 1 to 1), dark = true) } }
         rule.onRoot().captureRoboImage("build/screenshots/shop-cart-dark.png")
     }
+
+    @Config(qualifiers = "w390dp-h1200dp-xxhdpi")
+    @Test fun shopCartFullLight() {
+        rule.setContent { IdsTheme(darkTheme = false) { ShopCartContent(listOf(0 to 2, 1 to 1), dark = false) } }
+        rule.onRoot().captureRoboImage("build/screenshots/shop-cart-full-light.png")
+    }
+
+    @Config(qualifiers = "w390dp-h2100dp-xxhdpi")
+    @Test fun shopProductFullDark() {
+        rule.setContent { IdsTheme(darkTheme = true) { ShopProductContent(0, dark = true) } }
+        rule.onRoot().captureRoboImage("build/screenshots/shop-product-full-dark.png")
+    }
 }
