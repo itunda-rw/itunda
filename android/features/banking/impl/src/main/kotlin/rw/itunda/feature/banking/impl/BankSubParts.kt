@@ -33,13 +33,14 @@ enum class BankSub { ACCOUNT, DEPOSIT, SEND, MOVE, STATEMENT, POCKETS, MANAGE, L
 
 internal fun rwf(n: Long): String = String.format(Locale.US, "%,d", n)
 
+/** Prototype `.bar`: 70dp tall, 48dp back button at x=6, 20sp/700 title at x=58 with -0.3sp tracking. */
 @Composable
 internal fun BankSubTopBar(title: String, onBack: () -> Unit, trailing: @Composable RowScope.() -> Unit = {}) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(40.dp).pressScaleClickable(onClick = onBack), contentAlignment = Alignment.CenterStart) {
+    Row(Modifier.fillMaxWidth().height(70.dp).padding(start = 6.dp, end = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(48.dp).pressScaleClickable(onClick = onBack), contentAlignment = Alignment.Center) {
             ItundaArt("back", ItundaArtSet.Line, 24.dp, tint = Ids.colors.textPrimary)
         }
-        if (title.isNotEmpty()) Text(title, color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
+        if (title.isNotEmpty()) Text(title, color = Ids.colors.textPrimary, fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.3).sp, modifier = Modifier.padding(start = 4.dp).weight(1f))
         else Spacer(Modifier.weight(1f))
         trailing()
     }
