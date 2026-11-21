@@ -85,7 +85,7 @@ internal fun ShellSection(title: String, rows: List<ShellRow>) {
                 else -> ""
             }
             // Prototype shows a chevron after the value on drill-down rows, but not on pure rate rows (jar, 26-week, 31-day, 12-month, SACCO).
-            val rateRow = row.caption.isNotEmpty() || row.title.startsWith("31-day")
+            val rateRow = row.caption.isNotEmpty() || row.title.startsWith("31-day") || (row.title.startsWith("Student") && value.isNotEmpty())
             HubRow(art, row.title, value, row.caption, row.badge, chevron = row.onClick != null && !rateRow, onClick = row.onClick)
         }
     }

@@ -17,14 +17,14 @@ private fun row(title: String, art: String, onClick: () -> Unit, action: String 
 
 @Composable
 internal fun BankTogetherSection(onGroups: () -> Unit, onYouth: () -> Unit, onIkimina: () -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(top = 16.dp)) {
+    Column(Modifier.fillMaxWidth()) {
         ShellSection("Together", listOf(row("Group accounts", "group-accounts", onGroups), row("Youth account", "youth", onYouth), row("Ikimina", "ikimina", onIkimina)))
     }
 }
 
 @Composable
 internal fun BankLoansSection(onLoan: () -> Unit, onHarvest: () -> Unit, onStudent: () -> Unit, onVup: () -> Unit, onMoto: () -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(top = 16.dp)) {
+    Column(Modifier.fillMaxWidth()) {
         ShellSection(
             "Loans",
             listOf(
@@ -38,7 +38,7 @@ internal fun BankLoansSection(onLoan: () -> Unit, onHarvest: () -> Unit, onStude
 
 @Composable
 internal fun BankServicesSection(onOpen: (BankSub) -> Unit, onSpending: () -> Unit, onDetails: () -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(top = 16.dp)) {
+    Column(Modifier.fillMaxWidth()) {
         ShellSection(
             "Services",
             listOf(
@@ -55,7 +55,7 @@ internal fun BankServicesSection(onOpen: (BankSub) -> Unit, onSpending: () -> Un
 
 @Composable
 internal fun BankGoodToKnowSection(onCreditScore: () -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(top = 16.dp)) {
+    Column(Modifier.fillMaxWidth()) {
         ShellSection("Good to know", listOf(row("My credit score", "credit-score", onCreditScore, action = "View")))
     }
 }
