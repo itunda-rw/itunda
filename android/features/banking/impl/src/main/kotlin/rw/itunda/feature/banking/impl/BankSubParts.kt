@@ -36,7 +36,7 @@ internal fun rwf(n: Long): String = String.format(Locale.US, "%,d", n)
 /** Prototype `.bar`: 70dp tall, 48dp back button at x=6, 20sp/700 title at x=58 with -0.3sp tracking. */
 @Composable
 internal fun BankSubTopBar(title: String, onBack: () -> Unit, trailing: @Composable RowScope.() -> Unit = {}) {
-    Row(Modifier.fillMaxWidth().height(70.dp).padding(start = 6.dp, end = 12.dp, top = 13.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().height(70.dp).padding(start = 6.dp, end = 12.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(48.dp).pressScaleClickable(onClick = onBack), contentAlignment = Alignment.Center) {
             ItundaArt("back", ItundaArtSet.Line, 24.dp, tint = Ids.colors.textPrimary)
         }
@@ -57,15 +57,15 @@ internal fun BankSubCta(label: String, enabled: Boolean = true, onClick: () -> U
 }
 
 @Composable
-internal fun BankChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, compact: Boolean = false, art: String? = null) {
+internal fun BankChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, compact: Boolean = false, art: String? = null, largeText: Boolean = false) {
     Box(
         modifier.clip(RoundedCornerShape(50)).background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
-            .pressScaleClickable(onClick = onClick).height(44.dp).padding(horizontal = if (compact) 4.dp else 18.dp),
+            .pressScaleClickable(onClick = onClick).height(44.dp).padding(horizontal = if (compact) 4.dp else 14.dp),
         contentAlignment = Alignment.Center,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (art != null) { ItundaArt(art, ItundaArtSet.Color, 22.dp); Spacer(Modifier.width(8.dp)) }
-            Text(label, color = if (selected) Ids.colors.background else Ids.colors.textPrimary, fontSize = if (compact) 12.sp else 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+            Text(label, color = if (selected) Ids.colors.background else Ids.colors.textPrimary, fontSize = if (compact && !largeText) 12.sp else 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
         }
     }
 }

@@ -50,14 +50,14 @@ private fun AmountInput(value: Long, onChange: (Long) -> Unit) {
             textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 40.sp, lineHeight = 56.sp, letterSpacing = (-1).sp, fontWeight = FontWeight.Bold),
             modifier = Modifier.weight(1f),
         )
-        Text("RWF", color = Ids.colors.textTertiary, fontSize = 20.sp, modifier = Modifier.padding(start = 8.dp, top = 6.dp))
+        Text("RWF", color = Ids.colors.textTertiary, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp, top = 14.dp))
     }
 }
 
 @Composable
 private fun AddChips(steps: List<Long>, onAdd: (Long) -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        steps.forEach { BankChip("+${rwf(it)}", false, { onAdd(it) }, Modifier.weight(1f), compact = true) }
+        steps.forEach { BankChip("+${rwf(it)}", false, { onAdd(it) }, Modifier.weight(1f), compact = true, largeText = true) }
     }
 }
 
