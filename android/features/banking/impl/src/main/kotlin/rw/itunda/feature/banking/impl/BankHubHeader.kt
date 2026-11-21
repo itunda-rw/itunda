@@ -17,7 +17,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -46,9 +45,7 @@ internal fun BankHubBalance(
 ) {
     Column(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpenAccountDetail).padding(start = 20.dp, end = 20.dp, top = 19.dp)) {
-            Text("$title \u2022\u2022${accountNumber.takeLast(4)}", color = Ids.colors.textTertiary, fontSize = 15.sp, lineHeight = 22.sp, modifier = Modifier.drawBehind {
-                drawLine(Color(0x22000000), androidx.compose.ui.geometry.Offset(0f, size.height), androidx.compose.ui.geometry.Offset(size.width, size.height), 1.dp.toPx())
-            })
+            Text("$title \u2022\u2022${accountNumber.takeLast(4)}", color = Ids.colors.textTertiary, fontSize = 15.sp, lineHeight = 22.sp,)
             Row(Modifier.padding(top = 4.dp).fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
                 Row(Modifier.weight(1f), verticalAlignment = Alignment.Bottom) {
                     Text(String.format(Locale.US, "%,.0f", balance), color = Ids.colors.textPrimary, fontSize = 34.sp, lineHeight = 44.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp)

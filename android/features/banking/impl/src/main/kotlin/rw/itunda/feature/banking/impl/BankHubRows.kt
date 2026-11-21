@@ -63,17 +63,20 @@ internal fun hubArtFor(title: String): HubArt? = when {
     else -> null
 }
 
-/** Prototype `.b7r`: 60dp row, 40dp r14 tile with 26dp art, 17sp/600 title at x=74, optional value (+ caption) and 18dp chevron. */
+/** Prototype `.b7r`: 60dp row, 40dp slot (r14 soft tile with 26dp art only on the three top rows, otherwise bare 32dp art), 17sp/600 title at x=74, optional value (+ caption) and 18dp chevron. */
 @Composable
 internal fun HubRow(
-    art: HubArt?, title: String, value: String = "", caption: String = "", badge: String? = null, chevron: Boolean = false, onClick: (() -> Unit)? = null,
+    art: HubArt?, title: String, value: String = "", caption: String = "", badge: String? = null, chevron: Boolean = false, tile: Boolean = false, onClick: (() -> Unit)? = null,
 ) {
     Row(
         Modifier.fillMaxWidth().height(60.dp).then(if (onClick != null) Modifier.pressScaleClickable(onClick = onClick) else Modifier).padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(40.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
-            if (art != null) ItundaArt(art.name, art.set, 26.dp, fit = art.set == ItundaArtSet.Proto)
+        Box(
+            Modifier.size(40.dp).then(if (tile) Modifier.clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft) else Modifier),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (art != null) ItundaArt(art.name, art.set, if (tile) 26.dp else 32.dp, fit = art.set == ItundaArtSet.Proto)
         }
         Row(Modifier.weight(1f).padding(start = 14.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(title, color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp, maxLines = 1)

@@ -251,9 +251,9 @@ fun BankHubEntryPoint(
             }
             item {
                 Column {
-                    HubRow(hubArtFor("Card"), "Card", chevron = true) { bankSub = BankSub.CARDS }
-                    HubRow(hubArtFor("Pockets"), "Pockets", value = "3", chevron = true) { bankSub = BankSub.POCKETS }
-                    HubRow(hubArtFor("Auto-transfer"), stringResource(R.string.home_auto_transfer_title), value = if (autoTransferCount > 0) "$autoTransferCount" else "", chevron = true, onClick = onOpenAutoTransfers)
+                    HubRow(hubArtFor("Card"), "Card", chevron = true, tile = true) { bankSub = BankSub.CARDS }
+                    HubRow(hubArtFor("Pockets"), "Pockets", value = "3", chevron = true, tile = true) { bankSub = BankSub.POCKETS }
+                    HubRow(hubArtFor("Auto-transfer"), stringResource(R.string.home_auto_transfer_title), value = if (autoTransferCount > 0) "$autoTransferCount" else "", chevron = true, tile = true, onClick = onOpenAutoTransfers)
                 }
             }
             item { BankComingUp() }
@@ -286,12 +286,13 @@ fun BankHubEntryPoint(
                 ShellSection(
                     title = stringResource(R.string.bank_save_grow),
                     rows = buildList {
-                        interestJar?.let { jar ->
+                        run {
+                            val jarRate = interestJar?.rate ?: 4.0
                             add(
                                 ShellRow(
                                     interestJarLabel,
                                     "",
-                                    String.format(Locale.US, "%.1f%%", jar.rate),
+                                    String.format(Locale.US, "%.1f%%", jarRate),
                                     Icons.Outlined.Savings,
                                     AccentOrange,
                                     onClick = { onOpenBucketDetail(BucketDetailTarget.InterestJar) },
@@ -327,7 +328,13 @@ fun BankHubEntryPoint(
                                 )
                             )
                         }
-                        if (savingsGoals.isNotEmpty()) add(
+                        add(ShellRow("26-week savings", "", "${BANK_HUB_WEEKLY_SAVINGS_BASE_RATE.toInt()}%+", Icons.Outlined.CalendarMonth, AccentIndigo, onClick = onOpenWeeklySavings, caption = "base rate"))
+                        add(ShellRow("31-day savings", "", "Up to ${BANK_HUB_GROW31_MAX_BONUS_RATE.toInt()}%", Icons.Outlined.Bolt, AccentOrange, onClick = onOpenGrow31Savings))
+                        add(ShellRow("12-month deposit", "", "$BANK_HUB_UPFRONT_DEPOSIT_ANNUAL_RATE%", Icons.Outlined.Lock, AccentPurple, onClick = onOpenUpfrontDeposit, caption = "12 months"))
+                        add(ShellRow("SACCO shares", "", "6%", Icons.Outlined.AccountBalance, AccentPurple, onClick = onOpenSacco, caption = "dividend"))
+                        add(ShellRow("Investments", "", ">", Icons.Outlined.TrendingUp, AccentTeal, onClick = onOpenInvest))
+                        add(ShellRow("School fees", "", "40%", Icons.Outlined.School, AccentTeal, onClick = { bankSub = BankSub.POCKETS }))
+                        add(
                             ShellRow(
                                 stringResource(R.string.savings_new_goal_title),
                                 stringResource(R.string.savings_new_goal_subtitle),
@@ -337,7 +344,7 @@ fun BankHubEntryPoint(
                                 onClick = { showNewGoalDialog = true },
                             )
                         )
-                        if (savingsGoals.isNotEmpty()) {
+                        run {
                             add(
                                 ShellRow(
                                     roundUpTitle,
@@ -351,12 +358,6 @@ fun BankHubEntryPoint(
                                 )
                             )
                         }
-                        add(ShellRow("26-week savings", "", "${BANK_HUB_WEEKLY_SAVINGS_BASE_RATE.toInt()}%+", Icons.Outlined.CalendarMonth, AccentIndigo, onClick = onOpenWeeklySavings, caption = "base rate"))
-                        add(ShellRow("31-day savings", "", "Up to ${BANK_HUB_GROW31_MAX_BONUS_RATE.toInt()}%", Icons.Outlined.Bolt, AccentOrange, onClick = onOpenGrow31Savings))
-                        add(ShellRow("12-month deposit", "", "$BANK_HUB_UPFRONT_DEPOSIT_ANNUAL_RATE%", Icons.Outlined.Lock, AccentPurple, onClick = onOpenUpfrontDeposit, caption = "12 months"))
-                        add(ShellRow("SACCO shares", "", "6%", Icons.Outlined.AccountBalance, AccentPurple, onClick = onOpenSacco, caption = "dividend"))
-                        add(ShellRow("Investments", "", ">", Icons.Outlined.TrendingUp, AccentTeal, onClick = onOpenInvest))
-                        add(ShellRow("School fees", "", "40%", Icons.Outlined.School, AccentTeal, onClick = { bankSub = BankSub.POCKETS }))
                     }
                 )
             }

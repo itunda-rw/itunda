@@ -29,7 +29,7 @@ fun BankSavingsGoalCard(onStart: () -> Unit, modifier: Modifier = Modifier) {
         modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Ids.colors.brand.copy(alpha = 0.14f)).pressScaleClickable(onClick = onStart).padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(56.dp).clip(RoundedCornerShape(16.dp)).background(Color.White), contentAlignment = Alignment.Center) { ItundaArt("new-savings-goal", ItundaArtSet.Proto, 38.dp, fit = true) }
+        Box(Modifier.size(56.dp).clip(RoundedCornerShape(16.dp)).background(Color.White), contentAlignment = Alignment.Center) { ItundaArt("money", ItundaArtSet.Proto, 38.dp, fit = true) }
         Column(Modifier.weight(1f).padding(start = 14.dp)) {
             Text("Start a savings goal", color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.4).sp)
             Text("A target and a date make saving easier", color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 2.dp))
