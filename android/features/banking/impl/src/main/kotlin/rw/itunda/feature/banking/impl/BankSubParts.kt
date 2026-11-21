@@ -71,8 +71,8 @@ internal fun BankChip(label: String, selected: Boolean, onClick: () -> Unit, mod
 }
 
 @Composable
-internal fun BankSectionLabel(text: String, strong: Boolean = false) {
-    Text(text, color = if (strong) Ids.colors.textPrimary else Ids.colors.textTertiary, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = if (strong) FontWeight.Bold else FontWeight.SemiBold, modifier = Modifier.padding(top = 24.dp, bottom = 10.dp))
+internal fun BankSectionLabel(text: String, strong: Boolean = false, top: androidx.compose.ui.unit.Dp = 24.dp) {
+    Text(text, color = if (strong) Ids.colors.textPrimary else Ids.colors.textTertiary, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = if (strong) FontWeight.Bold else FontWeight.SemiBold, modifier = Modifier.padding(top = top, bottom = 10.dp))
 }
 
 /** Local confirmation shown after a dummy action, so every flow ends somewhere. */

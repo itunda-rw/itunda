@@ -98,7 +98,7 @@ internal fun BankSendScreen(onBack: () -> Unit) {
     val banks = listOf("Bank of Kigali", "I&M Bank", "Equity Bank", "Access Bank")
     var bank by remember { mutableStateOf(0) }
     var account by remember { mutableStateOf("") }
-    var amount by remember { mutableStateOf(10_000L) }
+    var amount by remember { mutableStateOf(0L) }
     var done by remember { mutableStateOf(false) }
     if (done) { BankDone("Transfer sent", "${rwf(amount)} RWF to ${banks[bank]} ••${account.takeLast(4)}. Arrives within minutes.", onBack); return }
     Column(Modifier.fillMaxSize().background(Ids.colors.background)) {
@@ -111,7 +111,7 @@ internal fun BankSendScreen(onBack: () -> Unit) {
                     pair.forEachIndexed { c, b -> BankChip(b, bank == r * 2 + c, { bank = r * 2 + c }, Modifier.weight(1f), art = "bank") }
                 }
             }
-            BankSectionLabel("Account number")
+            BankSectionLabel("Account number", top = 14.dp)
             BasicTextField(
                 value = account, onValueChange = { account = it.filter(Char::isDigit).take(10) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -119,7 +119,7 @@ internal fun BankSendScreen(onBack: () -> Unit) {
                 decorationBox = { inner -> if (account.isEmpty()) Text("0000000000", color = Ids.colors.textTertiary.copy(alpha = 0.75f), fontSize = 24.sp) else inner(); },
             )
             Text("${account.length}/10", color = Ids.colors.textTertiary, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
-            BankSectionLabel("Amount")
+            BankSectionLabel("Amount", top = 31.dp)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 listOf(10_000L, 50_000L, 100_000L, 500_000L).forEach { BankChip("${rwf(it)} RWF", amount == it, { amount = it }, Modifier.weight(1f), compact = true) }
             }
@@ -128,7 +128,7 @@ internal fun BankSendScreen(onBack: () -> Unit) {
                 Text("Within minutes", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             }
         }
-        BankSubCta("Send", enabled = account.length == 10) { done = true }
+        BankSubCta("Send", enabled = account.length == 10 && amount > 0) { done = true }
     }
 }
 
