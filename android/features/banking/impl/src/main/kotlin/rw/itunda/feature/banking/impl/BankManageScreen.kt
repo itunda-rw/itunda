@@ -54,7 +54,7 @@ internal fun BankManageScreen(onBack: () -> Unit, onOpen: (BankSub) -> Unit, onA
             Column(Modifier.fillMaxWidth().background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Ids.colors.brand.copy(alpha = 0.10f), Ids.colors.background))).padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 4.dp)) {
                 Text("itunda Bank", color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 20.sp, letterSpacing = (-0.176).sp)
                 Text("Amina Uwase", color = Ids.colors.textPrimary, fontSize = 28.sp, lineHeight = 39.2.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.6).sp, modifier = Modifier.padding(top = 4.dp))
-                Text("0214-3058-1980", color = Ids.colors.textTertiary, fontSize = 16.sp, lineHeight = 22.4.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp, modifier = Modifier.padding(top = 2.dp, bottom = 10.dp))
+                Text("0214-3058-1980", color = Ids.colors.textTertiary, fontSize = 16.sp, lineHeight = 22.4.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp, modifier = Modifier.padding(top = 2.dp, bottom = 14.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     BankChip("Copy number", false, { clipboard.setText(AnnotatedString("0214-3058-1980")) })
                     BankChip("Share", false, {
@@ -76,7 +76,7 @@ internal fun BankManageScreen(onBack: () -> Unit, onOpen: (BankSub) -> Unit, onA
 
 @Composable
 private fun Section(title: String, rows: List<ManageRow>, onOpen: (BankSub) -> Unit, onAutoTransfers: () -> Unit) {
-    Text(title, color = Ids.colors.textPrimary, fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.4).sp, modifier = Modifier.padding(top = 28.dp, bottom = 12.dp))
+    Text(title, color = Ids.colors.textPrimary, fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.4).sp, modifier = Modifier.padding(top = if (title == "Account") 28.dp else 38.dp, bottom = 12.dp))
     rows.forEach { r ->
         val tappable = r.target != null || r.tapsAuto
         Row(
