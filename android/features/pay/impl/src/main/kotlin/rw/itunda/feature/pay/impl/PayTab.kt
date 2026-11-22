@@ -73,7 +73,7 @@ fun PayEntryPoint(
     onBrowseMerchants: () -> Unit,
     onOpenSupport: () -> Unit,
     onOpenCard: () -> Unit,
-    payAMerchantSection: @Composable (Boolean, ((() -> Unit) -> Unit)) -> Unit,
+    payAMerchantSection: @Composable (Boolean, ((() -> Unit) -> Unit), (Boolean) -> Unit) -> Unit,
     onOpenRewardsMiniApp: () -> Unit,
     // Real IA-consistency fix (2026-09-11, product-completeness cycle 2 --
     // see project_itunda_pay_product_completeness memory): bank-mfe's own
