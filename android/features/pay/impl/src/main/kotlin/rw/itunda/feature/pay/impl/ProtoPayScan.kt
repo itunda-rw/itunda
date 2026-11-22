@@ -18,6 +18,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,21 +52,23 @@ private val ScanSub = Color(0xFFA0A4AE)
  */
 @Composable
 internal fun ProtoPayScan(
-    p: PayPalette, onTill: () -> Unit, onMerchant: (String) -> Unit, scanContent: @Composable () -> Unit,
+    p: PayPalette, onTill: () -> Unit, onMerchant: (String) -> Unit, scanContent: @Composable (Boolean, ((() -> Unit) -> Unit)) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var flashEnabled by remember { mutableStateOf(false) }
+    var launchPhoto by remember { mutableStateOf<(() -> Unit)?>(null) }
     Box(modifier.fillMaxSize().background(ScanBg)) {
         Column(Modifier.fillMaxWidth().offset(y = 34.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text("Scan a QR code to pay", color = Color.White, fontSize = 24.sp, lineHeight = 31.2.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp)
             Text("Shops and friends both work.", color = ScanSub, fontSize = 14.sp, lineHeight = 19.6.sp, modifier = Modifier.padding(top = 4.dp))
         }
-        Box(Modifier.offset(x = 55.dp, y = 123.2.dp).size(280.dp).drawBehind { drawFrame(p) }) { scanContent() }
+        Box(Modifier.offset(x = 55.dp, y = 123.2.dp).size(280.dp).drawBehind { drawFrame(p) }) { scanContent(flashEnabled) { launchPhoto = it } }
         Row(
             Modifier.align(Alignment.TopCenter).offset(y = 423.2.dp), horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            ScanPill("Flash", 85.5.dp, p, null)
+            ScanPill(if (flashEnabled) "Flash on" else "Flash", 85.5.dp, p, { flashEnabled = !flashEnabled })
             ScanPill("Till number", 124.8.dp, p, onTill)
-            ScanPill("Photos", 96.3.dp, p, null)
+            ScanPill("Photos", 96.3.dp, p, { launchPhoto?.invoke() })
         }
         Row(
             Modifier.offset(y = 568.dp).fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 24.dp),
