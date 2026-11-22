@@ -32,7 +32,7 @@ fun ProtoPayTab(
     onSettings: () -> Unit,
     onChangeFunding: () -> Unit,
     onReceive: () -> Unit,
-    scanContent: @Composable (Boolean, ((() -> Unit) -> Unit)) -> Unit,
+    scanContent: @Composable (Boolean, ((() -> Unit) -> Unit), (Boolean) -> Unit) -> Unit,
 ) {
     var showHub by remember { mutableStateOf(false) }
     var sub by remember { mutableStateOf<PaySub?>(null) }
@@ -141,7 +141,7 @@ fun ProtoPayTab(
         fundingName = "itunda Pay Money",
         fundingBalance = balance?.let { String.format(java.util.Locale.US, "%,.0f", it) } ?: "—",
         onOpenPay = { showHub = true }, onSettings = { sub = PaySub.SETTINGS }, onChangeFunding = onChangeFunding, onReceive = onReceive,
-        scanContent = { flash, registerPhoto -> Column(Modifier.verticalScroll(rememberScrollState())) { scanContent(flash, registerPhoto) } },
+        scanContent = { flash, registerPhoto, flashAvailability -> Column(Modifier.verticalScroll(rememberScrollState())) { scanContent(flash, registerPhoto, flashAvailability) } },
         onTill = { sub = PaySub.TILL },
         onMerchant = { merchant = it; sub = if (it == "Amina K.") PaySub.AMOUNT else PaySub.ORDER },
     )
