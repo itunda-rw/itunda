@@ -56,6 +56,16 @@ class PayScreenshotTest {
     @Test fun payDark() = render(true, "pay-dark")
     @Test fun tapLight() = render(false, "pay-tap-light", ProtoPayMode.TAP)
     @Test fun tapDark() = render(true, "pay-tap-dark", ProtoPayMode.TAP)
+    @Test fun tapTopUpOpensFundingFlow() {
+        val opened = mutableStateOf(false)
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                ProtoPayContent(ProtoPayMode.TAP, {}, "ITUNDA-DEMO-1", 43, "itunda Pay Money", "120,500", {}, {}, {}, {}, {}, onTopUp = { opened.value = true })
+            }
+        }
+        rule.onNodeWithText("Top up").performClick()
+        rule.runOnIdle { assertTrue(opened.value) }
+    }
     // Scan hosts the real camera (CameraX, not available on the JVM); only the dark chrome is checked here.
     @Test fun scanLight() = render(false, "pay-scan-light", ProtoPayMode.SCAN)
     @Test fun scanDark() = render(true, "pay-scan-dark", ProtoPayMode.SCAN)
