@@ -112,6 +112,7 @@ fun CameraQrScanner(
     val onScannedState = rememberUpdatedState(onScanned)
     val scanner = remember { BarcodeScanning.getClient() }
     var camera by remember { mutableStateOf<Camera?>(null) }
+    var cameraUnavailable by remember { mutableStateOf(false) }
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null && !scanned) {
             try {
@@ -181,10 +182,7 @@ fun CameraQrScanner(
                             cameraProvider.unbindAll()
                             camera = cameraProvider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
                         } catch (_: Exception) {
-                            // Real, non-critical -- e.g. no back camera on this device. The
-                            // permission-denied empty state above already covers the other
-                            // real "can't scan" case; this one just leaves a blank preview
-                            // rather than crashing the caller's flow.
+                            cameraUnavailable = true
                         }
                     },
                     ContextCompat.getMainExecutor(ctx),
@@ -192,6 +190,9 @@ fun CameraQrScanner(
                 previewView
             },
         )
+        if (cameraUnavailable) {
+            Text("Camera unavailable. Try again or choose a QR photo.", color = Color.White, style = MaterialTheme.typography.bodySmall, modifier = Modifier.align(Alignment.Center).padding(16.dp))
+        }
         if (found) {
             Text(
                 "QR code found",
