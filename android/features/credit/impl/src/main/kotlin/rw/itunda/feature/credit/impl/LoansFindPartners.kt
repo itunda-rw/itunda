@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -24,36 +25,49 @@ import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 
-private data class LoanPartner(val badge: String, val tint: Color, val title: String, val detail: String)
+private data class LoanPartner(val badge: String, val tint: Color, val title: String, val detail: String, val icon: androidx.compose.ui.graphics.vector.ImageVector? = null)
 
 private val partners = listOf(
-    LoanPartner("B", Color(0xFF5B54D6), "itunda Bank loans", "Small loans for people with a steady income. Repay monthly, no hidden fees."),
-    LoanPartner("M", Color(0xFF1FA67A), "Mortgage loan", "Buy or build a home. Terms up to 20 years, rates shown before you apply."),
-    LoanPartner("R", Color(0xFF2F9E8F), "Refinance", "Move a loan from another lender to a lower rate."),
-    LoanPartner("L", Color(0xFF3B82F6), "Manage other loans", "See loans from other lenders in one place."),
+    LoanPartner("B", Color(0xFF5A51EC), "itunda Bank loans", "Small loans for people with a steady income. Repay monthly, no hidden fees."),
+    LoanPartner("M", Color(0xFF0A9F6B), "Mortgage loan", "Buy or build a home. Terms up to 20 years, rates shown before you apply.", androidx.compose.material.icons.Icons.Filled.Apartment),
+    LoanPartner("R", Color(0xFF12A39A), "Refinance", "Move a loan from another lender to a lower rate.", androidx.compose.material.icons.Icons.Filled.Sync),
+    LoanPartner("L", Color(0xFF3B82F6), "Manage other loans", "See loans from other lenders in one place.", androidx.compose.material.icons.Icons.Filled.CreditCard),
     LoanPartner("\uD83C\uDF89", Color.Transparent, "Events", "Exclusively at itunda: preferential rates from our partners."),
 )
 
-/** Prototype "Find loan" partner list: tap a row to open its one-line explanation (dummy copy). */
+/** Prototype "Find loan" partner list (measured: 64dp rows, 40dp r14 badge, 17sp/600 title, chevron 18dp). */
 @Composable
-fun LoansFindPartners(onOverdraft: () -> Unit = {}, onPostpaid: () -> Unit = {}) {
+fun LoansFindPartners() {
     var open by remember { mutableStateOf<Int?>(null) }
-    Column(Modifier.fillMaxWidth().padding(top = 20.dp)) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
         partners.forEachIndexed { i, p ->
             Row(
-                Modifier.fillMaxWidth().pressScaleClickable { open = if (open == i) null else i }.padding(vertical = 14.dp),
+                Modifier.fillMaxWidth().height(64.dp).pressScaleClickable { open = if (open == i) null else i }.padding(horizontal = 24.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(p.tint), contentAlignment = Alignment.Center) {
-                    Text(p.badge, color = Color.White, fontSize = if (p.tint == Color.Transparent) 24.sp else 16.sp, fontWeight = FontWeight.ExtraBold)
+                Box(Modifier.size(40.dp).clip(RoundedCornerShape(14.dp)).background(p.tint), contentAlignment = Alignment.Center) {
+                    when {
+                        p.icon != null -> androidx.compose.material3.Icon(p.icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
+                        else -> Text(p.badge, color = Color.White, fontSize = if (p.tint == Color.Transparent) 26.sp else 17.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
-                Text(p.title, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).padding(start = 14.dp))
-                Text(if (open == i) "⌃" else "⌄", color = Ids.colors.textTertiary, fontSize = 18.sp)
+                Text(p.title, color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 23.8.sp, letterSpacing = (-0.3).sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f).padding(start = 14.dp))
+                androidx.compose.material3.Icon(
+                    if (open == i) androidx.compose.material.icons.Icons.Filled.KeyboardArrowUp else androidx.compose.material.icons.Icons.Filled.KeyboardArrowDown,
+                    contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(18.dp),
+                )
             }
             if (open == i) {
-                Text(p.detail, color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 21.sp, modifier = Modifier.padding(start = 50.dp, bottom = 12.dp))
+                Text(p.detail, color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 21.sp, modifier = Modifier.padding(start = 78.dp, end = 24.dp, bottom = 12.dp))
             }
         }
+    }
+}
+
+/** Overdraft / Postpaid credit shortcuts, shown with the real offers list. */
+@Composable
+fun LoansFindExtras(onOverdraft: () -> Unit, onPostpaid: () -> Unit) {
+    Column(Modifier.fillMaxWidth()) {
         listOf("Overdraft" to onOverdraft, "Postpaid credit" to onPostpaid).forEach { (label, go) ->
             Row(Modifier.fillMaxWidth().pressScaleClickable(onClick = go).padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(label, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))

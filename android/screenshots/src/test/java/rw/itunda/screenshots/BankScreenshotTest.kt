@@ -110,7 +110,7 @@ class BankScreenshotTest {
 
     @Test fun grow31Light() {
         rule.setContent {
-            IdsTheme(darkTheme = false) { Box(Modifier.fillMaxSize().background(Ids.colors.background)) { Grow31IntroContent {} } }
+            IdsTheme(darkTheme = false) { Box(Modifier.fillMaxSize().background(Ids.colors.background)) { Grow31IntroContent(onBack = {}, onContinue = {}) } }
         }
         rule.onRoot().captureRoboImage("build/screenshots/save31-light.png")
     }

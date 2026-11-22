@@ -100,12 +100,12 @@ fun Grow31SavingsScreen(onBack: () -> Unit) {
             mode == Grow31Mode.INTRO -> { { mode = Grow31Mode.LIST } }
             else -> onBack
         }
-        BackTopBar(title = title, onBack = backAction)
+        if (!(mode == Grow31Mode.INTRO && selectedPlanId == null)) BackTopBar(title = title, onBack = backAction)
 
         when {
             selectedPlanId != null -> Grow31DetailContent(planId = selectedPlanId!!, onChanged = { refreshKey++ })
             mode == Grow31Mode.NEW -> Grow31CreateContent(initialAmount = chosenDaily, onCreated = { mode = Grow31Mode.LIST; refreshKey++ })
-            mode == Grow31Mode.INTRO -> Grow31IntroContent(onContinue = { chosenDaily = it.toString(); mode = Grow31Mode.NEW })
+            mode == Grow31Mode.INTRO -> Grow31IntroContent(onBack = backAction, onContinue = { chosenDaily = it.toString(); mode = Grow31Mode.NEW })
             else -> LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp),

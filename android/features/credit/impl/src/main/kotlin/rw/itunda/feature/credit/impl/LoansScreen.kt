@@ -35,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -79,6 +80,7 @@ private enum class LoansMode { OFFERS, MY_LOANS, OVERDRAFT, POSTPAID_CREDIT }
 fun LoansScreen(onBack: () -> Unit) {
     BackHandler(onBack = onBack)
     var mode by remember { mutableStateOf(LoansMode.OFFERS) }
+    var offersOpen by remember { mutableStateOf(false) }
     var offers by remember { mutableStateOf<List<LoanOfferDto>?>(null) }
     var myLoans by remember { mutableStateOf<List<LoanAccountDto>?>(null) }
     var lenders by remember { mutableStateOf<List<LenderDto>?>(null) }
@@ -126,10 +128,25 @@ fun LoansScreen(onBack: () -> Unit) {
             findSelected = mode == LoansMode.OFFERS,
             mineSelected = mode == LoansMode.MY_LOANS,
             myCount = myLoans?.size ?: 0,
-            onBack = onBack,
-            onFind = { mode = LoansMode.OFFERS },
+            onBack = { if (mode == LoansMode.OFFERS && offersOpen) offersOpen = false else onBack() },
+            onFind = { mode = LoansMode.OFFERS; offersOpen = false },
             onMine = { mode = LoansMode.MY_LOANS },
         )
+        val findIntro = mode == LoansMode.OFFERS && !offersOpen
+        if (findIntro) {
+            Box(Modifier.weight(1f)) {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    Spacer(Modifier.height(24.dp))
+                    LoansFindHero(offers?.minOfOrNull { it.interestRate }?.toString())
+                    Box(Modifier.fillMaxWidth().height(12.dp).background(Ids.colors.surfaceSoft))
+                    LoansFindPartners()
+                    LoansFindFooter(onExclusive = { offersOpen = true })
+                }
+                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Ids.colors.background).padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 24.dp)) {
+                    IdsButton(text = "Check your loan rate", onClick = { offersOpen = true })
+                }
+            }
+        } else {
         Spacer(Modifier.height(8.dp))
         LazyColumn(Modifier.weight(1f).padding(horizontal = 20.dp), state = listState, verticalArrangement = Arrangement.spacedBy(12.dp)) {
             error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
@@ -145,8 +162,7 @@ fun LoansScreen(onBack: () -> Unit) {
                 }
             }
             if (mode == LoansMode.OFFERS) {
-                item { LoansFindHero(offers?.minOfOrNull { it.interestRate }?.toString()) }
-                item { LoansFindPartners(onOverdraft = { mode = LoansMode.OVERDRAFT }, onPostpaid = { mode = LoansMode.POSTPAID_CREDIT }) }
+                item { LoansFindExtras(onOverdraft = { mode = LoansMode.OVERDRAFT }, onPostpaid = { mode = LoansMode.POSTPAID_CREDIT }) }
                 lenders?.let { currentLenders ->
                     item {
                         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -246,12 +262,6 @@ fun LoansScreen(onBack: () -> Unit) {
                 }
             }
         }
-        if (mode == LoansMode.OFFERS) {
-            Box(
-                Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp).height(56.dp).clip(RoundedCornerShape(28.dp)).background(Ids.colors.brand)
-                    .pressScaleClickable { scope.launch { listState.animateScrollToItem(3) } },
-                contentAlignment = Alignment.Center,
-            ) { Text("Check your loan rate", color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold) }
         }
     }
 }

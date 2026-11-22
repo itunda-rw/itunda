@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -31,15 +32,15 @@ fun LoansTopBar(
     onFind: () -> Unit,
     onMine: () -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(40.dp).pressScaleClickable(onClick = onBack), contentAlignment = Alignment.CenterStart) {
+    Box(Modifier.fillMaxWidth().height(66.dp)) {
+        Box(Modifier.padding(start = 12.dp, top = 14.dp).size(48.dp).pressScaleClickable(onClick = onBack), contentAlignment = Alignment.Center) {
             ItundaArt("back", ItundaArtSet.Line, 24.dp, tint = Ids.colors.textPrimary)
         }
         Row(
-            Modifier.weight(1f).padding(horizontal = 12.dp).height(44.dp).clip(RoundedCornerShape(22.dp)).background(Ids.colors.surfaceSoft).padding(4.dp),
+            Modifier.align(Alignment.TopCenter).padding(top = 16.dp).height(44.dp).clip(RoundedCornerShape(22.dp)).background(Ids.colors.surfaceSoft).padding(3.dp),
         ) {
-            Pill("My loan" + if (myCount > 0) " ($myCount)" else "", mineSelected, onMine, Modifier.weight(1f))
-            Pill("Find loan", findSelected, onFind, Modifier.weight(1f))
+            Pill("My loan" + if (myCount > 0) " ($myCount)" else "", mineSelected, onMine, Modifier)
+            Pill("Find loan", findSelected, onFind, Modifier)
         }
     }
 }
@@ -47,10 +48,10 @@ fun LoansTopBar(
 @Composable
 private fun Pill(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier) {
     Box(
-        modifier.height(36.dp).clip(RoundedCornerShape(18.dp)).background(if (selected) Ids.colors.brand else androidx.compose.ui.graphics.Color.Transparent)
+        modifier.height(38.dp).clip(RoundedCornerShape(19.dp)).background(if (selected) Ids.colors.brand else androidx.compose.ui.graphics.Color.Transparent)
             .pressScaleClickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, color = if (selected) Ids.colors.textPrimary else Ids.colors.textTertiary, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        Text(label, color = if (selected) Color(0xFF17171C) else Ids.colors.textTertiary, fontSize = 15.sp, lineHeight = 21.sp, letterSpacing = (-0.3).sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.padding(horizontal = 18.dp))
     }
 }
