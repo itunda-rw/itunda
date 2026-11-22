@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package rw.itunda.feature.eats.impl
 
 import androidx.compose.foundation.background
