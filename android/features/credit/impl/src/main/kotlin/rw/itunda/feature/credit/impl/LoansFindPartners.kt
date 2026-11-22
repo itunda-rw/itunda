@@ -4,6 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Apartment
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -29,9 +35,9 @@ private data class LoanPartner(val badge: String, val tint: Color, val title: St
 
 private val partners = listOf(
     LoanPartner("B", Color(0xFF5A51EC), "itunda Bank loans", "Small loans for people with a steady income. Repay monthly, no hidden fees."),
-    LoanPartner("M", Color(0xFF0A9F6B), "Mortgage loan", "Buy or build a home. Terms up to 20 years, rates shown before you apply.", androidx.compose.material.icons.Icons.Filled.Apartment),
-    LoanPartner("R", Color(0xFF12A39A), "Refinance", "Move a loan from another lender to a lower rate.", androidx.compose.material.icons.Icons.Filled.Sync),
-    LoanPartner("L", Color(0xFF3B82F6), "Manage other loans", "See loans from other lenders in one place.", androidx.compose.material.icons.Icons.Filled.CreditCard),
+    LoanPartner("M", Color(0xFF0A9F6B), "Mortgage loan", "Buy or build a home. Terms up to 20 years, rates shown before you apply.", Icons.Filled.Apartment),
+    LoanPartner("R", Color(0xFF12A39A), "Refinance", "Move a loan from another lender to a lower rate.", Icons.Filled.Sync),
+    LoanPartner("L", Color(0xFF3B82F6), "Manage other loans", "See loans from other lenders in one place.", Icons.Filled.CreditCard),
     LoanPartner("\uD83C\uDF89", Color.Transparent, "Events", "Exclusively at itunda: preferential rates from our partners."),
 )
 
@@ -53,7 +59,7 @@ fun LoansFindPartners() {
                 }
                 Text(p.title, color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 23.8.sp, letterSpacing = (-0.3).sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f).padding(start = 14.dp))
                 androidx.compose.material3.Icon(
-                    if (open == i) androidx.compose.material.icons.Icons.Filled.KeyboardArrowUp else androidx.compose.material.icons.Icons.Filled.KeyboardArrowDown,
+                    if (open == i) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
                     contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(18.dp),
                 )
             }

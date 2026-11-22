@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -56,7 +58,7 @@ fun LoansFindFooter(onExclusive: () -> Unit) {
             Box(Modifier.size(34.dp).clip(CircleShape).background(Color(0xFF2563EB)))
             Box(Modifier.offset((-10).dp).size(34.dp).clip(CircleShape).background(Color(0xFFF5B301)))
             Text("+21", color = Ids.colors.textPrimary, fontSize = 13.sp, lineHeight = 18.2.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 2.dp))
-            androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.KeyboardArrowRight, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(22.dp))
+            androidx.compose.material3.Icon(Icons.Filled.KeyboardArrowRight, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(22.dp))
         }
         Spacer(Modifier.height(40.dp))
         Column(Modifier.fillMaxWidth().background(Ids.colors.surfaceSoft).padding(start = 24.dp, end = 24.dp, top = 32.dp, bottom = 120.dp)) {
