@@ -47,9 +47,9 @@ internal fun BankSubTopBar(title: String, onBack: () -> Unit, trailing: @Composa
 }
 
 @Composable
-internal fun BankSubCta(label: String, enabled: Boolean = true, onClick: () -> Unit) {
+internal fun BankSubCta(label: String, enabled: Boolean = true, top: androidx.compose.ui.unit.Dp = 16.dp, bottom: androidx.compose.ui.unit.Dp = 28.dp, onClick: () -> Unit) {
     Box(
-        Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 28.dp).height(58.dp).clip(RoundedCornerShape(18.dp))
+        Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = top, bottom = bottom).height(58.dp).clip(RoundedCornerShape(18.dp))
             .background(if (enabled) Ids.colors.brand else Ids.colors.brand.copy(alpha = 0.12f))
             .then(if (enabled) Modifier.pressScaleClickable(onClick = onClick) else Modifier),
         contentAlignment = Alignment.Center,

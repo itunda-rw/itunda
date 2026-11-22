@@ -42,7 +42,7 @@ import rw.itunda.core.designsystem.theme.Ids
 
 private val banks = listOf("Bank of Kigali", "I&M Bank", "Equity Bank", "Access Bank")
 
-private class Payee(val name: String, val bank: String, val last4: String, val star: Boolean = false)
+private class Payee(val name: String, val bank: String, val last4: String, val star: Boolean = false, val holder: String = name)
 
 @Composable
 private fun EmptyBlock(title: String, body: String) {
@@ -54,21 +54,21 @@ private fun EmptyBlock(title: String, body: String) {
 
 @Composable
 internal fun BankPayeesScreen(onBack: () -> Unit) {
-    val payees = remember { mutableStateListOf(Payee("Landlord", "Bank of Kigali", "6789", true), Payee("Kigali Tutors", "Equity Bank", "3789")) }
+    val payees = remember { mutableStateListOf(Payee("Landlord", "Bank of Kigali", "6789", true, "Diane M."), Payee("Kigali Tutors", "Equity Bank", "3789")) }
     var adding by rememberSaveable { mutableStateOf(false) }
     if (adding) { BankAddPayee({ adding = false }) { payees.add(it) }; return }
     Column(Modifier.fillMaxSize().background(Ids.colors.background)) {
         BankSubTopBar("Payees", onBack)
-        BankSubCta("+ Add a payee") { adding = true }
+        BankSubCta("+ Add a payee", top = 12.dp, bottom = 0.dp) { adding = true }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
             payees.forEach { p ->
-                Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(44.dp).clip(CircleShape).background(Ids.colors.brand.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
-                        Text(p.name.split(" ").take(2).joinToString("") { it.take(1) }.uppercase(), color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Row(Modifier.fillMaxWidth().height(80.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(44.dp).clip(CircleShape).background(Color(0xFFEEEDFF)), contentAlignment = Alignment.Center) {
+                        Text(p.holder.split(" ").take(2).joinToString("") { it.take(1) }.uppercase(), color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
                     }
-                    Column(Modifier.padding(start = 14.dp)) {
-                        Row { Text(p.name, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold); if (p.star) Text(" ★", color = androidx.compose.ui.graphics.Color(0xFFFFB400), fontSize = 15.sp) }
-                        Text("${p.bank} ••${p.last4}", color = Ids.colors.textTertiary, fontSize = 14.sp)
+                    Column(Modifier.padding(start = 16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) { Text(p.name, color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 24.sp, letterSpacing = (-0.2).sp, fontWeight = FontWeight.SemiBold); if (p.star) Text(" ★", color = Color(0xFFFFB800), fontSize = 16.sp) }
+                        Text("${p.holder} · ${p.bank} ••${p.last4}", color = Ids.colors.textPrimary, fontSize = 14.sp, lineHeight = 21.sp, letterSpacing = (-0.2).sp, modifier = Modifier.padding(top = 3.dp))
                     }
                 }
             }

@@ -142,18 +142,19 @@ internal fun BankMoveScreen(onBack: () -> Unit) {
     if (done) { BankDone("Money moved", "${rwf(amount)} RWF from $from to $to.", onBack); return }
     Column(Modifier.fillMaxSize().background(Ids.colors.background)) {
         BankSubTopBar("Move money", onBack)
-        Column(Modifier.weight(1f).padding(horizontal = 20.dp)) {
+        Column(Modifier.weight(1f).padding(horizontal = 24.dp)) {
+            Spacer(Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 AccountBox("From", from, Modifier.weight(1f))
-                Box(Modifier.size(44.dp).clip(CircleShape).background(Ids.colors.surfaceSoft).pressScaleClickable { flip = !flip }, contentAlignment = Alignment.Center) {
-                    Icon(Icons.Filled.Sync, contentDescription = "Swap accounts", modifier = Modifier.size(22.dp), tint = Ids.colors.brand)
+                Box(Modifier.size(48.dp).clip(CircleShape).background(Ids.colors.surfaceSoft).pressScaleClickable { flip = !flip }, contentAlignment = Alignment.Center) {
+                    Icon(Icons.Filled.Sync, contentDescription = "Swap accounts", modifier = Modifier.size(26.dp), tint = Ids.colors.brand)
                 }
                 AccountBox("To", to, Modifier.weight(1f))
             }
-            BankSectionLabel("Amount")
+            Text("Amount", color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 28.dp, bottom = 6.dp))
             AmountInput(amount) { amount = it }
-            Text("Available · ${rwf(DEMO_BALANCE)} RWF", color = Ids.colors.textTertiary, fontSize = 14.sp)
-            Spacer(Modifier.height(16.dp))
+            Text("Available · ${rwf(DEMO_BALANCE)} RWF", color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 6.dp))
+            Spacer(Modifier.height(14.dp))
             AddChips(listOf(1_000, 5_000, 20_000, 50_000)) { amount += it }
         }
         BankSubCta("Move ${rwf(amount)} RWF", enabled = amount in 1..DEMO_BALANCE) { done = true }
@@ -162,8 +163,8 @@ internal fun BankMoveScreen(onBack: () -> Unit) {
 
 @Composable
 private fun AccountBox(label: String, name: String, modifier: Modifier) {
-    Column(modifier.clip(RoundedCornerShape(16.dp)).background(Ids.colors.surfaceSoft).padding(16.dp)) {
-        Text(label, color = Ids.colors.textTertiary, fontSize = 13.sp)
-        Text(name, color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+    Column(modifier.clip(RoundedCornerShape(16.dp)).background(Ids.colors.surfaceSoft).padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 14.dp)) {
+        Text(label, color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 20.sp)
+        Text(name, color = Ids.colors.textPrimary, fontSize = 16.sp, lineHeight = 22.4.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 1.dp))
     }
 }
