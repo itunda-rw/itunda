@@ -148,6 +148,8 @@ import java.util.UUID
 internal fun PayByCodeCard(
     deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
     facePayEnrolled: Boolean,
+    flashEnabled: Boolean = false,
+    onPhotoPickerReady: (((() -> Unit)) -> Unit)? = null,
     onPaid: (CollectPaymentResultDto) -> Unit,
 ) {
     var code by remember { mutableStateOf("") }
@@ -406,7 +408,7 @@ internal fun PayByScanCard(
                 }
                 else -> {
                     ScanHeading()
-                    ScanFrame { CameraQrScanner(onScanned = ::handleScanned, modifier = Modifier.fillMaxSize()) }
+                    ScanFrame { CameraQrScanner(onScanned = ::handleScanned, modifier = Modifier.fillMaxSize(), flashEnabled = flashEnabled, onPhotoPickerReady = onPhotoPickerReady) }
                     error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
                 }
             }
