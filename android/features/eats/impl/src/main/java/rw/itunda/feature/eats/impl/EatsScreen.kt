@@ -359,7 +359,7 @@ internal fun OrderFoodContent(
         ) {
         if (view == OrderFoodView.ORDERS) {
             item {
-                MyEatsOrdersView(onReorder = ::handleReorder, onTrack = { selectedOrder = it; view = OrderFoodView.TRACKING }, reorderingId = reorderingId, restaurants = allRestaurants)
+                MyEatsOrdersView(onReorder = ::handleReorder, onTrack = { selectedOrder = it; view = OrderFoodView.TRACKING }, reorderingId = reorderingId, restaurants = allRestaurants, onReportIssue = onReportIssue, onBrowseRestaurants = { view = OrderFoodView.BROWSE })
                 val reorderErr = reorderError
                 if (reorderErr != null) {
                     Spacer(Modifier.height(8.dp))
