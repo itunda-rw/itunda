@@ -56,7 +56,7 @@ fun Grow31IntroContent(onBack: () -> Unit, onContinue: (dailyAmount: Long) -> Un
             Text("Save a little each\nday, earn up to 10%", color = ink, fontSize = 30.sp, lineHeight = 38.sp, letterSpacing = (-0.6).sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 6.dp))
             Text("Your bonus grows at day 7, 14, 21 and 31.", color = Ids.colors.textTertiary, fontSize = 15.sp, lineHeight = 22.sp, modifier = Modifier.padding(top = 8.dp, bottom = 14.dp))
             BonusIllustration()
-            Text("How much each day?", color = ink, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 16.dp, bottom = 22.6.dp))
+            Text("How much each day?", color = ink, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 28.dp, bottom = 8.6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 dailyChoices.forEach { amount ->
                     val on = amount == daily
@@ -77,7 +77,7 @@ fun Grow31IntroContent(onBack: () -> Unit, onContinue: (dailyAmount: Long) -> Un
                     pop()
                     append(" · itunda Bank balance 842,300 RWF")
                 },
-                color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 12.dp),
+                color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 14.dp),
             )
         }
         BankSubCta("Next", top = 14.dp) { onContinue(daily) }
@@ -98,10 +98,10 @@ private fun BonusIllustration() {
             drawPath(swirl, Color(0xFFE0A63A), style = Stroke(3 * d, cap = androidx.compose.ui.graphics.StrokeCap.Round))
             drawLine(Color.White.copy(alpha = 0.5f), Offset(296 * d, 92 * d), Offset(296 * d, 186 * d), strokeWidth = 2 * d)
             drawRoundRect(cup, Offset(108 * d, 229 * d), Size(126 * d, 8 * d), androidx.compose.ui.geometry.CornerRadius(4 * d))
-            drawArc(cup, 0f, 180f, false, Offset(124 * d, 237 * d - 2 * d), Size(92 * d, 100 * d), style = Stroke(4 * d))
+            drawArc(cup, 0f, 180f, false, Offset(124 * d, 187 * d), Size(92 * d, 100 * d), style = Stroke(4 * d))
             drawArc(cup, -90f, 180f, false, Offset(204 * d, 244 * d), Size(30 * d, 34 * d), style = Stroke(4 * d))
         }
-        Box(Modifier.offset(14.dp, 14.dp).size(128.dp, 70.dp).clip(RoundedCornerShape(14.dp)).background(Color.White).padding(12.dp)) {
+        Box(Modifier.offset(14.dp, 14.dp).size(128.dp, 70.dp).clip(RoundedCornerShape(14.dp)).background(Color.White).padding(horizontal = 12.dp, vertical = 8.dp)) {
             Text("Reach the cup for the full 10% bonus", color = Ids.colors.textPrimary, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Bold)
         }
         listOf(7 to 92, 14 to 119, 21 to 147, 31 to 186).forEach { (day, cy) ->

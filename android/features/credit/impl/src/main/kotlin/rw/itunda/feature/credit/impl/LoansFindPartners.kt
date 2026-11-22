@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apartment
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.foundation.layout.height
@@ -43,12 +44,12 @@ private val partners = listOf(
 
 /** Prototype "Find loan" partner list (measured: 64dp rows, 40dp r14 badge, 17sp/600 title, chevron 18dp). */
 @Composable
-fun LoansFindPartners() {
+fun LoansFindPartners(onBankLoans: () -> Unit = {}) {
     var open by remember { mutableStateOf<Int?>(null) }
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
         partners.forEachIndexed { i, p ->
             Row(
-                Modifier.fillMaxWidth().height(64.dp).pressScaleClickable { open = if (open == i) null else i }.padding(horizontal = 24.dp),
+                Modifier.fillMaxWidth().height(64.dp).pressScaleClickable { if (i == 0) onBankLoans() else open = if (open == i) null else i }.padding(horizontal = 24.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(Modifier.size(40.dp).clip(RoundedCornerShape(14.dp)).background(p.tint), contentAlignment = Alignment.Center) {
@@ -59,7 +60,7 @@ fun LoansFindPartners() {
                 }
                 Text(p.title, color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 23.8.sp, letterSpacing = (-0.3).sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f).padding(start = 14.dp))
                 androidx.compose.material3.Icon(
-                    if (open == i) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                    if (i == 0) Icons.Filled.KeyboardArrowRight else if (open == i) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
                     contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(18.dp),
                 )
             }

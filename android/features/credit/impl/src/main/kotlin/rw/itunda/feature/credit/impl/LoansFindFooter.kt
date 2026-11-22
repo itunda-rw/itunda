@@ -75,7 +75,7 @@ fun LoansFindPage(lowestRate: String?, onCheckRate: () -> Unit, modifier: Modifi
             Spacer(Modifier.height(24.dp))
             LoansFindHero(lowestRate)
             Box(Modifier.fillMaxWidth().height(12.dp).background(Ids.colors.surfaceSoft))
-            LoansFindPartners()
+            LoansFindPartners(onBankLoans = onCheckRate)
             LoansFindFooter(onExclusive = onCheckRate)
         }
         Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Ids.colors.background).padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 24.dp)) {

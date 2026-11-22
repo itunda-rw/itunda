@@ -167,15 +167,13 @@ private fun TransactionRow(tx: TransactionDisplayItem) {
     val whenText = whenLabel(tx.createdAt)
     Row(modifier = Modifier.fillMaxWidth().height(64.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
-            when {
-                !tx.isOutgoing -> Box(Modifier.size(28.dp).clip(CircleShape).background(Color(0xFF3DCCA0)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Outlined.ArrowDownward, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.White)
-                }
-                tx.isPaid() -> Box(Modifier.size(28.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFF3B82F6)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Outlined.ShoppingBag, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.White)
-                }
-                else -> ItundaArt("send", ItundaArtSet.Proto, 31.dp, fit = true)
+            val art = when {
+                !tx.isOutgoing -> "receive"
+                tx.isPaid() && tx.description.contains("bus", ignoreCase = true) -> "transit"
+                tx.isPaid() -> "bag"
+                else -> "send"
             }
+            ItundaArt(art, ItundaArtSet.Proto, 31.dp, fit = true)
         }
         Column(modifier = Modifier.weight(1f).padding(start = 16.dp)) {
             Text(tx.description, color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 22.sp, letterSpacing = (-0.3).sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
