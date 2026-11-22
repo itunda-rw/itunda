@@ -14,7 +14,7 @@ import kotlinx.coroutines.delay
 import rw.itunda.core.network.GenerateCustomerPaymentCodeRequest
 import rw.itunda.core.network.NetworkClient
 
-internal enum class PaySub { SETTINGS, AMOUNT, TILL, ORDER, DONE, HISTORY, SAVED, POINTS, RECEIPT, COUPONS }
+internal enum class PaySub { SETTINGS, AMOUNT, TILL, ORDER, DONE, HISTORY, SAVED, POINTS, RECEIPT, COUPONS, TOP_UP }
 
 /** Stateful Pay tab for the prototype layout: real payment code + real PAY account, nothing invented. */
 @Composable
@@ -35,9 +35,13 @@ fun ProtoPayTab(
     var expiresAt by remember { mutableStateOf(0L) }
     var secondsLeft by remember { mutableStateOf(0) }
     var balance by remember { mutableStateOf<Double?>(null) }
+    var accounts by remember { mutableStateOf<List<rw.itunda.core.network.Account>>(emptyList()) }
+    var payAccount by remember { mutableStateOf<rw.itunda.core.network.Account?>(null) }
     LaunchedEffect(Unit) {
         try {
-            balance = NetworkClient.apiService.getAccounts().accounts.firstOrNull { it.type == "PAY" }?.balance
+            accounts = NetworkClient.apiService.getAccounts().accounts
+            payAccount = accounts.firstOrNull { it.type == "PAY" }
+            balance = payAccount?.balance
         } catch (_: Exception) { }
     }
     LaunchedEffect(mode) {
@@ -69,6 +73,14 @@ fun ProtoPayTab(
         PaySub.SAVED -> { PaySavedMerchantsScreen(onBack = { sub = null }); return }
         PaySub.POINTS -> { PayPointsScreen(onBack = { sub = null }); return }
         PaySub.COUPONS -> { CouponBoxScreen(onBack = { sub = null }, onBrowseMerchants = onFindStores); return }
+        PaySub.TOP_UP -> {
+            val destination = payAccount
+            if (destination != null) AddMoneyScreen(destination, accounts.filter { it.id != destination.id }, onBack = { sub = null }, onDone = {
+                sub = null
+                // Balance is reloaded when the Pay tab is next composed.
+            })
+            return
+        }
         null -> Unit
     }
     if (showHub) {
@@ -80,7 +92,7 @@ fun ProtoPayTab(
         return
     }
     ProtoPayContent(
-        mode = mode, onMode = { mode = it }, qrContent = code, secondsLeft = secondsLeft,
+        mode = mode, onMode = { mode = it }, qrContent = code, secondsLeft = secondsLeft, onTopUp = { sub = PaySub.TOP_UP },
         fundingName = "itunda Pay Money",
         fundingBalance = balance?.let { String.format(java.util.Locale.US, "%,.0f", it) } ?: "—",
         onOpenPay = { showHub = true }, onSettings = { sub = PaySub.SETTINGS }, onChangeFunding = onChangeFunding, onReceive = onReceive,
