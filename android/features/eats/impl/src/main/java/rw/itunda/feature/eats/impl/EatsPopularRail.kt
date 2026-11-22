@@ -78,6 +78,7 @@ fun EatsPopularRail(
                         color = palette.primary,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
+                        minLines = 2,
                         maxLines = 2,
                         lineHeight = 19.sp,
                         overflow = TextOverflow.Ellipsis,

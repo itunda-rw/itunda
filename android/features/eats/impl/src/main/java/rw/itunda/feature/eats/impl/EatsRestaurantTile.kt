@@ -97,11 +97,7 @@ fun EatsRestaurantTile(
                     .pressScaleClickable(onClick = onToggleFavorite),
                 contentAlignment = Alignment.Center,
             ) {
-                if (isFavorite) {
-                    ItundaArt("heartred", ItundaArtSet.Proto, 20.dp)
-                } else {
-                    ItundaArt("heart", ItundaArtSet.Line, 20.dp, tint = Color(0xFF191F28))
-                }
+                ItundaArt("heartred", ItundaArtSet.Proto, 20.dp)
             }
         }
         Text(

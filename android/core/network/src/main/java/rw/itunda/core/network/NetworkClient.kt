@@ -208,7 +208,7 @@ object NetworkClient {
     // first request. Checked per request so it can sit first in the chain without
     // rebuilding the client.
     @Volatile
-    var demoMode: Boolean = false
+    @Volatile var demoMode: Boolean = false
 
     private val demoInterceptor = DemoInterceptor()
 

@@ -48,7 +48,7 @@ class EatsIntegratedScreenshotTest {
             }
         }
         rule.waitUntil(60_000) {
-            rule.onAllNodesWithText("Kigali Bakery", substring = true).fetchSemanticsNodes().isNotEmpty()
+            rule.onAllNodesWithText("Kimironko Coffee", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
     }
 
