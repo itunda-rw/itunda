@@ -91,7 +91,7 @@ private fun Section(title: String, rows: List<ManageRow>, onOpen: (BankSub) -> U
                 Text(r.subtitle, color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 21.sp, letterSpacing = (-0.2).sp, modifier = Modifier.padding(top = 3.dp))
             }
             if (r.trailing.isNotEmpty()) Text(r.trailing, color = Ids.colors.textPrimary, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Black)
-            else if (tappable) rw.itunda.core.designsystem.components.ItundaArt("chev", rw.itunda.core.designsystem.components.ItundaArtSet.Line, 16.dp, tint = Ids.colors.textTertiary.copy(alpha = 0.35f))
+            else if (tappable) rw.itunda.core.designsystem.components.ItundaArt("chev", rw.itunda.core.designsystem.components.ItundaArtSet.Line, 16.dp, tint = androidx.compose.ui.graphics.lerp(Ids.colors.textTertiary, Ids.colors.background, 0.45f))
         }
     }
     Spacer(Modifier.height(4.dp))
