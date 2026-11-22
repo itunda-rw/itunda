@@ -28,7 +28,7 @@ import rw.itunda.core.network.EatsOrderDto
 import rw.itunda.core.network.EatsOrderItemDto
 
 @Composable
-internal fun EatsReceiptSheet(
+fun EatsReceiptSheet(
     order: EatsOrderDto,
     restaurantName: String,
     items: List<EatsOrderItemDto>?,
@@ -62,7 +62,7 @@ internal fun EatsReceiptSheet(
 }
 
 @Composable
-internal fun EatsHelpSheet(
+fun EatsHelpSheet(
     order: EatsOrderDto,
     restaurantName: String,
     selectedReason: String?,
