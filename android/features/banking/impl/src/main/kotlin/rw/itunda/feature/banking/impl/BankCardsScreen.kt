@@ -51,14 +51,14 @@ internal fun BankCardsScreen(onBack: () -> Unit) {
         BankSubTopBar("Manage cards", onBack)
         Column(Modifier.padding(horizontal = 24.dp).padding(top = 8.dp)) {
             cardRows.forEach { c ->
-                Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.width(64.dp).height(40.dp).clip(RoundedCornerShape(8.dp)).background(Brush.linearGradient(listOf(c.from, c.to))).padding(7.dp)) {
-                        Box(Modifier.width(12.dp).height(8.dp).clip(RoundedCornerShape(2.dp)).background(Color.White.copy(alpha = 0.45f)))
+                Row(Modifier.fillMaxWidth().height(64.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.width(64.dp).height(32.dp).clip(RoundedCornerShape(8.dp)).background(Brush.linearGradient(listOf(c.from, c.to))).padding(6.dp)) {
+                        Box(Modifier.width(10.dp).height(7.dp).clip(RoundedCornerShape(2.dp)).background(Color.White.copy(alpha = 0.45f)))
                         Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp)).background(Color.White.copy(alpha = 0.3f)))
                     }
-                    Column(Modifier.weight(1f).padding(start = 14.dp)) {
-                        Text(c.name, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-                        Text(c.balance, color = Ids.colors.textTertiary, fontSize = 13.sp)
+                    Column(Modifier.weight(1f).padding(start = 16.dp)) {
+                        Text(c.name, color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 23.8.sp, letterSpacing = (-0.3).sp, fontWeight = FontWeight.SemiBold)
+                        Text(c.balance, color = Ids.colors.textTertiary, fontSize = 13.sp, lineHeight = 18.2.sp, modifier = Modifier.padding(top = 2.dp))
                     }
                 }
             }

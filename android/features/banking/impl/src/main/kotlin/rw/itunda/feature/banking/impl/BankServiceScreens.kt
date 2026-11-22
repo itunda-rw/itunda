@@ -46,9 +46,9 @@ private class Payee(val name: String, val bank: String, val last4: String, val s
 
 @Composable
 private fun EmptyBlock(title: String, body: String) {
-    Column(Modifier.fillMaxSize().padding(horizontal = 40.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(title, color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
-        Text(body, color = Ids.colors.textTertiary, fontSize = 15.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 10.dp))
+    Column(Modifier.fillMaxSize().padding(start = 59.dp, end = 59.dp, top = 108.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(title, color = Ids.colors.textPrimary, fontSize = 20.sp, lineHeight = 28.sp, letterSpacing = (-0.3).sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
+        Text(body, color = Ids.colors.textTertiary, fontSize = 15.sp, lineHeight = 22.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 10.dp))
     }
 }
 
