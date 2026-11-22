@@ -1895,8 +1895,9 @@ fun ItundaAppScreen(
                         onBrowseMerchants = { selectedTab = ItundaTab.Explore },
                         onOpenSupport = { showSupport = true },
                         onOpenCard = { showCard = true },
-                        payAMerchantSection = { flashEnabled, registerPhotoPicker ->
+                        payAMerchantSection = { flashEnabled, registerPhotoPicker, flashAvailability ->
                             rw.itunda.feature.shop.impl.PayAMerchantSection(flashEnabled = flashEnabled, onPhotoPickerReady = registerPhotoPicker,
+                                onFlashAvailability = flashAvailability,
                                 deviceStepUpHost = { visible, onDismiss, onVerified ->
                                     DeviceStepUpHost(visible = visible, onDismiss = onDismiss, onVerified = onVerified)
                                 },
