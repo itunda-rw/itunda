@@ -1,6 +1,10 @@
 package rw.itunda.screenshots
 
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -63,8 +67,8 @@ class EatsOrdersScreenshotTest {
 
     private fun help(dark: Boolean, selected: Boolean, name: String) {
         rule.activity.actionBar?.hide()
-        var reason: String? = null
         rule.setContent {
+            var reason by remember { mutableStateOf<String?>(null) }
             IdsTheme(darkTheme = dark) {
                 EatsHelpSheet(
                     order = order,
