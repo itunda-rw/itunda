@@ -18,7 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -286,6 +286,11 @@ internal fun OrderFoodContent(
         }
     }
 
+    // Keep scroll state alive across detail screens; the browse list is re-fetched,
+    // so restoring a stale saved index can crash while its loading placeholder is shown.
+    val eatsListState = remember { LazyListState() }
+    val eatsTouchedKey = remember { mutableStateOf<Any?>(null) }
+
     if (EatsOrderFlowDispatch(
             confirmedOrder = confirmedOrder,
             confirmedDineInOrder = confirmedDineInOrder,
@@ -329,11 +334,6 @@ internal fun OrderFoodContent(
         )
     ) return
 
-    // Real fix (2026-08-25, direct user directive: "implant that into our designs
-    // and apply it across our ecosystems", following the account ledger's own
-    // shipped version) -- see ScrollPressTracker.kt's own doc comment.
-    val eatsListState = rememberLazyListState()
-    val eatsTouchedKey = remember { mutableStateOf<Any?>(null) }
     Column(modifier = Modifier.fillMaxSize().background(eatsPrototypePalette().background)) {
         if (view == OrderFoodView.TRACKING && selectedOrder != null) {
             EatsTrackingScreen(

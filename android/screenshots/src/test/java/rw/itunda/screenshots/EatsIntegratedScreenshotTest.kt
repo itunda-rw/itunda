@@ -263,7 +263,7 @@ class EatsIntegratedScreenshotTest {
 
     private fun openBakery(dark: Boolean) {
         show(dark)
-        rule.onNodeWithText("Kigali Bakery").performClick()
+        rule.onNodeWithText("Kigali Bakery").performScrollTo().performClick()
         rule.waitUntil(20_000) {
             rule.onAllNodesWithText("Croissant").fetchSemanticsNodes().isNotEmpty()
         }
