@@ -65,6 +65,7 @@ fun ProtoPayContent(
     scanContent: @Composable () -> Unit,
     onTill: () -> Unit = {},
     onMerchant: (String) -> Unit = {},
+    onTopUp: () -> Unit = {},
 ) {
     val scan = mode == ProtoPayMode.SCAN
     val p = payPalette(scan, MaterialTheme.colorScheme.background.luminance() < 0.5f)
@@ -84,7 +85,7 @@ fun ProtoPayContent(
                 Spacer(Modifier.height(if (scan) 0.dp else if (mode == ProtoPayMode.TAP) 21.dp else 16.dp))
                 when (mode) {
                     ProtoPayMode.MY_CODE -> Column(Modifier.padding(horizontal = 20.dp)) { MyCode(p, qrContent, secondsLeft, fundingName, fundingBalance, onReceive) }
-                    ProtoPayMode.TAP -> Column(Modifier.padding(horizontal = 20.dp)) { ProtoPayTap(p, secondsLeft, fundingName, fundingBalance, onChangeFunding) }
+                    ProtoPayMode.TAP -> Column(Modifier.padding(horizontal = 20.dp)) { ProtoPayTap(p, secondsLeft, fundingName, fundingBalance, onTopUp) }
                     ProtoPayMode.SCAN -> Unit
                 }
                 if (scan) {
