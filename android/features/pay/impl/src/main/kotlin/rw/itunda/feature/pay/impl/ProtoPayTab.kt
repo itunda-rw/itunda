@@ -14,7 +14,7 @@ import kotlinx.coroutines.delay
 import rw.itunda.core.network.GenerateCustomerPaymentCodeRequest
 import rw.itunda.core.network.NetworkClient
 
-internal enum class PaySub { SETTINGS, AMOUNT, TILL, ORDER, DONE, HISTORY, SAVED, POINTS, RECEIPT }
+internal enum class PaySub { SETTINGS, AMOUNT, TILL, ORDER, DONE, HISTORY, SAVED, POINTS, RECEIPT, COUPONS }
 
 /** Stateful Pay tab for the prototype layout: real payment code + real PAY account, nothing invented. */
 @Composable
@@ -68,12 +68,14 @@ fun ProtoPayTab(
         PaySub.RECEIPT -> { PayReceiptScreen(receipt, onBack = { sub = PaySub.HISTORY }, onPayAgain = { merchant = it; sub = PaySub.AMOUNT }); return }
         PaySub.SAVED -> { PaySavedMerchantsScreen(onBack = { sub = null }); return }
         PaySub.POINTS -> { PayPointsScreen(onBack = { sub = null }); return }
+        PaySub.COUPONS -> { CouponBoxScreen(onBack = { sub = null }, onBrowseMerchants = onFindStores); return }
         null -> Unit
     }
     if (showHub) {
         PayHub(
             onBack = { showHub = false }, onFindStores = onFindStores,
             onOpenPoints = { sub = PaySub.POINTS }, onOpenHistory = { sub = PaySub.HISTORY }, onOpenSettings = { sub = PaySub.SETTINGS },
+            onOpenCoupons = { sub = PaySub.COUPONS },
         )
         return
     }
