@@ -2,6 +2,7 @@ package rw.itunda.core.designsystem.components
 
 import android.Manifest
 import android.content.pm.PackageManager
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -37,6 +38,7 @@ import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import android.net.Uri
 
 /**
  * Real camera-based QR scanning -- relocated here (item 244) from
@@ -77,6 +79,8 @@ import kotlinx.coroutines.launch
 fun CameraQrScanner(
     onScanned: (String) -> Unit,
     modifier: Modifier = Modifier,
+    flashEnabled: Boolean = false,
+    onPhotoPickerReady: (((() -> Unit)) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     var hasPermission by remember {
@@ -107,6 +111,32 @@ fun CameraQrScanner(
     var found by remember { mutableStateOf(false) }
     val onScannedState = rememberUpdatedState(onScanned)
     val scanner = remember { BarcodeScanning.getClient() }
+    var camera by remember { mutableStateOf<Camera?>(null) }
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        if (uri != null && !scanned) {
+            try {
+                val image = InputImage.fromFilePath(context, uri)
+                scanner.process(image).addOnSuccessListener { barcodes ->
+                    val value = barcodes.firstOrNull { it.format == Barcode.FORMAT_QR_CODE }?.rawValue
+                    if (value != null && !scanned) {
+                        scanned = true
+                        found = true
+                        view.announceForAccessibility("QR code found in photo")
+                        scope.launch { delay(500); onScannedState.value(value) }
+                    } else view.announceForAccessibility("No QR code found in this photo")
+                }.addOnFailureListener { view.announceForAccessibility("Couldn't read this photo") }
+            } catch (_: Exception) { view.announceForAccessibility("Couldn't open this photo") }
+        }
+    }
+    val launchPhotoPicker = { photoPicker.launch("image/*") }
+    LaunchedEffect(onPhotoPickerReady) { onPhotoPickerReady?.invoke(launchPhotoPicker) }
+    LaunchedEffect(camera, flashEnabled) {
+        camera?.let { active ->
+            if (active.cameraInfo.hasFlashUnit()) {
+                try { active.cameraControl.enableTorch(flashEnabled) } catch (_: Exception) { }
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         view.announceForAccessibility("Camera ready. Point at a QR code.")
@@ -149,7 +179,7 @@ fun CameraQrScanner(
                         }
                         try {
                             cameraProvider.unbindAll()
-                            cameraProvider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
+                            camera = cameraProvider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
                         } catch (_: Exception) {
                             // Real, non-critical -- e.g. no back camera on this device. The
                             // permission-denied empty state above already covers the other
@@ -174,6 +204,8 @@ fun CameraQrScanner(
 
     DisposableEffect(Unit) {
         onDispose {
+            camera?.cameraControl?.enableTorch(false)
+            camera = null
             scanner.close()
         }
     }
