@@ -203,15 +203,15 @@ internal fun BankPocketsScreen(onBack: () -> Unit) {
             Text("Total in pockets", color = Ids.colors.textPrimary, fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 24.dp))
             Row(Modifier.padding(horizontal = 24.dp).height(55.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(rwf(pockets.sumOf { it.amount }), color = Ids.colors.textPrimary, fontSize = 40.sp, lineHeight = 48.sp, letterSpacing = (-1.4).sp, fontWeight = FontWeight.ExtraBold)
-                Text(" RWF", color = Ids.colors.textTertiary, fontSize = 22.sp, letterSpacing = (-0.2).sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 6.dp, top = 6.dp))
+                Text(" RWF", color = Ids.colors.textTertiary, fontSize = 22.sp, letterSpacing = (-0.2).sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 6.dp, top = 10.dp))
             }
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(24.dp))
             pockets.forEach { p ->
                 Row(Modifier.fillMaxWidth().pressScaleClickable { open = p }.padding(horizontal = 24.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(52.dp), contentAlignment = Alignment.Center) {
                         Box(Modifier.fillMaxSize().clip(CircleShape).background(Ids.colors.brand.copy(alpha = 0.16f)))
                         val art = when (p.name) { "Interest jar" -> "money"; "Emergency fund" -> "lock"; "School fees" -> "school-fees"; else -> null }
-                        if (art != null) ItundaArt(art, ItundaArtSet.Proto, 31.dp, fit = true) else Text(p.emoji, fontSize = 22.sp)
+                        if (art != null) ItundaArt(art, ItundaArtSet.Proto, if (art == "school-fees") 31.dp else 24.dp, fit = true) else Text(p.emoji, fontSize = 22.sp)
                         p.goal?.let { g ->
                             val frac = (p.amount.toFloat() / g).coerceIn(0f, 1f); val ring = Ids.colors.brand
                             androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {

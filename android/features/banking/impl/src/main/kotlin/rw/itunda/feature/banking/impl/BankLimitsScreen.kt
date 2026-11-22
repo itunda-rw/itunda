@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.theme.Ids
 
 private const val SENT_TODAY = 0L
-private const val MAX_LIMIT = 5_000_000L
+private const val MAX_LIMIT = 1_000_000L
 
 /** Prototype "Limits & alerts": today's usage bar, daily limit input with quick picks, large-transfer alert. */
 @Composable
@@ -56,7 +56,7 @@ internal fun BankLimitsScreen(onBack: () -> Unit) {
         BankSubTopBar("Limits & alerts", onBack)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
             Spacer(Modifier.height(12.dp))
-            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Ids.colors.surfaceSoft).padding(18.dp)) {
+            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Ids.colors.surfaceSoft).padding(16.dp)) {
                 Text("Sent today", color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 20.sp)
                 Spacer(Modifier.height(4.dp))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.SpaceBetween) {
@@ -90,7 +90,7 @@ internal fun BankLimitsScreen(onBack: () -> Unit) {
             Text(
                 when {
                     tooLow -> "Must be at least what you sent today."
-                    limit > MAX_LIMIT -> "The most you can set is ${rwf(MAX_LIMIT)} RWF."
+                    limit > MAX_LIMIT -> "Limits above ${rwf(MAX_LIMIT)} RWF need a verified identity."
                     else -> "Between 10,000 and ${rwf(MAX_LIMIT)} RWF."
                 },
                 color = if (tooLow || limit > MAX_LIMIT) Ids.colors.danger else Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 6.dp),
@@ -113,6 +113,6 @@ internal fun BankLimitsScreen(onBack: () -> Unit) {
             }
         }
         val changed = limit != 1_000_000L || !alert
-        BankSubCta(if (changed) "Save limit" else "No changes", enabled = valid && changed) { done = true }
+        BankSubCta(if (limit > MAX_LIMIT) "Verify to raise limit" else if (changed) "Save limit" else "No changes", enabled = valid && changed) { done = true }
     }
 }

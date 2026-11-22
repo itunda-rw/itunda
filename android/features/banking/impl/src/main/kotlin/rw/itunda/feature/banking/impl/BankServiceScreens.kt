@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -153,16 +155,16 @@ internal fun BankBudgetScreen(onBack: () -> Unit) {
             Spacer(Modifier.height(16.dp))
             Text("Spent in your activity", color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 20.sp)
             Text("${rwf(spent)} RWF", color = Ids.colors.textPrimary, fontSize = 34.sp, lineHeight = 47.6.sp, letterSpacing = (-0.8).sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp))
-            Text(if (budget == 0L) "Set a monthly budget to see how much is left." else "${rwf((budget - spent).coerceAtLeast(0))} RWF left of ${rwf(budget)}", color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 20.sp)
-            Text("Monthly budget", color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 22.dp, bottom = 6.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(0L, 100_000L, 300_000L, 500_000L, 1_000_000L).forEach { v -> BankChip(if (v == 0L) "None" else rwf(v), budget == v, { budget = v }, Modifier.width(62.dp), compact = true, largeText = true) }
+            Text(if (budget == 0L) "Set a monthly budget to see how much is left." else "${rwf((budget - spent).coerceAtLeast(0))} RWF left of ${rwf(budget)}", color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 8.dp))
+            Text("Monthly budget", color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 20.dp, bottom = 8.dp))
+            Row(Modifier.fillMaxWidth().wrapContentWidth(Alignment.Start, unbounded = true), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(0L, 100_000L, 300_000L, 500_000L, 1_000_000L).forEach { v -> BankChip(if (v == 0L) "None" else rwf(v), budget == v, { budget = v }, Modifier.widthIn(min = 62.dp), compact = true, largeText = true) }
             }
             Row(Modifier.fillMaxWidth().padding(top = 12.dp).height(52.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("Alert me at 80% of my budget", Modifier.weight(1f), color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 BudgetSwitch(alert) { alert = it }
             }
-            Text("By category", color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 22.dp, bottom = 4.dp))
+            Text("By category", color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 20.dp, bottom = 5.dp))
             listOf("Transfers" to 225_000L, "Other" to 35_000L, "Transport" to 600L).forEach { (label, v) ->
                 Column(Modifier.fillMaxWidth().height(53.dp).padding(top = 10.dp)) {
                     Row { Text(label, Modifier.weight(1f), color = Ids.colors.textPrimary, fontSize = 15.sp, lineHeight = 21.sp); Text("${rwf(v)} RWF", color = Ids.colors.textPrimary, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold) }
@@ -217,10 +219,10 @@ internal fun BankDocsScreen(onBack: () -> Unit, onOpen: (BankSub) -> Unit) {
     var done by rememberSaveable { mutableStateOf<String?>(null) }
     done?.let { BankDone(it, "Demo only. No document was generated.") { done = null }; return }
     val rows = listOf(
-        Triple("Account confirmation letter", "Confirms you hold an account", "bill"),
+        Triple("Account confirmation letter", "Confirms you hold an account", "receipt"),
         Triple("Proof of balance", "Your balance today", "money"),
         Triple("Interest certificate", "Interest earned this year", "history"),
-        Triple("Statement", "Pick a period, CSV or PDF", "receipt"),
+        Triple("Statement", "Pick a period, CSV or PDF", "bill"),
     )
     Column(Modifier.fillMaxSize().background(Ids.colors.background)) {
         BankSubTopBar("Documents & letters", onBack)
@@ -236,9 +238,9 @@ internal fun BankDocsScreen(onBack: () -> Unit, onOpen: (BankSub) -> Unit) {
                     ) { rw.itunda.core.designsystem.components.ItundaArt(art, rw.itunda.core.designsystem.components.ItundaArtSet.Proto, 31.dp, fit = true) }
                     Column(Modifier.weight(1f).padding(start = 16.dp)) {
                         Text(title, color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 24.sp, letterSpacing = (-0.2).sp, fontWeight = FontWeight.SemiBold)
-                        Text(sub, color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 21.sp, letterSpacing = (-0.2).sp, modifier = Modifier.padding(top = 3.dp))
+                        Text(sub, color = Ids.colors.textPrimary, fontSize = 14.sp, lineHeight = 21.sp, letterSpacing = (-0.2).sp, modifier = Modifier.padding(top = 3.dp))
                     }
-                    rw.itunda.core.designsystem.components.ItundaArt("chev", rw.itunda.core.designsystem.components.ItundaArtSet.Line, 16.dp, tint = Ids.colors.textTertiary.copy(alpha = 0.55f))
+                    rw.itunda.core.designsystem.components.ItundaArt("chev", rw.itunda.core.designsystem.components.ItundaArtSet.Line, 16.dp, tint = Ids.colors.textTertiary.copy(alpha = 0.35f))
                 }
             }
         }
