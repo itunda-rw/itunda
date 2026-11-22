@@ -92,7 +92,7 @@ fun EatsPopularRail(
                     )
                     Row(Modifier.width(132.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            String.format(Locale.US, "%.1f", merchant.rating),
+                            String.format(Locale.US, "%.1f", merchant.rating ?: 0.0),
                             color = palette.primary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
