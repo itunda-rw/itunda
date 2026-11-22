@@ -6,9 +6,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsNotEnabled
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
@@ -58,7 +60,7 @@ class EatsOrdersScreenshotTest {
         rule.waitForIdle()
         rule.onNodeWithText("Receipt").assertExists()
         rule.onNodeWithText("2 × Croissant").assertExists()
-        rule.onNodeWithText("2,400 RWF").assertExists()
+        rule.onAllNodesWithText("2,400 RWF").assertCountEquals(2)
         rule.onRoot().captureRoboImage("build/screenshots/eats-orders-receipt-$name.png")
     }
 
