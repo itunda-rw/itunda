@@ -29,7 +29,8 @@ fun ProtoPayTab(
     var sub by remember { mutableStateOf<PaySub?>(null) }
     var merchant by remember { mutableStateOf("") }
     var receipt by remember { mutableStateOf(0) }
-    var mode by remember { mutableStateOf(ProtoPayMode.SCAN) }
+    // v1038 enters Pay on tab index 1 (My code); Scan is the first tab but is not the initial state.
+    var mode by remember { mutableStateOf(ProtoPayMode.MY_CODE) }
     var code by remember { mutableStateOf<String?>(null) }
     var expiresAt by remember { mutableStateOf(0L) }
     var secondsLeft by remember { mutableStateOf(0) }
@@ -51,6 +52,7 @@ fun ProtoPayTab(
         }
     }
     LaunchedEffect(mode) {
+        if (mode != ProtoPayMode.MY_CODE) return@LaunchedEffect
         while (true) {
             secondsLeft = ((expiresAt - System.currentTimeMillis()) / 1000L).toInt().coerceAtLeast(0)
             delay(1000)
