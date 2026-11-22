@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material3.Divider
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -143,6 +144,8 @@ internal fun MyEatsOrdersView(
     onTrack: (EatsOrderDto) -> Unit,
     reorderingId: String?,
     restaurants: List<ShoppingMerchantDto>?,
+    onReportIssue: (String) -> Unit = {},
+    onBrowseRestaurants: () -> Unit = {},
 ) {
     var orders by remember { mutableStateOf<List<EatsOrderDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -160,6 +163,10 @@ internal fun MyEatsOrdersView(
     var ordersPage by remember { mutableStateOf(0) }
     var ordersHasMore by remember { mutableStateOf(false) }
     var loadingMoreOrders by remember { mutableStateOf(false) }
+    var receiptOrder by remember { mutableStateOf<EatsOrderDto?>(null) }
+    var receiptItems by remember { mutableStateOf<List<rw.itunda.core.network.EatsOrderItemDto>?>(null) }
+    var helpOrder by remember { mutableStateOf<EatsOrderDto?>(null) }
+    var helpReason by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     fun load() {
@@ -230,7 +237,12 @@ internal fun MyEatsOrdersView(
         } else if (orders == null) {
             SkeletonBlock()
         } else if (allOrders.isEmpty()) {
-            EmptyState("No orders yet — order from a nearby restaurant and it'll show up here.", icon = Icons.AutoMirrored.Outlined.ReceiptLong)
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth()) {
+                EmptyState("No orders yet — order from a nearby restaurant and it'll show up here.", icon = Icons.AutoMirrored.Outlined.ReceiptLong)
+                Box(Modifier.clip(RoundedCornerShape(12.dp)).background(Ids.colors.brand).pressScaleClickable(onClick = onBrowseRestaurants).padding(horizontal = 18.dp, vertical = 12.dp)) {
+                    Text("Browse restaurants", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                }
+            }
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 allOrders.forEach { o ->
@@ -260,9 +272,21 @@ internal fun MyEatsOrdersView(
                                     TipRiderPrompt(orderId = o.id, onTipped = { tippedOrderIds = tippedOrderIds + o.id })
                                 }
                                 ReorderButton(reordering = reorderingId == o.id, onClick = { onReorder(o) })
+                                ListingActionButton("Receipt", false) {
+                                    receiptOrder = o
+                                    receiptItems = null
+                                    coroutineScope.launch { runCatching { NetworkClient.apiService.getEatsOrder(o.id).items }.onSuccess { receiptItems = it } }
+                                }
+                                ListingActionButton("Help", false) { helpOrder = o; helpReason = null }
                             }
                         } else if (o.status == "CANCELLED") {
                             ReorderButton(reordering = reorderingId == o.id, onClick = { onReorder(o) })
+                            ListingActionButton("Receipt", false) {
+                                receiptOrder = o
+                                receiptItems = null
+                                coroutineScope.launch { runCatching { NetworkClient.apiService.getEatsOrder(o.id).items }.onSuccess { receiptItems = it } }
+                            }
+                            ListingActionButton("Help", false) { helpOrder = o; helpReason = null }
                         }
                     }
                 }
@@ -282,6 +306,73 @@ internal fun MyEatsOrdersView(
                 }
             }
         }
+    }
+    receiptOrder?.let { order ->
+        ModalBottomSheet(onDismissRequest = { receiptOrder = null; receiptItems = null }) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Receipt", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+                Text("EA-${order.id.takeLast(4)} · ${restaurants?.find { it.merchantId == order.restaurantId }?.businessName ?: "Restaurant"}", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                Divider(color = Ids.colors.divider)
+                if (receiptItems == null) Text("Loading order items…", color = Ids.colors.textSecondary, fontSize = 14.sp)
+                else receiptItems.orEmpty().forEach { item ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("${item.quantity} × ${item.productName}", color = Ids.colors.textPrimary, fontSize = 14.sp)
+                        Text(String.format(Locale.US, "%,.0f RWF", item.unitPrice * item.quantity), color = Ids.colors.textPrimary, fontSize = 14.sp)
+                    }
+                }
+                Divider(color = Ids.colors.divider)
+                ReceiptAmountRow("Items", order.itemsSubtotal)
+                ReceiptAmountRow("Delivery", order.deliveryFee)
+                if (order.platformFee > 0) ReceiptAmountRow("Service fee", order.platformFee)
+                if (order.promotionDiscount > 0) ReceiptAmountRow("Discount", -order.promotionDiscount)
+                ReceiptAmountRow("Total", order.totalAmount, strong = true)
+                Text("Status · ${EATS_STATUS_LABEL[order.status] ?: order.status}", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                Text("Paid with itunda Pay", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                if (order.deliveryAddress.isNotBlank()) Text("Address · ${order.deliveryAddress}", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                if (!order.deliveryNotes.isNullOrBlank()) Text("Note · ${order.deliveryNotes}", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                ListingActionButton("OK", false) { receiptOrder = null; receiptItems = null }
+            }
+        }
+    }
+    helpOrder?.let { order ->
+        ModalBottomSheet(onDismissRequest = { helpOrder = null; helpReason = null }) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Report a problem", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+                Text("EA-${order.id.takeLast(4)} · ${restaurants?.find { it.merchantId == order.restaurantId }?.businessName ?: "Restaurant"}", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                Text("What went wrong?", color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                listOf("Missing item", "Wrong item", "Food was cold", "Order was late", "Something else").forEach { reason ->
+                    Box(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                            .background(if (helpReason == reason) Ids.colors.surfaceSoft else Ids.colors.surface)
+                            .pressScaleClickable { helpReason = reason }
+                            .padding(horizontal = 14.dp, vertical = 13.dp),
+                    ) {
+                        Text(reason, color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = if (helpReason == reason) FontWeight.Bold else FontWeight.Normal)
+                    }
+                }
+                ListingActionButton("Cancel", false) { helpOrder = null; helpReason = null }
+                Box(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                        .background(if (helpReason == null) Ids.colors.surfaceSoft else Ids.colors.brand)
+                        .pressScaleClickable(enabled = helpReason != null) {
+                            onReportIssue(order.transactionId)
+                            helpOrder = null
+                            helpReason = null
+                        }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                ) {
+                    Text("Send report", color = if (helpReason == null) Ids.colors.textSecondary else Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReceiptAmountRow(label: String, amount: Double, strong: Boolean = false) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, color = if (strong) Ids.colors.textPrimary else Ids.colors.textSecondary, fontWeight = if (strong) FontWeight.Bold else FontWeight.Normal, fontSize = 14.sp)
+        Text(String.format(Locale.US, "%,.0f RWF", amount), color = Ids.colors.textPrimary, fontWeight = if (strong) FontWeight.Bold else FontWeight.Normal, fontSize = 14.sp)
     }
 }
 
