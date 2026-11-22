@@ -198,37 +198,51 @@ internal fun BankPocketsScreen(onBack: () -> Unit) {
     open?.let { BankPocketDetail(it.name, it.emoji, it.amount) { open = null }; return }
     Column(Modifier.fillMaxSize().background(Ids.colors.background)) {
         BankSubTopBar("", onBack)
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
-            Text("Total in pockets", color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(rwf(pockets.sumOf { it.amount }), color = Ids.colors.textPrimary, fontSize = 36.sp, fontWeight = FontWeight.ExtraBold)
-                Text(" RWF", color = Ids.colors.textTertiary, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 6.dp, bottom = 5.dp))
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+            Spacer(Modifier.height(8.dp))
+            Text("Total in pockets", color = Ids.colors.textPrimary, fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 24.dp))
+            Row(Modifier.padding(horizontal = 24.dp).height(55.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(rwf(pockets.sumOf { it.amount }), color = Ids.colors.textPrimary, fontSize = 40.sp, lineHeight = 48.sp, letterSpacing = (-1.4).sp, fontWeight = FontWeight.ExtraBold)
+                Text(" RWF", color = Ids.colors.textTertiary, fontSize = 22.sp, letterSpacing = (-0.2).sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 6.dp, top = 6.dp))
             }
+            Spacer(Modifier.height(20.dp))
             pockets.forEach { p ->
-                Row(Modifier.fillMaxWidth().pressScaleClickable { open = p }.padding(top = 22.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(52.dp).clip(CircleShape).background(Ids.colors.brand.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
-                        val art = when (p.name) { "Interest jar" -> "interest-jar"; "School fees" -> "school-fees"; else -> null }
-                        if (art != null) ItundaArt(art, ItundaArtSet.Color, 28.dp) else Text(p.emoji, fontSize = 22.sp)
+                Row(Modifier.fillMaxWidth().pressScaleClickable { open = p }.padding(horizontal = 24.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(52.dp), contentAlignment = Alignment.Center) {
+                        Box(Modifier.fillMaxSize().clip(CircleShape).background(Ids.colors.brand.copy(alpha = 0.16f)))
+                        val art = when (p.name) { "Interest jar" -> "money"; "Emergency fund" -> "lock"; "School fees" -> "school-fees"; else -> null }
+                        if (art != null) ItundaArt(art, ItundaArtSet.Proto, 31.dp, fit = true) else Text(p.emoji, fontSize = 22.sp)
+                        p.goal?.let { g ->
+                            val frac = (p.amount.toFloat() / g).coerceIn(0f, 1f); val ring = Ids.colors.brand
+                            androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                                val st = androidx.compose.ui.graphics.drawscope.Stroke(width = 3.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                                drawArc(ring, -90f, 360f * frac, false, topLeft = androidx.compose.ui.geometry.Offset(1.5.dp.toPx(), 1.5.dp.toPx()), size = androidx.compose.ui.geometry.Size(size.width - 3.dp.toPx(), size.height - 3.dp.toPx()), style = st)
+                            }
+                        }
                     }
-                    Column(Modifier.weight(1f).padding(start = 14.dp)) {
-                        Text(p.name, color = Ids.colors.textTertiary, fontSize = 13.sp)
+                    Column(Modifier.weight(1f).padding(start = 16.dp)) {
+                        Text(p.name, color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 20.sp, letterSpacing = (-0.2).sp, fontWeight = FontWeight.Medium)
                         Row(verticalAlignment = Alignment.Bottom) {
-                            Text(rwf(p.amount), color = Ids.colors.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                            Text(" RWF", color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 1.dp))
+                            Text(rwf(p.amount), color = Ids.colors.textPrimary, fontSize = 18.sp, lineHeight = 25.2.sp, letterSpacing = (-0.4).sp, fontWeight = FontWeight.Bold)
+                            Text(" RWF", color = Ids.colors.textTertiary, fontSize = 14.sp, letterSpacing = (-0.4).sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 2.dp))
                         }
                         p.goal?.let { g ->
-                            Spacer(Modifier.height(6.dp))
-                            Box(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(Ids.colors.divider)) {
-                                Box(Modifier.fillMaxWidth((p.amount.toFloat() / g).coerceIn(0f, 1f)).height(6.dp).background(Ids.colors.brand))
+                            Spacer(Modifier.height(8.dp))
+                            Box(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(4.dp)).background(Ids.colors.surfaceSoft)) {
+                                Box(Modifier.fillMaxWidth((p.amount.toFloat() / g).coerceIn(0f, 1f)).height(6.dp).clip(RoundedCornerShape(4.dp)).background(Ids.colors.brand))
                             }
-                            Text("${(p.amount * 100 / g)}% of ${rwf(g)} RWF", color = Ids.colors.textTertiary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
+                            Text("${(p.amount * 100 / g)}% of ${rwf(g)} RWF", color = Ids.colors.textTertiary, fontSize = 13.sp, lineHeight = 18.2.sp, fontWeight = FontWeight.SemiBold, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
                         }
                     }
                 }
             }
-            Row(Modifier.fillMaxWidth().padding(top = 28.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 18.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("Trip" to "✈️", "Phone" to "📱", "Custom" to "✨").forEach { (n, e) ->
-                    BankChip("+ $n", false, { if (pockets.none { it.name == n }) pockets.add(Pocket(n, e, 0)) }, Modifier.weight(1f))
+                    Box(
+                        Modifier.weight(1f).height(40.dp).clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft)
+                            .pressScaleClickable { if (pockets.none { it.name == n }) pockets.add(Pocket(n, e, 0)) },
+                        contentAlignment = Alignment.Center,
+                    ) { Text("+ $n", color = Ids.colors.textPrimary, fontSize = 15.sp, lineHeight = 21.sp, letterSpacing = (-0.15).sp, fontWeight = FontWeight.Bold) }
                 }
             }
         }
