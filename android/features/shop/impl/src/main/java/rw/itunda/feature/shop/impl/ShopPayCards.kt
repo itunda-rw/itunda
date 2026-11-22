@@ -150,6 +150,7 @@ internal fun PayByCodeCard(
     facePayEnrolled: Boolean,
     flashEnabled: Boolean = false,
     onPhotoPickerReady: (((() -> Unit)) -> Unit)? = null,
+    onFlashAvailability: ((Boolean) -> Unit)? = null,
     onPaid: (CollectPaymentResultDto) -> Unit,
 ) {
     var code by remember { mutableStateOf("") }
@@ -410,7 +411,7 @@ internal fun PayByScanCard(
                 }
                 else -> {
                     ScanHeading()
-                    ScanFrame { CameraQrScanner(onScanned = ::handleScanned, modifier = Modifier.fillMaxSize(), flashEnabled = flashEnabled, onPhotoPickerReady = onPhotoPickerReady) }
+                    ScanFrame { CameraQrScanner(onScanned = ::handleScanned, modifier = Modifier.fillMaxSize(), flashEnabled = flashEnabled, onPhotoPickerReady = onPhotoPickerReady, onFlashAvailability = onFlashAvailability) }
                     error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
                 }
             }
