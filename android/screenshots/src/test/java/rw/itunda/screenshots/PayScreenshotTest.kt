@@ -46,7 +46,7 @@ class PayScreenshotTest {
     private fun render(dark: Boolean, name: String, mode: ProtoPayMode = ProtoPayMode.MY_CODE) {
         rule.setContent {
             IdsTheme(darkTheme = dark) {
-                ProtoPayContent(mode, {}, "ITUNDA-DEMO-1", 43, "itunda Pay Money", "120,500", {}, {}, {}, {}, {})
+                ProtoPayContent(mode, {}, "ITUNDA-DEMO-1", 43, "itunda Pay Money", "120,500", {}, {}, {}, {}, {}, onTopUp = {})
             }
         }
         rule.onRoot().captureRoboImage("build/screenshots/$name.png")
