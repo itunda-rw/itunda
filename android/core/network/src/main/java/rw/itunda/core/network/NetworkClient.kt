@@ -207,7 +207,6 @@ object NetworkClient {
     // Demo mode (see DemoInterceptor): set from the app's BuildConfig.DEMO_MODE before the
     // first request. Checked per request so it can sit first in the chain without
     // rebuilding the client.
-    @Volatile
     @Volatile var demoMode: Boolean = false
 
     private val demoInterceptor = DemoInterceptor()
