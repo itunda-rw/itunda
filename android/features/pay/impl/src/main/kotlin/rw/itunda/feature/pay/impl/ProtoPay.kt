@@ -62,7 +62,7 @@ fun ProtoPayContent(
     onSettings: () -> Unit,
     onChangeFunding: () -> Unit,
     onReceive: () -> Unit,
-    scanContent: @Composable () -> Unit,
+    scanContent: @Composable (Boolean, ((() -> Unit) -> Unit)) -> Unit,
     onTill: () -> Unit = {},
     onMerchant: (String) -> Unit = {},
     onTopUp: () -> Unit = {},
