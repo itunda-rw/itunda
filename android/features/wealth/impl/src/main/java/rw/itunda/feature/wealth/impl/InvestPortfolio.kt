@@ -86,8 +86,8 @@ internal fun PortfolioContent(onBrowse: () -> Unit = {}) {
             // section and the holdings list below it, matching ShellSection's shape.
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
-                    Text("Invested value", color = Ids.colors.textTertiary, fontSize = 14.sp)
-                    Text("${formatMoney(p.totalValue)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 32.sp)
+                    Text("Invested value", color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 20.sp)
+                    Text("${formatMoney(p.totalValue)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 36.sp, lineHeight = 44.sp, letterSpacing = (-1.2).sp)
                     if (p.holdings.isNotEmpty()) {
                         Text(
                             "${if (positive) "+" else ""}${formatMoney(p.totalReturn)} RWF (${if (positive) "+" else ""}${String.format(Locale.US, "%.2f", p.totalReturnPercent)}%)",

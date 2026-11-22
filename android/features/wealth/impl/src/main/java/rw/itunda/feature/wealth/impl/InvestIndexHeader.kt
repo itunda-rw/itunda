@@ -45,16 +45,16 @@ private val demoCurve = listOf(
 @Composable
 fun InvestIndexHeader() {
     var period by rememberSaveable { mutableIntStateOf(0) }
-    val green = Color(0xFF0A8A55)
+    val green = Color(0xFF08794D)
     Column(Modifier.fillMaxWidth()) {
         Text("RSE All Share Index", color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(4.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("169.48", color = Ids.colors.textPrimary, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold)
-            Text("  ▲ +0.6% today", color = green, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text("169.42", color = Ids.colors.textPrimary, fontSize = 26.sp, lineHeight = 36.4.sp, letterSpacing = (-0.5).sp, fontWeight = FontWeight.ExtraBold)
+            Text("  ▲ +0.6% today", color = green, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         }
         Spacer(Modifier.height(14.dp))
-        Canvas(Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(8.dp)).background(green.copy(alpha = 0.08f))) {
+        Canvas(Modifier.fillMaxWidth().height(112.dp).clip(RoundedCornerShape(8.dp)).background(green.copy(alpha = 0.08f))) {
             val max = demoCurve.max(); val min = demoCurve.min()
             val step = size.width / (demoCurve.size - 1)
             val pts = demoCurve.mapIndexed { i, v -> Offset(i * step, size.height - 8.dp.toPx() - (v - min) / (max - min) * (size.height - 16.dp.toPx())) }
@@ -62,14 +62,14 @@ fun InvestIndexHeader() {
             drawPath(line, green, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
         }
         Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.6.dp)) {
             periods.forEachIndexed { i, label ->
                 val on = i == period
                 Box(
-                    Modifier.height(36.dp).clip(RoundedCornerShape(18.dp)).background(if (on) Ids.colors.textPrimary else Color.Transparent)
-                        .pressScaleClickable { period = i }.padding(horizontal = 20.dp),
+                    Modifier.weight(1f).height(34.dp).clip(RoundedCornerShape(17.dp)).background(if (on) Ids.colors.textPrimary else Color.Transparent)
+                        .pressScaleClickable { period = i },
                     contentAlignment = Alignment.Center,
-                ) { Text(label, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = if (on) Ids.colors.background else Ids.colors.textTertiary) }
+                ) { Text(label, fontSize = 13.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.ExtraBold, color = if (on) Ids.colors.background else Ids.colors.textTertiary) }
             }
         }
     }
@@ -85,16 +85,12 @@ fun InvestStartCard(onBrowse: () -> Unit) {
             Box(Modifier.size(width = 18.dp, height = 76.dp).clip(RoundedCornerShape(5.dp)).background(Color(0xFF8F89FF)))
         }
         Spacer(Modifier.height(16.dp))
-        Text("Start investing", color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+        Text("Start investing", color = Ids.colors.textPrimary, fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
         Text(
             "Buy shares of Rwandan companies, lend to the Government with Treasury bills, or apply for an IPO. You can start with a small amount.",
             color = Ids.colors.textTertiary, fontSize = 15.sp, lineHeight = 22.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
-        Spacer(Modifier.height(20.dp))
-        Box(
-            Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(16.dp)).background(Ids.colors.brand).pressScaleClickable(onClick = onBrowse),
-            contentAlignment = Alignment.Center,
-        ) { Text("Browse stocks", color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold) }
+        InvestFinePrint()
     }
 }
