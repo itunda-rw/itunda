@@ -257,7 +257,7 @@ fun BankHubEntryPoint(
                 }
             }
             item { BankComingUp() }
-            if (savingsGoals.isEmpty()) item { BankSavingsGoalCard(onStart = { showNewGoalDialog = true }, modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp)) }
+            if (savingsGoals.isEmpty()) item { BankSavingsGoalCard(onStart = { showNewGoalDialog = true }, modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 12.dp)) }
             if (recommendationItems.isNotEmpty()) {
                 item {
                     ShellSection(
