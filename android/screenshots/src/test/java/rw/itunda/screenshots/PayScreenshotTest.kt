@@ -2,6 +2,10 @@ package rw.itunda.screenshots
 
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.runtime.mutableStateOf
+import org.junit.Assert.assertTrue
 import androidx.compose.ui.test.performScrollToNode
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
@@ -73,6 +77,22 @@ class PayScreenshotTest {
         rule.setContent { IdsTheme(darkTheme = false) { SplitBillAmountScreen(onBack = {}, onContinue = {}) } }
         rule.onRoot().captureRoboImage("build/screenshots/pay-split-light.png")
     }
+    @Test fun splitDark() {
+        rule.setContent { IdsTheme(darkTheme = true) { SplitBillAmountScreen(onBack = {}, onContinue = {}) } }
+        rule.onRoot().captureRoboImage("build/screenshots/pay-split-dark.png")
+    }
+    @Test fun hubCouponRowOpensCouponBox() {
+        val opened = mutableStateOf(false)
+        rule.setContent { IdsTheme(darkTheme = false) { PayHub({}, {}, onOpenCoupons = { opened.value = true }) } }
+        rule.onNodeWithText("Coupons received").performClick()
+        rule.runOnIdle { assertTrue(opened.value) }
+    }
+    @Test fun hubOnlineViewOpensExplore() {
+        val opened = mutableStateOf(false)
+        rule.setContent { IdsTheme(darkTheme = false) { PayHub({}, { opened.value = true }) } }
+        rule.onNodeWithText("View").performClick()
+        rule.runOnIdle { assertTrue(opened.value) }
+    }
 
     private fun shot(name: String, content: @androidx.compose.runtime.Composable () -> Unit) {
         rule.setContent { IdsTheme(darkTheme = false) { content() } }
@@ -99,7 +119,13 @@ class PayScreenshotTest {
     @Test fun amount() = shot("amount") { PayAmountScreen("Amina K.", {}, {}) }
     @Test fun amountDark() = shotDark("amount") { PayAmountScreen("Amina K.", {}, {}) }
     @Test fun scanChips() = render(false, "pay-scan-chips-light", ProtoPayMode.SCAN)
+    @Test fun scanChipsDark() = render(true, "pay-scan-chips-dark", ProtoPayMode.SCAN)
     @Test fun topUp() = shot("topup") {
+        val bank = rw.itunda.core.network.Account("b", "u", "0001", "itunda Bank", null, "SAVINGS", 842300.0, 842300.0, "RWF", true)
+        val pay = rw.itunda.core.network.Account("p", "u", "0002", "itunda Pay", null, "PAY", 120500.0, 120500.0, "RWF", true)
+        AddMoneyScreen(pay, listOf(bank), {}, {})
+    }
+    @Test fun topUpDark() = shotDark("topup") {
         val bank = rw.itunda.core.network.Account("b", "u", "0001", "itunda Bank", null, "SAVINGS", 842300.0, 842300.0, "RWF", true)
         val pay = rw.itunda.core.network.Account("p", "u", "0002", "itunda Pay", null, "PAY", 120500.0, 120500.0, "RWF", true)
         AddMoneyScreen(pay, listOf(bank), {}, {})
