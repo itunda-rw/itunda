@@ -81,6 +81,7 @@ fun CameraQrScanner(
     modifier: Modifier = Modifier,
     flashEnabled: Boolean = false,
     onPhotoPickerReady: (((() -> Unit)) -> Unit)? = null,
+    onFlashAvailability: ((Boolean) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     var hasPermission by remember {
@@ -131,6 +132,9 @@ fun CameraQrScanner(
     }
     val launchPhotoPicker = { photoPicker.launch("image/*") }
     LaunchedEffect(onPhotoPickerReady) { onPhotoPickerReady?.invoke(launchPhotoPicker) }
+    LaunchedEffect(camera, onFlashAvailability) {
+        onFlashAvailability?.invoke(camera?.cameraInfo?.hasFlashUnit() == true)
+    }
     LaunchedEffect(camera, flashEnabled) {
         camera?.let { active ->
             if (active.cameraInfo.hasFlashUnit()) {
