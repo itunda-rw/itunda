@@ -48,7 +48,14 @@ fun EatsReceiptSheet(
             }
             Divider(color = Ids.colors.divider)
             ReceiptAmountRow("Items", order.itemsSubtotal)
-            ReceiptAmountRow("Delivery", order.deliveryFee)
+            if (order.deliveryFee <= 0.0) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Delivery", color = Ids.colors.textSecondary, fontSize = 14.sp)
+                    Text("Free", color = Ids.colors.textPrimary, fontSize = 14.sp)
+                }
+            } else {
+                ReceiptAmountRow("Delivery", order.deliveryFee)
+            }
             if (order.platformFee > 0) ReceiptAmountRow("Service fee", order.platformFee)
             if (order.promotionDiscount > 0) ReceiptAmountRow("Discount", -order.promotionDiscount)
             ReceiptAmountRow("Total", order.totalAmount, strong = true)
