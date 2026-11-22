@@ -173,6 +173,7 @@ import java.util.UUID
 fun PayAMerchantSection(
     flashEnabled: Boolean,
     onPhotoPickerReady: (((() -> Unit)) -> Unit),
+    onFlashAvailability: (Boolean) -> Unit,
     deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
 ) {
     var paymentResult by remember { mutableStateOf<CollectPaymentResultDto?>(null) }
@@ -228,7 +229,7 @@ fun PayAMerchantSection(
         if (payMode != PayMerchantMode.SCAN) ScanPills(listOf("Back to scan" to { payMode = PayMerchantMode.SCAN }))
         when (payMode) {
             PayMerchantMode.SCAN -> {
-                PayByScanCard(deviceStepUpHost = deviceStepUpHost, facePayEnrolled = facePayEnrolled ?: false, flashEnabled = flashEnabled, onPhotoPickerReady = onPhotoPickerReady, onPaid = { paymentResult = it })
+                PayByScanCard(deviceStepUpHost = deviceStepUpHost, facePayEnrolled = facePayEnrolled ?: false, flashEnabled = flashEnabled, onPhotoPickerReady = onPhotoPickerReady, onFlashAvailability = onFlashAvailability, onPaid = { paymentResult = it })
                 ScanPills(listOf("Till number" to { payMode = PayMerchantMode.CODE }, "Merchant ID" to { payMode = PayMerchantMode.STATIC_QR }))
             }
             PayMerchantMode.CODE -> PayByCodeCard(deviceStepUpHost = deviceStepUpHost, facePayEnrolled = facePayEnrolled ?: false, onPaid = { paymentResult = it })
