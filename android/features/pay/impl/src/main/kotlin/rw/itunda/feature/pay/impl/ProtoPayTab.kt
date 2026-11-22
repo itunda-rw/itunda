@@ -9,8 +9,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import rw.itunda.core.network.GenerateCustomerPaymentCodeRequest
 import rw.itunda.core.network.NetworkClient
 
@@ -37,6 +39,7 @@ fun ProtoPayTab(
     var balance by remember { mutableStateOf<Double?>(null) }
     var accounts by remember { mutableStateOf<List<rw.itunda.core.network.Account>>(emptyList()) }
     var payAccount by remember { mutableStateOf<rw.itunda.core.network.Account?>(null) }
+    val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
         try {
             accounts = NetworkClient.apiService.getAccounts().accounts
@@ -76,8 +79,14 @@ fun ProtoPayTab(
         PaySub.TOP_UP -> {
             val destination = payAccount
             if (destination != null) AddMoneyScreen(destination, accounts.filter { it.id != destination.id }, onBack = { sub = null }, onDone = {
-                sub = null
-                // Balance is reloaded when the Pay tab is next composed.
+                scope.launch {
+                    try {
+                        accounts = NetworkClient.apiService.getAccounts().accounts
+                        payAccount = accounts.firstOrNull { it.type == "PAY" }
+                        balance = payAccount?.balance
+                    } catch (_: Exception) { }
+                    sub = null
+                }
             })
             return
         }
