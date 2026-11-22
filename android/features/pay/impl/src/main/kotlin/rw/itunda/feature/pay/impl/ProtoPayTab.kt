@@ -3,6 +3,8 @@ package rw.itunda.feature.pay.impl
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -11,6 +13,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.Text
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import rw.itunda.core.designsystem.theme.Ids
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import rw.itunda.core.network.GenerateCustomerPaymentCodeRequest
@@ -39,14 +46,24 @@ fun ProtoPayTab(
     var balance by remember { mutableStateOf<Double?>(null) }
     var accounts by remember { mutableStateOf<List<rw.itunda.core.network.Account>>(emptyList()) }
     var payAccount by remember { mutableStateOf<rw.itunda.core.network.Account?>(null) }
+    var accountsLoading by remember { mutableStateOf(true) }
+    var accountsError by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    LaunchedEffect(Unit) {
+
+    suspend fun refreshAccounts() {
+        accountsLoading = true
+        accountsError = null
         try {
             accounts = NetworkClient.apiService.getAccounts().accounts
             payAccount = accounts.firstOrNull { it.type == "PAY" }
             balance = payAccount?.balance
-        } catch (_: Exception) { }
+        } catch (_: Exception) {
+            accountsError = "Couldn't load your Pay account. Check your connection and try again."
+        } finally {
+            accountsLoading = false
+        }
     }
+    LaunchedEffect(Unit) { refreshAccounts() }
     LaunchedEffect(mode) {
         if (mode != ProtoPayMode.MY_CODE) return@LaunchedEffect
         while (true) {
@@ -78,16 +95,35 @@ fun ProtoPayTab(
         PaySub.COUPONS -> { CouponBoxScreen(onBack = { sub = null }, onBrowseMerchants = onFindStores); return }
         PaySub.TOP_UP -> {
             val destination = payAccount
-            if (destination != null) AddMoneyScreen(destination, accounts.filter { it.id != destination.id }, onBack = { sub = null }, onDone = {
-                scope.launch {
-                    try {
-                        accounts = NetworkClient.apiService.getAccounts().accounts
-                        payAccount = accounts.firstOrNull { it.type == "PAY" }
-                        balance = payAccount?.balance
-                    } catch (_: Exception) { }
-                    sub = null
+            if (destination != null) {
+                AddMoneyScreen(
+                    destination,
+                    accounts.filter { it.id != destination.id },
+                    onBack = { sub = null },
+                    onDone = {
+                        scope.launch {
+                            refreshAccounts()
+                            sub = null
+                        }
+                    },
+                )
+            } else {
+                PaySubScreen(onBack = { sub = null }, title = "Top up") { p ->
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp)) {
+                        Text(
+                            if (accountsLoading) "Loading your Pay account…" else "Your Pay account isn't available",
+                            color = p.text, fontSize = 20.sp, fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            accountsError ?: if (accountsLoading) "Please wait a moment." else "Create or activate a Pay account before adding money.",
+                            color = p.tt, fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp, bottom = 20.dp),
+                        )
+                        if (!accountsLoading && accountsError != null) {
+                            PayBtn("Try again", p, onClick = { scope.launch { refreshAccounts() } })
+                        }
+                    }
                 }
-            })
+            }
             return
         }
         null -> Unit
