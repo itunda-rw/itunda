@@ -211,11 +211,12 @@ internal fun BankPocketsScreen(onBack: () -> Unit) {
                     Box(Modifier.size(52.dp), contentAlignment = Alignment.Center) {
                         Box(Modifier.fillMaxSize().clip(CircleShape).background(Ids.colors.brand.copy(alpha = 0.16f)))
                         val art = when (p.name) { "Interest jar" -> "money"; "Emergency fund" -> "lock"; "School fees" -> "school-fees"; else -> null }
-                        if (art != null) ItundaArt(art, ItundaArtSet.Proto, if (art == "school-fees") 31.dp else 24.dp, fit = true) else Text(p.emoji, fontSize = 22.sp)
+                        if (art == "school-fees") ItundaArt("school", ItundaArtSet.Line, 26.dp, tint = Ids.colors.textPrimary) else if (art != null) ItundaArt(art, ItundaArtSet.Proto, 24.dp, fit = true) else Text(p.emoji, fontSize = 22.sp)
                         p.goal?.let { g ->
                             val frac = (p.amount.toFloat() / g).coerceIn(0f, 1f); val ring = Ids.colors.brand
                             androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
                                 val st = androidx.compose.ui.graphics.drawscope.Stroke(width = 3.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                                drawArc(ring.copy(alpha = 0.25f), 0f, 360f, false, topLeft = androidx.compose.ui.geometry.Offset(1.5.dp.toPx(), 1.5.dp.toPx()), size = androidx.compose.ui.geometry.Size(size.width - 3.dp.toPx(), size.height - 3.dp.toPx()), style = st)
                                 drawArc(ring, -90f, 360f * frac, false, topLeft = androidx.compose.ui.geometry.Offset(1.5.dp.toPx(), 1.5.dp.toPx()), size = androidx.compose.ui.geometry.Size(size.width - 3.dp.toPx(), size.height - 3.dp.toPx()), style = st)
                             }
                         }
