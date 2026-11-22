@@ -11,6 +11,10 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import rw.itunda.core.designsystem.components.IdsButton
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -57,6 +61,23 @@ fun LoansFindFooter(onExclusive: () -> Unit) {
         Spacer(Modifier.height(40.dp))
         Column(Modifier.fillMaxWidth().background(Ids.colors.surfaceSoft).padding(start = 24.dp, end = 24.dp, top = 32.dp, bottom = 120.dp)) {
             notes.forEach { Text("• $it", color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 22.sp) }
+        }
+    }
+}
+
+/** Whole prototype "Find loan" first screen: hero, band, partner rows, exclusive card, notes + sticky CTA. */
+@Composable
+fun LoansFindPage(lowestRate: String?, onCheckRate: () -> Unit, modifier: Modifier = Modifier) {
+    Box(modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            Spacer(Modifier.height(24.dp))
+            LoansFindHero(lowestRate)
+            Box(Modifier.fillMaxWidth().height(12.dp).background(Ids.colors.surfaceSoft))
+            LoansFindPartners()
+            LoansFindFooter(onExclusive = onCheckRate)
+        }
+        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Ids.colors.background).padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 24.dp)) {
+            IdsButton(text = "Check your loan rate", onClick = onCheckRate)
         }
     }
 }

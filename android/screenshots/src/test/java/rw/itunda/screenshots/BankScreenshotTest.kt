@@ -126,7 +126,7 @@ class BankScreenshotTest {
 
     @Test fun loansLight() {
         rule.setContent {
-            IdsTheme(darkTheme = false) { Box(Modifier.fillMaxSize().background(Ids.colors.background).padding(horizontal = 4.dp)) { Column { LoansTopBar(true, false, 0, {}, {}, {}); Column(Modifier.padding(horizontal = 20.dp)) { LoansFindHero(); LoansFindPartners() } } } }
+            IdsTheme(darkTheme = false) { Box(Modifier.fillMaxSize().background(Ids.colors.background)) { Column { LoansTopBar(true, false, 0, {}, {}, {}); rw.itunda.feature.credit.impl.LoansFindPage(null, {}, Modifier.weight(1f)) } } }
         }
         rule.onRoot().captureRoboImage("build/screenshots/loans-light.png")
     }

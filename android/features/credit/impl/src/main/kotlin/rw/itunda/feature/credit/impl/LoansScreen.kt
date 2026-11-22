@@ -134,18 +134,7 @@ fun LoansScreen(onBack: () -> Unit) {
         )
         val findIntro = mode == LoansMode.OFFERS && !offersOpen
         if (findIntro) {
-            Box(Modifier.weight(1f)) {
-                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                    Spacer(Modifier.height(24.dp))
-                    LoansFindHero(offers?.minOfOrNull { it.interestRate }?.toString())
-                    Box(Modifier.fillMaxWidth().height(12.dp).background(Ids.colors.surfaceSoft))
-                    LoansFindPartners()
-                    LoansFindFooter(onExclusive = { offersOpen = true })
-                }
-                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Ids.colors.background).padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 24.dp)) {
-                    IdsButton(text = "Check your loan rate", onClick = { offersOpen = true })
-                }
-            }
+            LoansFindPage(offers?.minOfOrNull { it.interestRate }?.toString(), onCheckRate = { offersOpen = true }, modifier = Modifier.weight(1f))
         } else {
         Spacer(Modifier.height(8.dp))
         LazyColumn(Modifier.weight(1f).padding(horizontal = 20.dp), state = listState, verticalArrangement = Arrangement.spacedBy(12.dp)) {
