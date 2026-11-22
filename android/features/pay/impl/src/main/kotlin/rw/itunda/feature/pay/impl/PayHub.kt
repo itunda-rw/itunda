@@ -65,6 +65,7 @@ private val Recents = listOf(
 fun PayHub(
     onBack: () -> Unit, onFindStores: () -> Unit, onOpenPoints: () -> Unit = {}, onOpenHistory: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
+    onOpenCoupons: () -> Unit = {},
 ) {
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val p = payPalette(false, dark)
@@ -76,9 +77,9 @@ fun PayHub(
                 Box(Modifier.offset(y = 158.dp).padding(horizontal = 15.dp)) { EarningCard(p, dark, onFindStores) }
             }
             Spacer(Modifier.height(16.dp))
-            HubCard(Modifier.height(96.dp)) { OnlineRow(p) }
+            HubCard(Modifier.height(96.dp)) { OnlineRow(p, onFindStores) }
             Spacer(Modifier.height(12.dp))
-            HubCard(Modifier.height(174.dp)) { BenefitsReceived(p, onOpenPoints) }
+            HubCard(Modifier.height(174.dp)) { BenefitsReceived(p, onOpenPoints, onOpenCoupons) }
             Spacer(Modifier.height(12.dp))
             HubCard(Modifier.height(276.dp)) { MoreBenefits(p) }
             Spacer(Modifier.height(12.dp))
@@ -157,28 +158,28 @@ private fun IconChip(p: PayPalette, size: Dp = 30.dp, content: @Composable () ->
 }
 
 @Composable
-private fun OnlineRow(p: PayPalette) {
+private fun OnlineRow(p: PayPalette, onView: () -> Unit) {
     Row(Modifier.height(70.dp), verticalAlignment = Alignment.CenterVertically) {
         IconChip(p) { ItundaArt("globe", ItundaArtSet.Proto, 11.5.dp) }
         Column(Modifier.padding(start = 16.dp).weight(1f)) {
             Text("How to pay online", color = p.text, fontSize = 17.sp, lineHeight = 23.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp)
             Text("Jumia, Yego and more", color = p.tt, fontSize = 14.sp, lineHeight = 18.sp)
         }
-        Box(Modifier.size(width = 64.dp, height = 40.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFF5A51EC).copy(alpha = 0.16f)), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(width = 64.dp, height = 40.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFF5A51EC).copy(alpha = 0.16f)).pressScaleClickable(onClick = onView), contentAlignment = Alignment.Center) {
             Text("View", color = p.brandText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
 
 @Composable
-private fun BenefitsReceived(p: PayPalette, onOpenPoints: () -> Unit) {
+private fun BenefitsReceived(p: PayPalette, onOpenPoints: () -> Unit, onOpenCoupons: () -> Unit) {
     Text("Benefits received in November", color = p.tt, fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium, modifier = Modifier.height(22.dp))
     Row(Modifier.height(38.dp), verticalAlignment = Alignment.CenterVertically) {
         Text("6,400 RWF received", color = p.text, fontSize = 22.sp, lineHeight = 30.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.5).sp)
         Chevron(p.tt.copy(alpha = 0.6f))
     }
     BenefitRow(p, HubIcon.Star, "Points · Pay Money", "Total 6,400 RWF", onOpenPoints)
-    BenefitRow(p, HubIcon.Gift, "Coupons received", "0", null)
+    BenefitRow(p, HubIcon.Gift, "Coupons received", "0", onOpenCoupons)
 }
 
 @Composable
