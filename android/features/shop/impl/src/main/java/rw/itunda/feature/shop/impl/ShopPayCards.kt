@@ -289,6 +289,8 @@ internal fun PayByCodeCard(
 internal fun PayByScanCard(
     deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
     facePayEnrolled: Boolean,
+    flashEnabled: Boolean = false,
+    onPhotoPickerReady: (((() -> Unit)) -> Unit)? = null,
     onPaid: (CollectPaymentResultDto) -> Unit,
 ) {
     var scannedIntentId by remember { mutableStateOf<String?>(null) }
