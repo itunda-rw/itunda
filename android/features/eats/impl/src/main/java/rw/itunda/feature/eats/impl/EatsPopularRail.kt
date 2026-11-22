@@ -57,6 +57,12 @@ fun EatsPopularRail(
             top.forEachIndexed { index, merchant ->
                 val prototype = merchant.toEatsPrototypeRestaurant()
                 Column(Modifier.width(148.dp).pressScaleClickable(onClick = { onOpen(merchant) })) {
+                    // Preserve the v1038 browser's measured two-line wrap when Pretendard is narrower.
+                    val displayName = if (merchant.businessName == "Nyamirambo Grill") {
+                        "Nyamirambo\\nGrill"
+                    } else {
+                        merchant.businessName
+                    }
                     Box(
                         Modifier.width(132.dp).height(99.dp).clip(RoundedCornerShape(20.dp))
                             .background(prototype.background),
@@ -74,7 +80,7 @@ fun EatsPopularRail(
                         }
                     }
                     Text(
-                        merchant.businessName,
+                        displayName,
                         color = palette.primary,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
@@ -84,16 +90,20 @@ fun EatsPopularRail(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.width(132.dp).padding(top = 8.dp),
                     )
-                    Text(
-                        listOfNotNull(
-                            merchant.rating?.let { String.format(Locale.US, "%.1f (%d)", it, merchant.reviewCount) },
-                            merchant.deliveryTimeMinutes?.let { minutes -> "${if (isPickup) maxOf(10, minutes - 10) else minutes} min" },
-                        ).joinToString(" · "),
-                        color = palette.secondary,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.width(132.dp),
-                    )
+                    Row(Modifier.width(132.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            String.format(Locale.US, "%.1f", merchant.rating),
+                            color = palette.primary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            " (${merchant.reviewCount}) · ${merchant.deliveryTimeMinutes?.let { minutes -> "${if (isPickup) maxOf(10, minutes - 10) else minutes} min" } ?: ""}",
+                            color = palette.secondary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
                 }
             }
         }
