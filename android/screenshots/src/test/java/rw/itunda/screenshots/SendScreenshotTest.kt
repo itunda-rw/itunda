@@ -68,12 +68,17 @@ class SendScreenshotTest {
             IdsTheme(darkTheme = false) {
                 Box(Modifier.fillMaxSize().background(Ids.colors.background)) {
                     TransactionHistoryScreen(
-                        transactions = listOf(
-                            TransactionDisplayItem("1", "Amina K.", 25000.0, "RWF", "COMPLETED", false),
-                            TransactionDisplayItem("2", "Kigali Bus Services", 300.0, "RWF", "COMPLETED", true),
-                            TransactionDisplayItem("3", "Kigali Bakery", 4500.0, "RWF", "COMPLETED", true),
-                            TransactionDisplayItem("4", "Top up", 50000.0, "RWF", "COMPLETED", false),
-                        ),
+                        transactions = run {
+                            val now = java.time.OffsetDateTime.now()
+                            listOf(
+                                TransactionDisplayItem("1", "Amina K.", 25000.0, "RWF", "COMPLETED", false, "TRANSFER", now.minusDays(1).toString()),
+                                TransactionDisplayItem("2", "Kigali Bus Services", 300.0, "RWF", "COMPLETED", true, "PAYMENT", now.minusDays(5).toString()),
+                                TransactionDisplayItem("3", "Kigali Bakery", 4500.0, "RWF", "COMPLETED", true, "PAYMENT", now.withHour(8).withMinute(12).minusMinutes(0).toString()),
+                                TransactionDisplayItem("4", "Top up", 50000.0, "RWF", "COMPLETED", false, "TOPUP", now.withHour(18).withMinute(40).toString()),
+                                TransactionDisplayItem("5", "itunda Shop", 18000.0, "RWF", "COMPLETED", true, "PAYMENT", now.withHour(14).withMinute(5).toString()),
+                                TransactionDisplayItem("6", "Rent", 150000.0, "RWF", "COMPLETED", true, "TRANSFER", now.minusDays(14).toString()),
+                            )
+                        },
                         onBack = {},
                     )
                 }
