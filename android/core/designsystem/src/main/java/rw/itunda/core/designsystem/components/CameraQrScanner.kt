@@ -94,12 +94,6 @@ fun CameraQrScanner(
         if (!hasPermission) permissionLauncher.launch(Manifest.permission.CAMERA)
     }
 
-    if (!hasPermission) {
-        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Camera permission is needed to scan a QR code.", style = MaterialTheme.typography.bodyMedium)
-        }
-        return
-    }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     val view = LocalView.current
@@ -148,7 +142,7 @@ fun CameraQrScanner(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        AndroidView(
+        if (hasPermission) AndroidView(
             modifier = Modifier.fillMaxSize(),
             factory = { ctx ->
                 val previewView = PreviewView(ctx)
@@ -194,6 +188,9 @@ fun CameraQrScanner(
                 previewView
             },
         )
+        if (!hasPermission) {
+            Text("Camera permission is needed to scan. You can still choose a QR photo.", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.align(Alignment.Center).padding(16.dp))
+        }
         if (cameraUnavailable) {
             Text("Camera unavailable. Try again or choose a QR photo.", color = Color.White, style = MaterialTheme.typography.bodySmall, modifier = Modifier.align(Alignment.Center).padding(16.dp))
         }
