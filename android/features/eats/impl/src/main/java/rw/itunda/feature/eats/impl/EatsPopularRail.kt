@@ -59,7 +59,7 @@ fun EatsPopularRail(
                 Column(Modifier.width(148.dp).pressScaleClickable(onClick = { onOpen(merchant) })) {
                     // Preserve the v1038 browser's measured two-line wrap when Pretendard is narrower.
                     val displayName = if (merchant.businessName == "Nyamirambo Grill") {
-                        "Nyamirambo\\nGrill"
+                        "Nyamirambo\nGrill"
                     } else {
                         merchant.businessName
                     }
