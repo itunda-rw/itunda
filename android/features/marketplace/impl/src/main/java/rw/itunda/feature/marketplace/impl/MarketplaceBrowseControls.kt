@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 
-/** v1038 Marketplace category rail and quiet Latest/Nearest/Filter action row. */
+/** v1038 Marketplace category rail. Personal feeds (Saved and Mine) live in the profile menu. */
 @Composable
 internal fun MarketplaceBrowseControls(
     selectedCategory: String,
@@ -32,7 +32,7 @@ internal fun MarketplaceBrowseControls(
     onFilterClick: () -> Unit,
     onSortClick: () -> Unit,
 ) {
-    val categories = listOf("All", "Electronics", "Phones", "Home", "Fashion", "Kids", "Sports", "Free", "Saved", "Bought", "Mine")
+    val categories = listOf("All", "Electronics", "Phones", "Home", "Fashion", "Kids", "Sports", "Free")
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
