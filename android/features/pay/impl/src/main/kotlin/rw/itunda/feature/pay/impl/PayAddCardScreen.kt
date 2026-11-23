@@ -26,6 +26,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -87,6 +92,11 @@ fun PayAddCardScreen(onBack: () -> Unit, onAdd: (PayNewCard) -> Unit) {
             Spacer(Modifier.height(22.dp))
             Box(
                 Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(16.dp)).background(if (valid) p.brand else p.soft)
+                    .semantics {
+                        contentDescription = "Add card"
+                        role = Role.Button
+                        stateDescription = if (valid) "Ready to add" else "Enter valid card details to enable"
+                    }
                     .pressScaleClickable(enabled = valid) {
                         val brand = when (digits.first()) { '4' -> "Visa"; '5' -> "Mastercard"; else -> "Card" }
                         onAdd(PayNewCard(brand, digits.takeLast(4), name.trim(), expiry))
@@ -126,7 +136,8 @@ private fun CardField(label: String, value: String, hint: String, p: PayPalette,
             value = value, onValueChange = onChange, singleLine = true,
             textStyle = TextStyle(color = p.text, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = FontWeight.SemiBold),
             keyboardOptions = KeyboardOptions(keyboardType = type), cursorBrush = SolidColor(p.brandText),
-            modifier = Modifier.padding(top = 6.dp).fillMaxWidth().height(56.dp).clip(RoundedCornerShape(16.dp)).background(p.soft),
+            modifier = Modifier.padding(top = 6.dp).fillMaxWidth().height(56.dp).clip(RoundedCornerShape(16.dp)).background(p.soft)
+                .semantics { contentDescription = label },
             decorationBox = { inner ->
                 Box(Modifier.padding(horizontal = 16.dp), contentAlignment = Alignment.CenterStart) {
                     if (value.isEmpty()) Text(hint, color = p.tt, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = FontWeight.Medium)
