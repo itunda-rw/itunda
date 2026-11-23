@@ -494,7 +494,7 @@ fun MarketplaceContent(
     val isSearching = searchQuery.isNotBlank()
     val displayListings = if (isSearching) searchResults else listings
     val visibleListings = displayListings?.let { source ->
-        if (view != HoodView.BROWSE) source else {
+        if (view != HoodView.BROWSE && view != HoodView.NEIGHBORHOOD) source else {
             val categoryFiltered = when (selectedBrowseCategory) {
                 "All" -> source
                 "Free" -> source.filter { it.price <= 0.0 }
@@ -606,7 +606,7 @@ fun MarketplaceContent(
                 placeholder = "Search marketplace listings",
             )
         }
-        if (view == HoodView.BROWSE) {
+        if (view == HoodView.BROWSE || view == HoodView.NEIGHBORHOOD) {
             item {
                 MarketplaceBrowseControls(
                     selectedCategory = selectedBrowseCategory,
