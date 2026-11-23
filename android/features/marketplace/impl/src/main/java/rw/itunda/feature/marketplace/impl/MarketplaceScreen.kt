@@ -477,6 +477,7 @@ fun MarketplaceContent(
     // feed above.
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var searchExpanded by rememberSaveable { mutableStateOf(false) }
+    var recentMarketplaceSearches by rememberSaveable { mutableStateOf(listOf<String>()) }
     var selectedMarketplaceSort by rememberSaveable { mutableStateOf("Newest") }
     var showBrowseFilters by remember { mutableStateOf(false) }
     var selectedMaxPrice by rememberSaveable { mutableStateOf(0) }
@@ -661,6 +662,9 @@ fun MarketplaceContent(
                         contentDescription = "Close search",
                         tint = Ids.colors.textSecondary,
                         modifier = Modifier.padding(12.dp).pressScaleClickable {
+                            if (searchQuery.isNotBlank()) {
+                                recentMarketplaceSearches = (listOf(searchQuery.trim()) + recentMarketplaceSearches.filterNot { it.equals(searchQuery.trim(), true) }).take(5)
+                            }
                             searchQuery = ""
                             searchExpanded = false
                         },
@@ -672,6 +676,38 @@ fun MarketplaceContent(
                         tint = Ids.colors.textPrimary,
                         modifier = Modifier.padding(12.dp).pressScaleClickable { searchExpanded = true },
                     )
+                }
+            }
+        }
+        if (searchExpanded && searchQuery.isBlank()) {
+            if (recentMarketplaceSearches.isNotEmpty()) {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Text("Recent searches", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
+                            Text("Clear", fontSize = 13.sp, color = Ids.colors.textSecondary, modifier = Modifier.pressScaleClickable { recentMarketplaceSearches = emptyList() }.padding(4.dp))
+                        }
+                        recentMarketplaceSearches.forEach { term ->
+                            Row(modifier = Modifier.fillMaxWidth().pressScaleClickable { searchQuery = term }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(term, fontSize = 14.sp, color = Ids.colors.textSecondary)
+                            }
+                        }
+                    }
+                }
+            }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Popular searches", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("Phone", "Bicycle", "Sofa").forEach { term ->
+                            Text(term, fontSize = 13.sp, color = Ids.colors.textSecondary, modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(Ids.colors.surface).pressScaleClickable { searchQuery = term }.padding(horizontal = 12.dp, vertical = 8.dp))
+                        }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("Baby clothes", "Textbooks", "Fridge").forEach { term ->
+                            Text(term, fontSize = 13.sp, color = Ids.colors.textSecondary, modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(Ids.colors.surface).pressScaleClickable { searchQuery = term }.padding(horizontal = 12.dp, vertical = 8.dp))
+                        }
+                    }
                 }
             }
         }
