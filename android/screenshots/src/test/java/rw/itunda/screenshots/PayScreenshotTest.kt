@@ -200,6 +200,19 @@ class PayScreenshotTest {
         rule.onNodeWithText("Remove").performClick()
         rule.runOnIdle { assertTrue(removed.value == 0) }
     }
+    @Test fun manageCardsActionsExposeAccessibleLabels() {
+        val added = mutableStateOf(false)
+        val removed = mutableStateOf(-1)
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                PayMyCardsScreen("120,500", "842,300", listOf(PayNewCard("Visa", "4242", "AMINA UWASE", "12/28")), {}, { added.value = true }, { removed.value = it })
+            }
+        }
+        rule.onNodeWithContentDescription("Remove Visa ending in 4242").assert(hasRole(Role.Button)).performClick()
+        rule.runOnIdle { assertTrue(removed.value == 0) }
+        rule.onNodeWithContentDescription("Add a card").assert(hasRole(Role.Button)).performClick()
+        rule.runOnIdle { assertTrue(added.value) }
+    }
     @Test fun myCards() = shot("my-cards") { PayMyCardsScreen("120,500", "842,300", emptyList(), {}, {}, {}) }
     @Test fun myCardsDark() = shotDark("my-cards") { PayMyCardsScreen("120,500", "842,300", emptyList(), {}, {}, {}) }
     @Test fun myCardsWithCard() = shot("my-cards-visa") { PayMyCardsScreen("120,500", "842,300", listOf(PayNewCard("Visa", "4242", "AMINA UWASE", "12/28")), {}, {}, {}) }
