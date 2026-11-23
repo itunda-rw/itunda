@@ -186,7 +186,7 @@ class PayScreenshotTest {
         rule.setContent { IdsTheme(darkTheme = false) { PaySettingsScreen({}) } }
         rule.onNodeWithText("Pay balance").assert(hasRole(Role.Tab)).assert(isSelected())
         rule.onNodeWithText("Bank").assert(hasRole(Role.Tab)).performClick().assert(isSelected())
-        rule.onNodeWithText("Pay balance").assertDoesNotExist()
+        rule.onNodeWithText("Pay balance").assert(hasRole(Role.Tab)).assert(!isSelected())
     }
     @Test fun settings() = shot("settings") { PaySettingsScreen({}) }
     @Test fun settingsDark() = shotDark("settings") { PaySettingsScreen({}) }
