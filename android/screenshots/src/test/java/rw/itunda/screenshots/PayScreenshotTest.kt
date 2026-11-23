@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.hasRole
@@ -244,6 +245,12 @@ class PayScreenshotTest {
     @Test fun myCardsWithCardDark() = shotDark("my-cards-visa") { PayMyCardsScreen("120,500", "842,300", listOf(PayNewCard("Visa", "4242", "AMINA UWASE", "12/28")), {}, {}, {}) }
     @Test fun limits() = shot("limits") { PayLimitsScreen(500_000, 2_000_000, 0, {}, { _, _ -> }) }
     @Test fun limitsDark() = shotDark("limits") { PayLimitsScreen(500_000, 2_000_000, 0, {}, { _, _ -> }) }
+    @Test fun limitsRejectPaymentAboveDailyCap() {
+        rule.setContent { IdsTheme(darkTheme = false) { PayLimitsScreen(500_000, 2_000_000, 0, {}, { _, _ -> }) } }
+        rule.onNodeWithContentDescription("Per payment").performTextClearance().performTextInput("3000000")
+        rule.onNodeWithText("The most per payment is 2,000,000 RWF.").assertExists()
+        rule.onNodeWithText("Check your limits").assertExists()
+    }
     @Test fun receipt() = shot("receipt") { PayReceiptScreen(0, {}, {}) }
     @Test fun receiptDark() = shotDark("receipt") { PayReceiptScreen(0, {}, {}) }
     @Test fun receiptCopyReferenceAndShareExposeButtonSemantics() {
