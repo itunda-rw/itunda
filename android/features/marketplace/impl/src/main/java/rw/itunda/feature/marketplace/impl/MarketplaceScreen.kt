@@ -470,6 +470,8 @@ fun MarketplaceContent(
     // stays null (not emptyList) while blank so it never shadows the real view-based
     // feed above.
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    var addingSearchAlert by remember { mutableStateOf(false) }
+    var searchAlertMessage by remember { mutableStateOf<String?>(null) }
     var categoryFilter by rememberSaveable { mutableStateOf<String?>(null) }
     // Prototype v1038/v502: category/saved-state filters and Latest/Nearest ordering.
     var feedScope by rememberSaveable { mutableStateOf("All") }
@@ -479,6 +481,7 @@ fun MarketplaceContent(
     var feedRadiusKm by rememberSaveable { mutableStateOf(3) }
     var searchResults by remember { mutableStateOf<List<ListingDto>?>(null) }
     LaunchedEffect(searchQuery) {
+        searchAlertMessage = null
         if (searchQuery.isBlank()) {
             searchResults = null
             return@LaunchedEffect
@@ -663,7 +666,33 @@ fun MarketplaceContent(
             if (displayListings == null) {
                 item { SkeletonBlock() }
             } else if (visibleListings.isEmpty()) {
-                item { EmptyState("No listings match \"$searchQuery\".", icon = Icons.Outlined.ShoppingBag) }
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        EmptyState("No listings match \"$searchQuery\".", icon = Icons.Outlined.ShoppingBag)
+                        searchAlertMessage?.let { Text(it, color = Ids.colors.textSecondary, fontSize = 13.sp) }
+                        IdsButton(
+                            text = if (addingSearchAlert) "Adding alert…" else "Alert me when this appears",
+                            onClick = {
+                                addingSearchAlert = true
+                                coroutineScope.launch {
+                                    try {
+                                        NetworkClient.apiService.addKeywordAlert(AddKeywordAlertRequest(searchQuery.trim()))
+                                        searchAlertMessage = "Alert created. We’ll let you know when a match appears."
+                                    } catch (e: HttpException) {
+                                        error = superAppErrorMessage(e)
+                                    } catch (e: IOException) {
+                                        error = "Couldn’t reach itunda. Check your connection and try again."
+                                    } finally {
+                                        addingSearchAlert = false
+                                    }
+                                }
+                            },
+                            enabled = !addingSearchAlert,
+                            variant = IdsButtonVariant.Tinted,
+                            size = IdsButtonSize.Medium,
+                        )
+                    }
+                }
             } else {
                 items(visibleListings, key = { it.id }) { listing ->
                     ListingRow(
