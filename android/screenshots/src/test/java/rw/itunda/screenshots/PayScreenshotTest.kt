@@ -46,7 +46,7 @@ class PayScreenshotTest {
     private fun render(dark: Boolean, name: String, mode: ProtoPayMode = ProtoPayMode.MY_CODE) {
         rule.setContent {
             IdsTheme(darkTheme = dark) {
-                ProtoPayContent(mode, {}, "ITUNDA-DEMO-1", 43, "itunda Pay Money", "120,500", {}, {}, {}, {}, {}, onTopUp = {})
+                ProtoPayContent(mode, {}, "ITUNDA-DEMO-1", 43, "itunda Pay Money", "120,500", {}, {}, {}, {}, { _, _, _ -> }, onTopUp = {})
             }
         }
         rule.onRoot().captureRoboImage("build/screenshots/$name.png")
@@ -60,7 +60,7 @@ class PayScreenshotTest {
         val opened = mutableStateOf(false)
         rule.setContent {
             IdsTheme(darkTheme = false) {
-                ProtoPayContent(ProtoPayMode.TAP, {}, "ITUNDA-DEMO-1", 43, "itunda Pay Money", "120,500", {}, {}, {}, {}, {}, onTopUp = { opened.value = true })
+                ProtoPayContent(ProtoPayMode.TAP, {}, "ITUNDA-DEMO-1", 43, "itunda Pay Money", "120,500", {}, {}, {}, {}, { _, _, _ -> }, onTopUp = { opened.value = true })
             }
         }
         rule.onNodeWithText("Top up").performClick()
