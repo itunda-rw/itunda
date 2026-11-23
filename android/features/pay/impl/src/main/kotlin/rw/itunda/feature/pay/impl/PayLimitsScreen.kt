@@ -28,6 +28,9 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.error
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
@@ -47,7 +50,7 @@ private fun fmt(n: Int) = String.format(Locale.US, "%,d", n)
 fun PayLimitsScreen(perPayment: Int, perDay: Int, usedToday: Int, onBack: () -> Unit, onSave: (perPayment: Int, perDay: Int) -> Unit) {
     var one by remember { mutableIntStateOf(perPayment) }
     var day by remember { mutableIntStateOf(perDay) }
-    val valid = one in MIN..ONE_MAX && day in MIN..DAY_MAX && one <= day
+    val valid = one in MIN..ONE_MAX && day in MIN..DAY_MAX && one <= day && day >= usedToday
     val dirty = one != perPayment || day != perDay
     fun badOne() = one > ONE_MAX || (one in 1 until MIN) || (one > day && day >= MIN)
     fun badDay() = day > DAY_MAX || (day in 1 until MIN)
@@ -110,7 +113,10 @@ private fun LimitField(label: String, value: Int, message: String, bad: Boolean,
         BasicTextField(
             value = if (value == 0) "" else fmt(value), onValueChange = { t -> onChange(minOf(t.filter(Char::isDigit).take(8).toIntOrNull() ?: 0, 99_999_999)) },
             singleLine = true, textStyle = style, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), cursorBrush = SolidColor(p.brandText),
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).semantics {
+                contentDescription = label
+                if (message.isNotEmpty() && bad) error(message)
+            },
             decorationBox = { inner -> Box { if (value == 0) Text("0", color = p.tt, style = style); inner() } },
         )
         Text("RWF", color = p.tt, fontSize = 14.sp, lineHeight = 20.sp)
