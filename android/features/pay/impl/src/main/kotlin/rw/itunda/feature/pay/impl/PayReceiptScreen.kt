@@ -28,7 +28,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -73,6 +75,7 @@ fun PayReceiptScreen(index: Int, onBack: () -> Unit, onPayAgain: (merchant: Stri
             }
             Box(
                 Modifier.padding(start = 24.dp, end = 24.dp, top = 18.dp).fillMaxWidth(0.488f).height(44.dp).clip(RoundedCornerShape(20.dp)).background(p.soft)
+                    .semantics { contentDescription = "Share receipt"; role = Role.Button }
                     .pressScaleClickable {
                         val send = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, "itunda Pay receipt\nMerchant: ${r.name}\nTill: ${r.till}\nAmount: ${r.amount} RWF\nDate: ${r.date}\nPaid from: itunda Pay\nReference: ${r.ref}") }
                         ctx.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -88,7 +91,13 @@ private fun Kv(label: String, value: String, p: PayPalette, first: Boolean = fal
     Column {
         if (!first) Box(Modifier.fillMaxWidth().height(1.dp).background(p.soft))
         Row(
-            Modifier.fillMaxWidth().height(if (first) 55.dp else 55.dp).let { if (onClick != null) it.pressScaleClickable(onClick = onClick) else it },
+            Modifier.fillMaxWidth().height(if (first) 55.dp else 55.dp)
+                .let {
+                    if (onClick != null) it.semantics {
+                        contentDescription = "Copy receipt reference"
+                        role = Role.Button
+                    }.pressScaleClickable(onClick = onClick) else it
+                },
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(label, color = p.tt, fontSize = 16.sp, lineHeight = 22.4.sp)
