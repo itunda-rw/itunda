@@ -153,12 +153,12 @@ internal class DemoInterceptor : Interceptor {
                 """{"conversationId":"$id","otherUserId":"u-$id","otherUserName":"$name","lastMessageAt":"${ago(min)}","lastMessagePreview":"$preview","unreadCount":$unread${if (source != null) ",\"source\":\"$source\"" else ""}${if (hood != null) ",\"neighborhood\":\"$hood\"" else ""}}"""
             return "[" + listOf(
                 c("c1", "Patrick H.", "Yes, still available. Can you come tomorrow?", 1, 8, "market", "Kacyiru"),
-                c("c6", "Kigali Bakery", "Thanks for applying. Can you start Monday?", 1, 40, "jobs", "Kigali Bakery"),
-                c("c7", "Agent Diane", "Yes. You can view it on Saturday morning.", 0, 1300, "homes", "Kimironko"),
+                c("c6", "Kigali Bakery", "Thanks for applying. Can you start Monday?", 1, 60, "jobs", "Kigali Bakery"),
+                c("c7", "Agent Diane", "Yes. You can view it on Saturday morning.", 0, 1500, "homes", "Kimironko"),
                 c("c2", "Amina K.", "See you on Friday", 1, 2),
                 c("c3", "Umurenge Savers", "Contributions are due on Friday", 0, 60),
                 c("c4", "Kigali Bakery", "Your order is on the way", 0, 300),
-                c("c5", "itunda support", "Your report was reviewed. Thank you.", 0, 1500),
+                c("c5", "itunda support", "Your report was reviewed. Thank you.", 0, 1700),
             ).joinToString(",") + "]"
         }
 

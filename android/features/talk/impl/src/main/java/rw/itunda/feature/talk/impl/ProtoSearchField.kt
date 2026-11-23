@@ -27,7 +27,7 @@ import rw.itunda.core.designsystem.theme.Ids
 @Composable
 internal fun ProtoSearchField(query: String, onQuery: (String) -> Unit, modifier: Modifier = Modifier) {
     Row(
-        modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(16.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 14.dp),
+        modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         ItundaArt("search", ItundaArtSet.Line, 20.dp, tint = Ids.colors.textTertiary)

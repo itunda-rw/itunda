@@ -57,7 +57,8 @@ internal fun chatTimeLabel(iso: String, now: java.time.Instant = java.time.Insta
     when {
         mins < 1 -> "now"
         mins < 60 -> "$mins min"
-        mins < 24 * 60 -> "${mins / 60} h"
+        mins < 3 * 60 -> "${mins / 60} h"
+        mins < 24 * 60 -> "Today"
         mins < 48 * 60 -> "Yesterday"
         else -> java.time.LocalDate.ofInstant(t, java.time.ZoneId.systemDefault()).let { "${it.dayOfMonth} ${it.month.getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.ENGLISH)}" }
     }
@@ -72,7 +73,7 @@ internal fun chatTimeLabel(iso: String, now: java.time.Instant = java.time.Insta
 internal fun ProtoChatRow(conversation: ConversationSummaryDto, online: Boolean, onClick: () -> Unit, onPinToggle: (() -> Unit)?) {
     val unread = conversation.unreadCount > 0
     Row(
-        Modifier.fillMaxWidth().height(80.dp).combinedClickable(onClick = onClick, onLongClick = onPinToggle),
+        Modifier.fillMaxWidth().height(77.8.dp).combinedClickable(onClick = onClick, onLongClick = onPinToggle),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(48.dp), contentAlignment = Alignment.BottomEnd) {
@@ -83,23 +84,23 @@ internal fun ProtoChatRow(conversation: ConversationSummaryDto, online: Boolean,
             } else ChatFace(conversation.otherUserName, 48)
             if (online && conversation.source == null) Box(Modifier.size(12.dp).clip(CircleShape).background(Ids.colors.background).padding(2.dp).clip(CircleShape).background(Ids.colors.success))
         }
-        Spacer(Modifier.width(14.dp))
+        Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(conversation.otherUserName, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                Text(conversation.otherUserName, color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 23.8.sp, letterSpacing = (-0.3).sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 Text("  ${listOfNotNull(conversation.neighborhood, chatTimeLabel(conversation.lastMessageAt)).joinToString(" · ")}", color = Ids.colors.textTertiary, fontSize = 13.sp, maxLines = 1)
             }
             Text(
                 conversation.lastMessagePreview ?: "No messages yet",
                 color = if (unread) Ids.colors.textPrimary else Ids.colors.textTertiary,
-                fontSize = 15.sp, fontWeight = if (unread) FontWeight.Bold else FontWeight.Normal,
+                fontSize = 15.sp, lineHeight = 21.sp, letterSpacing = (-0.2).sp, fontWeight = if (unread) FontWeight.SemiBold else FontWeight.Normal,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
         }
         if (unread) {
             Spacer(Modifier.width(8.dp))
-            Box(Modifier.size(26.dp).clip(CircleShape).background(Ids.colors.brand), contentAlignment = Alignment.Center) {
-                Text("${conversation.unreadCount}", color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Box(Modifier.size(21.2.dp).clip(CircleShape).background(Ids.colors.brand), contentAlignment = Alignment.Center) {
+                Text("${conversation.unreadCount}", color = Color(0xFF17171C), fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -109,17 +110,17 @@ internal fun ProtoChatRow(conversation: ConversationSummaryDto, online: Boolean,
 /** Filter chips under the Messages header: the selected one is solid ink, the rest soft grey. */
 @Composable
 internal fun <T> ProtoChips(options: List<Pair<T, String>>, selected: T, onSelect: (T) -> Unit, modifier: Modifier = Modifier, hasDot: (T) -> Boolean = { false }) {
-    Row(modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(bottom = 8.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
+    Row(modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(bottom = 4.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
         options.forEach { (value, label) ->
             val on = value == selected
             Box(
-                Modifier.height(44.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(22.dp))
+                Modifier.height(40.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(18.dp))
                     .background(if (on) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
                     .combinedClickable(onClick = { onSelect(value) }).padding(horizontal = 20.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(label, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = if (on) Ids.colors.background else Ids.colors.textTertiary)
+                    Text(label, fontSize = 15.sp, lineHeight = 21.sp, letterSpacing = (-0.2).sp, fontWeight = if (on) FontWeight.Bold else FontWeight.SemiBold, color = if (on) Ids.colors.background else Ids.colors.textTertiary)
                     if (hasDot(value) && !on) Box(Modifier.padding(start = 6.dp).size(6.dp).clip(CircleShape).background(Ids.colors.brand))
                 }
             }
