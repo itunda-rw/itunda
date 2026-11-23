@@ -60,14 +60,14 @@ fun CreditScoreBody(score: Int, factors: List<ScoreFactor>) {
         Spacer(Modifier.height(24.dp))
         Box(Modifier.size(width = 240.dp, height = 139.2.dp)) {
             ScoreArc(((shown.value - 300f) / 550f).coerceIn(0f, 1f))
+            Text(
+                shown.value.toInt().toString(), color = Ids.colors.textPrimary, fontSize = 56.sp, lineHeight = 60.sp,
+                fontWeight = FontWeight.ExtraBold, letterSpacing = (-2).sp, modifier = Modifier.align(Alignment.TopCenter).padding(top = 86.6.dp),
+            )
         }
         Text(
-            shown.value.toInt().toString(), color = Ids.colors.textPrimary, fontSize = 56.sp, lineHeight = 60.sp,
-            fontWeight = FontWeight.ExtraBold, letterSpacing = (-2).sp, modifier = Modifier.padding(top = 0.dp),
-        )
-        Text(
             band(score), color = green, fontSize = 14.sp, lineHeight = 19.6.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.2).sp,
-            modifier = Modifier.padding(top = 10.dp).clip(RoundedCornerShape(50)).background(Color(0xFFE1EFE9)).padding(horizontal = 16.dp, vertical = 5.dp),
+            modifier = Modifier.padding(top = 17.4.dp).clip(RoundedCornerShape(50)).background(Color(0xFFE1EFE9)).padding(horizontal = 16.dp, vertical = 5.dp),
         )
         Text("Range 300 to 850", color = Ids.colors.textTertiary, fontSize = 13.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 10.dp))
     }
