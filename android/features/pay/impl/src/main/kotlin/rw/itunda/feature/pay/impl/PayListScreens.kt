@@ -109,25 +109,39 @@ fun PayHistoryScreen(onBack: () -> Unit, onOpen: (Int) -> Unit = {}) {
 /** Prototype "Saved merchants": starred tills plus recent ones. */
 @Composable
 fun PaySavedMerchantsScreen(onBack: () -> Unit) {
+    var savedTills by remember { mutableStateOf(emptySet<String>()) }
     PaySubScreen(onBack = onBack, title = "Saved merchants") { p ->
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
             DayHeader(p, "Saved", first = true)
-            Text("Tap ☆ on a merchant to keep it here. Paying again takes two taps.", color = p.tt, fontSize = 16.sp, lineHeight = 22.sp, modifier = Modifier.height(64.dp))
+            val savedMerchants = payMerchants.filter { it.till in savedTills }
+            if (savedMerchants.isEmpty()) {
+                Text("Tap ☆ on a merchant to keep it here. Paying again takes two taps.", color = p.tt, fontSize = 16.sp, lineHeight = 22.sp, modifier = Modifier.padding(bottom = 16.dp))
+            } else {
+                savedMerchants.forEach { merchant ->
+                    SavedMerchantRow(merchant, p, isSaved = true) { savedTills = savedTills - merchant.till }
+                }
+            }
             DayHeader(p, "Recent")
-            payMerchants.forEach { m ->
-                Row(Modifier.fillMaxWidth().height(72.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Avatar(m.name.take(1), p.soft, p.text)
-                    Column(Modifier.weight(1f).padding(start = 16.dp)) {
-                        Text(m.name, color = p.text, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp)
-                        Text("Till ${m.till} · Last ${m.last} RWF", color = p.tt, fontSize = 14.sp, lineHeight = 20.sp)
-                    }
-                    Text("☆", color = p.tt, fontSize = 24.sp, modifier = Modifier.padding(end = 12.dp))
+            payMerchants.forEach { merchant ->
+                SavedMerchantRow(merchant, p, isSaved = merchant.till in savedTills) {
+                    savedTills = if (merchant.till in savedTills) savedTills - merchant.till else savedTills + merchant.till
                 }
             }
         }
     }
 }
 
+@Composable
+private fun SavedMerchantRow(merchant: PayMerchant, p: PayPalette, isSaved: Boolean, onToggleSaved: () -> Unit) {
+    Row(Modifier.fillMaxWidth().height(72.dp), verticalAlignment = Alignment.CenterVertically) {
+        Avatar(merchant.name.take(1), p.soft, p.text)
+        Column(Modifier.weight(1f).padding(start = 16.dp)) {
+            Text(merchant.name, color = p.text, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp)
+            Text("Till ${merchant.till} · Last ${merchant.last} RWF", color = p.tt, fontSize = 14.sp, lineHeight = 20.sp)
+        }
+        Text(if (isSaved) "★" else "☆", color = if (isSaved) p.brandText else p.tt, fontSize = 24.sp, modifier = Modifier.padding(end = 12.dp).pressScaleClickable(onClick = onToggleSaved))
+    }
+}
 /** Prototype "Points": connected balances (dummy). */
 @Composable
 fun PayPointsScreen(onBack: () -> Unit) {
