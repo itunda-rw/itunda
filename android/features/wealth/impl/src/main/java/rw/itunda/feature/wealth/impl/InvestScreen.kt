@@ -95,7 +95,7 @@ fun InvestScreen(onBack: () -> Unit) {
     LaunchedEffect(Unit) { loadWatchlist() }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        BackTopBar(title = "Invest", onBack = if (selectedStock != null) ({ selectedStock = null }) else onBack)
+        rw.itunda.core.designsystem.components.ProtoTopBar("Invest", if (selectedStock != null) ({ selectedStock = null }) else onBack)
 
         if (selectedStock != null) {
             StockDetailContent(
@@ -123,7 +123,7 @@ fun InvestScreen(onBack: () -> Unit) {
 @Composable
 fun InvestPortfolioPreview() {
     Column(Modifier.fillMaxSize().background(Ids.colors.background)) {
-        BackTopBar(title = "Invest", onBack = {})
+        rw.itunda.core.designsystem.components.ProtoTopBar("Invest") {}
         InvestTabs(InvestMode.PORTFOLIO) {}
         Column(Modifier.weight(1f).padding(horizontal = Ids.layout.screenHorizontal)) {
             Column(Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 10.dp)) {

@@ -134,7 +134,7 @@ class BankScreenshotTest {
     @Test fun scoreLight() {
         rule.setContent {
             IdsTheme(darkTheme = false) {
-                Column(Modifier.fillMaxSize().background(Ids.colors.background)) { rw.itunda.core.designsystem.components.BackTopBar(title = "Credit score", onBack = {}); Column(Modifier.padding(horizontal = 24.dp)) { CreditScoreBody(692, demoScoreFactors) } }
+                Column(Modifier.fillMaxSize().background(Ids.colors.background)) { rw.itunda.core.designsystem.components.ProtoTopBar("Credit score") {}; Column(Modifier.padding(horizontal = 24.dp)) { CreditScoreBody(692, demoScoreFactors) } }
             }
         }
         rule.onRoot().captureRoboImage("build/screenshots/score-light.png")

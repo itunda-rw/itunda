@@ -52,7 +52,7 @@ fun CreditScoreScreen(onBack: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize()) {
-        BackTopBar(title = "Credit score", onBack = onBack)
+        rw.itunda.core.designsystem.components.ProtoTopBar("Credit score", onBack)
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
             error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
             val current = score
