@@ -118,6 +118,25 @@ fun InvestScreen(onBack: () -> Unit) {
     }
 }
 
+/** Static empty-portfolio composition used by the screenshot harness (same pieces as the live screen, no network). */
+@Composable
+fun InvestPortfolioPreview() {
+    Column(Modifier.fillMaxSize().background(Ids.colors.background)) {
+        BackTopBar(title = "Invest", onBack = {})
+        InvestTabs(InvestMode.PORTFOLIO) {}
+        Column(Modifier.weight(1f).padding(horizontal = Ids.layout.screenHorizontal)) {
+            Column(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+                Text("Invested value", color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 20.sp)
+                Text("0 RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 36.sp, lineHeight = 44.sp, letterSpacing = (-1.2).sp)
+                Spacer(Modifier.height(20.dp))
+                InvestIndexHeader()
+            }
+            InvestStartCard {}
+        }
+        InvestBottomCta({}, {})
+    }
+}
+
 /** Prototype tabs: underline style on Portfolio (43.8dp strip, 17sp/700), pill segmented control on Market/Activity. */
 @Composable
 private fun InvestTabs(mode: InvestMode, onMode: (InvestMode) -> Unit) {

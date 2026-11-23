@@ -118,7 +118,7 @@ class BankScreenshotTest {
     @Test fun investLight() {
         rule.setContent {
             IdsTheme(darkTheme = false) {
-                Box(Modifier.fillMaxSize().background(Ids.colors.background).padding(24.dp)) { Column { InvestIndexHeader(); InvestStartCard {} } }
+                rw.itunda.feature.wealth.impl.InvestPortfolioPreview()
             }
         }
         rule.onRoot().captureRoboImage("build/screenshots/invest-light.png")
