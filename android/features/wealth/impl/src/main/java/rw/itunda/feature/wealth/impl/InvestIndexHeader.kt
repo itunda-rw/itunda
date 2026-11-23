@@ -50,15 +50,17 @@ fun InvestIndexHeader() {
         Text("RSE All Share Index", color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(4.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("169.42", color = Ids.colors.textPrimary, fontSize = 26.sp, lineHeight = 36.4.sp, letterSpacing = (-0.5).sp, fontWeight = FontWeight.ExtraBold)
-            Text("  ▲ +0.6% today", color = green, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text("170.53", color = Ids.colors.textPrimary, fontSize = 26.sp, lineHeight = 36.4.sp, letterSpacing = (-0.5).sp, fontWeight = FontWeight.ExtraBold)
+            Text("  ▲ +1.3% today", color = green, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         }
         Spacer(Modifier.height(14.dp))
-        Canvas(Modifier.fillMaxWidth().height(112.dp).clip(RoundedCornerShape(8.dp)).background(green.copy(alpha = 0.08f))) {
+        Canvas(Modifier.fillMaxWidth().height(105.dp)) {
             val max = demoCurve.max(); val min = demoCurve.min()
             val step = size.width / (demoCurve.size - 1)
             val pts = demoCurve.mapIndexed { i, v -> Offset(i * step, size.height - 8.dp.toPx() - (v - min) / (max - min) * (size.height - 16.dp.toPx())) }
             val line = Path().apply { moveTo(pts[0].x, pts[0].y); pts.drop(1).forEach { lineTo(it.x, it.y) } }
+            val area = Path().apply { addPath(line); lineTo(pts.last().x, size.height); lineTo(pts[0].x, size.height); close() }
+            drawPath(area, green.copy(alpha = 0.09f))
             drawPath(line, green, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
         }
         Spacer(Modifier.height(12.dp))
