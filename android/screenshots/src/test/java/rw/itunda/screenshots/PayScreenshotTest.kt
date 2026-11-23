@@ -5,6 +5,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.hasRole
 import androidx.compose.ui.test.hasStateDescription
@@ -133,6 +134,15 @@ class PayScreenshotTest {
         rule.onNodeWithText("Refunds").performClick()
         rule.onNodeWithText("Nothing to show.").assertExists()
         rule.onNodeWithText("Kigali Bakery").assertDoesNotExist()
+    }
+    @Test fun historySearchFiltersByReferenceAndClearRestoresRows() {
+        rule.setContent { IdsTheme(darkTheme = false) { PayHistoryScreen({}) } }
+        rule.onNodeWithContentDescription("Search payment history").performTextInput("TX40217313")
+        rule.onNodeWithText("Simba Supermarket").assertExists()
+        rule.onNodeWithText("Kigali Bakery").assertDoesNotExist()
+        rule.onNodeWithContentDescription("Clear search").performClick()
+        rule.onNodeWithText("Simba Supermarket").assertExists()
+        rule.onNodeWithText("Kigali Bakery").assertExists()
     }
     @Test fun saved() = shot("saved") { PaySavedMerchantsScreen({}) }
     @Test fun savedDark() = shotDark("saved") { PaySavedMerchantsScreen({}) }
