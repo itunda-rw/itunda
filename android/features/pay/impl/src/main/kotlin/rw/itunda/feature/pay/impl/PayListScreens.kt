@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.stateDescription
@@ -57,6 +59,7 @@ private fun DayHeader(p: PayPalette, text: String, first: Boolean = false) {
 /** Prototype "Payment history": month total, search, filter pills, rows grouped by day (dummy data). */
 @Composable
 fun PayHistoryScreen(onBack: () -> Unit, onOpen: (Int) -> Unit = {}) {
+    val focusManager = LocalFocusManager.current
     var query by remember { mutableStateOf("") }
     var filter by remember { mutableStateOf(0) }
     PaySubScreen(onBack = onBack, title = "Payment history") { p ->
@@ -64,7 +67,7 @@ fun PayHistoryScreen(onBack: () -> Unit, onOpen: (Int) -> Unit = {}) {
             Text("Spent this month", color = p.tt, fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
             Text("28,700 RWF", color = p.text, fontSize = 34.sp, lineHeight = 47.6.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.8).sp, modifier = Modifier.padding(top = 2.dp))
             BasicTextField(
-                value = query, onValueChange = { query = it }, singleLine = true, keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                value = query, onValueChange = { query = it }, singleLine = true, keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search), keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
                 textStyle = TextStyle(color = p.text, fontSize = 16.sp, lineHeight = 22.4.sp), cursorBrush = SolidColor(p.brandText),
                 modifier = Modifier.padding(top = 4.dp).fillMaxWidth().height(44.dp).clip(RoundedCornerShape(14.dp)).background(p.soft).semantics { contentDescription = "Search payment history" },
                 decorationBox = { inner ->
