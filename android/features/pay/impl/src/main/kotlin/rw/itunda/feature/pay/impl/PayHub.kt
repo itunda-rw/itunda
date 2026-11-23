@@ -66,6 +66,7 @@ fun PayHub(
     onBack: () -> Unit, onFindStores: () -> Unit, onOpenPoints: () -> Unit = {}, onOpenHistory: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
     onOpenCoupons: () -> Unit = {},
+    onOpenSupport: () -> Unit = {},
 ) {
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val p = payPalette(false, dark)
@@ -85,7 +86,7 @@ fun PayHub(
             Spacer(Modifier.height(12.dp))
             HubCard(Modifier.height(283.dp)) { HistoryBlock(p, dark, onOpenHistory) }
             Spacer(Modifier.height(12.dp))
-            Links(p)
+            Links(p, onOpenSupport)
         }
     }
 }
@@ -244,7 +245,7 @@ private fun HistoryBlock(p: PayPalette, dark: Boolean, onOpenHistory: () -> Unit
 }
 
 @Composable
-private fun Links(p: PayPalette) {
+private fun Links(p: PayPalette, onOpenSupport: () -> Unit) {
     Column(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 24.dp)) {
         listOf("FAQ", "Send feedback").forEach {
             Text(it, color = p.tt, fontSize = 17.sp, lineHeight = 24.sp, modifier = Modifier.fillMaxWidth().height(56.dp).padding(start = 24.dp).wrapContentHeight(Alignment.CenterVertically))
