@@ -105,7 +105,12 @@ fun PayHistoryScreen(onBack: () -> Unit, onOpen: (Int) -> Unit = {}) {
             rows.groupBy { it.day }.entries.forEachIndexed { gi, (day, dayRows) ->
                 DayHeader(p, day, first = gi == 0)
                 dayRows.forEach { r ->
-                    Row(Modifier.fillMaxWidth().height(72.dp).pressScaleClickable { onOpen(payHistory.indexOf(r)) }, verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        Modifier.fillMaxWidth().height(72.dp)
+                            .semantics { contentDescription = "Payment to ${r.name}, ${r.amount} RWF, ${r.date}"; role = Role.Button }
+                            .pressScaleClickable { onOpen(payHistory.indexOf(r)) },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Avatar(r.name.take(1), p.soft, p.text)
                         Column(Modifier.weight(1f).padding(start = 16.dp)) {
                             Text(r.name, color = p.text, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp)
