@@ -51,8 +51,8 @@ internal class DemoInterceptor : Interceptor {
         if (method != "GET") return OK
         return when {
             path == "api/v1/auth/profile" -> """{"success":true,"user":$USER}"""
-            path == "api/v1/affiliate/links/my-links" -> """{"success":true,"links":[]}"""
-            path == "api/v1/affiliate/commissions/my-commissions" -> """{"success":true,"commissions":[]}"""
+            path == "api/v1/affiliate/links/my-links" -> """{"success":true,"links":[{"id":"al1","userId":"demo-user","productId":"p1","code":"AL1","clickCount":6,"createdAt":"2026-11-01T09:00:00Z"},{"id":"al2","userId":"demo-user","productId":"p2","code":"AL2","clickCount":8,"createdAt":"2026-11-03T09:00:00Z"}]}"""
+            path == "api/v1/affiliate/commissions/my-commissions" -> """{"success":true,"commissions":[{"id":"ac1","linkId":"al1","referrerId":"demo-user","orderId":"o1","buyerId":"b1","commissionAmount":1240.0,"payoutTransactionId":"t1","createdAt":"2026-11-05T09:00:00Z"}]}"""
             path == "api/v1/p2p/scam-reports/mine" -> """{"success":true,"reports":[]}"""
             path == "api/v1/merchant/reviews/my-reviews" -> """{"success":true,"reviews":[]}"""
             path == "api/v1/messages/presence" -> """{"success":true,"presence":{"u-c1":true,"u-c2":true}}"""

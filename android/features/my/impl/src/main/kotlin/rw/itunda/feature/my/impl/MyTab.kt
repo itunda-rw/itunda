@@ -28,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
@@ -111,34 +112,35 @@ fun MyEntryPoint(
         try { myBookingReviews = rw.itunda.core.network.NetworkClient.apiService.getMyBookingReviews().reviews } catch (_: Exception) { }
     }
 
+    Column(Modifier.fillMaxSize().background(Ids.colors.surfaceSoft)) {
+    Row(Modifier.fillMaxWidth().height(74.dp).padding(start = 24.dp, end = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text("You", color = Ids.colors.textPrimary, fontSize = 24.sp, lineHeight = 33.6.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+        Box(Modifier.size(48.dp).pressScaleClickable(onClick = onOpenSettings), contentAlignment = Alignment.Center) {
+            rw.itunda.core.designsystem.components.ItundaArt("gear", rw.itunda.core.designsystem.components.ItundaArtSet.Line, 24.dp, tint = Ids.colors.textPrimary)
+        }
+    }
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(start = Ids.layout.screenHorizontal, end = Ids.layout.screenHorizontal, top = Ids.layout.screenVertical),
-        verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
+        modifier = Modifier.weight(1f).fillMaxWidth(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 15.dp, end = 15.dp, top = 12.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("You", color = Ids.colors.textPrimary, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
-                Box(Modifier.size(44.dp).clip(CircleShape).pressScaleClickable(onClick = onOpenSettings), contentAlignment = Alignment.Center) {
-                    rw.itunda.core.designsystem.components.ItundaArt("gear", rw.itunda.core.designsystem.components.ItundaArtSet.Line, 26.dp, tint = Ids.colors.textTertiary)
-                }
-            }
-        }
-        item {
-            Column {
+            YouCard(Modifier.padding(top = 0.dp)) {
                 profile?.let { u ->
-                    Row(Modifier.fillMaxWidth().pressScaleClickable { showProfile = true }.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(72.dp).clip(CircleShape).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
-                            rw.itunda.core.designsystem.components.ItundaArt("shopkeeper", rw.itunda.core.designsystem.components.ItundaArtSet.Face, 58.dp)
+                    Row(Modifier.padding(horizontal = 12.dp).fillMaxWidth().height(84.dp).clip(RoundedCornerShape(16.dp)).pressScaleClickable { showProfile = true }.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(68.dp).clip(CircleShape).background(androidx.compose.ui.graphics.Color(0xFFFFF4D1)), contentAlignment = Alignment.Center) {
+                            Text("\uD83D\uDE0A", fontSize = 38.sp)
                         }
                         Spacer(Modifier.width(16.dp))
-                        Column {
-                            Text("${u.firstName} ${u.lastName}", color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+                        Column(Modifier.weight(1f)) {
+                            Text("${u.firstName} ${u.lastName}", color = Ids.colors.textPrimary, fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold)
                             Text(
-                                u.phoneNumber.let { if (it.length > 7) it.take(4) + " ••• " + it.takeLast(3) else it } + " · View profile ›",
-                                color = Ids.colors.textTertiary, fontSize = 15.sp,
+                                u.phoneNumber.let { raw -> val local = if (raw.startsWith("+250")) "0" + raw.drop(4) else raw; if (local.length > 6) local.take(3) + " ••• " + local.takeLast(3) else local } + " · View profile",
+                                color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold,
                             )
                         }
-                }
+                        rw.itunda.core.designsystem.components.ItundaArt("back", rw.itunda.core.designsystem.components.ItundaArtSet.Line, 16.dp, tint = Ids.colors.textTertiary, modifier = Modifier.graphicsLayer { rotationZ = 180f })
+                    }
                 }
                 PinUpgradeCard()
                 VerificationCard()
@@ -146,22 +148,14 @@ fun MyEntryPoint(
         }
         if (affiliateLinks.isNotEmpty()) {
             item {
-                Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("Partner earnings", color = Ids.colors.textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 22.sp)
-                    Text("Earn 3% when people buy via your links.", color = Ids.colors.textTertiary, fontSize = 14.sp)
-                }
-            }
-            item {
                 val totalClicks = affiliateLinks.sumOf { it.clickCount }
                 val totalEarned = affiliateCommissions.sumOf { it.commissionAmount }
-                FlatSection(
-                    "",
-                    listOf(
-                        FlatRow("Shared links", trailing = "${affiliateLinks.size}", glyph = { ArtTile("send") }),
-                        FlatRow("Clicks", trailing = "$totalClicks", glyph = { ArtTile("chart") }),
-                        FlatRow("Earned", trailing = "${String.format(Locale.US, "%,.0f", totalEarned)} RWF", glyph = { ArtTile("money") }),
-                    ),
-                )
+                YouCard {
+                    YouCardTitle("Partner earnings", "Earn 3% when people buy via your links.")
+                    YouRow("Shared links", "${affiliateLinks.size}") { ArtTile("send") }
+                    YouRow("Clicks", "$totalClicks") { ArtTile("chart") }
+                    YouRow("Earned", "${String.format(Locale.US, "%,.0f", totalEarned)} RWF") { ArtTile("money") }
+                }
             }
         }
         if (shopOrders.isNotEmpty() || eatsOrders.isNotEmpty()) {
@@ -192,25 +186,22 @@ fun MyEntryPoint(
             }
         }
         item {
-            FlatSection(
-                "My favorites",
-                listOf(
-                    FlatRow("Marketplace wishlist", trailing = "$favoriteListingsCount", glyph = { ArtTile("market", badge = true) }, onClick = onSwitchToMarketplace),
-                    FlatRow("Jobs wishlist", trailing = "$favoriteJobPostsCount", glyph = { ArtTile("briefcase", badge = true) }, onClick = onSwitchToJobs),
-                    FlatRow("Property wishlist", trailing = "$favoritePropertyListingsCount", glyph = { ArtTile("house", badge = true) }, onClick = onSwitchToProperty),
-                    FlatRow("Restaurant favorites", trailing = "$favoriteRestaurantsCount", glyph = { ArtTile("restaurant", badge = true) }, onClick = onSwitchToEats),
-                ),
-            )
+            YouCard {
+                YouCardTitle("My favorites")
+                YouRow("Product wishlist", onClick = onSwitchToShop) { ArtTile("bag", badge = true) }
+                YouRow("Marketplace wishlist", "$favoriteListingsCount", onSwitchToMarketplace) { ArtTile("market", badge = true) }
+                YouRow("Jobs wishlist", "$favoriteJobPostsCount", onSwitchToJobs) { ArtTile("briefcase", badge = true) }
+                YouRow("Property wishlist", "$favoritePropertyListingsCount", onSwitchToProperty) { ArtTile("house", badge = true) }
+                YouRow("Restaurant favorites", "$favoriteRestaurantsCount", onSwitchToEats) { ArtTile("restaurant", badge = true) }
+            }
         }
         item {
-            FlatSection(
-                "My listings",
-                listOf(
-                    FlatRow("Marketplace", trailing = "$myListingsCount", glyph = { ArtTile("market") }, onClick = onSwitchToMarketplace),
-                    FlatRow("Jobs posted", trailing = "$myJobPostsCount", glyph = { ArtTile("briefcase") }, onClick = onSwitchToJobs),
-                    FlatRow("Property listed", trailing = "$myPropertyListingsCount", glyph = { ArtTile("house") }, onClick = onSwitchToProperty),
-                ),
-            )
+            YouCard {
+                YouCardTitle("My listings")
+                YouRow("Marketplace", "$myListingsCount", onSwitchToMarketplace) { ArtTile("market") }
+                YouRow("Jobs posted", "$myJobPostsCount", onSwitchToJobs) { ArtTile("briefcase") }
+                YouRow("Property listed", "$myPropertyListingsCount", onSwitchToProperty) { ArtTile("house") }
+            }
         }
         if (myBookingReviews.isNotEmpty()) {
             item { Text("My reviews", color = Ids.colors.textPrimary, fontSize = 19.sp, fontWeight = FontWeight.Bold) }
@@ -249,6 +240,7 @@ fun MyEntryPoint(
                 Divider(color = Ids.colors.divider, thickness = 0.5.dp)
             }
         }
+    }
     }
 }
 
