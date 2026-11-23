@@ -32,7 +32,22 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.time.YearMonth
 import rw.itunda.core.designsystem.components.pressScaleClickable
+
+/** Luhn validation for card-number input; the complete number is never returned to the caller. */
+internal fun isValidCardNumber(number: String): Boolean {
+    if (number.length !in 12..19 || number.any { !it.isDigit() }) return false
+    val sum = number.reversed().mapIndexed { index, char ->
+        var digit = char.digitToInt()
+        if (index % 2 == 1) {
+            digit *= 2
+            if (digit > 9) digit -= 9
+        }
+        digit
+    }.sum()
+    return sum % 10 == 0
+}
 
 /** What the caller learns about a new card: never the full number or CVC, only the last 4 digits. */
 data class PayNewCard(val brand: String, val last4: String, val name: String, val expiry: String)
@@ -50,7 +65,11 @@ fun PayAddCardScreen(onBack: () -> Unit, onAdd: (PayNewCard) -> Unit) {
     var cvc by remember { mutableStateOf("") }
     val digits = number.filter(Char::isDigit)
     val month = expiry.take(2).toIntOrNull() ?: 0
-    val valid = digits.length == 16 && expiry.length == 5 && month in 1..12 && cvc.length == 3 && name.trim().length > 1
+    val expiryYear = expiry.takeLast(2).toIntOrNull()?.let { 2000 + it } ?: 0
+    val expiryMonth = month.takeIf { it in 1..12 }
+    val valid = digits.length == 16 && isValidCardNumber(digits) && expiry.length == 5 &&
+        expiryMonth != null && expiryYear >= 2000 && YearMonth.of(expiryYear, month).isAfter(YearMonth.now().minusMonths(1)) &&
+        cvc.length == 3 && name.trim().length > 1
     PaySubScreen(onBack = onBack, title = "Add a card") { p ->
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(top = 8.dp)) {
             CardPreview(digits, name.trim().uppercase(), expiry, p.text)
