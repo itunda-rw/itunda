@@ -9,6 +9,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.hasRole
 import androidx.compose.ui.test.hasStateDescription
+import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.semantics.Role
 import androidx.compose.runtime.mutableStateOf
 import org.junit.Assert.assertTrue
@@ -134,6 +135,12 @@ class PayScreenshotTest {
         rule.onNodeWithText("Refunds").performClick()
         rule.onNodeWithText("Nothing to show.").assertExists()
         rule.onNodeWithText("Kigali Bakery").assertDoesNotExist()
+    }
+    @Test fun historyTabsExposeSelectedTabSemantics() {
+        rule.setContent { IdsTheme(darkTheme = false) { PayHistoryScreen({}) } }
+        rule.onNodeWithText("All").assert(hasRole(Role.Tab)).assert(isSelected())
+        rule.onNodeWithText("Paid").assert(hasRole(Role.Tab)).performClick().assert(isSelected())
+        rule.onNodeWithText("Refunds").assert(hasRole(Role.Tab)).performClick().assert(isSelected())
     }
     @Test fun historySearchFiltersByReferenceAndClearRestoresRows() {
         rule.setContent { IdsTheme(darkTheme = false) { PayHistoryScreen({}) } }
