@@ -23,6 +23,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import rw.itunda.core.designsystem.components.pressScaleClickable
 
 /** CSS `linear-gradient(158deg, ...)` over the box being drawn into. */
@@ -55,14 +59,18 @@ fun PayMyCardsScreen(
                     },
                 ) {
                     Box(
-                        Modifier.height(36.dp).clip(RoundedCornerShape(12.dp)).background(p.tint).pressScaleClickable { onRemove(i) }.padding(horizontal = 14.dp),
+                        Modifier.height(36.dp).clip(RoundedCornerShape(12.dp)).background(p.tint)
+                            .semantics { contentDescription = "Remove ${c.brand} ending in ${c.last4}"; role = Role.Button }
+                            .pressScaleClickable { onRemove(i) }.padding(horizontal = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text("Remove", color = p.tintFg, fontSize = 14.sp, fontWeight = FontWeight.Bold) }
                 }
             }
             Spacer(Modifier.height(16.dp))
             Box(
-                Modifier.fillMaxWidth().height(52.dp).clip(RoundedCornerShape(16.dp)).background(p.tint).pressScaleClickable(onClick = onAddCard),
+                Modifier.fillMaxWidth().height(52.dp).clip(RoundedCornerShape(16.dp)).background(p.tint)
+                    .semantics { contentDescription = "Add a card"; role = Role.Button }
+                    .pressScaleClickable(onClick = onAddCard),
                 contentAlignment = Alignment.Center,
             ) { Text("Add a card", color = p.tintFg, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.3).sp) }
         }
