@@ -469,7 +469,7 @@ fun MarketplaceContent(
     // feed above.
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var selectedBrowseCategory by rememberSaveable { mutableStateOf("All") }
-    var nearestFirst by rememberSaveable { mutableStateOf(false) }
+    var selectedMarketplaceSort by rememberSaveable { mutableStateOf("Newest") }
     var showBrowseFilters by remember { mutableStateOf(false) }
     var selectedMaxPrice by rememberSaveable { mutableStateOf(0) }
     var selectedNeighborhood by rememberSaveable { mutableStateOf<String?>(null) }
@@ -494,11 +494,12 @@ fun MarketplaceContent(
     val isSearching = searchQuery.isNotBlank()
     val displayListings = if (isSearching) searchResults else listings
     val visibleListings = displayListings?.let { source ->
-        if (view != HoodView.BROWSE && view != HoodView.NEIGHBORHOOD) source else {
+        if (view !in setOf(HoodView.BROWSE, HoodView.NEARBY, HoodView.NEIGHBORHOOD)) source else {
             val categoryFiltered = when (selectedBrowseCategory) {
                 "All" -> source
                 "Free" -> source.filter { it.price <= 0.0 }
                 "Saved" -> source.filter { it.id in favoriteIds }
+                "Bought" -> source.filter { currentUserId != null && it.buyerId == currentUserId }
                 "Mine" -> source.filter { it.sellerId == currentUserId }
                 else -> source.filter { it.category.equals(selectedBrowseCategory, ignoreCase = true) }
             }
@@ -506,15 +507,13 @@ fun MarketplaceContent(
             val areaFiltered = selectedNeighborhood?.let { area ->
                 priceFiltered.filter { it.neighborhood.equals(area, ignoreCase = true) }
             } ?: priceFiltered
-            val locationForSort = browseLocation
-            if (nearestFirst && locationForSort != null) {
-                areaFiltered.sortedBy { listing ->
-                    val lat = listing.latitude
-                    val lng = listing.longitude
-                    if (lat == null || lng == null) Double.MAX_VALUE
-                    else haversineKm(locationForSort.first, locationForSort.second, lat, lng)
+            when (selectedMarketplaceSort) {
+                "Price ↑" -> areaFiltered.sortedBy { it.price }
+                "Price ↓" -> areaFiltered.sortedByDescending { it.price }
+                else -> areaFiltered.sortedByDescending { listing ->
+                    runCatching { Instant.parse(listing.createdAt).toEpochMilli() }.getOrDefault(0L)
                 }
-            } else areaFiltered
+            }
         }
     }
 
@@ -606,16 +605,21 @@ fun MarketplaceContent(
                 placeholder = "Search marketplace listings",
             )
         }
-        if (view == HoodView.BROWSE || view == HoodView.NEIGHBORHOOD) {
+        if (view == HoodView.BROWSE || view == HoodView.NEARBY || view == HoodView.NEIGHBORHOOD) {
             item {
                 MarketplaceBrowseControls(
                     selectedCategory = selectedBrowseCategory,
                     onCategorySelected = { selectedBrowseCategory = it },
-                    nearestFirst = nearestFirst,
-                    nearestAvailable = browseLocation != null,
+                    sortLabel = selectedMarketplaceSort,
                     filterCount = (if (selectedMaxPrice > 0) 1 else 0) + (if (selectedNeighborhood != null) 1 else 0),
                     onFilterClick = { showBrowseFilters = true },
-                    onSortSelected = { nearestFirst = it },
+                    onSortClick = {
+                        selectedMarketplaceSort = when (selectedMarketplaceSort) {
+                            "Newest" -> "Price ↑"
+                            "Price ↑" -> "Price ↓"
+                            else -> "Newest"
+                        }
+                    },
                 )
             }
         }
