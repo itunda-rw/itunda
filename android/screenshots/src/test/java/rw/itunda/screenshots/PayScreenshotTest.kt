@@ -4,6 +4,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.hasRole
 import androidx.compose.ui.test.hasStateDescription
 import androidx.compose.ui.semantics.Role
@@ -123,6 +124,15 @@ class PayScreenshotTest {
     @Test fun doneDark() = shotDark("done") { PayDoneScreen("Nyamirambo Coffee House", {}) }
     @Test fun history() = shot("history") { PayHistoryScreen({}) }
     @Test fun historyDark() = shotDark("history") { PayHistoryScreen({}) }
+    @Test fun historyFiltersExposeSelectionAndRefundEmptyState() {
+        rule.setContent { IdsTheme(darkTheme = false) { PayHistoryScreen({}) } }
+        rule.onNodeWithText("Kigali Bakery").assertExists()
+        rule.onNodeWithText("Paid").performClick()
+        rule.onNodeWithText("Kigali Bakery").assertExists()
+        rule.onNodeWithText("Refunds").performClick()
+        rule.onNodeWithText("Nothing to show.").assertExists()
+        rule.onNodeWithText("Kigali Bakery").assertDoesNotExist()
+    }
     @Test fun saved() = shot("saved") { PaySavedMerchantsScreen({}) }
     @Test fun savedDark() = shotDark("saved") { PaySavedMerchantsScreen({}) }
     @Test fun points() = shot("points") { PayPointsScreen({}) }
