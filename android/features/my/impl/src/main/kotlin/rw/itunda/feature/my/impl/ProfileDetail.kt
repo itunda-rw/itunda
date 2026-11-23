@@ -40,17 +40,14 @@ import rw.itunda.core.network.PublicUser
 internal fun ProfileDetail(user: PublicUser, onBack: () -> Unit) {
     BackHandler(onBack = onBack)
     Column(Modifier.fillMaxSize().background(Ids.colors.background).verticalScroll(rememberScrollState())) {
-        Box(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp).size(44.dp).clip(CircleShape).pressScaleClickable(onClick = onBack),
-            contentAlignment = Alignment.Center,
-        ) { Icon(IdsIcons.Back, contentDescription = "Back", modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary) }
-        Text("Profile", color = Ids.colors.textPrimary, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
+        rw.itunda.core.designsystem.components.ProtoTopBar("Profile", onBack)
+        Spacer(Modifier.height(4.dp))
         Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             // Real avatar (uploaded photo or initials), name and the Add/Change photo action.
             ProfilePhotoCard()
             Spacer(Modifier.height(16.dp))
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 18.dp, vertical = 8.dp)) {
-                FactRow("Phone", user.phoneNumber.let { if (it.length > 7) it.take(4) + " ••• " + it.takeLast(3) else it })
+                FactRow("Phone", user.phoneNumber.let { raw -> val local = if (raw.startsWith("+250")) "0" + raw.drop(4) else raw; if (local.length > 6) local.take(3) + " ••• " + local.takeLast(3) else local })
                 FactRow("Verification", if (user.kycVerified) "Verified" else "Not verified")
                 // Daily limit is a dummy until the limits endpoint exists; member-since comes from createdAt.
                 FactRow("Daily limit", "1,000,000 RWF")

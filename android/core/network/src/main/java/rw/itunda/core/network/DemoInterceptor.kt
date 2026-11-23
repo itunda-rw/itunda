@@ -137,7 +137,7 @@ internal class DemoInterceptor : Interceptor {
         const val OK = DEMO_EMPTY_BODY
 
         const val USER = """{"id":"demo-user","phoneNumber":"+250788123456","email":"aline@example.com","firstName":"Aline",
-            "lastName":"Uwase","kycVerified":true,"creditScore":742,"createdAt":"2025-06-01T09:00:00Z","neighborhood":"Kimironko",
+            "lastName":"Uwase","kycVerified":true,"creditScore":742,"createdAt":"2025-03-01T09:00:00Z","neighborhood":"Kimironko",
             "neighborhoodVerificationCount":3,"emailVerified":true,"phoneVerified":true,"profilePhotoUrl":null,"pinSet":true}"""
 
         const val ACCOUNTS = """[
