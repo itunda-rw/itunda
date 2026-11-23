@@ -49,7 +49,7 @@ fun PaySettingsScreen(onBack: () -> Unit, onAllSettings: () -> Unit = {}) {
                 val on = fromBalance == isBalance
                 Box(
                     Modifier.height(40.dp).clip(RoundedCornerShape(20.dp)).background(if (on) p.text.let { if (p.page == Color(0xFF17171C)) p.soft else Color(0xFF191F28) } else p.soft)
-                        .pressScaleClickable { fromBalance = isBalance }.semantics { selected = on }.padding(horizontal = 20.dp),
+                        .pressScaleClickable { fromBalance = isBalance }.semantics { role = Role.Tab; selected = on }.padding(horizontal = 20.dp),
                     contentAlignment = Alignment.Center,
                 ) { Text(label, color = if (on) Color.White else p.tt, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold) }
             }
