@@ -208,6 +208,17 @@ class PayScreenshotTest {
     @Test fun limitsDark() = shotDark("limits") { PayLimitsScreen(500_000, 2_000_000, 0, {}, { _, _ -> }) }
     @Test fun receipt() = shot("receipt") { PayReceiptScreen(0, {}, {}) }
     @Test fun receiptDark() = shotDark("receipt") { PayReceiptScreen(0, {}, {}) }
+    @Test fun receiptCopyReferenceAndShareExposeButtonSemantics() {
+        rule.setContent { IdsTheme(darkTheme = false) { PayReceiptScreen(0, {}, {}) } }
+        rule.onNodeWithContentDescription("Copy receipt reference").assert(hasRole(Role.Button)).performClick()
+        rule.onNodeWithContentDescription("Share receipt").assert(hasRole(Role.Button))
+    }
+    @Test fun receiptPayAgainReturnsMerchant() {
+        val merchant = mutableStateOf("")
+        rule.setContent { IdsTheme(darkTheme = false) { PayReceiptScreen(0, {}, { merchant.value = it }) } }
+        rule.onNodeWithText("Pay again").performClick()
+        rule.runOnIdle { assertTrue(merchant.value.isNotBlank()) }
+    }
     @Test fun couponAdd() = shot("coupon-add") { PayCouponAddScreen({}) }
     @Test fun couponAddDark() = shotDark("coupon-add") { PayCouponAddScreen({}) }
 }
