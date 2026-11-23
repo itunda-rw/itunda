@@ -296,6 +296,7 @@ internal fun DirectMessagesList(
                 }
             }
         }
+        item { Text("Hold a chat to pin, mute or archive.", color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 20.dp, bottom = 12.dp)) }
         item {
             val archivedCount = archivedConversations?.size ?: 0
             Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {

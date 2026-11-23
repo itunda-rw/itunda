@@ -321,14 +321,14 @@ fun TalkTab(
     // the full account): this bottom padding was stacking with the Scaffold's already
     // -correct bottomBar inset. Top kept, bottom now comes from Scaffold alone.
     Column(modifier = Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().height(74.dp).background(if (Ids.colors.background.luminance() < 0.5f) Color(0xFF101013) else Ids.colors.surfaceSoft).padding(start = 24.dp, end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().height(74.dp).background(if (Ids.colors.background.luminance() < 0.5f) Color(0xFF101013) else Ids.colors.surfaceSoft).padding(start = 24.dp, end = 12.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("Messages", color = Ids.colors.textPrimary, fontSize = 24.sp, lineHeight = 33.6.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp, modifier = Modifier.weight(1f))
             Box(Modifier.size(48.dp).pressScaleClickable { view = TalkView.FRIENDS }, contentAlignment = Alignment.Center) {
                 Icon(Icons.Outlined.Edit, "New message", Modifier.size(24.dp), tint = Ids.colors.textPrimary)
             }
         }
         Column(Modifier.padding(horizontal = Ids.layout.screenHorizontal)) {
-        if (view == TalkView.DIRECT) { Spacer(Modifier.height(4.dp)); ProtoSearchField(chatQuery, { chatQuery = it }); Spacer(Modifier.height(8.dp)) }
+        if (view == TalkView.DIRECT) { Spacer(Modifier.height(4.dp)); ProtoSearchField(chatQuery, { chatQuery = it }); Spacer(Modifier.height(20.dp)) }
         // One chip row (prototype): All / Unread / Calls filter the direct list, Groups / Friends switch view.
         ProtoChips(
             TalkDirectFilter.entries.map { (TalkView.DIRECT to it) to (if (it == TalkDirectFilter.UNREAD) "Unread · ${conversations.orEmpty().count { c -> c.unreadCount > 0 }}" else it.label) } +
@@ -372,7 +372,6 @@ fun TalkTab(
                     footer = {
                         SyntheticTalkChannelRow("itunda", "Payments, security, and account updates", onClick = { showServiceChannel = true })
                         SyntheticTalkChannelRow("itunda AI", "Ask anything -- powered by a self-hosted model", onClick = { showAiChat = true })
-                        Text("Hold a chat to pin, mute or archive.", color = Ids.colors.textTertiary, fontSize = 13.sp, modifier = Modifier.padding(vertical = 16.dp))
                     },
                 )
             }
