@@ -76,7 +76,7 @@ fun ProtoExploreContent(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            Box(Modifier.fillMaxWidth().height(78.dp).padding(top = 22.dp, start = 9.dp, end = 3.dp)) {
+            Box(Modifier.fillMaxWidth().height(70.dp).padding(top = 22.dp, start = 9.dp, end = 3.dp)) {
                 AllTopBar(onOpenAuthentication = { onOpen("verify") }, onOpenHelp = onHelp, onOpenSettings = onSettings, onOpenMiniApps = { onOpen("apps") })
             }
         }
@@ -127,7 +127,7 @@ private fun SectionCard(section: ExploreSection, onOpen: (String) -> Unit) {
                     Text(row.title, color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 24.sp, letterSpacing = (-0.3).sp, fontWeight = FontWeight.Bold)
                     if (row.subtitle.isNotEmpty()) Text(row.subtitle, color = Ids.colors.textTertiary, fontSize = 14.sp)
                 }
-                Icon(IdsIcons.ChevronRight, null, Modifier.size(20.dp), tint = Ids.colors.textTertiary.copy(alpha = 0.7f))
+                Icon(IdsIcons.ChevronRight, null, Modifier.size(18.dp), tint = androidx.compose.ui.graphics.lerp(Ids.colors.textTertiary, Ids.colors.surface, 0.45f))
             }
         }
     }

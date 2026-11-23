@@ -162,7 +162,7 @@ internal fun DirectMessagesList(
     }
 
     var showNewChat by remember { mutableStateOf(false) }
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)) {
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(0.dp)) {
         if (showNewChat) item {
             // Flat form, shown on demand so the list matches the prototype's Messages screen.
             Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
