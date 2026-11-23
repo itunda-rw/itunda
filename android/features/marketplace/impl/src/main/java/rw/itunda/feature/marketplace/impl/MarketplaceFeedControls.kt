@@ -35,6 +35,10 @@ internal fun MarketplaceFeedControls(
     onFeedScopeSelected: (String) -> Unit,
     nearestFirst: Boolean,
     nearestAvailable: Boolean,
+    radiusKm: Int,
+    canSelectMyArea: Boolean,
+    canSelectRadius: Boolean,
+    onRadiusSelected: (Int) -> Unit,
     onSortSelected: (Boolean) -> Unit,
 ) {
     val scopes = listOf("Free", "Saved", "Mine")
@@ -80,6 +84,29 @@ internal fun MarketplaceFeedControls(
                 selected = nearestFirst,
                 enabled = nearestAvailable,
                 onClick = { onSortSelected(true) },
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            MarketplaceFilterChip(
+                label = "My area",
+                selected = radiusKm == 0,
+                enabled = canSelectMyArea,
+                onClick = { onRadiusSelected(0) },
+            )
+            MarketplaceFilterChip(
+                label = "Up to 3 km",
+                selected = radiusKm == 3,
+                enabled = canSelectRadius,
+                onClick = { onRadiusSelected(3) },
+            )
+            MarketplaceFilterChip(
+                label = "Up to 8 km",
+                selected = radiusKm == 8,
+                enabled = canSelectRadius,
+                onClick = { onRadiusSelected(8) },
             )
         }
     }
