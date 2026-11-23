@@ -175,6 +175,8 @@ fun MarketplaceContent(
     var neighborhoodName by remember { mutableStateOf<String?>(null) }
     var neighborhoodChecked by remember { mutableStateOf(false) }
     var listings by remember { mutableStateOf<List<ListingDto>?>(null) }
+    var boughtListings by remember { mutableStateOf<List<ListingDto>?>(null) }
+    var selectedBrowseCategory by rememberSaveable { mutableStateOf("All") }
     // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc comment;
     // the backend has spread this sellerId->score map alongside every browse response
     // since 2026-07-21, this just finally reads and renders it.
@@ -472,13 +474,11 @@ fun MarketplaceContent(
     // stays null (not emptyList) while blank so it never shadows the real view-based
     // feed above.
     var searchQuery by rememberSaveable { mutableStateOf("") }
-    var selectedBrowseCategory by rememberSaveable { mutableStateOf("All") }
     var selectedMarketplaceSort by rememberSaveable { mutableStateOf("Newest") }
     var showBrowseFilters by remember { mutableStateOf(false) }
     var selectedMaxPrice by rememberSaveable { mutableStateOf(0) }
     var selectedNeighborhood by rememberSaveable { mutableStateOf<String?>(null) }
     var searchResults by remember { mutableStateOf<List<ListingDto>?>(null) }
-    var boughtListings by remember { mutableStateOf<List<ListingDto>?>(null) }
     LaunchedEffect(selectedBrowseCategory, view) {
         val browseViews = setOf(HoodView.BROWSE, HoodView.NEARBY, HoodView.NEIGHBORHOOD)
         if (selectedBrowseCategory == "Bought" && view in browseViews) {
