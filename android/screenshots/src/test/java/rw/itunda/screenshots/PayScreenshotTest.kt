@@ -255,7 +255,8 @@ class PayScreenshotTest {
     @Test fun limitsDark() = shotDark("limits") { PayLimitsScreen(500_000, 2_000_000, 0, {}, { _, _ -> }) }
     @Test fun limitsRejectPaymentAboveDailyCap() {
         rule.setContent { IdsTheme(darkTheme = false) { PayLimitsScreen(500_000, 2_000_000, 0, {}, { _, _ -> }) } }
-        rule.onNodeWithContentDescription("Per payment").performTextClearance().performTextInput("3000000")
+        rule.onNodeWithContentDescription("Per payment").performTextClearance()
+        rule.onNodeWithContentDescription("Per payment").performTextInput("3000000")
         rule.onNodeWithText("The most per payment is 2,000,000 RWF.").assertExists()
         rule.onNodeWithText("Check your limits").assertExists()
     }
