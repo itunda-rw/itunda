@@ -470,6 +470,8 @@ fun MarketplaceContent(
     // stays null (not emptyList) while blank so it never shadows the real view-based
     // feed above.
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    var selectedBrowseCategory by rememberSaveable { mutableStateOf("All") }
+    var nearestFirst by rememberSaveable { mutableStateOf(false) }
     var searchResults by remember { mutableStateOf<List<ListingDto>?>(null) }
     LaunchedEffect(searchQuery) {
         if (searchQuery.isBlank()) {
@@ -490,6 +492,25 @@ fun MarketplaceContent(
     }
     val isSearching = searchQuery.isNotBlank()
     val displayListings = if (isSearching) searchResults else listings
+    val visibleListings = displayListings?.let { source ->
+        if (view != HoodView.BROWSE) source else {
+            val categoryFiltered = when (selectedBrowseCategory) {
+                "All" -> source
+                "Free" -> source.filter { it.price <= 0.0 }
+                "Saved" -> source.filter { it.id in favoriteIds }
+                "Mine" -> source.filter { it.sellerId == currentUserId }
+                else -> source.filter { it.category.equals(selectedBrowseCategory, ignoreCase = true) }
+            }
+            if (nearestFirst && browseLocation != null) {
+                categoryFiltered.sortedBy { listing ->
+                    val lat = listing.latitude
+                    val lng = listing.longitude
+                    if (lat == null || lng == null) Double.MAX_VALUE
+                    else haversineKm(browseLocation.first, browseLocation.second, lat, lng)
+                }
+            } else categoryFiltered
+        }
+    }
 
     // Real listing detail navigation (2026-08-03) -- see ListingDetailScreen's own
     // doc comment for the real-Karrot-verified sourcing. Local nav state, same
@@ -592,6 +613,17 @@ fun MarketplaceContent(
                 placeholder = "Search marketplace listings",
             )
         }
+        if (view == HoodView.BROWSE) {
+            item {
+                MarketplaceBrowseControls(
+                    selectedCategory = selectedBrowseCategory,
+                    onCategorySelected = { selectedBrowseCategory = it },
+                    nearestFirst = nearestFirst,
+                    nearestAvailable = browseLocation != null,
+                    onSortSelected = { nearestFirst = it },
+                )
+            }
+        }
         if (!isSearching && recentlyViewedListings.isNotEmpty()) {
             item {
                 RecentlyViewedListingsRail(recentlyViewedListings, onOpen = { id ->
@@ -618,10 +650,10 @@ fun MarketplaceContent(
         if (isSearching) {
             if (displayListings == null) {
                 item { SkeletonBlock() }
-            } else if (displayListings.isEmpty()) {
+            } else if (visibleListings.isNullOrEmpty()) {
                 item { EmptyState("No listings match \"$searchQuery\".", icon = Icons.Outlined.ShoppingBag) }
             } else {
-                items(displayListings, key = { it.id }) { listing ->
+                items(visibleListings, key = { it.id }) { listing ->
                     ListingRow(
                         listing = listing,
                         isMine = listing.sellerId == currentUserId,
@@ -670,7 +702,7 @@ fun MarketplaceContent(
             item { ErrorCard(error!!, onRetry = ::load) }
         } else if (listings == null) {
             item { SkeletonBlock() }
-        } else if (listings!!.isEmpty() && (view != HoodView.NEIGHBORHOOD || neighborhoodName != null)) {
+        } else if (visibleListings.isNullOrEmpty() && (view != HoodView.NEIGHBORHOOD || neighborhoodName != null)) {
             item {
                 EmptyState(
                     // Real copy-voice fix (item 244, round 5 of the empty-state pass --
@@ -699,8 +731,8 @@ fun MarketplaceContent(
                     onAction = if (view == HoodView.NEARBY || view == HoodView.NEIGHBORHOOD) { { view = HoodView.BROWSE } } else null,
                 )
             }
-        } else if (listings!!.isNotEmpty()) {
-            items(listings!!, key = { it.id }) { listing ->
+        } else if (!visibleListings.isNullOrEmpty()) {
+            items(visibleListings, key = { it.id }) { listing ->
                 ListingRow(
                     listing = listing,
                     isMine = view == HoodView.MINE || listing.sellerId == currentUserId,
