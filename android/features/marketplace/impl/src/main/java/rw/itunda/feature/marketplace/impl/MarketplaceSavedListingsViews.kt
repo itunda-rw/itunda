@@ -31,7 +31,8 @@ import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.ListingActionButton
-import rw.itunda.core.designsystem.components.pressScaleClickable\nimport rw.itunda.core.designsystem.components.SkeletonBlock
+import rw.itunda.core.designsystem.components.pressScaleClickable
+import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.FavoriteListingDto
 import rw.itunda.core.network.HiddenListingDto
