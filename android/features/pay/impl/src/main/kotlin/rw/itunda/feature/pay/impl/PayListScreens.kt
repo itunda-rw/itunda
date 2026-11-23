@@ -31,7 +31,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.role\nimport androidx.compose.ui.semantics.stateDescription\nimport androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.ui.text.font.FontWeight
@@ -146,7 +146,7 @@ private fun SavedMerchantRow(merchant: PayMerchant, p: PayPalette, isSaved: Bool
             Text(merchant.name, color = p.text, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp)
             Text("Till ${merchant.till} · Last ${merchant.last} RWF", color = p.tt, fontSize = 14.sp, lineHeight = 20.sp)
         }
-        Text(if (isSaved) "★" else "☆", color = if (isSaved) p.brandText else p.tt, fontSize = 24.sp, modifier = Modifier.padding(end = 12.dp).pressScaleClickable(onClick = onToggleSaved))
+        Text(if (isSaved) "★" else "☆", color = if (isSaved) p.brandText else p.tt, fontSize = 24.sp, modifier = Modifier.padding(end = 12.dp).semantics { contentDescription = if (isSaved) "Remove ${merchant.name} from saved merchants" else "Save ${merchant.name}"; role = Role.Button; stateDescription = if (isSaved) "Saved" else "Not saved" }.pressScaleClickable(onClick = onToggleSaved))
     }
 }
 /** Prototype "Points": connected balances (dummy). */
