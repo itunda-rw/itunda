@@ -471,6 +471,9 @@ fun MarketplaceContent(
     // feed above.
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var categoryFilter by rememberSaveable { mutableStateOf<String?>(null) }
+    // Prototype v1038/v502: category/saved-state filters and Latest/Nearest ordering.
+    var feedScope by rememberSaveable { mutableStateOf("All") }
+    var nearestFirst by rememberSaveable { mutableStateOf(false) }
     var searchResults by remember { mutableStateOf<List<ListingDto>?>(null) }
     LaunchedEffect(searchQuery) {
         if (searchQuery.isBlank()) {
@@ -491,6 +494,29 @@ fun MarketplaceContent(
     }
     val isSearching = searchQuery.isNotBlank()
     val displayListings = if (isSearching) searchResults else listings
+    val visibleListings = remember(displayListings, feedScope, categoryFilter, favoriteIds, currentUserId, nearestFirst, browseLocation) {
+        val filtered = (displayListings ?: emptyList()).filter { listing ->
+            val scopeMatches = when (feedScope) {
+                "Free" -> listing.price <= 0.0
+                "Saved" -> listing.id in favoriteIds
+                "Mine" -> listing.sellerId == currentUserId
+                else -> true
+            }
+            scopeMatches && (categoryFilter == null || listing.category.equals(categoryFilter, ignoreCase = true))
+        }
+        if (nearestFirst && browseLocation != null) {
+            filtered.sortedBy { listing ->
+                val lat = listing.latitude
+                val lng = listing.longitude
+                if (lat == null || lng == null) Double.MAX_VALUE
+                else haversineKm(browseLocation.first, browseLocation.second, lat, lng)
+            }
+        } else {
+            filtered.sortedByDescending { listing ->
+                try { Instant.parse(listing.createdAt).toEpochMilli() } catch (_: Exception) { 0L }
+            }
+        }
+    }
 
     // Real listing detail navigation (2026-08-03) -- see ListingDetailScreen's own
     // doc comment for the real-Karrot-verified sourcing. Local nav state, same
@@ -572,8 +598,18 @@ fun MarketplaceContent(
                 placeholder = "Search marketplace listings",
             )
         }
-        if (!isSearching && view in setOf(HoodView.BROWSE, HoodView.NEARBY, HoodView.NEIGHBORHOOD) && !listings.isNullOrEmpty()) {
-            item { MarketplaceCategoryChips(listings!!.map { it.category }.distinct(), categoryFilter) { categoryFilter = it } }
+        if (view in setOf(HoodView.BROWSE, HoodView.NEARBY, HoodView.NEIGHBORHOOD, HoodView.MINE) && displayListings != null) {
+            item {
+                MarketplaceFeedControls(
+                    categories = (displayListings ?: emptyList()).map { it.category }.filter { it.isNotBlank() }.distinct(),
+                    selectedCategory = categoryFilter,
+                    onCategorySelected = { categoryFilter = it },
+                    feedScope = feedScope,
+                    onFeedScopeSelected = { feedScope = it },
+                    nearestFirst = nearestFirst,
+                    onSortSelected = { nearestFirst = it },
+                )
+            }
         }
         if (!isSearching && recentlyViewedListings.isNotEmpty()) {
             item {
@@ -601,10 +637,10 @@ fun MarketplaceContent(
         if (isSearching) {
             if (displayListings == null) {
                 item { SkeletonBlock() }
-            } else if (displayListings.isEmpty()) {
+            } else if (visibleListings.isEmpty()) {
                 item { EmptyState("No listings match \"$searchQuery\".", icon = Icons.Outlined.ShoppingBag) }
             } else {
-                items(displayListings, key = { it.id }) { listing ->
+                items(visibleListings, key = { it.id }) { listing ->
                     ListingRow(
                         listing = listing,
                         isMine = listing.sellerId == currentUserId,
@@ -653,7 +689,7 @@ fun MarketplaceContent(
             item { ErrorCard(error!!, onRetry = ::load) }
         } else if (listings == null) {
             item { SkeletonBlock() }
-        } else if (listings!!.isEmpty() && (view != HoodView.NEIGHBORHOOD || neighborhoodName != null)) {
+        } else if (visibleListings.isEmpty() && (view != HoodView.NEIGHBORHOOD || neighborhoodName != null)) {
             item {
                 EmptyState(
                     // Real copy-voice fix (item 244, round 5 of the empty-state pass --
@@ -663,7 +699,12 @@ fun MarketplaceContent(
                     // ("+ List an item" above, in the MINE view) rather than a bare
                     // absence report.
                     when (view) {
-                        HoodView.BROWSE -> "No listings yet — be the first to list something for sale."
+                        HoodView.BROWSE -> when (feedScope) {
+                            "Free" -> "No free listings nearby yet."
+                            "Saved" -> "Nothing saved yet — tap the heart on a listing to keep it here."
+                            "Mine" -> "You haven't listed anything yet — tap Sell to post your first item."
+                            else -> if (categoryFilter != null) "No ${categoryFilter!!.lowercase()} listings match this feed yet." else "No listings yet — be the first to list something for sale."
+                        }
                         HoodView.NEARBY -> "No listings near you yet — try Browse to see listings from everywhere."
                         HoodView.NEIGHBORHOOD -> "No listings in your neighborhood yet — try Browse to see listings from everywhere."
                         HoodView.MINE -> "You haven't listed anything yet — tap \"+ List an item\" above to list your first one."
@@ -683,7 +724,7 @@ fun MarketplaceContent(
                 )
             }
         } else if (listings!!.isNotEmpty()) {
-            items(listings!!.filter { categoryFilter == null || it.category == categoryFilter }, key = { it.id }) { listing ->
+            items(visibleListings, key = { it.id }) { listing ->
                 ListingRow(
                     listing = listing,
                     isMine = view == HoodView.MINE || listing.sellerId == currentUserId,
