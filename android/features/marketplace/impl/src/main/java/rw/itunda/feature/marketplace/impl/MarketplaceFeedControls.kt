@@ -34,6 +34,7 @@ internal fun MarketplaceFeedControls(
     feedScope: String,
     onFeedScopeSelected: (String) -> Unit,
     nearestFirst: Boolean,
+    nearestAvailable: Boolean,
     onSortSelected: (Boolean) -> Unit,
 ) {
     val scopes = listOf("All", "Free", "Saved", "Mine")
@@ -45,18 +46,23 @@ internal fun MarketplaceFeedControls(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            MarketplaceFilterChip(
+                label = "All",
+                selected = feedScope == "All" && selectedCategory == null,
+                onClick = { onFeedScopeSelected("All"); onCategorySelected(null) },
+            )
+            categories.distinct().forEach { category ->
+                MarketplaceFilterChip(
+                    label = category,
+                    selected = selectedCategory == category,
+                    onClick = { onFeedScopeSelected("All"); onCategorySelected(if (selectedCategory == category) null else category) },
+                )
+            }
             scopes.forEach { scope ->
                 MarketplaceFilterChip(
                     label = scope,
                     selected = feedScope == scope,
                     onClick = { onFeedScopeSelected(scope) },
-                )
-            }
-            categories.distinct().forEach { category ->
-                MarketplaceFilterChip(
-                    label = category,
-                    selected = selectedCategory == category,
-                    onClick = { onCategorySelected(if (selectedCategory == category) null else category) },
                 )
             }
         }
@@ -72,6 +78,7 @@ internal fun MarketplaceFeedControls(
             MarketplaceFilterChip(
                 label = "Nearest",
                 selected = nearestFirst,
+                enabled = nearestAvailable,
                 onClick = { onSortSelected(true) },
             )
         }
@@ -82,18 +89,23 @@ internal fun MarketplaceFeedControls(
 private fun MarketplaceFilterChip(
     label: String,
     selected: Boolean,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     Text(
         text = label,
-        color = if (selected) Ids.colors.background else Ids.colors.textPrimary,
+        color = when {
+            !enabled -> Ids.colors.textTertiary
+            selected -> Ids.colors.background
+            else -> Ids.colors.textPrimary
+        },
         fontSize = 13.sp,
         fontWeight = FontWeight.SemiBold,
         maxLines = 1,
         modifier = Modifier
             .clip(RoundedCornerShape(999.dp))
             .background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
-            .pressScaleClickable(onClick = onClick)
+            .pressScaleClickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 9.dp),
     )
 }
