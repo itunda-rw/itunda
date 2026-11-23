@@ -920,11 +920,9 @@ fun ListingRow(
                             )
                         }
                     }
-                    // Real distance display (2026-08-03) -- matches a real 당근마켓
-                    // screenshot showing neighborhood/distance/time, not neighborhood/
-                    // category/time. Falls back to category (the previous behavior)
-                    // whenever distance isn't available -- see viewerLocation's own doc
-                    // comment for why that's the common case, not a bug.
+                    // Prototype v1038/v502 metadata is neighborhood · real distance · age.
+                    // If location is unavailable, omit distance rather than relabel category
+                    // as a distance value or invent an estimate.
                     val viewerLat = viewerLocation?.first
                     val viewerLng = viewerLocation?.second
                     val listingLat = listing.latitude
@@ -933,7 +931,7 @@ fun ListingRow(
                         formatDistanceKm(haversineKm(viewerLat, viewerLng, listingLat, listingLng))
                     } else null
                     Text(
-                        listOfNotNull(listing.neighborhood, distanceLabel ?: listing.category, relativeTimeAgo(listing.createdAt)).joinToString(" · "),
+                        listOfNotNull(listing.neighborhood, distanceLabel, relativeTimeAgo(listing.createdAt)).joinToString(" · "),
                         color = Ids.colors.textSecondary,
                         fontSize = 12.sp,
                     )
