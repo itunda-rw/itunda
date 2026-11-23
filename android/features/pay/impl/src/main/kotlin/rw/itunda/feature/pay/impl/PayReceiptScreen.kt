@@ -71,7 +71,7 @@ fun PayReceiptScreen(index: Int, onBack: () -> Unit, onPayAgain: (merchant: Stri
             Box(
                 Modifier.padding(start = 24.dp, end = 24.dp, top = 18.dp).fillMaxWidth(0.488f).height(44.dp).clip(RoundedCornerShape(20.dp)).background(p.soft)
                     .pressScaleClickable {
-                        val send = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, "itunda Pay receipt: ${r.name}, ${r.amount} RWF, ${r.date}, ${r.ref}") }
+                        val send = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, "itunda Pay receipt\\nMerchant: ${r.name}\\nTill: ${r.till}\\nAmount: ${r.amount} RWF\\nDate: ${r.date}\\nPaid from: itunda Pay\\nReference: ${r.ref}") }
                         ctx.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                     },
                 contentAlignment = Alignment.Center,
