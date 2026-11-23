@@ -497,7 +497,7 @@ fun MarketplaceContent(
     }
     val isSearching = searchQuery.isNotBlank()
     val displayListings = if (isSearching) searchResults else listings
-    val visibleListings = remember(displayListings, feedScope, categoryFilter, favoriteIds, currentUserId, nearestFirst, browseLocation) {
+    val visibleListings = remember(displayListings, feedScope, categoryFilter, favoriteIds, currentUserId, nearestFirst, browseLocation, feedRadiusKm, neighborhoodName) {
         val filtered = (displayListings ?: emptyList()).filter { listing ->
             val scopeMatches = when (feedScope) {
                 "Free" -> listing.price <= 0.0
