@@ -205,24 +205,7 @@ fun SettingsScreen(
             .fillMaxSize()
             .background(Ids.colors.background)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier.size(44.dp).clip(CircleShape).pressScaleClickable(onClick = onBack),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(IdsIcons.Back, contentDescription = stringResource(R.string.settings_back), modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
-            }
-            Text(
-                stringResource(R.string.settings_title),
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = Ids.colors.textPrimary,
-                modifier = Modifier.weight(1f),
-            )
-        }
+        rw.itunda.core.designsystem.components.ProtoTopBar(stringResource(R.string.settings_title), onBack)
 
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
@@ -672,18 +655,14 @@ internal fun NotificationListScreen(
 // same screen family, not a different pattern.
 @Composable
 internal fun SettingsSubScreenHeader(title: String, onBack: () -> Unit, trailing: @Composable () -> Unit = {}) {
-    // Prototype header: back arrow on its own row, then a large title underneath.
-    Column {
-        Box(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp).size(44.dp).clip(CircleShape).pressScaleClickable(onClick = onBack),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(IdsIcons.Back, contentDescription = stringResource(R.string.settings_back), modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
+    // Prototype `.bar`: 70dp, 48dp back at x=6, 20sp title inline at x=58 (re-measured 2026-11-23; the old
+    // "back arrow on its own row + 28sp title" layout did not match any prototype sub-screen).
+    Row(Modifier.fillMaxWidth().height(70.dp).padding(start = 6.dp, end = 12.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(48.dp).pressScaleClickable(onClick = onBack), contentAlignment = Alignment.Center) {
+            rw.itunda.core.designsystem.components.ItundaArt("back", rw.itunda.core.designsystem.components.ItundaArtSet.Line, 24.dp, tint = Ids.colors.textPrimary)
         }
-        Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(title, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Ids.colors.textPrimary, modifier = Modifier.weight(1f))
-            trailing()
-        }
+        Text(title, fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.3).sp, color = Ids.colors.textPrimary, modifier = Modifier.padding(start = 4.dp).weight(1f))
+        trailing()
     }
 }
 
