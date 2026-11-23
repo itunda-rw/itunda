@@ -66,12 +66,15 @@ fun PayReceiptScreen(index: Int, onBack: () -> Unit, onPayAgain: (merchant: Stri
                 Kv("Merchant", "Till ${r.till}", p, first = true)
                 Kv("Date", r.date, p)
                 Kv("Paid from", "itunda Pay", p)
-                Kv("Reference", r.ref, p, copy = true, onClick = {\n                    clipboard.setText(AnnotatedString(r.ref))\n                    Toast.makeText(ctx, "Reference copied", Toast.LENGTH_SHORT).show()\n                })
+                Kv("Reference", r.ref, p, copy = true, onClick = {
+                    clipboard.setText(AnnotatedString(r.ref))
+                    Toast.makeText(ctx, "Reference copied", Toast.LENGTH_SHORT).show()
+                })
             }
             Box(
                 Modifier.padding(start = 24.dp, end = 24.dp, top = 18.dp).fillMaxWidth(0.488f).height(44.dp).clip(RoundedCornerShape(20.dp)).background(p.soft)
                     .pressScaleClickable {
-                        val send = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, "itunda Pay receipt\\nMerchant: ${r.name}\\nTill: ${r.till}\\nAmount: ${r.amount} RWF\\nDate: ${r.date}\\nPaid from: itunda Pay\\nReference: ${r.ref}") }
+                        val send = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, "itunda Pay receipt\nMerchant: ${r.name}\nTill: ${r.till}\nAmount: ${r.amount} RWF\nDate: ${r.date}\nPaid from: itunda Pay\nReference: ${r.ref}") }
                         ctx.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                     },
                 contentAlignment = Alignment.Center,
