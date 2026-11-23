@@ -30,6 +30,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -60,7 +62,7 @@ fun PayHistoryScreen(onBack: () -> Unit, onOpen: (Int) -> Unit = {}) {
             BasicTextField(
                 value = query, onValueChange = { query = it }, singleLine = true, keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 textStyle = TextStyle(color = p.text, fontSize = 16.sp, lineHeight = 22.4.sp), cursorBrush = SolidColor(p.brandText),
-                modifier = Modifier.padding(top = 4.dp).fillMaxWidth().height(44.dp).clip(RoundedCornerShape(14.dp)).background(p.soft),
+                modifier = Modifier.padding(top = 4.dp).fillMaxWidth().height(44.dp).clip(RoundedCornerShape(14.dp)).background(p.soft).semantics { contentDescription = "Search payment history" },
                 decorationBox = { inner ->
                     Row(Modifier.padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                         androidx.compose.foundation.Canvas(Modifier.size(18.dp)) {
@@ -72,7 +74,7 @@ fun PayHistoryScreen(onBack: () -> Unit, onOpen: (Int) -> Unit = {}) {
                             if (query.isEmpty()) Text("Search merchant, note or reference", color = p.tt, fontSize = 16.sp, lineHeight = 22.4.sp)
                             inner()
                         }
-                        if (query.isNotEmpty()) Text("×", color = p.tt, fontSize = 22.sp, modifier = Modifier.padding(start = 8.dp).pressScaleClickable { query = "" })
+                        if (query.isNotEmpty()) Text("×", color = p.tt, fontSize = 22.sp, modifier = Modifier.padding(start = 8.dp).semantics { contentDescription = "Clear search" }.pressScaleClickable { query = "" })
                     }
                 },
             )
