@@ -83,10 +83,14 @@ fun PayHistoryScreen(onBack: () -> Unit, onOpen: (Int) -> Unit = {}) {
                     ) { Text(label, color = if (on) (if (p.page == Color(0xFF17171C)) Color(0xFF17171C) else Color.White) else p.text, fontSize = 14.sp, lineHeight = 19.6.sp, fontWeight = FontWeight.Bold) }
                 }
             }
-            val rows = if (filter == 2) emptyList() else payHistory.filter { it.name.contains(query.trim(), ignoreCase = true) }
+            val rows = if (filter == 2) emptyList() else payHistory.filter { row ->
+                val term = query.trim()
+                term.isEmpty() || listOf(row.name, row.till, row.date, row.time, row.amount, row.ref, row.day)
+                    .any { it.contains(term, ignoreCase = true) }
+            }
             if (rows.isEmpty()) Text("Nothing to show.", color = p.tt, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 24.dp))
             rows.groupBy { it.day }.entries.forEachIndexed { gi, (day, dayRows) ->
-                DayHeader(p, day, first = false)
+                DayHeader(p, day, first = gi == 0)
                 dayRows.forEach { r ->
                     Row(Modifier.fillMaxWidth().height(72.dp).pressScaleClickable { onOpen(payHistory.indexOf(r)) }, verticalAlignment = Alignment.CenterVertically) {
                         Avatar(r.name.take(1), p.soft, p.text)
