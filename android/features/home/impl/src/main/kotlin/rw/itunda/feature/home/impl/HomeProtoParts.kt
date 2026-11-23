@@ -172,8 +172,8 @@ internal fun HomeInviteBanner(onInvite: () -> Unit, onDismiss: () -> Unit) {
             color = p.text, fontSize = 16.sp, fontWeight = FontWeight.Bold, lineHeight = 22.sp, letterSpacing = (-0.3).sp,
         )
     }
-    // The prototype's dismiss "×" is a target at x=342 whose glyph centre is 73dp below the card top (it overhangs the card).
-    Box(Modifier.align(Alignment.TopEnd).padding(top = 58.dp, end = 4.dp).size(width = 44.dp, height = 30.dp).clickable(onClick = onDismiss).semantics { contentDescription = "Dismiss" }, contentAlignment = Alignment.Center) {
+    // The prototype's dismiss "×" (button.bx, re-measured 2026-11-23) is a 44dp target at x=328,y=363 -- inline with the banner row.
+    Box(Modifier.align(Alignment.TopEnd).padding(top = 16.dp, end = 18.dp).size(44.dp).clickable(onClick = onDismiss).semantics { contentDescription = "Dismiss" }, contentAlignment = Alignment.Center) {
         Canvas(Modifier.size(12.dp)) {
             val st = 2.dp.toPx()
             drawLine(p.tt, Offset(0f, 0f), Offset(size.width, size.height), st, StrokeCap.Round)
