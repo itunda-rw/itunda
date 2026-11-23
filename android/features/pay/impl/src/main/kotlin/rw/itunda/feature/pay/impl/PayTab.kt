@@ -86,6 +86,6 @@ fun PayEntryPoint(
 ) {
     ProtoPayTab(
         onFindStores = onBrowseMerchants, onSettings = onOpenSettings, onChangeFunding = onOpenCard,
-        onReceive = onOpenRequestMoney, scanContent = payAMerchantSection,
+        onReceive = onOpenRequestMoney, onSupport = onOpenSupport, scanContent = payAMerchantSection,
     )
 }
