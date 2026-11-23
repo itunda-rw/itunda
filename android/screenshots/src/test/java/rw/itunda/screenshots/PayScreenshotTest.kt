@@ -3,6 +3,7 @@ package rw.itunda.screenshots
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.hasRole
@@ -135,6 +136,12 @@ class PayScreenshotTest {
     }
     @Test fun saved() = shot("saved") { PaySavedMerchantsScreen({}) }
     @Test fun savedDark() = shotDark("saved") { PaySavedMerchantsScreen({}) }
+    @Test fun savedMerchantToggleExposesState() {
+        rule.setContent { IdsTheme(darkTheme = false) { PaySavedMerchantsScreen({}) } }
+        rule.onNodeWithContentDescription("Save Kigali Bakery").assert(hasStateDescription("Not saved")).performClick()
+        rule.onNodeWithContentDescription("Remove Kigali Bakery from saved merchants").assert(hasStateDescription("Saved")).performClick()
+        rule.onNodeWithContentDescription("Save Kigali Bakery").assert(hasStateDescription("Not saved"))
+    }
     @Test fun points() = shot("points") { PayPointsScreen({}) }
     @Test fun pointsDark() = shotDark("points") { PayPointsScreen({}) }
     @Test fun paySettingsSwitchExposesAndChangesState() {
