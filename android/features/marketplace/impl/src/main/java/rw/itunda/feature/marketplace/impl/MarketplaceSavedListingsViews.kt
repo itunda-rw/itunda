@@ -31,7 +31,7 @@ import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.ListingActionButton
-import rw.itunda.core.designsystem.components.SkeletonBlock
+import rw.itunda.core.designsystem.components.pressScaleClickable\nimport rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.FavoriteListingDto
 import rw.itunda.core.network.HiddenListingDto
@@ -50,7 +50,7 @@ import rw.itunda.core.network.superAppErrorMessage
 // available" fallback for a favorited-then-deleted listing is the backend's own
 // responsibility -- ListingFavoriteService.kt already resolves that server-side).
 @Composable
-internal fun ListingWishlistView(onRemoved: () -> Unit) {
+internal fun ListingWishlistView(onRemoved: () -> Unit, onOpen: (String) -> Unit) {
     var favorites by remember { mutableStateOf<List<FavoriteListingDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var removingId by remember { mutableStateOf<String?>(null) }
