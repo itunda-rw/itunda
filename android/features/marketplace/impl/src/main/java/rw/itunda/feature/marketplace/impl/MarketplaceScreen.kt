@@ -434,14 +434,18 @@ fun MarketplaceContent(
         loadingMore = true
         coroutineScope.launch {
             try {
-                val res = when (view) {
-                    HoodView.NEIGHBORHOOD -> NetworkClient.apiService.getListingsMyNeighborhood(page = nextPage)
-                    HoodView.BROWSE -> NetworkClient.apiService.browseListings(page = nextPage)
-                    HoodView.PURCHASES -> NetworkClient.apiService.getMyPurchases(page = nextPage)
+                val showingBought = selectedBrowseCategory == "Bought" &&
+                    view in setOf(HoodView.BROWSE, HoodView.NEARBY, HoodView.NEIGHBORHOOD)
+                val res = when {
+                    showingBought -> NetworkClient.apiService.getMyPurchases(page = nextPage)
+                    view == HoodView.NEIGHBORHOOD -> NetworkClient.apiService.getListingsMyNeighborhood(page = nextPage)
+                    view == HoodView.BROWSE -> NetworkClient.apiService.browseListings(page = nextPage)
+                    view == HoodView.PURCHASES -> NetworkClient.apiService.getMyPurchases(page = nextPage)
                     else -> NetworkClient.apiService.getMyListings(page = nextPage)
                 }
                 if (res.success) {
-                    listings = (listings ?: emptyList()) + res.listings
+                    if (showingBought) boughtListings = (boughtListings ?: emptyList()) + res.listings
+                    else listings = (listings ?: emptyList()) + res.listings
                     trustScores = trustScores + res.trustScores
                     likedListingIds = likedListingIds + (res.likedByMe ?: emptySet())
                     page = nextPage
@@ -474,8 +478,35 @@ fun MarketplaceContent(
     var selectedMaxPrice by rememberSaveable { mutableStateOf(0) }
     var selectedNeighborhood by rememberSaveable { mutableStateOf<String?>(null) }
     var searchResults by remember { mutableStateOf<List<ListingDto>?>(null) }
-    LaunchedEffect(searchQuery) {
-        if (searchQuery.isBlank()) {
+    var boughtListings by remember { mutableStateOf<List<ListingDto>?>(null) }
+    LaunchedEffect(selectedBrowseCategory, view) {
+        val browseViews = setOf(HoodView.BROWSE, HoodView.NEARBY, HoodView.NEIGHBORHOOD)
+        if (selectedBrowseCategory == "Bought" && view in browseViews) {
+            boughtListings = null
+            page = 0
+            hasMore = false
+            try {
+                val res = NetworkClient.apiService.getMyPurchases(page = 0)
+                if (res.success) {
+                    boughtListings = res.listings
+                    trustScores = res.trustScores
+                    likedListingIds = res.likedByMe
+                    hasMore = res.page + 1 < res.totalPages
+                } else boughtListings = emptyList()
+                error = null
+            } catch (e: HttpException) {
+                boughtListings = emptyList()
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                boughtListings = emptyList()
+                error = "Couldn't load your purchases. Check your connection and try again."
+            }
+        } else {
+            boughtListings = null
+        }
+    }
+    LaunchedEffect(searchQuery, selectedBrowseCategory) {
+        if (searchQuery.isBlank() || selectedBrowseCategory == "Bought") {
             searchResults = null
             return@LaunchedEffect
         }
@@ -492,14 +523,25 @@ fun MarketplaceContent(
         }
     }
     val isSearching = searchQuery.isNotBlank()
-    val displayListings = if (isSearching) searchResults else listings
+    val browseViews = setOf(HoodView.BROWSE, HoodView.NEARBY, HoodView.NEIGHBORHOOD)
+    val showingBought = selectedBrowseCategory == "Bought" && view in browseViews
+    val displayListings = when {
+        showingBought -> boughtListings?.let { source ->
+            if (isSearching) source.filter { listing ->
+                listOf(listing.title, listing.description, listing.category, listing.neighborhood.orEmpty())
+                    .any { it.contains(searchQuery, ignoreCase = true) }
+            } else source
+        }
+        isSearching -> searchResults
+        else -> listings
+    }
     val visibleListings = displayListings?.let { source ->
-        if (view !in setOf(HoodView.BROWSE, HoodView.NEARBY, HoodView.NEIGHBORHOOD)) source else {
+        if (view !in browseViews) source else {
             val categoryFiltered = when (selectedBrowseCategory) {
                 "All" -> source
                 "Free" -> source.filter { it.price <= 0.0 }
                 "Saved" -> source.filter { it.id in favoriteIds }
-                "Bought" -> source.filter { currentUserId != null && it.buyerId == currentUserId }
+                "Bought" -> source
                 "Mine" -> source.filter { it.sellerId == currentUserId }
                 else -> source.filter { it.category.equals(selectedBrowseCategory, ignoreCase = true) }
             }
@@ -740,7 +782,7 @@ fun MarketplaceContent(
     }
         ScrollFog(modifier = Modifier.align(Alignment.BottomCenter))
     }
-    val availableNeighborhoods = (listings.orEmpty() + searchResults.orEmpty())
+    val availableNeighborhoods = (listings.orEmpty() + searchResults.orEmpty() + boughtListings.orEmpty())
         .mapNotNull { it.neighborhood?.takeIf(String::isNotBlank) }
         .distinct()
         .sorted()
