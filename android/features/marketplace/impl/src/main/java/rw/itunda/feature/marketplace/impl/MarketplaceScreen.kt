@@ -775,7 +775,17 @@ fun MarketplaceContent(
             item { Text("Your neighborhood: $neighborhoodName", color = Ids.colors.textSecondary, fontSize = 13.sp) }
         }
         if (view == HoodView.WISHLIST) {
-            item { ListingWishlistView(onRemoved = ::loadFavoriteIds) }
+            item { ListingWishlistView(onRemoved = ::loadFavoriteIds, onOpen = { listingId ->
+                coroutineScope.launch {
+                    try {
+                        selectedListing = NetworkClient.apiService.getListing(listingId).listing
+                    } catch (e: HttpException) {
+                        error = superAppErrorMessage(e)
+                    } catch (e: IOException) {
+                        error = "Couldn't reach itunda. Check your connection and try again."
+                    }
+                }
+            }) }
         } else if (view == HoodView.ALERTS) {
             item { KeywordAlertsView() }
         } else if (view == HoodView.HIDDEN) {
