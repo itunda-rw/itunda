@@ -48,6 +48,10 @@ internal fun MarketplaceGridCard(
     favorited: Boolean,
     favoriteBusy: Boolean,
     onToggleFavorite: () -> Unit,
+    liked: Boolean,
+    onToggleLike: () -> Unit,
+    hiding: Boolean,
+    onHide: () -> Unit,
     viewerLocation: Pair<Double, Double>?,
     onOpen: () -> Unit,
     isScrollTouched: Boolean = false,
@@ -178,6 +182,40 @@ internal fun MarketplaceGridCard(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(top = 2.dp),
                 )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (!isMine) {
+                    Text(
+                        text = if (hiding) "…" else "Hide",
+                        color = Ids.colors.textSecondary,
+                        fontSize = 11.sp,
+                        modifier = Modifier
+                            .semantics { contentDescription = "Hide this listing -- you won't see it again" }
+                            .pressScaleClickable(enabled = !hiding, onClick = onHide),
+                    )
+                } else {
+                    Box(modifier = Modifier.size(1.dp))
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    WishlistHeart(
+                        favorited = liked,
+                        size = 16.dp,
+                        modifier = Modifier
+                            .semantics { contentDescription = if (liked) "Unlike" else "Like" }
+                            .pressScaleClickable(onClick = onToggleLike),
+                    )
+                    Text(
+                        text = listing.likeCount.toString(),
+                        color = Ids.colors.textTertiary,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
             }
         }
     }
