@@ -601,12 +601,14 @@ fun MarketplaceContent(
         if (view in setOf(HoodView.BROWSE, HoodView.NEARBY, HoodView.NEIGHBORHOOD, HoodView.MINE) && displayListings != null) {
             item {
                 MarketplaceFeedControls(
-                    categories = (displayListings ?: emptyList()).map { it.category }.filter { it.isNotBlank() }.distinct(),
+                    categories = (listOf("Electronics", "Phones", "Home", "Fashion", "Kids", "Sports") +
+                        (displayListings ?: emptyList()).map { it.category }.filter { it.isNotBlank() }).distinct(),
                     selectedCategory = categoryFilter,
                     onCategorySelected = { categoryFilter = it },
                     feedScope = feedScope,
                     onFeedScopeSelected = { feedScope = it },
-                    nearestFirst = nearestFirst,
+                    nearestFirst = nearestFirst && browseLocation != null,
+                    nearestAvailable = browseLocation != null,
                     onSortSelected = { nearestFirst = it },
                 )
             }
