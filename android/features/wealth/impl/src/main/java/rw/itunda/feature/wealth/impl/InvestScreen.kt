@@ -5,6 +5,7 @@ import rw.itunda.core.designsystem.components.formatMoney
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.horizontalScroll
@@ -145,7 +146,7 @@ private fun InvestTabs(mode: InvestMode, onMode: (InvestMode) -> Unit) {
         Row(Modifier.fillMaxWidth().padding(start = 25.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
             items.forEach { (m, label) ->
                 val selected = mode == m
-                Column(Modifier.pressScaleClickable { onMode(m) }.padding(top = 7.dp)) {
+                Column(Modifier.width(IntrinsicSize.Max).pressScaleClickable { onMode(m) }.padding(top = 7.dp)) {
                     Text(label, color = if (selected) Ids.colors.textPrimary else Ids.colors.textTertiary, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.176).sp)
                     Spacer(Modifier.height(4.dp))
                     Box(Modifier.height(2.dp).fillMaxWidth().background(if (selected) Ids.colors.textPrimary else Color.Transparent))
