@@ -3,6 +3,11 @@ package rw.itunda.screenshots
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodes
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -133,12 +138,12 @@ class PayScreenshotTest {
     @Test fun historyDark() = shotDark("history") { PayHistoryScreen({}) }
     @Test fun historyFiltersExposeSelectionAndRefundEmptyState() {
         rule.setContent { IdsTheme(darkTheme = false) { PayHistoryScreen({}) } }
-        rule.onNodeWithText("Kigali Bakery").assertExists()
+        rule.onAllNodesWithText("Kigali Bakery").assertCountEquals(2)
         rule.onNodeWithText("Paid").performClick()
-        rule.onNodeWithText("Kigali Bakery").assertExists()
+        rule.onAllNodesWithText("Kigali Bakery").assertCountEquals(2)
         rule.onNodeWithText("Refunds").performClick()
         rule.onNodeWithText("Nothing to show.").assertExists()
-        rule.onNodeWithText("Kigali Bakery").assertDoesNotExist()
+        rule.onAllNodesWithText("Kigali Bakery").assertCountEquals(0)
     }
     @Test fun historyTabsExposeSelectedTabSemantics() {
         rule.setContent { IdsTheme(darkTheme = false) { PayHistoryScreen({}) } }
@@ -150,10 +155,10 @@ class PayScreenshotTest {
         rule.setContent { IdsTheme(darkTheme = false) { PayHistoryScreen({}) } }
         rule.onNodeWithContentDescription("Search payment history").performTextInput("TX40217313")
         rule.onNodeWithText("Simba Supermarket").assertExists()
-        rule.onNodeWithText("Kigali Bakery").assertDoesNotExist()
+        rule.onAllNodesWithText("Kigali Bakery").assertCountEquals(0)
         rule.onNodeWithContentDescription("Clear search").performClick()
         rule.onNodeWithText("Simba Supermarket").assertExists()
-        rule.onNodeWithText("Kigali Bakery").assertExists()
+        rule.onAllNodesWithText("Kigali Bakery").assertCountEquals(2)
     }
     @Test fun historyReceiptRowsExposeAccessibleActions() {
         val opened = mutableStateOf(-1)
@@ -167,7 +172,7 @@ class PayScreenshotTest {
     @Test fun savedMerchantToggleExposesState() {
         rule.setContent { IdsTheme(darkTheme = false) { PaySavedMerchantsScreen({}) } }
         rule.onNodeWithContentDescription("Save Kigali Bakery").assert(hasStateDescription("Not saved")).performClick()
-        rule.onNodeWithContentDescription("Remove Kigali Bakery from saved merchants").assert(hasStateDescription("Saved")).performClick()
+        rule.onAllNodesWithContentDescription("Remove Kigali Bakery from saved merchants").onFirst().assert(hasStateDescription("Saved")).performClick()
         rule.onNodeWithContentDescription("Save Kigali Bakery").assert(hasStateDescription("Not saved"))
     }
     @Test fun points() = shot("points") { PayPointsScreen({}) }
@@ -180,9 +185,9 @@ class PayScreenshotTest {
     }
     @Test fun paySettingsSwitchExposesAndChangesState() {
         rule.setContent { IdsTheme(darkTheme = false) { PaySettingsScreen({}) } }
-        rule.onNode(hasRole(Role.Switch)).assert(hasStateDescription("On"))
-        rule.onNode(hasRole(Role.Switch)).performClick()
-        rule.onNode(hasRole(Role.Switch)).assert(hasStateDescription("Off"))
+        rule.onAllNodes(hasRole(Role.Switch)).onFirst().assert(hasStateDescription("On"))
+        rule.onAllNodes(hasRole(Role.Switch)).onFirst().performClick()
+        rule.onAllNodes(hasRole(Role.Switch)).onFirst().assert(hasStateDescription("Off"))
     }
     @Test fun paySettingsFundingSourceExposesSelectedTab() {
         rule.setContent { IdsTheme(darkTheme = false) { PaySettingsScreen({}) } }
@@ -231,7 +236,7 @@ class PayScreenshotTest {
                 ), {}, {}, { removed.value = it })
             }
         }
-        rule.onNodeWithText("Remove").performClick()
+        rule.onAllNodesWithText("Remove").onFirst().performClick()
         rule.runOnIdle { assertTrue(removed.value == 0) }
     }
     @Test fun manageCardsActionsExposeAccessibleLabels() {
