@@ -71,7 +71,7 @@ private fun SettingRow(p: PayPalette, title: String, body: String, checked: Bool
         }
         Box(
             Modifier.size(width = 50.dp, height = 30.dp).clip(RoundedCornerShape(15.dp)).background(if (checked) p.brand else p.soft.copy(alpha = 1f))
-                .pressScaleClickable { onChange(!checked) }.semantics { role = Role.Switch; stateDescription = if (checked) "On" else "Off" },
+                .pressScaleClickable { onChange(!checked) }.semantics { contentDescription = title; role = Role.Switch; stateDescription = if (checked) "On" else "Off" },
         ) {
             Box(Modifier.offset(x = if (checked) 23.dp else 3.dp, y = 3.dp).size(24.dp).clip(CircleShape).background(Color.White))
         }
