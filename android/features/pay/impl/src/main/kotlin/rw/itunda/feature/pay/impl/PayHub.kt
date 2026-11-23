@@ -247,8 +247,8 @@ private fun HistoryBlock(p: PayPalette, dark: Boolean, onOpenHistory: () -> Unit
 @Composable
 private fun Links(p: PayPalette, onOpenSupport: () -> Unit) {
     Column(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 24.dp)) {
-        listOf("FAQ", "Send feedback").forEach {
-            Text(it, color = p.tt, fontSize = 17.sp, lineHeight = 24.sp, modifier = Modifier.fillMaxWidth().height(56.dp).padding(start = 24.dp).wrapContentHeight(Alignment.CenterVertically))
+        listOf("FAQ", "Send feedback").forEach { label ->
+            Text(label, color = p.tt, fontSize = 17.sp, lineHeight = 24.sp, modifier = Modifier.fillMaxWidth().height(56.dp).padding(start = 24.dp).wrapContentHeight(Alignment.CenterVertically).pressScaleClickable(onClick = onOpenSupport))
         }
     }
 }
