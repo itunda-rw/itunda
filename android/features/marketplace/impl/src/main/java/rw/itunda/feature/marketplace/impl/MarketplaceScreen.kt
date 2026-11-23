@@ -514,7 +514,7 @@ fun MarketplaceContent(
                 "Mine" -> listing.sellerId == currentUserId
                 else -> true
             }
-            val radiusMatches = !supportsFeedFilters || when {
+            val radiusMatches = !supportsFeedFilters || view == HoodView.MINE || feedScope == "Saved" || feedScope == "Mine" || when {
                 effectiveFeedRadiusKm == 0 && !neighborhoodName.isNullOrBlank() ->
                     listing.neighborhood?.equals(neighborhoodName, ignoreCase = true) == true
                 effectiveFeedRadiusKm > 0 && browseLocation != null -> {
@@ -526,17 +526,19 @@ fun MarketplaceContent(
             }
             scopeMatches && radiusMatches && (!supportsFeedFilters || categoryFilter == null || listing.category.equals(categoryFilter, ignoreCase = true))
         }
-        if (supportsFeedFilters && nearestFirst && browseLocation != null) {
+        if (supportsFeedFilters && !isSearching && nearestFirst && browseLocation != null) {
             filtered.sortedBy { listing ->
                 val lat = listing.latitude
                 val lng = listing.longitude
                 if (lat == null || lng == null) Double.MAX_VALUE
                 else haversineKm(browseLocation.first, browseLocation.second, lat, lng)
             }
-        } else {
+        } else if (supportsFeedFilters && !isSearching) {
             filtered.sortedByDescending { listing ->
                 try { Instant.parse(listing.createdAt).toEpochMilli() } catch (_: Exception) { 0L }
             }
+        } else {
+            filtered
         }
     }
 
@@ -679,9 +681,9 @@ fun MarketplaceContent(
                                         NetworkClient.apiService.addKeywordAlert(AddKeywordAlertRequest(searchQuery.trim()))
                                         searchAlertMessage = "Alert created. We’ll let you know when a match appears."
                                     } catch (e: HttpException) {
-                                        error = superAppErrorMessage(e)
+                                        searchAlertMessage = superAppErrorMessage(e)
                                     } catch (e: IOException) {
-                                        error = "Couldn’t reach itunda. Check your connection and try again."
+                                        searchAlertMessage = "Couldn’t reach itunda. Check your connection and try again."
                                     } finally {
                                         addingSearchAlert = false
                                     }
