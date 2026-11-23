@@ -33,6 +33,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.mergeDescendants
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
@@ -170,7 +171,11 @@ fun PayPointsScreen(onBack: () -> Unit) {
             Text("120,668 RWF", color = p.text, fontSize = 30.sp, lineHeight = 40.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.6).sp)
             Spacer(Modifier.height(8.dp))
             payPoints.forEach { r ->
-                Row(Modifier.fillMaxWidth().height(60.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    Modifier.fillMaxWidth().height(60.dp)
+                        .semantics(mergeDescendants = true) { contentDescription = "${r.name}: ${r.value} points" },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Avatar(r.letter, Color(r.color), Color.White)
                     Text(r.name, color = p.text, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp, modifier = Modifier.weight(1f).padding(start = 16.dp))
                     Text(r.value, color = if (r.value == "0") p.tt else p.brandText, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.ExtraBold)
