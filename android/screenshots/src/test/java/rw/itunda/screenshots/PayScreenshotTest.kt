@@ -182,6 +182,12 @@ class PayScreenshotTest {
         rule.onNode(hasRole(Role.Switch)).performClick()
         rule.onNode(hasRole(Role.Switch)).assert(hasStateDescription("Off"))
     }
+    @Test fun paySettingsFundingSourceExposesSelectedTab() {
+        rule.setContent { IdsTheme(darkTheme = false) { PaySettingsScreen({}) } }
+        rule.onNodeWithText("Pay balance").assert(hasRole(Role.Tab)).assert(isSelected())
+        rule.onNodeWithText("Bank").assert(hasRole(Role.Tab)).performClick().assert(isSelected())
+        rule.onNodeWithText("Pay balance").assertDoesNotExist()
+    }
     @Test fun settings() = shot("settings") { PaySettingsScreen({}) }
     @Test fun settingsDark() = shotDark("settings") { PaySettingsScreen({}) }
     @Test fun amount() = shot("amount") { PayAmountScreen("Amina K.", {}, {}) }
