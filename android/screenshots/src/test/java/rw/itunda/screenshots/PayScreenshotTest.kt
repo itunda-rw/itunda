@@ -129,9 +129,9 @@ class PayScreenshotTest {
     @Test fun pointsDark() = shotDark("points") { PayPointsScreen({}) }
     @Test fun paySettingsSwitchExposesAndChangesState() {
         rule.setContent { IdsTheme(darkTheme = false) { PaySettingsScreen({}) } }
-        rule.onNode(hasRole(Role.Switch) and hasStateDescription("On")).assertExists()
-        rule.onNode(hasRole(Role.Switch) and hasStateDescription("On")).performClick()
-        rule.onNode(hasRole(Role.Switch) and hasStateDescription("Off")).assertExists()
+        rule.onNode(hasRole(Role.Switch)).assert(hasStateDescription("On"))
+        rule.onNode(hasRole(Role.Switch)).performClick()
+        rule.onNode(hasRole(Role.Switch)).assert(hasStateDescription("Off"))
     }
     @Test fun settings() = shot("settings") { PaySettingsScreen({}) }
     @Test fun settingsDark() = shotDark("settings") { PaySettingsScreen({}) }
