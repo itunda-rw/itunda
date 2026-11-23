@@ -201,6 +201,17 @@ class PayScreenshotTest {
     @Test fun couponBoxEmptyDark() = shotDark("coupon-box") { CouponBoxContent(true, null, emptyList(), emptyList(), false, {}, {}, {}, {}) }
     @Test fun addCard() = shot("add-card") { PayAddCardScreen({}, {}) }
     @Test fun addCardDark() = shotDark("add-card") { PayAddCardScreen({}, {}) }
+    @Test fun addCardFieldsAndSubmitExposeAccessibleState() {
+        val added = mutableStateOf(false)
+        rule.setContent { IdsTheme(darkTheme = false) { PayAddCardScreen({}, { added.value = true }) } }
+        rule.onNodeWithContentDescription("Card number").performTextInput("4242424242424242")
+        rule.onNodeWithContentDescription("Name on card").performTextInput("ERIC TUYIZERE")
+        rule.onNodeWithContentDescription("Expiry").performTextInput("12/30")
+        rule.onNodeWithContentDescription("CVC").performTextInput("123")
+        rule.onNodeWithContentDescription("Add card").assert(hasRole(Role.Button))
+            .assert(hasStateDescription("Ready to add")).performClick()
+        rule.runOnIdle { assertTrue(added.value) }
+    }
     @Test fun manageCardsRemoveInvokesSelectedCardCallback() {
         val removed = mutableStateOf(-1)
         rule.setContent {
