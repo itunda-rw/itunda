@@ -153,6 +153,19 @@ class PayScreenshotTest {
     @Test fun couponBoxEmptyDark() = shotDark("coupon-box") { CouponBoxContent(true, null, emptyList(), emptyList(), false, {}, {}, {}, {}) }
     @Test fun addCard() = shot("add-card") { PayAddCardScreen({}, {}) }
     @Test fun addCardDark() = shotDark("add-card") { PayAddCardScreen({}, {}) }
+    @Test fun manageCardsRemoveInvokesSelectedCardCallback() {
+        val removed = mutableStateOf(-1)
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                PayMyCardsScreen("120,500", "842,300", listOf(
+                    PayNewCard("Visa", "4242", "AMINA UWASE", "12/28"),
+                    PayNewCard("Mastercard", "5555", "ERIC", "10/29"),
+                ), {}, {}, { removed.value = it })
+            }
+        }
+        rule.onNodeWithText("Remove").performClick()
+        rule.runOnIdle { assertTrue(removed.value == 0) }
+    }
     @Test fun myCards() = shot("my-cards") { PayMyCardsScreen("120,500", "842,300", emptyList(), {}, {}, {}) }
     @Test fun myCardsDark() = shotDark("my-cards") { PayMyCardsScreen("120,500", "842,300", emptyList(), {}, {}, {}) }
     @Test fun myCardsWithCard() = shot("my-cards-visa") { PayMyCardsScreen("120,500", "842,300", listOf(PayNewCard("Visa", "4242", "AMINA UWASE", "12/28")), {}, {}, {}) }
