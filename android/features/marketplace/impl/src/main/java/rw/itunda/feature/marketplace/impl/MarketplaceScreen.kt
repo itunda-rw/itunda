@@ -847,13 +847,10 @@ private fun ListingRow(
             // comment for the full sourced account.
             Row(
                 modifier = Modifier.fillMaxWidth().pressScaleClickable(isScrollTouched = isScrollTouched, onClick = onOpen).padding(vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                // Real fix, 2026-08-03: was 96.dp -- a fresh real 당근마켓 screenshot
-                // (user-provided) measured the actual thumbnail at ~124dp square on an
-                // equivalent screen (326px of a 1080px-wide capture), notably more
-                // prominent than itunda's first pass.
-                Box(modifier = Modifier.size(124.dp).clip(RoundedCornerShape(12.dp))) {
+                // v1038 Marketplace feed uses a 96dp square thumbnail with a 16dp radius.
+                Box(modifier = Modifier.size(96.dp).clip(RoundedCornerShape(16.dp))) {
                     if (listing.photoUrl != null) {
                         // SubcomposeAsyncImage, not AsyncImage (2026-07-24): plain AsyncImage
                         // renders nothing at all while loading or on a failed fetch -- a
@@ -876,12 +873,21 @@ private fun ListingRow(
                     } else {
                         ListingPhotoPlaceholder()
                     }
-                    if (listing.status == "SOLD") {
+                    if (listing.status.equals("SOLD", ignoreCase = true)) {
                         Box(
                             modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text("SOLD", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    } else if (listing.status.equals("RESERVED", ignoreCase = true)) {
+                        Box(
+                            modifier = Modifier.align(Alignment.BottomStart).padding(6.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Ids.colors.surface)
+                                .padding(horizontal = 7.dp, vertical = 4.dp),
+                        ) {
+                            Text("Reserved", color = Ids.colors.textPrimary, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
                     // Real "Sponsored" badge (2026-07-25) -- only ever shown for a listing
@@ -904,9 +910,9 @@ private fun ListingRow(
                         Text(
                             listing.title,
                             color = Ids.colors.textPrimary,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             fontSize = 16.sp,
-                            maxLines = 1,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
                         )
@@ -940,9 +946,11 @@ private fun ListingRow(
                         formatDistanceKm(haversineKm(viewerLat, viewerLng, listingLat, listingLng))
                     } else null
                     Text(
-                        listOfNotNull(listing.neighborhood, distanceLabel ?: listing.category, relativeTimeAgo(listing.createdAt)).joinToString(" · "),
+                        listOfNotNull(listing.neighborhood?.takeIf { it.isNotBlank() }, distanceLabel, relativeTimeAgo(listing.createdAt)).joinToString(" · "),
                         color = Ids.colors.textSecondary,
-                        fontSize = 12.sp,
+                        fontSize = 13.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     // Real 나눔 (free giveaway) treatment (2026-08-03) -- real Karrot
                     // shows "나눔 🧡" instead of "0원" for a free item; itunda already
@@ -952,7 +960,7 @@ private fun ListingRow(
                     // same pattern this file's own CommunityPostCard-equivalent ❤️/💬
                     // counts already use, not a deviation from "themes stay common."
                     if (listing.price <= 0.0) {
-                        Text("Free 🧡", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text("Free 🧡", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 17.sp)
                     } else {
                         Text(String.format(Locale.US, "%,.0f RWF", listing.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     }
