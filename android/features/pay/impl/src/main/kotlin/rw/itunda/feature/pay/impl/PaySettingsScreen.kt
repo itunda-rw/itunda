@@ -26,6 +26,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import rw.itunda.core.designsystem.components.pressScaleClickable
 
 /** Prototype "Pay" settings: default funding source and two preferences (kept on-screen only until a settings API exists). */
@@ -44,7 +48,7 @@ fun PaySettingsScreen(onBack: () -> Unit, onAllSettings: () -> Unit = {}) {
                 val on = fromBalance == isBalance
                 Box(
                     Modifier.height(40.dp).clip(RoundedCornerShape(20.dp)).background(if (on) p.text.let { if (p.page == Color(0xFF17171C)) p.soft else Color(0xFF191F28) } else p.soft)
-                        .pressScaleClickable { fromBalance = isBalance }.padding(horizontal = 20.dp),
+                        .pressScaleClickable { fromBalance = isBalance }.semantics { selected = on }.padding(horizontal = 20.dp),
                     contentAlignment = Alignment.Center,
                 ) { Text(label, color = if (on) Color.White else p.tt, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold) }
             }
@@ -66,7 +70,7 @@ private fun SettingRow(p: PayPalette, title: String, body: String, checked: Bool
         }
         Box(
             Modifier.size(width = 50.dp, height = 30.dp).clip(RoundedCornerShape(15.dp)).background(if (checked) p.brand else p.soft.copy(alpha = 1f))
-                .pressScaleClickable { onChange(!checked) },
+                .pressScaleClickable { onChange(!checked) }.semantics { role = Role.Switch; stateDescription = if (checked) "On" else "Off" },
         ) {
             Box(Modifier.offset(x = if (checked) 23.dp else 3.dp, y = 3.dp).size(24.dp).clip(CircleShape).background(Color.White))
         }
