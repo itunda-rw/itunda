@@ -39,7 +39,6 @@ private val partners = listOf(
     LoanPartner("M", Color(0xFF0A9F6B), "Mortgage loan", "Buy or build a home. Terms up to 20 years, rates shown before you apply.", Icons.Filled.Apartment),
     LoanPartner("R", Color(0xFF12A39A), "Refinance", "Move a loan from another lender to a lower rate.", Icons.Filled.Sync),
     LoanPartner("L", Color(0xFF3B82F6), "Manage other loans", "See loans from other lenders in one place.", Icons.Filled.CreditCard),
-    LoanPartner("\uD83C\uDF89", Color.Transparent, "Events", "Exclusively at itunda: preferential rates from our partners."),
 )
 
 /** Prototype "Find loan" partner list (measured: 64dp rows, 40dp r14 badge, 17sp/600 title, chevron 18dp). */

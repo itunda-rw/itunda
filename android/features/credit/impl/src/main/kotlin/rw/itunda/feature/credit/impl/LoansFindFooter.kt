@@ -67,19 +67,17 @@ fun LoansFindFooter(onExclusive: () -> Unit) {
     }
 }
 
-/** Whole prototype "Find loan" first screen: hero, band, partner rows, exclusive card, notes + sticky CTA. */
+/** Whole prototype "Find loan" first screen: hero, band, partner rows, in-flow CTA, exclusive card and notes. */
 @Composable
 fun LoansFindPage(lowestRate: String?, onCheckRate: () -> Unit, modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxWidth()) {
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-            Spacer(Modifier.height(24.dp))
-            LoansFindHero(lowestRate)
-            Box(Modifier.fillMaxWidth().height(12.dp).background(Ids.colors.surfaceSoft))
-            LoansFindPartners(onBankLoans = onCheckRate)
-            LoansFindFooter(onExclusive = onCheckRate)
-        }
-        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Ids.colors.background).padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 24.dp)) {
+    Column(modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+        Spacer(Modifier.height(24.dp))
+        LoansFindHero(lowestRate)
+        Box(Modifier.fillMaxWidth().height(12.dp).background(Ids.colors.surfaceSoft))
+        LoansFindPartners(onBankLoans = onCheckRate)
+        Box(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 24.dp)) {
             IdsButton(text = "Check your loan rate", onClick = onCheckRate)
         }
+        LoansFindFooter(onExclusive = onCheckRate)
     }
 }
