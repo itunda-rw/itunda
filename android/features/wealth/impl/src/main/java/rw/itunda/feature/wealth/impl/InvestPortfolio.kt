@@ -85,7 +85,7 @@ internal fun PortfolioContent(onBrowse: () -> Unit = {}) {
             // §10) -- a divider now marks the boundary between the summary+add-funds
             // section and the holdings list below it, matching ShellSection's shape.
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 10.dp)) {
                     Text("Invested value", color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 20.sp)
                     Text("${formatMoney(p.totalValue)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 36.sp, lineHeight = 44.sp, letterSpacing = (-1.2).sp)
                     if (p.holdings.isNotEmpty()) {

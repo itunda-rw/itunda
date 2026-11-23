@@ -126,7 +126,7 @@ fun InvestPortfolioPreview() {
         BackTopBar(title = "Invest", onBack = {})
         InvestTabs(InvestMode.PORTFOLIO) {}
         Column(Modifier.weight(1f).padding(horizontal = Ids.layout.screenHorizontal)) {
-            Column(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+            Column(Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 10.dp)) {
                 Text("Invested value", color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 20.sp)
                 Text("0 RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 36.sp, lineHeight = 44.sp, letterSpacing = (-1.2).sp)
                 Spacer(Modifier.height(20.dp))
