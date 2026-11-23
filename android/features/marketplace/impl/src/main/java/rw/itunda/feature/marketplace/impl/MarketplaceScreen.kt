@@ -99,6 +99,8 @@ import rw.itunda.core.network.FavoriteListingDto
 import rw.itunda.core.network.KeywordAlertDto
 import rw.itunda.core.network.KeywordAlertQuietHoursDto
 import rw.itunda.core.network.ListingDto
+import rw.itunda.core.network.RecentlyViewedListingDto
+import rw.itunda.core.network.RecentlyViewedListingsStore
 import rw.itunda.core.network.MakeOfferRequest
 import rw.itunda.core.network.BoostListingRequest
 import rw.itunda.core.network.MarkSoldRequest
@@ -468,18 +470,8 @@ fun MarketplaceContent(
     // stays null (not emptyList) while blank so it never shadows the real view-based
     // feed above.
     var searchQuery by rememberSaveable { mutableStateOf("") }
-    var addingSearchAlert by remember { mutableStateOf(false) }
-    var searchAlertMessage by remember { mutableStateOf<String?>(null) }
-    var categoryFilter by rememberSaveable { mutableStateOf<String?>(null) }
-    // Prototype v1038/v502: category/saved-state filters and Latest/Nearest ordering.
-    var feedScope by rememberSaveable { mutableStateOf("All") }
-    var nearestFirst by rememberSaveable { mutableStateOf(false) }
-    // Prototype range defaults to the local 3 km feed; range filtering is only
-    // applied when real coordinates or a real profile neighborhood are available.
-    var feedRadiusKm by rememberSaveable { mutableStateOf(3) }
     var searchResults by remember { mutableStateOf<List<ListingDto>?>(null) }
     LaunchedEffect(searchQuery) {
-        searchAlertMessage = null
         if (searchQuery.isBlank()) {
             searchResults = null
             return@LaunchedEffect
@@ -498,53 +490,24 @@ fun MarketplaceContent(
     }
     val isSearching = searchQuery.isNotBlank()
     val displayListings = if (isSearching) searchResults else listings
-    val supportsFeedFilters = view in setOf(HoodView.BROWSE, HoodView.NEARBY, HoodView.NEIGHBORHOOD, HoodView.MINE)
-    val locationForFiltering = browseLocation
-    val effectiveFeedRadiusKm = when {
-        locationForFiltering != null -> feedRadiusKm
-        !neighborhoodName.isNullOrBlank() -> 0
-        else -> -1
-    }
-    val visibleListings = remember(displayListings, feedScope, categoryFilter, favoriteIds, currentUserId, nearestFirst, locationForFiltering, effectiveFeedRadiusKm, neighborhoodName, supportsFeedFilters, isSearching) {
-        val filtered = (displayListings ?: emptyList()).filter { listing ->
-            val scopeMatches = !supportsFeedFilters || when (feedScope) {
-                "Free" -> listing.price <= 0.0
-                "Saved" -> listing.id in favoriteIds
-                "Mine" -> listing.sellerId == currentUserId
-                else -> true
-            }
-            val radiusMatches = !supportsFeedFilters || view == HoodView.MINE || feedScope == "Saved" || feedScope == "Mine" || when {
-                effectiveFeedRadiusKm == 0 && !neighborhoodName.isNullOrBlank() ->
-                    listing.neighborhood?.equals(neighborhoodName, ignoreCase = true) == true
-                effectiveFeedRadiusKm > 0 && locationForFiltering != null -> {
-                    val lat = listing.latitude
-                    val lng = listing.longitude
-                    lat != null && lng != null && haversineKm(locationForFiltering.first, locationForFiltering.second, lat, lng) <= effectiveFeedRadiusKm.toDouble()
-                }
-                else -> true
-            }
-            scopeMatches && radiusMatches && (!supportsFeedFilters || categoryFilter == null || listing.category.equals(categoryFilter, ignoreCase = true))
-        }
-        if (supportsFeedFilters && !isSearching && nearestFirst && locationForFiltering != null) {
-            filtered.sortedBy { listing ->
-                val lat = listing.latitude
-                val lng = listing.longitude
-                if (lat == null || lng == null) Double.MAX_VALUE
-                else haversineKm(locationForFiltering.first, locationForFiltering.second, lat, lng)
-            }
-        } else if (supportsFeedFilters && !isSearching) {
-            filtered.sortedByDescending { listing ->
-                try { Instant.parse(listing.createdAt).toEpochMilli() } catch (_: Exception) { 0L }
-            }
-        } else {
-            filtered
-        }
-    }
 
     // Real listing detail navigation (2026-08-03) -- see ListingDetailScreen's own
     // doc comment for the real-Karrot-verified sourcing. Local nav state, same
     // pattern showNewListing (Mine tab) already establishes in this file.
     var selectedListing by remember { mutableStateOf<ListingDto?>(null) }
+    // Real "recently viewed listings" rail (2026-08-24) -- see
+    // RecentlyViewedListingsStore.kt's own doc comment. A LaunchedEffect on the
+    // listing id (rather than wrapping this screen's several real "open" call sites)
+    // covers every real entry point uniformly.
+    val recentlyViewedContext = LocalContext.current
+    val recentlyViewedListingsStore = remember { RecentlyViewedListingsStore(recentlyViewedContext) }
+    var recentlyViewedListings by remember { mutableStateOf(recentlyViewedListingsStore.getAll()) }
+    LaunchedEffect(selectedListing?.id) {
+        val current = selectedListing ?: return@LaunchedEffect
+        recentlyViewedListings = recentlyViewedListingsStore.add(
+            RecentlyViewedListingDto(current.id, current.title, current.price, current.category, current.photoUrl),
+        )
+    }
     if (selectedListing != null) {
         val current = selectedListing!!
         ListingDetailScreen(
@@ -595,11 +558,32 @@ fun MarketplaceContent(
     Box(modifier = Modifier.fillMaxSize()) {
     LazyColumn(
         state = marketplaceListState,
-        modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp)
+        modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal)
             .trackScrollPressedKey(marketplaceListState, marketplaceTouchedKey),
-        contentPadding = PaddingValues(top = 8.dp, bottom = 120.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+        // Real fix, 2026-08-03: a real device screenshot showed the last-visible
+        // listing's own action row (Message seller/Make an offer) sitting directly
+        // under HoodTab's floating Write FAB, genuinely overlapping and unreadable.
+        // contentPadding (not a Modifier padding, which would just shrink the visible
+        // viewport permanently) so the list can still scroll its last item clear of
+        // the FAB. 96dp covers the real FAB's height (~48dp) plus its own 20dp margin
+        // plus slack.
+        contentPadding = PaddingValues(top = Ids.layout.screenVertical, bottom = 96.dp),
+        verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
+        // No TabHeader here (2026-07-24, was `TabHeader("Hood")`): the bottom nav
+        // already highlights "Hood" and HoodTab's own Market/Life/Jobs/Home strip
+        // sits right above this screen, so a third "Hood" label was pure repeat
+        // noise, not information.
+        //
+        // Real fix, 2026-08-03, third correction same day: the Browse/Near me/
+        // Neighborhood chip row that used to render here is gone -- verified via
+        // search (a real 당근 FAQ result) that real Karrot has no such chip trio at
+        // all. The feed source is now auto-detected (see neighborhoodRefreshSignal's
+        // own doc comment) and neighborhoods are changed by tapping the neighborhood
+        // name in HoodTab's own top bar, not a chip here. This closes the "two
+        // stacked chip rows" gap for real, not just visually -- Hood's Market mode
+        // now has exactly one chip row (HoodTab's Market/Life/Jobs/Home), matching
+        // real Karrot.
         item {
             IdsTextField(
                 value = searchQuery,
@@ -608,81 +592,50 @@ fun MarketplaceContent(
                 placeholder = "Search marketplace listings",
             )
         }
-        if (view in setOf(HoodView.BROWSE, HoodView.NEARBY, HoodView.NEIGHBORHOOD, HoodView.MINE) && displayListings != null) {
+        if (!isSearching && recentlyViewedListings.isNotEmpty()) {
             item {
-                MarketplaceFeedControls(
-                    categories = (listOf("Electronics", "Phones", "Home", "Fashion", "Kids", "Sports") +
-                        (displayListings ?: emptyList()).map { it.category }.filter { it.isNotBlank() }).distinct(),
-                    selectedCategory = categoryFilter,
-                    onCategorySelected = { categoryFilter = it },
-                    feedScope = feedScope,
-                    onFeedScopeSelected = { feedScope = it },
-                    nearestFirst = nearestFirst && browseLocation != null,
-                    nearestAvailable = browseLocation != null,
-                    radiusKm = effectiveFeedRadiusKm,
-                    canSelectMyArea = !neighborhoodName.isNullOrBlank(),
-                    canSelectRadius = browseLocation != null,
-                    onRadiusSelected = { feedRadiusKm = it },
-                    onSortSelected = { nearestFirst = it },
-                )
+                RecentlyViewedListingsRail(recentlyViewedListings, onOpen = { id ->
+                    // Real single-listing fetch (see ApiService.getListing's own doc
+                    // comment) -- a recently-viewed listing may have since scrolled out
+                    // of the currently-loaded feed, so a plain local-list lookup alone
+                    // (tried first, instant, no network wait) can't always find it.
+                    val cached = (displayListings ?: listings)?.find { it.id == id }
+                    if (cached != null) {
+                        selectedListing = cached
+                    } else {
+                        coroutineScope.launch {
+                            try {
+                                selectedListing = NetworkClient.apiService.getListing(id).listing
+                            } catch (_: Exception) {
+                                // Real, non-critical -- the listing may have been removed
+                                // or sold since; the rail entry just won't open.
+                            }
+                        }
+                    }
+                })
             }
         }
         if (isSearching) {
             if (displayListings == null) {
                 item { SkeletonBlock() }
-            } else if (visibleListings.isEmpty()) {
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        EmptyState("No listings match \"$searchQuery\".", icon = Icons.Outlined.ShoppingBag)
-                        searchAlertMessage?.let { Text(it, color = Ids.colors.textSecondary, fontSize = 13.sp) }
-                        IdsButton(
-                            text = if (addingSearchAlert) "Adding alert…" else "Alert me when this appears",
-                            onClick = {
-                                addingSearchAlert = true
-                                coroutineScope.launch {
-                                    try {
-                                        NetworkClient.apiService.addKeywordAlert(AddKeywordAlertRequest(searchQuery.trim()))
-                                        searchAlertMessage = "Alert created. We’ll let you know when a match appears."
-                                    } catch (e: HttpException) {
-                                        searchAlertMessage = superAppErrorMessage(e)
-                                    } catch (e: IOException) {
-                                        searchAlertMessage = "Couldn’t reach itunda. Check your connection and try again."
-                                    } finally {
-                                        addingSearchAlert = false
-                                    }
-                                }
-                            },
-                            enabled = !addingSearchAlert,
-                            variant = IdsButtonVariant.Tinted,
-                            size = IdsButtonSize.Medium,
-                        )
-                    }
-                }
+            } else if (displayListings.isEmpty()) {
+                item { EmptyState("No listings match \"$searchQuery\".", icon = Icons.Outlined.ShoppingBag) }
             } else {
-                items(visibleListings.chunked(2), key = { row -> row.first().id }) { row ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    ) {
-                        row.forEach { listing ->
-                            MarketplaceGridCard(
-                                listing = listing,
-                                isMine = listing.sellerId == currentUserId,
-                                favorited = listing.id in favoriteIds,
-                                favoriteBusy = favoritingId == listing.id,
-                                onToggleFavorite = { toggleFavorite(listing.id) },
-                                liked = listing.id in likedListingIds,
-                                onToggleLike = { toggleLike(listing.id) },
-                                hiding = hidingId == listing.id,
-                                onHide = { hideListing(listing.id) },
-                                viewerLocation = browseLocation,
-                                onOpen = { selectedListing = listing },
-                                isScrollTouched = marketplaceTouchedKey.value == listing.id,
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                        if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
-                    }
+                items(displayListings, key = { it.id }) { listing ->
+                    ListingRow(
+                        listing = listing,
+                        isMine = listing.sellerId == currentUserId,
+                        viewerLocation = browseLocation,
+                        favorited = listing.id in favoriteIds,
+                        favoriteBusy = favoritingId == listing.id,
+                        onToggleFavorite = { toggleFavorite(listing.id) },
+                        liked = listing.id in likedListingIds,
+                        onToggleLike = { toggleLike(listing.id) },
+                        hiding = hidingId == listing.id,
+                        onHide = { hideListing(listing.id) },
+                        onOpen = { selectedListing = listing },
+                        isScrollTouched = marketplaceTouchedKey.value == listing.id,
+                    )
                 }
             }
         } else {
@@ -717,7 +670,7 @@ fun MarketplaceContent(
             item { ErrorCard(error!!, onRetry = ::load) }
         } else if (listings == null) {
             item { SkeletonBlock() }
-        } else if (visibleListings.isEmpty() && (view != HoodView.NEIGHBORHOOD || neighborhoodName != null)) {
+        } else if (listings!!.isEmpty() && (view != HoodView.NEIGHBORHOOD || neighborhoodName != null)) {
             item {
                 EmptyState(
                     // Real copy-voice fix (item 244, round 5 of the empty-state pass --
@@ -727,12 +680,7 @@ fun MarketplaceContent(
                     // ("+ List an item" above, in the MINE view) rather than a bare
                     // absence report.
                     when (view) {
-                        HoodView.BROWSE -> when (feedScope) {
-                            "Free" -> "No free listings nearby yet."
-                            "Saved" -> "Nothing saved yet — tap the heart on a listing to keep it here."
-                            "Mine" -> "You haven't listed anything yet — tap Sell to post your first item."
-                            else -> if (categoryFilter != null) "No ${categoryFilter!!.lowercase()} listings match this feed yet." else "No listings yet — be the first to list something for sale."
-                        }
+                        HoodView.BROWSE -> "No listings yet — be the first to list something for sale."
                         HoodView.NEARBY -> "No listings near you yet — try Browse to see listings from everywhere."
                         HoodView.NEIGHBORHOOD -> "No listings in your neighborhood yet — try Browse to see listings from everywhere."
                         HoodView.MINE -> "You haven't listed anything yet — tap \"+ List an item\" above to list your first one."
@@ -752,30 +700,21 @@ fun MarketplaceContent(
                 )
             }
         } else if (listings!!.isNotEmpty()) {
-            items(visibleListings.chunked(2), key = { row -> row.first().id }) { row ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                ) {
-                    row.forEach { listing ->
-                        MarketplaceGridCard(
-                            listing = listing,
-                            isMine = view == HoodView.MINE || listing.sellerId == currentUserId,
-                            favorited = listing.id in favoriteIds,
-                            favoriteBusy = favoritingId == listing.id,
-                            onToggleFavorite = { toggleFavorite(listing.id) },
-                            liked = listing.id in likedListingIds,
-                            onToggleLike = { toggleLike(listing.id) },
-                            hiding = hidingId == listing.id,
-                            onHide = { hideListing(listing.id) },
-                            viewerLocation = browseLocation,
-                            onOpen = { selectedListing = listing },
-                            isScrollTouched = marketplaceTouchedKey.value == listing.id,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                    if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
-                }
+            items(listings!!, key = { it.id }) { listing ->
+                ListingRow(
+                    listing = listing,
+                    isMine = view == HoodView.MINE || listing.sellerId == currentUserId,
+                    viewerLocation = browseLocation,
+                    favorited = listing.id in favoriteIds,
+                    favoriteBusy = favoritingId == listing.id,
+                    onToggleFavorite = { toggleFavorite(listing.id) },
+                    liked = listing.id in likedListingIds,
+                    onToggleLike = { toggleLike(listing.id) },
+                    hiding = hidingId == listing.id,
+                    onHide = { hideListing(listing.id) },
+                    onOpen = { selectedListing = listing },
+                    isScrollTouched = marketplaceTouchedKey.value == listing.id,
+                )
             }
             if (hasMore && view != HoodView.NEARBY) {
                 item {
@@ -846,7 +785,7 @@ private fun isListingBoosted(boostedUntil: String?): Boolean {
 // in-place expansion (an earlier pass here guessed at in-place expand without
 // checking; this replaces that guess with the verified real behavior).
 @Composable
-fun ListingRow(
+private fun ListingRow(
     listing: ListingDto, isMine: Boolean,
     favorited: Boolean = false, favoriteBusy: Boolean = false, onToggleFavorite: () -> Unit = {},
     viewerLocation: Pair<Double, Double>? = null,
@@ -862,11 +801,27 @@ fun ListingRow(
     // never leaks through.
     var displayedLikeCount by remember(listing.id, listing.likeCount) { mutableStateOf(listing.likeCount) }
     Column(modifier = Modifier.fillMaxWidth()) {
+            // Real Karrot list-row layout (2026-08-03, user-provided real 당근마켓
+            // screenshots, light + dark) -- corrects the 2026-07-24 comment this
+            // replaced, which claimed a large full-width hero photo led Karrot's real
+            // card and price came before title; neither holds up against the actual
+            // screenshots: every real row is a small square thumbnail beside the text,
+            // and the real order is title (bold) -> location/time (muted) -> price
+            // (bold, largest). The full-width hero-image version wasn't sourced from a
+            // real screenshot at the time it was written.
+            // Real fix (2026-08-25, direct user directive: "implant that into our
+            // designs and apply it across our ecosystems") -- matches Shop/Eats'
+            // own identical fix; see IdsInteractions.kt's pressScaleClickable doc
+            // comment for the full sourced account.
             Row(
-                modifier = Modifier.fillMaxWidth().pressScaleClickable(isScrollTouched = isScrollTouched, onClick = onOpen).padding(vertical = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                modifier = Modifier.fillMaxWidth().pressScaleClickable(isScrollTouched = isScrollTouched, onClick = onOpen).padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Box(modifier = Modifier.size(96.dp).clip(RoundedCornerShape(16.dp))) {
+                // Real fix, 2026-08-03: was 96.dp -- a fresh real 당근마켓 screenshot
+                // (user-provided) measured the actual thumbnail at ~124dp square on an
+                // equivalent screen (326px of a 1080px-wide capture), notably more
+                // prominent than itunda's first pass.
+                Box(modifier = Modifier.size(124.dp).clip(RoundedCornerShape(12.dp))) {
                     if (listing.photoUrl != null) {
                         // SubcomposeAsyncImage, not AsyncImage (2026-07-24): plain AsyncImage
                         // renders nothing at all while loading or on a failed fetch -- a
@@ -917,13 +872,21 @@ fun ListingRow(
                         Text(
                             listing.title,
                             color = Ids.colors.textPrimary,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
-                            maxLines = 2,
+                            maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
                         )
                         if (!isMine) {
+                            Text(
+                                if (hiding) "…" else "Hide",
+                                color = Ids.colors.textSecondary,
+                                fontSize = 11.sp,
+                                modifier = Modifier.padding(end = 8.dp)
+                                    .semantics { contentDescription = "Hide this listing -- you won't see it again" }
+                                    .pressScaleClickable(enabled = !hiding, onClick = onHide),
+                            )
                             WishlistHeart(
                                 favorited = favorited,
                                 size = 20.dp,
@@ -932,9 +895,11 @@ fun ListingRow(
                             )
                         }
                     }
-                    // Prototype v1038/v502 metadata is neighborhood · real distance · age.
-                    // If location is unavailable, omit distance rather than relabel category
-                    // as a distance value or invent an estimate.
+                    // Real distance display (2026-08-03) -- matches a real 당근마켓
+                    // screenshot showing neighborhood/distance/time, not neighborhood/
+                    // category/time. Falls back to category (the previous behavior)
+                    // whenever distance isn't available -- see viewerLocation's own doc
+                    // comment for why that's the common case, not a bug.
                     val viewerLat = viewerLocation?.first
                     val viewerLng = viewerLocation?.second
                     val listingLat = listing.latitude
@@ -943,7 +908,7 @@ fun ListingRow(
                         formatDistanceKm(haversineKm(viewerLat, viewerLng, listingLat, listingLng))
                     } else null
                     Text(
-                        listOfNotNull(listing.neighborhood, distanceLabel, relativeTimeAgo(listing.createdAt)).joinToString(" · "),
+                        listOfNotNull(listing.neighborhood, distanceLabel ?: listing.category, relativeTimeAgo(listing.createdAt)).joinToString(" · "),
                         color = Ids.colors.textSecondary,
                         fontSize = 12.sp,
                     )
@@ -955,32 +920,22 @@ fun ListingRow(
                     // same pattern this file's own CommunityPostCard-equivalent ❤️/💬
                     // counts already use, not a deviation from "themes stay common."
                     if (listing.price <= 0.0) {
-                        Text("Free 🧡", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text("Free 🧡", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     } else {
-                        Text(String.format(Locale.US, "%,.0f RWF", listing.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text(String.format(Locale.US, "%,.0f RWF", listing.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     }
                 }
             }
+            // Real like count (2026-08-03) -- matches a real 당근마켓 screenshot's
+            // bottom-right heart count on every row. Comment count is deliberately
+            // NOT shown alongside it (unlike the real reference) -- there is no real
+            // comment-thread feature on listings yet, and this app doesn't fabricate
+            // a count for a feature that doesn't exist.
             Row(
-                modifier = Modifier.fillMaxWidth().padding(start = 96.dp, bottom = 10.dp),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (!isMine && listing.price > 0.0) {
-                    Text("Safe pay", color = Ids.colors.textBrand, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                } else {
-                    androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
-                }
-                if (!isMine) {
-                            Text(
-                                if (hiding) "…" else "Hide",
-                                color = Ids.colors.textSecondary,
-                                fontSize = 11.sp,
-                                modifier = Modifier.padding(end = 12.dp)
-                                    .semantics { contentDescription = "Hide this listing -- you won't see it again" }
-                                    .pressScaleClickable(enabled = !hiding, onClick = onHide),
-                            )
-                }
                 WishlistHeart(
                     favorited = liked,
                     size = 16.dp,
@@ -1007,8 +962,7 @@ fun ListingRow(
 // inline into every row of the browse list -- moved here unchanged, just reached by
 // navigation instead of always being visible.
 @Composable
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
-fun ListingDetailScreen(
+private fun ListingDetailScreen(
     listing: ListingDto, isMine: Boolean, onBack: () -> Unit, onChanged: () -> Unit, onMessageSeller: (String) -> Unit, onMakeOffer: (String, Double) -> Unit,
     favorited: Boolean = false, favoriteBusy: Boolean = false, onToggleFavorite: () -> Unit = {},
     sellerTrustScore: Int? = null,
@@ -1197,8 +1151,6 @@ fun ListingDetailScreen(
             if (!isMine && sellerTrustScore != null) {
                 TrustBadge(sellerTrustScore)
             }
-            Text(listing.category, color = Ids.colors.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 12.dp, vertical = 6.dp))
             Text(listing.description, color = Ids.colors.textSecondary, fontSize = 13.sp)
             VehicleDetailSection(listing)
             listing.meetingPlace?.let {
@@ -1384,7 +1336,7 @@ fun ListingDetailScreen(
                     }
                 }
             }
-            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (isMine) {
                     if (listing.status == "ACTIVE" && !markingSold && !editingPrice) {
                         ListingActionButton("Mark sold", busy) { markingSold = true }
@@ -1468,9 +1420,6 @@ fun ListingDetailScreen(
                         }
                     }
                 }
-            }
-            if (!isMine && listing.status == "ACTIVE" && !offering) {
-                Text("Buy with itunda: your money is held until you confirm pickup.", color = Ids.colors.textTertiary, fontSize = 12.sp)
             }
             // Real escrow status (2026-07-25) -- Confirm receipt releases payment to the
             // seller; Report a problem flags it for real human admin review instead of
