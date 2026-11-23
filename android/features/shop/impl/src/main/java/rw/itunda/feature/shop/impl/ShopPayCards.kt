@@ -292,6 +292,7 @@ internal fun PayByScanCard(
     facePayEnrolled: Boolean,
     flashEnabled: Boolean = false,
     onPhotoPickerReady: (((() -> Unit)) -> Unit)? = null,
+    onFlashAvailability: ((Boolean) -> Unit)? = null,
     onPaid: (CollectPaymentResultDto) -> Unit,
 ) {
     var scannedIntentId by remember { mutableStateOf<String?>(null) }

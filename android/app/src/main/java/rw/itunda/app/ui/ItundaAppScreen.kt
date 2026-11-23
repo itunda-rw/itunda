@@ -1896,8 +1896,7 @@ fun ItundaAppScreen(
                         onOpenSupport = { showSupport = true },
                         onOpenCard = { showCard = true },
                         payAMerchantSection = { flashEnabled, registerPhotoPicker, flashAvailability ->
-                            rw.itunda.feature.shop.impl.PayAMerchantSection(flashEnabled = flashEnabled, onPhotoPickerReady = registerPhotoPicker,
-                                onFlashAvailability = flashAvailability,
+                            rw.itunda.feature.shop.impl.PayAMerchantSection(flashEnabled = flashEnabled, onPhotoPickerReady = registerPhotoPicker, onFlashAvailability = flashAvailability,
                                 deviceStepUpHost = { visible, onDismiss, onVerified ->
                                     DeviceStepUpHost(visible = visible, onDismiss = onDismiss, onVerified = onVerified)
                                 },
