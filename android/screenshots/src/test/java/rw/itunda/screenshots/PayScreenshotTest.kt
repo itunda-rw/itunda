@@ -4,6 +4,9 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.hasRole
+import androidx.compose.ui.test.hasStateDescription
+import androidx.compose.ui.semantics.Role
 import androidx.compose.runtime.mutableStateOf
 import org.junit.Assert.assertTrue
 import androidx.compose.ui.test.performScrollToNode
@@ -124,6 +127,12 @@ class PayScreenshotTest {
     @Test fun savedDark() = shotDark("saved") { PaySavedMerchantsScreen({}) }
     @Test fun points() = shot("points") { PayPointsScreen({}) }
     @Test fun pointsDark() = shotDark("points") { PayPointsScreen({}) }
+    @Test fun paySettingsSwitchExposesAndChangesState() {
+        rule.setContent { IdsTheme(darkTheme = false) { PaySettingsScreen({}) } }
+        rule.onNode(hasRole(Role.Switch) and hasStateDescription("On")).assertExists()
+        rule.onNode(hasRole(Role.Switch) and hasStateDescription("On")).performClick()
+        rule.onNode(hasRole(Role.Switch) and hasStateDescription("Off")).assertExists()
+    }
     @Test fun settings() = shot("settings") { PaySettingsScreen({}) }
     @Test fun settingsDark() = shotDark("settings") { PaySettingsScreen({}) }
     @Test fun amount() = shot("amount") { PayAmountScreen("Amina K.", {}, {}) }
