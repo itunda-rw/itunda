@@ -7,12 +7,12 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextClearance
-import androidx.compose.ui.test.assertDoesNotExist
-import androidx.compose.ui.test.assertExists
-import androidx.compose.ui.test.hasRole
 import androidx.compose.ui.test.hasStateDescription
 import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.runtime.mutableStateOf
 import org.junit.Assert.assertTrue
 import androidx.compose.ui.test.performScrollToNode
@@ -51,6 +51,8 @@ import rw.itunda.feature.pay.impl.SplitBillAmountScreen
 @Config(sdk = [34], qualifiers = "w390dp-h844dp-xxhdpi")
 class PayScreenshotTest {
     @get:Rule val rule = createComposeRule()
+
+    private fun hasRole(role: Role) = SemanticsMatcher.expectValue(SemanticsProperties.Role, role)
 
     private fun render(dark: Boolean, name: String, mode: ProtoPayMode = ProtoPayMode.MY_CODE) {
         rule.setContent {
