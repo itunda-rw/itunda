@@ -490,7 +490,7 @@ fun MarketplaceContent(
                 if (res.success) {
                     boughtListings = res.listings
                     trustScores = res.trustScores
-                    likedListingIds = res.likedByMe
+                    likedListingIds = res.likedByMe ?: emptySet()
                     hasMore = res.page + 1 < res.totalPages
                 } else boughtListings = emptyList()
                 error = null
