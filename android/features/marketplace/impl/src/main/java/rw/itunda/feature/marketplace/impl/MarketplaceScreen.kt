@@ -99,8 +99,6 @@ import rw.itunda.core.network.FavoriteListingDto
 import rw.itunda.core.network.KeywordAlertDto
 import rw.itunda.core.network.KeywordAlertQuietHoursDto
 import rw.itunda.core.network.ListingDto
-import rw.itunda.core.network.RecentlyViewedListingDto
-import rw.itunda.core.network.RecentlyViewedListingsStore
 import rw.itunda.core.network.MakeOfferRequest
 import rw.itunda.core.network.BoostListingRequest
 import rw.itunda.core.network.MarkSoldRequest
@@ -516,19 +514,6 @@ fun MarketplaceContent(
     // doc comment for the real-Karrot-verified sourcing. Local nav state, same
     // pattern showNewListing (Mine tab) already establishes in this file.
     var selectedListing by remember { mutableStateOf<ListingDto?>(null) }
-    // Real "recently viewed listings" rail (2026-08-24) -- see
-    // RecentlyViewedListingsStore.kt's own doc comment. A LaunchedEffect on the
-    // listing id (rather than wrapping this screen's several real "open" call sites)
-    // covers every real entry point uniformly.
-    val recentlyViewedContext = LocalContext.current
-    val recentlyViewedListingsStore = remember { RecentlyViewedListingsStore(recentlyViewedContext) }
-    var recentlyViewedListings by remember { mutableStateOf(recentlyViewedListingsStore.getAll()) }
-    LaunchedEffect(selectedListing?.id) {
-        val current = selectedListing ?: return@LaunchedEffect
-        recentlyViewedListings = recentlyViewedListingsStore.add(
-            RecentlyViewedListingDto(current.id, current.title, current.price, current.category, current.photoUrl),
-        )
-    }
     if (selectedListing != null) {
         val current = selectedListing!!
         ListingDetailScreen(
@@ -622,29 +607,6 @@ fun MarketplaceContent(
                     nearestAvailable = browseLocation != null,
                     onSortSelected = { nearestFirst = it },
                 )
-            }
-        }
-        if (!isSearching && recentlyViewedListings.isNotEmpty()) {
-            item {
-                RecentlyViewedListingsRail(recentlyViewedListings, onOpen = { id ->
-                    // Real single-listing fetch (see ApiService.getListing's own doc
-                    // comment) -- a recently-viewed listing may have since scrolled out
-                    // of the currently-loaded feed, so a plain local-list lookup alone
-                    // (tried first, instant, no network wait) can't always find it.
-                    val cached = (displayListings ?: listings)?.find { it.id == id }
-                    if (cached != null) {
-                        selectedListing = cached
-                    } else {
-                        coroutineScope.launch {
-                            try {
-                                selectedListing = NetworkClient.apiService.getListing(id).listing
-                            } catch (_: Exception) {
-                                // Real, non-critical -- the listing may have been removed
-                                // or sold since; the rail entry just won't open.
-                            }
-                        }
-                    }
-                })
             }
         }
         if (isSearching) {
