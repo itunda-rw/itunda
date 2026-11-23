@@ -37,7 +37,7 @@ internal fun MarketplaceFeedControls(
     nearestAvailable: Boolean,
     onSortSelected: (Boolean) -> Unit,
 ) {
-    val scopes = listOf("All", "Free", "Saved", "Mine")
+    val scopes = listOf("Free", "Saved", "Mine")
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp),
