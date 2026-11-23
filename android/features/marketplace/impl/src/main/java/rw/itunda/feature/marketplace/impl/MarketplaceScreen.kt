@@ -470,6 +470,9 @@ fun MarketplaceContent(
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var selectedBrowseCategory by rememberSaveable { mutableStateOf("All") }
     var nearestFirst by rememberSaveable { mutableStateOf(false) }
+    var showBrowseFilters by remember { mutableStateOf(false) }
+    var selectedMaxPrice by rememberSaveable { mutableStateOf(0) }
+    var selectedNeighborhood by rememberSaveable { mutableStateOf<String?>(null) }
     var searchResults by remember { mutableStateOf<List<ListingDto>?>(null) }
     LaunchedEffect(searchQuery) {
         if (searchQuery.isBlank()) {
@@ -499,14 +502,18 @@ fun MarketplaceContent(
                 "Mine" -> source.filter { it.sellerId == currentUserId }
                 else -> source.filter { it.category.equals(selectedBrowseCategory, ignoreCase = true) }
             }
+            val priceFiltered = if (selectedMaxPrice > 0) categoryFiltered.filter { it.price <= selectedMaxPrice } else categoryFiltered
+            val areaFiltered = selectedNeighborhood?.let { area ->
+                priceFiltered.filter { it.neighborhood.equals(area, ignoreCase = true) }
+            } ?: priceFiltered
             if (nearestFirst && browseLocation != null) {
-                categoryFiltered.sortedBy { listing ->
+                areaFiltered.sortedBy { listing ->
                     val lat = listing.latitude
                     val lng = listing.longitude
                     if (lat == null || lng == null) Double.MAX_VALUE
                     else haversineKm(browseLocation.first, browseLocation.second, lat, lng)
                 }
-            } else categoryFiltered
+            } else areaFiltered
         }
     }
 
@@ -605,6 +612,8 @@ fun MarketplaceContent(
                     onCategorySelected = { selectedBrowseCategory = it },
                     nearestFirst = nearestFirst,
                     nearestAvailable = browseLocation != null,
+                    filterCount = (if (selectedMaxPrice > 0) 1 else 0) + (if (selectedNeighborhood != null) 1 else 0),
+                    onFilterClick = { showBrowseFilters = true },
                     onSortSelected = { nearestFirst = it },
                 )
             }
@@ -726,6 +735,21 @@ fun MarketplaceContent(
     }
         ScrollFog(modifier = Modifier.align(Alignment.BottomCenter))
     }
+    val availableNeighborhoods = (listings.orEmpty() + searchResults.orEmpty())
+        .mapNotNull { it.neighborhood?.takeIf(String::isNotBlank) }
+        .distinct()
+        .sorted()
+    MarketplaceFilterSheet(
+        visible = showBrowseFilters,
+        maxPrice = selectedMaxPrice,
+        selectedNeighborhood = selectedNeighborhood,
+        neighborhoods = availableNeighborhoods,
+        onDismiss = { showBrowseFilters = false },
+        onApply = { maxPrice, area ->
+            selectedMaxPrice = maxPrice
+            selectedNeighborhood = area
+        },
+    )
 }
 
 // Real "recently viewed listings" rail (2026-08-24) -- widened from private to
