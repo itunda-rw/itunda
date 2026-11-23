@@ -31,7 +31,10 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -83,7 +86,7 @@ fun PayHistoryScreen(onBack: () -> Unit, onOpen: (Int) -> Unit = {}) {
                     val on = filter == i
                     Box(
                         Modifier.width(114.dp).height(44.dp).clip(RoundedCornerShape(20.dp)).background(if (on) Color(0xFF191F28).let { if (p.page == Color(0xFF17171C)) p.text else it } else p.soft)
-                            .pressScaleClickable { filter = i },
+                            .selectable(selected = on, role = Role.Tab) { filter = i },
                         contentAlignment = Alignment.Center,
                     ) { Text(label, color = if (on) (if (p.page == Color(0xFF17171C)) Color(0xFF17171C) else Color.White) else p.text, fontSize = 14.sp, lineHeight = 19.6.sp, fontWeight = FontWeight.Bold) }
                 }
