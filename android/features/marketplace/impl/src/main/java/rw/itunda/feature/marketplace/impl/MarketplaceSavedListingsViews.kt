@@ -113,7 +113,9 @@ internal fun ListingWishlistView(onRemoved: () -> Unit, onOpen: (String) -> Unit
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column {
+                    Column(
+                        modifier = Modifier.pressScaleClickable(onClick = { onOpen(f.listingId) }),
+                    ) {
                         Text(f.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         Text(String.format(Locale.US, "${f.category} · %,.0f RWF", f.price), color = Ids.colors.textSecondary, fontSize = 13.sp)
                     }
