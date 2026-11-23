@@ -474,6 +474,9 @@ fun MarketplaceContent(
     // Prototype v1038/v502: category/saved-state filters and Latest/Nearest ordering.
     var feedScope by rememberSaveable { mutableStateOf("All") }
     var nearestFirst by rememberSaveable { mutableStateOf(false) }
+    // Prototype range defaults to the local 3 km feed; range filtering is only
+    // applied when real coordinates or a real profile neighborhood are available.
+    var feedRadiusKm by rememberSaveable { mutableStateOf(3) }
     var searchResults by remember { mutableStateOf<List<ListingDto>?>(null) }
     LaunchedEffect(searchQuery) {
         if (searchQuery.isBlank()) {
@@ -502,7 +505,17 @@ fun MarketplaceContent(
                 "Mine" -> listing.sellerId == currentUserId
                 else -> true
             }
-            scopeMatches && (categoryFilter == null || listing.category.equals(categoryFilter, ignoreCase = true))
+            val radiusMatches = when {
+                feedRadiusKm == 0 && !neighborhoodName.isNullOrBlank() ->
+                    listing.neighborhood.equals(neighborhoodName, ignoreCase = true)
+                feedRadiusKm > 0 && browseLocation != null -> {
+                    val lat = listing.latitude
+                    val lng = listing.longitude
+                    lat != null && lng != null && haversineKm(browseLocation.first, browseLocation.second, lat, lng) <= feedRadiusKm
+                }
+                else -> true
+            }
+            scopeMatches && radiusMatches && (categoryFilter == null || listing.category.equals(categoryFilter, ignoreCase = true))
         }
         if (nearestFirst && browseLocation != null) {
             filtered.sortedBy { listing ->
@@ -609,6 +622,10 @@ fun MarketplaceContent(
                     onFeedScopeSelected = { feedScope = it },
                     nearestFirst = nearestFirst && browseLocation != null,
                     nearestAvailable = browseLocation != null,
+                    radiusKm = feedRadiusKm,
+                    canSelectMyArea = !neighborhoodName.isNullOrBlank(),
+                    canSelectRadius = browseLocation != null,
+                    onRadiusSelected = { feedRadiusKm = it },
                     onSortSelected = { nearestFirst = it },
                 )
             }
