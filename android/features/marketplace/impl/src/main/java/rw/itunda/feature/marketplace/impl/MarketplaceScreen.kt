@@ -850,10 +850,10 @@ fun ListingRow(
     var displayedLikeCount by remember(listing.id, listing.likeCount) { mutableStateOf(listing.likeCount) }
     Column(modifier = Modifier.fillMaxWidth()) {
             Row(
-                modifier = Modifier.fillMaxWidth().pressScaleClickable(isScrollTouched = isScrollTouched, onClick = onOpen).padding(vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth().pressScaleClickable(isScrollTouched = isScrollTouched, onClick = onOpen).padding(vertical = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                Box(modifier = Modifier.size(84.dp).clip(RoundedCornerShape(14.dp))) {
+                Box(modifier = Modifier.size(96.dp).clip(RoundedCornerShape(16.dp))) {
                     if (listing.photoUrl != null) {
                         // SubcomposeAsyncImage, not AsyncImage (2026-07-24): plain AsyncImage
                         // renders nothing at all while loading or on a failed fetch -- a
@@ -904,7 +904,7 @@ fun ListingRow(
                         Text(
                             listing.title,
                             color = Ids.colors.textPrimary,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             fontSize = 16.sp,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
