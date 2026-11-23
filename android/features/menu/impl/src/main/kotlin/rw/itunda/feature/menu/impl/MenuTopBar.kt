@@ -57,9 +57,8 @@ internal fun AllTopBar(
     ) {
         IdsAppBarTitle(area = "mini apps", brandWord = false, onClick = onOpenMiniApps)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.HelpOutline, "Support", Modifier.size(28.dp).pressScaleClickable(onClick = onOpenHelp), tint = Color(0xFF7C8594))
-            Spacer(Modifier.width(16.dp))
-            Icon(Icons.Outlined.Settings, "Settings", Modifier.size(28.dp).pressScaleClickable(onClick = onOpenSettings), tint = Color(0xFF7C8594))
+            Box(Modifier.size(48.dp).pressScaleClickable(onClick = onOpenHelp), contentAlignment = Alignment.Center) { Icon(Icons.Outlined.HelpOutline, "Support", Modifier.size(24.dp), tint = Color(0xFF7C8594)) }
+            Box(Modifier.size(48.dp).pressScaleClickable(onClick = onOpenSettings), contentAlignment = Alignment.Center) { Icon(Icons.Outlined.Settings, "Settings", Modifier.size(24.dp), tint = Color(0xFF7C8594)) }
         }
     }
 }

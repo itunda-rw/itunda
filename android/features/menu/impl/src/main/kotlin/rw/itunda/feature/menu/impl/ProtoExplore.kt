@@ -76,14 +76,14 @@ fun ProtoExploreContent(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            Box(Modifier.padding(top = 24.dp)) {
+            Box(Modifier.fillMaxWidth().height(78.dp).padding(top = 22.dp, start = 9.dp, end = 3.dp)) {
                 AllTopBar(onOpenAuthentication = { onOpen("verify") }, onOpenHelp = onHelp, onOpenSettings = onSettings, onOpenMiniApps = { onOpen("apps") })
             }
         }
         item { MenuSearchBar(query = query, onQueryChange = onQuery, placeholder = "Search") }
         if (q.isEmpty()) {
             item { QuickTiles(onOpen) }
-            item { ExploreOffersCarousel() }
+            item { Box(Modifier.padding(bottom = 8.dp)) { ExploreOffersCarousel() } }
         }
         items(sections) { section -> SectionCard(section, onOpen) }
     }
@@ -92,16 +92,16 @@ fun ProtoExploreContent(
 @Composable
 private fun QuickTiles(onOpen: (String) -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Ids.colors.surface).padding(horizontal = 8.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Ids.colors.surface).padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 14.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         quickTiles.forEach { (key, art, label) ->
-            Column(Modifier.width(80.dp).pressScaleClickable { onOpen(key) }, horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(Modifier.size(48.dp).clip(RoundedCornerShape(18.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
+            Column(Modifier.width(84.5.dp).pressScaleClickable { onOpen(key) }, horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.padding(top = 4.dp).size(48.dp).clip(RoundedCornerShape(18.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
                     ExploreArt(art, 30.dp)
                 }
-                Spacer(Modifier.height(8.dp))
-                Text(label, color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                Spacer(Modifier.height(12.dp))
+                Text(label, color = Ids.colors.textPrimary, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -109,22 +109,22 @@ private fun QuickTiles(onOpen: (String) -> Unit) {
 
 @Composable
 private fun SectionCard(section: ExploreSection, onOpen: (String) -> Unit) {
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Ids.colors.surface).padding(vertical = 12.dp)) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Ids.colors.surface).padding(top = 20.dp, bottom = 6.dp)) {
         Text(
-            section.title, color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold,
-            modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 8.dp),
+            section.title, color = Ids.colors.textPrimary, fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp,
+            modifier = Modifier.padding(start = 20.dp).height(36.dp),
         )
         section.rows.forEach { row ->
             Row(
-                Modifier.fillMaxWidth().height(64.dp).pressScaleClickable { onOpen(row.key) }.padding(horizontal = 24.dp),
+                Modifier.fillMaxWidth().height(64.dp).pressScaleClickable { onOpen(row.key) }.padding(horizontal = 32.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(Modifier.size(40.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
                     ExploreArt(row.art, 28.dp)
                 }
-                Spacer(Modifier.width(16.dp))
+                Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(row.title, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                    Text(row.title, color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 24.sp, letterSpacing = (-0.3).sp, fontWeight = FontWeight.Bold)
                     if (row.subtitle.isNotEmpty()) Text(row.subtitle, color = Ids.colors.textTertiary, fontSize = 14.sp)
                 }
                 Icon(IdsIcons.ChevronRight, null, Modifier.size(20.dp), tint = Ids.colors.textTertiary.copy(alpha = 0.7f))

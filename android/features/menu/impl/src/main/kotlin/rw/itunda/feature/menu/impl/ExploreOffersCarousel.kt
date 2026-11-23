@@ -61,14 +61,14 @@ internal fun ExploreOffersCarousel(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(132.dp)
-                .clip(RoundedCornerShape(28.dp))
-                .background(Color(0xFF5B54D6))
+                .clip(RoundedCornerShape(24.dp))
+                .background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(Color(0xFF655BF6), Color(0xFF8C86FF))))
                 .pressScaleClickable { onClick(offer) }
-                .padding(start = 22.dp, end = 22.dp, top = 22.dp, bottom = 16.dp),
+                .padding(start = 22.dp, end = 22.dp, top = 27.9.dp, bottom = 12.dp),
         ) {
-            Column(Modifier.align(Alignment.CenterStart)) {
-                Text(offer.title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 26.sp)
-                Text(offer.subtitle, color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp, bottom = 14.dp))
+            Column(Modifier.align(Alignment.TopStart)) {
+                Text(offer.title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 26.sp, letterSpacing = (-0.3).sp)
+                Text(offer.subtitle, color = Color.White, fontSize = 13.sp, lineHeight = 18.2.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 5.9.dp))
             }
             Box(Modifier.align(Alignment.CenterEnd)) { ExploreArt(offer.art, 100.dp) }
             Row(Modifier.align(Alignment.BottomStart), verticalAlignment = Alignment.CenterVertically) {
