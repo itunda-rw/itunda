@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.theme.IdsIcons
@@ -71,7 +72,7 @@ fun ProtoExploreContent(
         ExploreSection("Results", exploreSections.flatMap { it.rows }.filter { it.title.contains(q, true) || it.subtitle.contains(q, true) }),
     )
     LazyColumn(
-        Modifier.fillMaxSize().background(Ids.colors.surfaceSoft),
+        Modifier.fillMaxSize().background(if (Ids.colors.background.luminance() < 0.5f) androidx.compose.ui.graphics.Color(0xFF101013) else Ids.colors.surfaceSoft),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 15.dp, end = 15.dp, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {

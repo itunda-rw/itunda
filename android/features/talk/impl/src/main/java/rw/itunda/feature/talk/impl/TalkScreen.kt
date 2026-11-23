@@ -33,6 +33,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -319,7 +321,7 @@ fun TalkTab(
     // the full account): this bottom padding was stacking with the Scaffold's already
     // -correct bottomBar inset. Top kept, bottom now comes from Scaffold alone.
     Column(modifier = Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().height(74.dp).background(Ids.colors.surfaceSoft).padding(start = 24.dp, end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().height(74.dp).background(if (Ids.colors.background.luminance() < 0.5f) Color(0xFF101013) else Ids.colors.surfaceSoft).padding(start = 24.dp, end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("Messages", color = Ids.colors.textPrimary, fontSize = 24.sp, lineHeight = 33.6.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp, modifier = Modifier.weight(1f))
             Box(Modifier.size(48.dp).pressScaleClickable { view = TalkView.FRIENDS }, contentAlignment = Alignment.Center) {
                 Icon(Icons.Outlined.Edit, "New message", Modifier.size(24.dp), tint = Ids.colors.textPrimary)
