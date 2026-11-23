@@ -33,6 +33,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.ShoppingBag
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -474,6 +476,7 @@ fun MarketplaceContent(
     // stays null (not emptyList) while blank so it never shadows the real view-based
     // feed above.
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    var searchExpanded by rememberSaveable { mutableStateOf(false) }
     var selectedMarketplaceSort by rememberSaveable { mutableStateOf("Newest") }
     var showBrowseFilters by remember { mutableStateOf(false) }
     var selectedMaxPrice by rememberSaveable { mutableStateOf(0) }
@@ -640,12 +643,37 @@ fun MarketplaceContent(
         // now has exactly one chip row (HoodTab's Market/Life/Jobs/Home), matching
         // real Karrot.
         item {
-            IdsTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                label = "Search",
-                placeholder = "Search marketplace listings",
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (searchExpanded) {
+                    IdsTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        label = "Search",
+                        placeholder = "Search marketplace listings",
+                        modifier = Modifier.weight(1f),
+                    )
+                    Icon(
+                        imageVector = Icons.Outlined.Close,
+                        contentDescription = "Close search",
+                        tint = Ids.colors.textSecondary,
+                        modifier = Modifier.padding(12.dp).pressScaleClickable {
+                            searchQuery = ""
+                            searchExpanded = false
+                        },
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Outlined.Search,
+                        contentDescription = "Search marketplace",
+                        tint = Ids.colors.textPrimary,
+                        modifier = Modifier.padding(12.dp).pressScaleClickable { searchExpanded = true },
+                    )
+                }
+            }
         }
         if (view == HoodView.BROWSE || view == HoodView.NEARBY || view == HoodView.NEIGHBORHOOD) {
             item {
