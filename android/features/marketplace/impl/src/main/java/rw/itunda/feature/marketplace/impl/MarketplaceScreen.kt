@@ -497,32 +497,33 @@ fun MarketplaceContent(
     }
     val isSearching = searchQuery.isNotBlank()
     val displayListings = if (isSearching) searchResults else listings
+    val supportsFeedFilters = view in setOf(HoodView.BROWSE, HoodView.NEARBY, HoodView.NEIGHBORHOOD, HoodView.MINE)
     val effectiveFeedRadiusKm = when {
         browseLocation != null -> feedRadiusKm
         !neighborhoodName.isNullOrBlank() -> 0
         else -> -1
     }
-    val visibleListings = remember(displayListings, feedScope, categoryFilter, favoriteIds, currentUserId, nearestFirst, browseLocation, effectiveFeedRadiusKm, neighborhoodName) {
+    val visibleListings = remember(displayListings, feedScope, categoryFilter, favoriteIds, currentUserId, nearestFirst, browseLocation, effectiveFeedRadiusKm, neighborhoodName, supportsFeedFilters) {
         val filtered = (displayListings ?: emptyList()).filter { listing ->
-            val scopeMatches = when (feedScope) {
+            val scopeMatches = !supportsFeedFilters || when (feedScope) {
                 "Free" -> listing.price <= 0.0
                 "Saved" -> listing.id in favoriteIds
                 "Mine" -> listing.sellerId == currentUserId
                 else -> true
             }
-            val radiusMatches = when {
+            val radiusMatches = !supportsFeedFilters || when {
                 effectiveFeedRadiusKm == 0 && !neighborhoodName.isNullOrBlank() ->
-                    listing.neighborhood.equals(neighborhoodName, ignoreCase = true)
+                    listing.neighborhood?.equals(neighborhoodName, ignoreCase = true) == true
                 effectiveFeedRadiusKm > 0 && browseLocation != null -> {
                     val lat = listing.latitude
                     val lng = listing.longitude
-                    lat != null && lng != null && haversineKm(browseLocation.first, browseLocation.second, lat, lng) <= effectiveFeedRadiusKm
+                    lat != null && lng != null && haversineKm(browseLocation.first, browseLocation.second, lat, lng) <= effectiveFeedRadiusKm.toDouble()
                 }
                 else -> true
             }
-            scopeMatches && radiusMatches && (categoryFilter == null || listing.category.equals(categoryFilter, ignoreCase = true))
+            scopeMatches && radiusMatches && (!supportsFeedFilters || categoryFilter == null || listing.category.equals(categoryFilter, ignoreCase = true))
         }
-        if (nearestFirst && browseLocation != null) {
+        if (supportsFeedFilters && nearestFirst && browseLocation != null) {
             filtered.sortedBy { listing ->
                 val lat = listing.latitude
                 val lng = listing.longitude
