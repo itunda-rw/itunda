@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -39,7 +40,7 @@ private val protoItems = listOf(
 
 @Composable
 fun ShopProtoHome(onOrders: () -> Unit = {}, onWishlist: () -> Unit = {}) {
-    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             ItundaArt("back", ItundaArtSet.Line, 24.dp, tint = Ids.colors.textPrimary)
             Row(
@@ -64,38 +65,39 @@ fun ShopProtoHome(onOrders: () -> Unit = {}, onWishlist: () -> Unit = {}) {
                 }
             }
         }
-        Box(Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(28.dp)).background(Color(0xFFFCE4EC))) {
-            Column(Modifier.padding(24.dp)) {
-                Text("500 first-come", color = Ids.colors.danger, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        Box(Modifier.fillMaxWidth().height(300.dp).clip(RoundedCornerShape(28.dp)).background(Color(0xFFFDECEF))) {
+            Column(Modifier.padding(start = 24.dp, top = 26.dp, end = 24.dp)) {
+                Text("500 first-come", color = Ids.colors.danger, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(6.dp))
-                Text("Wireless\nearphones", color = Color(0xFF191F28), fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
-                Text("18,500 RWF", color = Color(0xFF191F28), fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+                Text("Wireless earphones", color = Color(0xFF191F28), fontSize = 24.sp, lineHeight = 32.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(170.dp))
+                Spacer(Modifier.height(4.dp))
+                Text("18,500 RWF", color = Color(0xFF191F28), fontSize = 24.sp, lineHeight = 33.6.sp, letterSpacing = (-0.5).sp, fontWeight = FontWeight.Bold)
             }
             ItundaArt("celebrate", ItundaArtSet.Color, 120.dp, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 24.dp))
-            Text("Max 1 per day", color = Color(0xFF6B7684), fontSize = 14.sp, modifier = Modifier.align(Alignment.BottomStart).padding(24.dp))
+            Text("Max 1 per day", color = Color(0xFF6B7684), fontSize = 13.sp, lineHeight = 18.2.sp, modifier = Modifier.align(Alignment.BottomStart).padding(start = 24.dp, bottom = 29.dp))
             Box(
                 Modifier.align(Alignment.BottomEnd).padding(16.dp).clip(RoundedCornerShape(14.dp)).background(Color.Black.copy(alpha = 0.5f))
                     .padding(horizontal = 12.dp, vertical = 5.dp),
             ) { Text("1|4", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold) }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Row(Modifier.fillMaxWidth().offset(x = (-12).dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             listOf("Daily draw" to "celebrate", "Deals" to "money", "My orders" to "bag", "Rewards" to "gift", "Wishlist" to "heart").forEach { (label, art) ->
                 val go = when (label) { "My orders" -> onOrders; "Wishlist" -> onWishlist; else -> ({}) }
-                Column(Modifier.width(66.dp).pressScaleClickable(enabled = label == "My orders" || label == "Wishlist", onClick = go), horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(Modifier.width(70.dp).pressScaleClickable(enabled = label == "My orders" || label == "Wishlist", onClick = go), horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(Modifier.size(60.dp).clip(RoundedCornerShape(20.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
                         ItundaArt(art, ItundaArtSet.Color, 32.dp)
                     }
-                    Spacer(Modifier.height(6.dp))
-                    Text(label, fontSize = 12.sp, color = Ids.colors.textTertiary, maxLines = 1)
+                    Spacer(Modifier.height(8.dp))
+                    Text(label, fontSize = 12.sp, lineHeight = 16.8.sp, letterSpacing = (-0.3).sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF6B7684), maxLines = 1)
                 }
             }
         }
-        Text("Recommended for you", color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+        Text("Recommended for you", color = Ids.colors.textPrimary, fontSize = 20.sp, lineHeight = 28.sp, letterSpacing = (-0.4).sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             protoItems.forEach { item ->
                 Column(Modifier.weight(1f)) {
-                    Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(20.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
-                        ItundaArt(item.art, ItundaArtSet.Color, 64.dp)
+                    Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(16.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
+                        ItundaArt(item.art, ItundaArtSet.Color, 53.dp)
                     }
                     Spacer(Modifier.height(8.dp))
                     Text(item.name, color = Ids.colors.textPrimary, fontSize = 15.sp, maxLines = 1)
