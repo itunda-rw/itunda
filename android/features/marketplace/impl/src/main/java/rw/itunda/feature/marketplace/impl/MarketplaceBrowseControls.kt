@@ -27,13 +27,12 @@ import rw.itunda.core.designsystem.theme.Ids
 internal fun MarketplaceBrowseControls(
     selectedCategory: String,
     onCategorySelected: (String) -> Unit,
-    nearestFirst: Boolean,
-    nearestAvailable: Boolean,
+    sortLabel: String,
     filterCount: Int,
     onFilterClick: () -> Unit,
-    onSortSelected: (Boolean) -> Unit,
+    onSortClick: () -> Unit,
 ) {
-    val categories = listOf("All", "Electronics", "Phones", "Home", "Fashion", "Kids", "Sports", "Free", "Saved", "Mine")
+    val categories = listOf("All", "Electronics", "Phones", "Home", "Fashion", "Kids", "Sports", "Free", "Saved", "Bought", "Mine")
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -60,8 +59,7 @@ internal fun MarketplaceBrowseControls(
             }
         }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-            BrowseSortAction("Latest", selected = !nearestFirst) { onSortSelected(false) }
-            BrowseSortAction("Nearest", selected = nearestFirst, enabled = nearestAvailable) { onSortSelected(true) }
+            BrowseSortAction("↕ $sortLabel", selected = true, onClick = onSortClick)
             BrowseSortAction(if (filterCount > 0) "Filter · $filterCount" else "Filter", selected = filterCount > 0, onClick = onFilterClick)
         }
     }
