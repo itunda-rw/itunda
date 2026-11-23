@@ -733,7 +733,7 @@ fun MarketplaceContent(
             if (displayListings == null) {
                 item { SkeletonBlock() }
             } else if (visibleListings.isNullOrEmpty()) {
-                item { EmptyState("No listings match \"$searchQuery\".", icon = Icons.Outlined.ShoppingBag) }
+                item { EmptyState("No matches. Try fewer filters.", icon = Icons.Outlined.ShoppingBag) }
             } else {
                 items(visibleListings, key = { it.id }) { listing ->
                     ListingRow(
@@ -803,8 +803,12 @@ fun MarketplaceContent(
                     // what fixes it, per this screen's own real, visible affordance
                     // ("+ List an item" above, in the MINE view) rather than a bare
                     // absence report.
-                    when (view) {
-                        HoodView.BROWSE -> "No listings yet — be the first to list something for sale."
+                    when {
+                        view == HoodView.BROWSE && selectedBrowseCategory == "Saved" -> "Tap the heart on a listing to save it here."
+                        view == HoodView.BROWSE && selectedBrowseCategory == "Bought" -> "Things you buy with itunda show up here."
+                        view == HoodView.BROWSE && selectedBrowseCategory == "Mine" -> "You have not listed anything yet."
+                        else -> when (view) {
+                        HoodView.BROWSE -> "No matches. Try fewer filters."
                         HoodView.NEARBY -> "No listings near you yet — try Browse to see listings from everywhere."
                         HoodView.NEIGHBORHOOD -> "No listings in your neighborhood yet — try Browse to see listings from everywhere."
                         HoodView.MINE -> "You haven't listed anything yet — tap \"+ List an item\" above to list your first one."
@@ -812,6 +816,7 @@ fun MarketplaceContent(
                         HoodView.WISHLIST -> "No saved listings yet — tap ♡ on any listing to save it here."
                         HoodView.ALERTS -> "" // unreachable -- ALERTS is intercepted earlier
                         HoodView.HIDDEN -> "" // unreachable -- HIDDEN is intercepted earlier
+                        }
                     },
                     icon = Icons.Outlined.ShoppingBag,
                     // Real fix (2026-08-15): the copy above told the user to "try
