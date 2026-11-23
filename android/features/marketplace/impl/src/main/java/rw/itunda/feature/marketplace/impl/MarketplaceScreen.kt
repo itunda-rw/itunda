@@ -497,7 +497,12 @@ fun MarketplaceContent(
     }
     val isSearching = searchQuery.isNotBlank()
     val displayListings = if (isSearching) searchResults else listings
-    val visibleListings = remember(displayListings, feedScope, categoryFilter, favoriteIds, currentUserId, nearestFirst, browseLocation, feedRadiusKm, neighborhoodName) {
+    val effectiveFeedRadiusKm = when {
+        browseLocation != null -> feedRadiusKm
+        !neighborhoodName.isNullOrBlank() -> 0
+        else -> -1
+    }
+    val visibleListings = remember(displayListings, feedScope, categoryFilter, favoriteIds, currentUserId, nearestFirst, browseLocation, effectiveFeedRadiusKm, neighborhoodName) {
         val filtered = (displayListings ?: emptyList()).filter { listing ->
             val scopeMatches = when (feedScope) {
                 "Free" -> listing.price <= 0.0
@@ -506,12 +511,12 @@ fun MarketplaceContent(
                 else -> true
             }
             val radiusMatches = when {
-                feedRadiusKm == 0 && !neighborhoodName.isNullOrBlank() ->
+                effectiveFeedRadiusKm == 0 && !neighborhoodName.isNullOrBlank() ->
                     listing.neighborhood.equals(neighborhoodName, ignoreCase = true)
-                feedRadiusKm > 0 && browseLocation != null -> {
+                effectiveFeedRadiusKm > 0 && browseLocation != null -> {
                     val lat = listing.latitude
                     val lng = listing.longitude
-                    lat != null && lng != null && haversineKm(browseLocation.first, browseLocation.second, lat, lng) <= feedRadiusKm
+                    lat != null && lng != null && haversineKm(browseLocation.first, browseLocation.second, lat, lng) <= effectiveFeedRadiusKm
                 }
                 else -> true
             }
@@ -622,7 +627,7 @@ fun MarketplaceContent(
                     onFeedScopeSelected = { feedScope = it },
                     nearestFirst = nearestFirst && browseLocation != null,
                     nearestAvailable = browseLocation != null,
-                    radiusKm = feedRadiusKm,
+                    radiusKm = effectiveFeedRadiusKm,
                     canSelectMyArea = !neighborhoodName.isNullOrBlank(),
                     canSelectRadius = browseLocation != null,
                     onRadiusSelected = { feedRadiusKm = it },
