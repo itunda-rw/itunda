@@ -40,7 +40,7 @@ private val protoItems = listOf(
 
 @Composable
 fun ShopProtoHome(onOrders: () -> Unit = {}, onWishlist: () -> Unit = {}) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(Modifier.padding(top = 5.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             ItundaArt("back", ItundaArtSet.Line, 24.dp, tint = Ids.colors.textPrimary)
             Row(
@@ -54,7 +54,7 @@ fun ShopProtoHome(onOrders: () -> Unit = {}, onWishlist: () -> Unit = {}) {
             ItundaArt("user", ItundaArtSet.Line, 24.dp, tint = Ids.colors.textPrimary)
             ItundaArt("bag", ItundaArtSet.Line, 24.dp, tint = Ids.colors.textPrimary)
         }
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.padding(top = 4.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("Home", "Beauty", "Fresh", "Categories").forEachIndexed { i, label ->
                 Box(
                     Modifier.height(44.dp).clip(RoundedCornerShape(14.dp))
@@ -74,7 +74,7 @@ fun ShopProtoHome(onOrders: () -> Unit = {}, onWishlist: () -> Unit = {}) {
                 Text("18,500 RWF", color = Color(0xFF191F28), fontSize = 24.sp, lineHeight = 33.6.sp, letterSpacing = (-0.5).sp, fontWeight = FontWeight.Bold)
             }
             ItundaArt("celebrate", ItundaArtSet.Color, 120.dp, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 24.dp))
-            Text("Max 1 per day", color = Color(0xFF6B7684), fontSize = 13.sp, lineHeight = 18.2.sp, modifier = Modifier.align(Alignment.BottomStart).padding(start = 24.dp, bottom = 29.dp))
+            Text("Max 1 per day", color = Color(0xFF6B7684), fontSize = 13.sp, lineHeight = 18.2.sp, modifier = Modifier.align(Alignment.BottomStart).padding(start = 24.dp, bottom = 81.dp))
             Box(
                 Modifier.align(Alignment.BottomEnd).padding(16.dp).clip(RoundedCornerShape(14.dp)).background(Color.Black.copy(alpha = 0.5f))
                     .padding(horizontal = 12.dp, vertical = 5.dp),
