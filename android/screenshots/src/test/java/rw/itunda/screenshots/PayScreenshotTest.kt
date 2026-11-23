@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.assertDoesNotExist
+import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.hasRole
 import androidx.compose.ui.test.hasStateDescription
 import androidx.compose.ui.test.isSelected
@@ -161,6 +162,12 @@ class PayScreenshotTest {
     }
     @Test fun points() = shot("points") { PayPointsScreen({}) }
     @Test fun pointsDark() = shotDark("points") { PayPointsScreen({}) }
+    @Test fun pointsBalancesExposeReadableCombinedLabels() {
+        rule.setContent { IdsTheme(darkTheme = false) { PayPointsScreen({}) } }
+        rule.onNodeWithContentDescription("MTN MoMo Rewards: 78 points").assertExists()
+        rule.onNodeWithContentDescription("Kigali Bus Points: 28 points").assertExists()
+        rule.onNodeWithContentDescription("Pay Money: 120,500 points").assertExists()
+    }
     @Test fun paySettingsSwitchExposesAndChangesState() {
         rule.setContent { IdsTheme(darkTheme = false) { PaySettingsScreen({}) } }
         rule.onNode(hasRole(Role.Switch)).assert(hasStateDescription("On"))
