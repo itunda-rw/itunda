@@ -52,10 +52,8 @@ fun CreditScoreScreen(onBack: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(20.dp)) {
-            BackTopBar(title = "Credit score", onBack = onBack)
-        }
-        LazyColumn(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+        BackTopBar(title = "Credit score", onBack = onBack)
+        LazyColumn(Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
             error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
             val current = score
             if (current == null) {
