@@ -5,7 +5,6 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onAllNodesWithContentDescription
-import androidx.compose.ui.test.onAllNodes
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -185,9 +184,9 @@ class PayScreenshotTest {
     }
     @Test fun paySettingsSwitchExposesAndChangesState() {
         rule.setContent { IdsTheme(darkTheme = false) { PaySettingsScreen({}) } }
-        rule.onAllNodes(hasRole(Role.Switch)).onFirst().assert(hasStateDescription("On"))
-        rule.onAllNodes(hasRole(Role.Switch)).onFirst().performClick()
-        rule.onAllNodes(hasRole(Role.Switch)).onFirst().assert(hasStateDescription("Off"))
+        rule.onNodeWithContentDescription("Tap to pay").assert(hasRole(Role.Switch)).assert(hasStateDescription("On"))
+        rule.onNodeWithContentDescription("Tap to pay").performClick()
+        rule.onNodeWithContentDescription("Tap to pay").assert(hasStateDescription("Off"))
     }
     @Test fun paySettingsFundingSourceExposesSelectedTab() {
         rule.setContent { IdsTheme(darkTheme = false) { PaySettingsScreen({}) } }
