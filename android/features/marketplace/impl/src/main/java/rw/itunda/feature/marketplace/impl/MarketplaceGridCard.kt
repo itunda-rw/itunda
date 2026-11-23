@@ -50,12 +50,13 @@ internal fun MarketplaceGridCard(
     onToggleFavorite: () -> Unit,
     viewerLocation: Pair<Double, Double>?,
     onOpen: () -> Unit,
+    isScrollTouched: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .pressScaleClickable(onClick = onOpen),
+            .pressScaleClickable(isScrollTouched = isScrollTouched, onClick = onOpen),
     ) {
         Box(
             modifier = Modifier
