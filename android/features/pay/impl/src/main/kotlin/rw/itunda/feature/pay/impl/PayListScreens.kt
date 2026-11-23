@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,6 +29,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -56,7 +58,7 @@ fun PayHistoryScreen(onBack: () -> Unit, onOpen: (Int) -> Unit = {}) {
             Text("Spent this month", color = p.tt, fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
             Text("28,700 RWF", color = p.text, fontSize = 34.sp, lineHeight = 47.6.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.8).sp, modifier = Modifier.padding(top = 2.dp))
             BasicTextField(
-                value = query, onValueChange = { query = it }, singleLine = true,
+                value = query, onValueChange = { query = it }, singleLine = true, keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 textStyle = TextStyle(color = p.text, fontSize = 16.sp, lineHeight = 22.4.sp), cursorBrush = SolidColor(p.brandText),
                 modifier = Modifier.padding(top = 4.dp).fillMaxWidth().height(44.dp).clip(RoundedCornerShape(14.dp)).background(p.soft),
                 decorationBox = { inner ->
@@ -70,6 +72,7 @@ fun PayHistoryScreen(onBack: () -> Unit, onOpen: (Int) -> Unit = {}) {
                             if (query.isEmpty()) Text("Search merchant, note or reference", color = p.tt, fontSize = 16.sp, lineHeight = 22.4.sp)
                             inner()
                         }
+                        if (query.isNotEmpty()) Text("×", color = p.tt, fontSize = 22.sp, modifier = Modifier.padding(start = 8.dp).pressScaleClickable { query = "" })
                     }
                 },
             )
