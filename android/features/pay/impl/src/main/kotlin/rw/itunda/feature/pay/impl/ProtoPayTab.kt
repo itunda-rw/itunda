@@ -32,6 +32,7 @@ fun ProtoPayTab(
     onSettings: () -> Unit,
     onChangeFunding: () -> Unit,
     onReceive: () -> Unit,
+    onSupport: () -> Unit,
     scanContent: @Composable (Boolean, ((() -> Unit) -> Unit), (Boolean) -> Unit) -> Unit,
 ) {
     var showHub by remember { mutableStateOf(false) }
@@ -132,7 +133,7 @@ fun ProtoPayTab(
         PayHub(
             onBack = { showHub = false }, onFindStores = onFindStores,
             onOpenPoints = { sub = PaySub.POINTS }, onOpenHistory = { sub = PaySub.HISTORY }, onOpenSettings = { sub = PaySub.SETTINGS },
-            onOpenCoupons = { sub = PaySub.COUPONS },
+            onOpenCoupons = { sub = PaySub.COUPONS }, onOpenSupport = onSupport,
         )
         return
     }
