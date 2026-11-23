@@ -1,6 +1,7 @@
 package rw.itunda.feature.pay.impl
 
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -27,6 +28,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -63,7 +66,7 @@ fun PayReceiptScreen(index: Int, onBack: () -> Unit, onPayAgain: (merchant: Stri
                 Kv("Merchant", "Till ${r.till}", p, first = true)
                 Kv("Date", r.date, p)
                 Kv("Paid from", "itunda Pay", p)
-                Kv("Reference", r.ref, p, copy = true) { clipboard.setText(AnnotatedString(r.ref)) }
+                Kv("Reference", r.ref, p, copy = true, onClick = {\n                    clipboard.setText(AnnotatedString(r.ref))\n                    Toast.makeText(ctx, "Reference copied", Toast.LENGTH_SHORT).show()\n                })
             }
             Box(
                 Modifier.padding(start = 24.dp, end = 24.dp, top = 18.dp).fillMaxWidth(0.488f).height(44.dp).clip(RoundedCornerShape(20.dp)).background(p.soft)
