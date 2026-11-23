@@ -506,12 +506,13 @@ fun MarketplaceContent(
             val areaFiltered = selectedNeighborhood?.let { area ->
                 priceFiltered.filter { it.neighborhood.equals(area, ignoreCase = true) }
             } ?: priceFiltered
-            if (nearestFirst && browseLocation != null) {
+            val locationForSort = browseLocation
+            if (nearestFirst && locationForSort != null) {
                 areaFiltered.sortedBy { listing ->
                     val lat = listing.latitude
                     val lng = listing.longitude
                     if (lat == null || lng == null) Double.MAX_VALUE
-                    else haversineKm(browseLocation.first, browseLocation.second, lat, lng)
+                    else haversineKm(locationForSort.first, locationForSort.second, lat, lng)
                 }
             } else areaFiltered
         }
