@@ -152,6 +152,13 @@ class PayScreenshotTest {
         rule.onNodeWithText("Simba Supermarket").assertExists()
         rule.onNodeWithText("Kigali Bakery").assertExists()
     }
+    @Test fun historyReceiptRowsExposeAccessibleActions() {
+        val opened = mutableStateOf(-1)
+        rule.setContent { IdsTheme(darkTheme = false) { PayHistoryScreen({}, { opened.value = it }) } }
+        rule.onNodeWithContentDescription("Payment to Kigali Bakery, 3,500 RWF, 16 Nov 2026 · 09:12 AM")
+            .assert(hasRole(Role.Button)).performClick()
+        rule.runOnIdle { assertTrue(opened.value == 0) }
+    }
     @Test fun saved() = shot("saved") { PaySavedMerchantsScreen({}) }
     @Test fun savedDark() = shotDark("saved") { PaySavedMerchantsScreen({}) }
     @Test fun savedMerchantToggleExposesState() {
