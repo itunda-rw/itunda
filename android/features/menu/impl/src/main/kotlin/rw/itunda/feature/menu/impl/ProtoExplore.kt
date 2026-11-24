@@ -93,7 +93,7 @@ fun ProtoExploreContent(
 @Composable
 private fun QuickTiles(onOpen: (String) -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Ids.colors.surface).padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 14.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Ids.colors.surface).padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 19.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         quickTiles.forEach { (key, art, label) ->
@@ -101,7 +101,7 @@ private fun QuickTiles(onOpen: (String) -> Unit) {
                 Box(Modifier.padding(top = 4.dp).size(48.dp).clip(RoundedCornerShape(18.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
                     ExploreArt(art, 30.dp)
                 }
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(7.dp))
                 Text(label, color = Ids.colors.textPrimary, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold)
             }
         }

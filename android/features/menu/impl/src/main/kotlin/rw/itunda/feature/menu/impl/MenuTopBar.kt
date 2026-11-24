@@ -73,7 +73,8 @@ internal fun MenuSearchBar(query: String, onQueryChange: (String) -> Unit, place
             .fillMaxWidth()
             .clip(RoundedCornerShape(22.dp))
             .background(Ids.colors.surface)
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .height(44.dp)
+            .padding(horizontal = 16.dp)
     ) {
         Icon(IdsIcons.Search, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(22.dp))
         Spacer(modifier = Modifier.width(12.dp))
