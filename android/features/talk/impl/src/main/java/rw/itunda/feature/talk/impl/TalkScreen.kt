@@ -337,6 +337,7 @@ fun TalkTab(
             { (v, f) -> view = v; directFilter = f },
             hasDot = { (_, f) -> f.source != null && conversations.orEmpty().any { c -> c.source == f.source && c.unreadCount > 0 } },
         )
+        if (view == TalkView.DIRECT) Spacer(Modifier.height(5.dp))
         if (view == TalkView.FRIENDS) {
             FriendsView(
                 onStarted = { conversationId ->
