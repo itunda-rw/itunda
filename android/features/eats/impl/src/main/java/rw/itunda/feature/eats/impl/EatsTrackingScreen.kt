@@ -53,7 +53,7 @@ fun EatsTrackingScreen(
     restaurant: ShoppingMerchantDto?,
     onBack: () -> Unit,
     onDone: () -> Unit,
-    onReportIssue: (String) -> Unit = {},
+    onReportIssue: (String, String?) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     initialItems: List<EatsOrderItemDto>? = null,
     initialScrollOffset: Int = 0,
@@ -131,7 +131,7 @@ fun EatsTrackingScreen(
             onMessage = { panel = EatsTrackingPanel.RIDER },
             onCancel = { panel = EatsTrackingPanel.CANCEL },
             onRate = { panel = EatsTrackingPanel.RATING },
-            onHelp = { onReportIssue(currentOrder.transactionId) },
+            onHelp = { onReportIssue(currentOrder.transactionId, null) },
             onDone = onDone,
             modifier = modifier,
         )

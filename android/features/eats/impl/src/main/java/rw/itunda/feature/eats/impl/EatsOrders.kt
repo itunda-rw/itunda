@@ -1,17 +1,20 @@
 package rw.itunda.feature.eats.impl
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import java.util.Locale
-import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.weight
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,6 +24,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -30,140 +34,42 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
-import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
-import rw.itunda.core.designsystem.components.ListingActionButton
-import rw.itunda.core.designsystem.components.LiveRiderMiniMap
-import rw.itunda.core.designsystem.components.RouteMiniMap
 import rw.itunda.core.designsystem.components.SkeletonBlock
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.DineInOrderDto
 import rw.itunda.core.network.EatsOrderDto
+import rw.itunda.core.network.EatsOrderItemDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.ShoppingMerchantDto
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
-
-
-
-
-@Composable
-internal fun EatsOrderRow(
-    order: EatsOrderDto,
-    restaurant: ShoppingMerchantDto? = null,
-    action: (@Composable () -> Unit)? = null,
-) {
-    var showRoute by remember { mutableStateOf(false) }
-    var showLiveTracking by remember { mutableStateOf(false) }
-    val restaurantLat = restaurant?.latitude
-    val restaurantLng = restaurant?.longitude
-    val deliveryLat = order.deliveryLatitude
-    val deliveryLng = order.deliveryLongitude
-    // Pickup orders intentionally have no delivery address or destination pin.
-    val isPickupOrder = order.deliveryAddress.isBlank()
-    val canShowRoute = restaurantLat != null && restaurantLng != null && deliveryLat != null && deliveryLng != null
-    // Real live rider-location tracking (item 182) -- only while a rider is actually
-    // en route, same gating as bank-mfe's own canShowLiveTracking.
-    val canShowLiveTracking = canShowRoute && (order.status == "RIDER_ASSIGNED" || order.status == "PICKED_UP")
-    // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- a real
-    // order-history row, kept the per-row Divider convention (matching
-    // ShopOrders.kt's identical CommerceOrderRow fix, docs/DESIGN_REFERENCES.md
-    // §274).
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(restaurant?.businessName ?: "Eats order", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    Text(EATS_STATUS_LABEL[order.status] ?: order.status, color = Ids.colors.brand, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-                    Text(
-                        if (isPickupOrder) "Pickup at restaurant" else order.deliveryAddress,
-                        color = Ids.colors.textSecondary,
-                        fontSize = 12.sp,
-                    )
-                }
-                Text(String.format(Locale.US, "%,.0f RWF", order.totalAmount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            }
-            if (order.status != "DELIVERED" && order.status != "CANCELLED") {
-                // A PICKUP order's deliveryLatitude/Longitude are unconditionally null
-                // (EatsOrderService.placeOrder) from creation on -- a real, always-present
-                // signal, unlike riderId which is null for a DELIVERY order too until a
-                // rider actually gets assigned partway through.
-                EatsStatusStepper(order.status, hasRider = order.deliveryLatitude != null || order.riderId != null)
-            }
-            // Real fresh Uber Eats research (2026-08-15) -- see EatsOrderDto's own doc
-            // comment. Rider name + a real distance-derived arrival estimate, matching
-            // Uber Eats' own sourced tracker redesign ("Latest Arrival By" shown
-            // alongside the driver's name). Only meaningful once a rider is actually
-            // assigned -- both fields are null until then, never a fabricated ETA.
-            if (order.riderName != null || order.estimatedArrivalMinutes != null) {
-                Text(
-                    listOfNotNull(
-                        order.riderName?.let { "Rider: $it" },
-                        order.estimatedArrivalMinutes?.let { "Latest arrival by ~$it min" },
-                    ).joinToString(" · "),
-                    color = Ids.colors.textSecondary, fontSize = 12.sp,
-                )
-            }
-            if (!order.deliveryNotes.isNullOrBlank()) {
-                Text(
-                    "Note: ${order.deliveryNotes}",
-                    color = Ids.colors.textPrimary,
-                    fontSize = 12.sp,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Ids.colors.surfaceSoft)
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
-                )
-            }
-            if (canShowLiveTracking) {
-                ListingActionButton(if (showLiveTracking) "Hide live tracking" else "🛵 Track your rider live", false) {
-                    showLiveTracking = !showLiveTracking
-                    showRoute = false
-                }
-            }
-            if (showLiveTracking && restaurant != null && restaurantLat != null && restaurantLng != null && deliveryLat != null && deliveryLng != null) {
-                LiveRiderMiniMap(order.id, restaurantLat, restaurantLng, deliveryLat, deliveryLng, restaurant.businessName, "Delivery address")
-            }
-            // Real "view delivery route" (2026-07-19, item 8 on the Maps "100%" roadmap)
-            // -- reuses itunda's own self-hosted OSRM directions.
-            if (canShowRoute && !showLiveTracking) {
-                ListingActionButton(if (showRoute) "Hide route" else "🚗 View real delivery route", false) { showRoute = !showRoute }
-            }
-            if (showRoute && !showLiveTracking && restaurant != null && restaurantLat != null && restaurantLng != null && deliveryLat != null && deliveryLng != null) {
-                RouteMiniMap(restaurantLat, restaurantLng, deliveryLat, deliveryLng, restaurant.businessName, "Delivery address")
-            }
-            action?.invoke()
-    }
-    Divider(color = Ids.colors.divider, thickness = 0.5.dp)
-}
+import java.util.Locale
 
 @Composable
 internal fun MyEatsOrdersView(
+    onBack: () -> Unit,
     onReorder: (EatsOrderDto) -> Unit,
     onTrack: (EatsOrderDto) -> Unit,
     reorderingId: String?,
     restaurants: List<ShoppingMerchantDto>?,
-    onReportIssue: (String) -> Unit = {},
+    onReportIssue: (String, String?) -> Unit = { _, _ -> },
     onBrowseRestaurants: () -> Unit = {},
+    reorderError: String? = null,
+    modifier: Modifier = Modifier,
 ) {
     var orders by remember { mutableStateOf<List<EatsOrderDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var cancellingId by remember { mutableStateOf<String?>(null) }
-    // Real optimistic-hide for TipRiderPrompt -- same pattern bank-mfe's own
-    // tippedOrderIds establishes, since a fresh getMyEatsOrders() poll would otherwise
-    // briefly still show the prompt until this order's own tipAmount round-trips back.
     var tippedOrderIds by remember { mutableStateOf<Set<String>>(emptySet()) }
-    // Real pagination fix (2026-09-11, ported from bank-mfe's own fix -- see
-    // project_itunda_pagination_discard_sweep memory): page 0 is polled every
-    // 4s for real-time order-status accuracy, so it must always stay a live,
-    // page-0-only fetch. olderOrders is a separate accumulator populated only
-    // by loadMoreOrders, never touched by the poll.
     var olderOrders by remember { mutableStateOf<List<EatsOrderDto>>(emptyList()) }
     var ordersPage by remember { mutableStateOf(0) }
     var ordersHasMore by remember { mutableStateOf(false) }
     var loadingMoreOrders by remember { mutableStateOf(false) }
+    var orderItems by remember { mutableStateOf<Map<String, List<EatsOrderItemDto>>>(emptyMap()) }
     var receiptOrder by remember { mutableStateOf<EatsOrderDto?>(null) }
-    var receiptItems by remember { mutableStateOf<List<rw.itunda.core.network.EatsOrderItemDto>?>(null) }
+    var receiptItems by remember { mutableStateOf<List<EatsOrderItemDto>?>(null) }
     var helpOrder by remember { mutableStateOf<EatsOrderDto?>(null) }
     var helpReason by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
@@ -197,14 +103,13 @@ internal fun MyEatsOrdersView(
                     ordersHasMore = res.page + 1 < res.totalPages
                 }
             } catch (_: Exception) {
-                // Non-critical -- leave state as-is, the button just stays visible to retry.
+                // Keep the current list and leave the control retryable.
             } finally {
                 loadingMoreOrders = false
             }
         }
     }
 
-    // Real poll for order-tracking status, same 4s cadence as Talk's own poll.
     LaunchedEffect(Unit) {
         while (true) {
             load()
@@ -230,103 +135,146 @@ internal fun MyEatsOrdersView(
     }
 
     val allOrders = (orders ?: emptyList()) + olderOrders
-    Column {
-        if (error != null) {
-            ErrorCard(error!!, onRetry = ::load)
-        } else if (orders == null) {
-            SkeletonBlock()
-        } else if (allOrders.isEmpty()) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth()) {
-                EmptyState("No orders yet — order from a nearby restaurant and it'll show up here.", icon = Icons.AutoMirrored.Outlined.ReceiptLong)
-                Box(Modifier.clip(RoundedCornerShape(12.dp)).background(Ids.colors.brand).pressScaleClickable(onClick = onBrowseRestaurants).padding(horizontal = 18.dp, vertical = 12.dp)) {
-                    Text("Browse restaurants", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                }
-            }
-        } else {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                allOrders.forEach { o ->
-                    EatsOrderRow(o, restaurant = restaurants?.find { it.merchantId == o.restaurantId }) {
-                        if (o.status !in setOf("DELIVERED", "CANCELLED")) {
-                            ListingActionButton("Track order", false) { onTrack(o) }
-                        }
-                        if (o.status == "PLACED") {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(Ids.colors.danger)
-                                    .pressScaleClickable(enabled = cancellingId != o.id) { cancel(o.id) }
-                                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                            ) {
-                                Text(
-                                    if (cancellingId == o.id) "Cancelling…" else "Cancel order",
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp,
-                                )
-                            }
-                        } else if (o.status == "DELIVERED") {
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                ReviewOrderCard(o)
-                                if (o.riderId != null && o.tipAmount == null && !tippedOrderIds.contains(o.id)) {
-                                    TipRiderPrompt(orderId = o.id, onTipped = { tippedOrderIds = tippedOrderIds + o.id })
-                                }
-                                ReorderButton(reordering = reorderingId == o.id, onClick = { onReorder(o) })
-                                ListingActionButton("Receipt", false) {
-                                    receiptOrder = o
-                                    receiptItems = null
-                                    coroutineScope.launch { runCatching { NetworkClient.apiService.getEatsOrder(o.id).items }.onSuccess { receiptItems = it } }
-                                }
-                                ListingActionButton("Help", false) { helpOrder = o; helpReason = null }
-                            }
-                        } else if (o.status == "CANCELLED") {
-                            ReorderButton(reordering = reorderingId == o.id, onClick = { onReorder(o) })
-                            ListingActionButton("Receipt", false) {
-                                receiptOrder = o
-                                receiptItems = null
-                                coroutineScope.launch { runCatching { NetworkClient.apiService.getEatsOrder(o.id).items }.onSuccess { receiptItems = it } }
-                            }
-                            ListingActionButton("Help", false) { helpOrder = o; helpReason = null }
-                        }
-                    }
-                }
-                if (ordersHasMore) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Ids.colors.surfaceSoft)
-                            .pressScaleClickable(enabled = !loadingMoreOrders) { loadMoreOrders() }
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
-                    ) {
-                        Text(
-                            if (loadingMoreOrders) "Loading…" else "Load more",
-                            color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp,
-                        )
-                    }
-                }
+    LaunchedEffect(allOrders.map { it.id }) {
+        allOrders.forEach { order ->
+            if (order.id !in orderItems) {
+                runCatching { NetworkClient.apiService.getEatsOrder(order.id).items }
+                    .onSuccess { orderItems = orderItems + (order.id to it) }
             }
         }
     }
-    receiptOrder?.let { order ->
+
+    fun openReceipt(order: EatsOrderDto) {
+        receiptOrder = order
+        receiptItems = orderItems[order.id]
+        if (receiptItems == null) {
+            coroutineScope.launch {
+                runCatching { NetworkClient.apiService.getEatsOrder(order.id).items }
+                    .onSuccess {
+                        orderItems = orderItems + (order.id to it)
+                        receiptItems = it
+                    }
+            }
+        }
+    }
+
+    BackHandler(enabled = receiptOrder == null && helpOrder == null, onBack = onBack)
+    if (receiptOrder != null) {
+        val order = receiptOrder!!
         EatsReceiptSheet(
             order = order,
             restaurantName = restaurants?.find { it.merchantId == order.restaurantId }?.businessName ?: "Restaurant",
-            items = receiptItems,
+            items = receiptItems ?: orderItems[order.id],
             onDismiss = { receiptOrder = null; receiptItems = null },
         )
+        return
     }
-    helpOrder?.let { order ->
+    if (helpOrder != null) {
+        val order = helpOrder!!
         EatsHelpSheet(
             order = order,
             restaurantName = restaurants?.find { it.merchantId == order.restaurantId }?.businessName ?: "Restaurant",
             selectedReason = helpReason,
             onReasonSelected = { helpReason = it },
-            onSubmit = {
-                onReportIssue(order.transactionId)
+            onSubmit = { reason ->
+                onReportIssue(order.transactionId, reason)
                 helpOrder = null
                 helpReason = null
             },
             onDismiss = { helpOrder = null; helpReason = null },
         )
+        return
+    }
+
+    val p = eatsPrototypePalette()
+    Column(modifier.fillMaxSize().background(p.background)) {
+        EatsOrdersPageHeader(title = "Orders", onBack = onBack)
+        Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
+            when {
+                error != null -> ErrorCard(error!!, onRetry = ::load)
+                orders == null -> SkeletonBlock()
+                allOrders.isEmpty() -> EatsOrdersEmptyState(onBrowseRestaurants)
+                else -> {
+                    if (NetworkClient.demoEatsOrdersFixture) EatsOrdersPointsRow()
+                    allOrders.forEach { order ->
+                        EatsOrderRow(
+                            order = order,
+                            restaurant = restaurants?.find { it.merchantId == order.restaurantId },
+                            items = orderItems[order.id],
+                            reordering = reorderingId == order.id,
+                            cancelling = cancellingId == order.id,
+                            onTrack = { onTrack(order) },
+                            onReorder = { onReorder(order) },
+                            onReceipt = { openReceipt(order) },
+                            onHelp = { helpOrder = order; helpReason = null },
+                            onCancel = { cancel(order.id) },
+                        )
+                        if (!NetworkClient.demoMode && order.status == "DELIVERED") {
+                            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
+                                ReviewOrderCard(order)
+                                if (order.riderId != null && order.tipAmount == null && !tippedOrderIds.contains(order.id)) {
+                                    TipRiderPrompt(orderId = order.id, onTipped = { tippedOrderIds = tippedOrderIds + order.id })
+                                }
+                            }
+                        }
+                    }
+                    if (ordersHasMore) {
+                        Box(
+                            Modifier.padding(horizontal = 24.dp, vertical = 12.dp).clip(RoundedCornerShape(12.dp))
+                                .background(p.surfaceSoft)
+                                .pressScaleClickable(enabled = !loadingMoreOrders) { loadMoreOrders() }
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                        ) {
+                            Text(
+                                if (loadingMoreOrders) "Loading…" else "Load more",
+                                color = p.primary, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                            )
+                        }
+                    }
+                }
+            }
+            if (reorderError != null) {
+                Text(reorderError, color = Ids.colors.danger, fontSize = 13.sp, modifier = Modifier.padding(24.dp))
+            }
+            MyDineInOrdersView()
+        }
+    }
+}
+
+@Composable
+private fun EatsOrdersEmptyState(onBrowseRestaurants: () -> Unit) {
+    val p = eatsPrototypePalette()
+    Column(
+        Modifier.fillMaxWidth().padding(top = 72.dp).padding(horizontal = 40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text("No orders yet", color = p.primary, fontSize = 18.sp, lineHeight = 25.2.sp, fontWeight = FontWeight.Bold)
+        Text(
+            "Your food orders will show up here.",
+            color = p.secondary, fontSize = 14.sp, lineHeight = 20.sp,
+            modifier = Modifier.padding(top = 6.dp),
+        )
+        Spacer(Modifier.height(18.dp))
+        Box(
+            Modifier.width(201.dp).height(40.dp).clip(RoundedCornerShape(18.dp)).background(p.selected)
+                .pressScaleClickable(onClick = onBrowseRestaurants),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("Browse restaurants", color = p.selectedText, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
+private fun EatsOrdersPointsRow() {
+    val p = eatsPrototypePalette()
+    Row(
+        Modifier.fillMaxWidth().height(33.dp).padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("Points", color = p.secondary, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.width(8.dp))
+        Text("453", color = p.primary, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.ExtraBold)
     }
 }
 
@@ -465,24 +413,6 @@ internal fun MyDineInOrdersView() {
                 }
             }
         }
-    }
-}
-
-@Composable
-internal fun ReorderButton(reordering: Boolean, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(Ids.colors.brand)
-            .pressScaleClickable(enabled = !reordering, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-    ) {
-        Text(
-            if (reordering) "Reordering…" else "Reorder",
-            color = Color.White,
-            fontWeight = FontWeight.Bold,
-            fontSize = 13.sp,
-        )
     }
 }
 

@@ -59,6 +59,11 @@ internal object EatsDemoData {
         orderStatus = "PLACED"
         return orderDetail()
     }
+    fun prototypeOrders(): String = """{"success":true,"orders":[
+      {"id":"EA-7207","buyerId":"demo-buyer","restaurantId":"m1","riderId":"rider-1","deliveryAddress":"Kimironko, KG 11 Ave","itemsSubtotal":2400,"deliveryFee":0,"platformFee":0,"totalAmount":2400,"promotionDiscount":0,"transactionId":"demo-txn-7207","deliveryPayoutTransactionId":null,"status":"DELIVERED","createdAt":"2026-11-17T14:00:00Z","updatedAt":"2026-11-17T14:00:00Z","refundTransactionId":null,"deliveryLatitude":-1.95,"deliveryLongitude":30.12,"distanceKm":1.2,"deliveryNotes":"Please call when you arrive.","riderName":"Jean Claude","estimatedArrivalMinutes":null,"tipAmount":null},
+      {"id":"EA-7214","buyerId":"demo-buyer","restaurantId":"m1","riderId":null,"deliveryAddress":"","itemsSubtotal":2400,"deliveryFee":0,"platformFee":0,"totalAmount":2400,"promotionDiscount":0,"transactionId":"demo-txn-7214","deliveryPayoutTransactionId":null,"status":"CANCELLED","createdAt":"2026-11-18T09:30:00Z","updatedAt":"2026-11-18T09:30:00Z","refundTransactionId":null,"deliveryLatitude":null,"deliveryLongitude":null,"distanceKm":null,"deliveryNotes":"Please call when you arrive.","riderName":null,"estimatedArrivalMinutes":null,"tipAmount":null}
+    ],"page":0,"totalPages":1,"totalElements":2}"""
+
     fun myOrders(): String = if (hasPlacedOrder) {
         """{"success":true,"orders":[${orderJson()}],"page":0,"totalPages":1,"totalElements":1}"""
     } else {

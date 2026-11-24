@@ -78,7 +78,7 @@ internal fun OrderFoodContent(
     pendingMerchantId: String? = null,
     pendingMerchantName: String? = null,
     onPendingMerchantConsumed: () -> Unit = {},
-    onReportIssue: (String) -> Unit = {},
+    onReportIssue: (String, String?) -> Unit = { _, _ -> },
 ) {
     var view by remember { mutableStateOf(OrderFoodView.BROWSE) }
     var restaurants by remember { mutableStateOf<List<ShoppingMerchantDto>?>(null) }
@@ -335,64 +335,71 @@ internal fun OrderFoodContent(
     ) return
 
     Column(modifier = Modifier.fillMaxSize().background(eatsPrototypePalette().background)) {
-        if (view == OrderFoodView.TRACKING && selectedOrder != null) {
-            EatsTrackingScreen(
-                order = selectedOrder!!,
-                restaurant = allRestaurants?.firstOrNull { it.merchantId == selectedOrder!!.restaurantId },
-                onBack = { selectedOrder = null; view = OrderFoodView.ORDERS },
-                onDone = { selectedOrder = null; view = OrderFoodView.ORDERS },
-                onReportIssue = onReportIssue,
-                modifier = Modifier.weight(1f),
-            )
-        } else {
-        EatsBrowseHeader(
-            state = browseState,
-            searchInput = searchInput,
-            cartCount = cart.values.sumOf { it.quantity },
-            onSearchChange = { searchInput = it },
-            onOrdersClick = { view = if (view == OrderFoodView.ORDERS) OrderFoodView.BROWSE else OrderFoodView.ORDERS },
-            onCartClick = { selectedRestaurant = browseState.cartRestaurant; showCheckout = true },
-        )
-        LazyColumn(
-            state = eatsListState, modifier = Modifier.weight(1f).padding(horizontal = Ids.layout.screenHorizontal).trackScrollPressedKey(eatsListState, eatsTouchedKey),
-            verticalArrangement = Arrangement.Top,
-        ) {
-        if (view == OrderFoodView.ORDERS) {
-            item {
-                MyEatsOrdersView(onReorder = ::handleReorder, onTrack = { selectedOrder = it; view = OrderFoodView.TRACKING }, reorderingId = reorderingId, restaurants = allRestaurants, onReportIssue = onReportIssue, onBrowseRestaurants = { view = OrderFoodView.BROWSE })
-                val reorderErr = reorderError
-                if (reorderErr != null) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(reorderErr, color = Ids.colors.danger, fontSize = 13.sp)
-                }
-                MyDineInOrdersView()
+        when {
+            view == OrderFoodView.TRACKING && selectedOrder != null -> {
+                EatsTrackingScreen(
+                    order = selectedOrder!!,
+                    restaurant = allRestaurants?.firstOrNull { it.merchantId == selectedOrder!!.restaurantId },
+                    onBack = { selectedOrder = null; view = OrderFoodView.ORDERS },
+                    onDone = { selectedOrder = null; view = OrderFoodView.ORDERS },
+                    onReportIssue = onReportIssue,
+                    modifier = Modifier.weight(1f),
+                )
             }
-        } else if (view == OrderFoodView.GROUP) {
-            item { GroupEatsOrderView(restaurants = allRestaurants) }
-        } else {
-            eatsBrowseItems(
-                state = browseState,
-                searchInput = searchInput,
-                onSearchChange = { searchInput = it },
-                selectedCategory = selectedCategory,
-                onSelectCategory = { category -> selectedCategory = if (category == selectedCategory) null else category },
-                filters = browseFilters,
-                restaurants = restaurants,
-                favoriteIds = favoriteIds,
-                error = error,
-                onRetry = ::loadRestaurants,
-                onOpen = ::openRestaurant,
-                onToggleFavorite = ::toggleFavorite,
-                onClearFilters = {
-                    searchInput = ""
-                    selectedCategory = null
-                    browseFilters.openNowOnly = false
-                    browseFilters.favoritesOnly = false
-                    browseFilters.sortMode = "delivery_time"
-                },
-            )
-        }
-        }
+            view == OrderFoodView.ORDERS -> {
+                MyEatsOrdersView(
+                    onBack = { view = OrderFoodView.BROWSE },
+                    onReorder = ::handleReorder,
+                    onTrack = { selectedOrder = it; view = OrderFoodView.TRACKING },
+                    reorderingId = reorderingId,
+                    restaurants = allRestaurants,
+                    onReportIssue = onReportIssue,
+                    onBrowseRestaurants = { view = OrderFoodView.BROWSE },
+                    reorderError = reorderError,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            else -> {
+                EatsBrowseHeader(
+                    state = browseState,
+                    searchInput = searchInput,
+                    cartCount = cart.values.sumOf { it.quantity },
+                    onSearchChange = { searchInput = it },
+                    onOrdersClick = { view = OrderFoodView.ORDERS },
+                    onCartClick = { selectedRestaurant = browseState.cartRestaurant; showCheckout = true },
+                )
+                LazyColumn(
+                    state = eatsListState,
+                    modifier = Modifier.weight(1f).padding(horizontal = Ids.layout.screenHorizontal).trackScrollPressedKey(eatsListState, eatsTouchedKey),
+                    verticalArrangement = Arrangement.Top,
+                ) {
+                    if (view == OrderFoodView.GROUP) {
+                        item { GroupEatsOrderView(restaurants = allRestaurants) }
+                    } else {
+                        eatsBrowseItems(
+                            state = browseState,
+                            searchInput = searchInput,
+                            onSearchChange = { searchInput = it },
+                            selectedCategory = selectedCategory,
+                            onSelectCategory = { category -> selectedCategory = if (category == selectedCategory) null else category },
+                            filters = browseFilters,
+                            restaurants = restaurants,
+                            favoriteIds = favoriteIds,
+                            error = error,
+                            onRetry = ::loadRestaurants,
+                            onOpen = ::openRestaurant,
+                            onToggleFavorite = ::toggleFavorite,
+                            onClearFilters = {
+                                searchInput = ""
+                                selectedCategory = null
+                                browseFilters.openNowOnly = false
+                                browseFilters.favoritesOnly = false
+                                browseFilters.sortMode = "delivery_time"
+                            },
+                        )
+                    }
+                }
+            }
         }
     }
 }

@@ -1,18 +1,19 @@
 package rw.itunda.screenshots
 
 import androidx.activity.ComponentActivity
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.key
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.assertCountEquals
-import androidx.compose.ui.test.assertIsNotEnabled
 import com.github.takahirom.roborazzi.captureRoboImage
+import java.util.concurrent.atomic.AtomicReference
+import org.junit.After
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -20,10 +21,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import rw.itunda.core.designsystem.theme.IdsTheme
-import rw.itunda.core.network.EatsOrderDto
-import rw.itunda.core.network.EatsOrderItemDto
-import rw.itunda.feature.eats.impl.EatsHelpSheet
-import rw.itunda.feature.eats.impl.EatsReceiptSheet
+import rw.itunda.core.network.NetworkClient
+import rw.itunda.feature.eats.impl.EatsContent
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -31,70 +30,117 @@ import rw.itunda.feature.eats.impl.EatsReceiptSheet
 class EatsOrdersScreenshotTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
 
-    private val order = EatsOrderDto(
-        id = "EA-7207",
-        buyerId = "demo-buyer",
-        restaurantId = "bakery",
-        riderId = null,
-        deliveryAddress = "Kimironko, KG 11 Ave",
-        itemsSubtotal = 2400.0,
-        deliveryFee = 0.0,
-        platformFee = 0.0,
-        totalAmount = 2400.0,
-        transactionId = "demo-txn-7207",
-        deliveryPayoutTransactionId = null,
-        status = "DELIVERED",
-        createdAt = "2026-11-17T14:00:00Z",
-        updatedAt = "2026-11-17T14:00:00Z",
-        deliveryNotes = "Please call when you arrive.",
-    )
-    private val items = listOf(EatsOrderItemDto("item-1", "EA-7207", "croissant", "Croissant", 1200.0, 2))
+    @Before fun enablePrototypeDemo() {
+        NetworkClient.demoMode = true
+        NetworkClient.demoEatsOrdersFixture = false
+    }
 
-    private fun receipt(dark: Boolean, name: String) {
+    @After fun disablePrototypeDemo() {
+        NetworkClient.demoEatsOrdersFixture = false
+        NetworkClient.demoMode = false
+    }
+
+    private fun showOrders(
+        dark: Boolean,
+        filled: Boolean,
+        report: AtomicReference<Pair<String, String?>?>? = null,
+    ) {
+        NetworkClient.demoMode = true
+        NetworkClient.demoEatsOrdersFixture = filled
         rule.activity.actionBar?.hide()
+        val sessionKey = Any()
         rule.setContent {
-            IdsTheme(darkTheme = dark) {
-                EatsReceiptSheet(order, "Kigali Bakery", items, onDismiss = {})
+            key(sessionKey) {
+                IdsTheme(darkTheme = dark) {
+                    EatsContent(
+                        deviceStepUpHost = { _, _, _ -> },
+                        onReportIssue = { transactionId, reason -> report?.set(transactionId to reason) },
+                    )
+                }
             }
         }
-        rule.waitForIdle()
-        rule.onNodeWithText("Receipt").assertExists()
-        rule.onNodeWithText("2 × Croissant").assertExists()
-        rule.onAllNodesWithText("2,400 RWF").assertCountEquals(2)
-        rule.onRoot().captureRoboImage("build/screenshots/eats-orders-receipt-$name.png")
+        rule.waitUntil(60_000) {
+            rule.onAllNodesWithText("Popular this week", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithContentDescription("Orders").performClick()
+        if (filled) {
+            rule.waitUntil(60_000) {
+                rule.onAllNodesWithText("Kigali Bakery").fetchSemanticsNodes().size >= 2 &&
+                    rule.onAllNodesWithText("2 × Croissant").fetchSemanticsNodes().size >= 2
+            }
+        } else {
+            rule.waitUntil(60_000) {
+                rule.onAllNodesWithText("No orders yet").fetchSemanticsNodes().isNotEmpty()
+            }
+        }
+    }
+
+    private fun capture(name: String) = rule.onRoot().captureRoboImage("build/screenshots/$name.png")
+
+    @Test fun ordersEmptyLight() {
+        showOrders(dark = false, filled = false)
+        capture("eats-prototype-orders-empty-light")
+    }
+
+    @Test fun ordersEmptyDark() {
+        showOrders(dark = true, filled = false)
+        capture("eats-prototype-orders-empty-dark")
+    }
+
+    @Test fun ordersFilledLight() {
+        showOrders(dark = false, filled = true)
+        rule.onAllNodesWithText("Kigali Bakery").assertCountEquals(2)
+        rule.onAllNodesWithText("2 × Croissant").assertCountEquals(2)
+        capture("eats-prototype-orders-filled-light")
+    }
+
+    @Test fun ordersFilledDark() {
+        showOrders(dark = true, filled = true)
+        rule.onAllNodesWithText("Kigali Bakery").assertCountEquals(2)
+        rule.onAllNodesWithText("2 × Croissant").assertCountEquals(2)
+        capture("eats-prototype-orders-filled-dark")
+    }
+
+    private fun receipt(dark: Boolean, name: String) {
+        showOrders(dark = dark, filled = true)
+        rule.onAllNodesWithText("Receipt").onFirst().performClick()
+        rule.waitUntil(60_000) {
+            rule.onAllNodesWithText("2 × Croissant").fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onAllNodesWithText("2,400 RWF").assertCountEquals(3)
+        capture("eats-prototype-orders-receipt-$name")
     }
 
     @Test fun receiptLight() = receipt(false, "light")
     @Test fun receiptDark() = receipt(true, "dark")
 
-    private fun help(dark: Boolean, selected: Boolean, name: String) {
-        rule.activity.actionBar?.hide()
-        rule.setContent {
-            var reason by remember { mutableStateOf<String?>(null) }
-            IdsTheme(darkTheme = dark) {
-                EatsHelpSheet(
-                    order = order,
-                    restaurantName = "Kigali Bakery",
-                    selectedReason = reason,
-                    onReasonSelected = { reason = it },
-                    onSubmit = {},
-                    onDismiss = {},
-                )
-            }
+    private fun help(dark: Boolean, selected: Boolean, name: String, verifySubmit: Boolean = false) {
+        val report = AtomicReference<Pair<String, String?>?>(null)
+        showOrders(dark = dark, filled = true, report = report)
+        rule.onAllNodesWithText("Help").onFirst().performClick()
+        rule.waitUntil(60_000) {
+            rule.onAllNodesWithText("Report a problem").fetchSemanticsNodes().isNotEmpty()
         }
-        rule.waitForIdle()
-        rule.onNodeWithText("Report a problem").assertExists()
         if (selected) {
             rule.onNodeWithText("Food was cold").performClick()
             rule.waitForIdle()
         } else {
             rule.onNodeWithText("Send report").assertIsNotEnabled()
         }
-        rule.onRoot().captureRoboImage("build/screenshots/eats-orders-help-$name.png")
+        capture("eats-prototype-orders-help-$name")
+        if (verifySubmit) {
+            rule.onNodeWithText("Send report").performClick()
+            rule.waitUntil(60_000) {
+                rule.onAllNodesWithText("Orders").fetchSemanticsNodes().isNotEmpty()
+            }
+            assert(report.get() == ("demo-txn-7207" to "Food was cold")) {
+                "Expected selected help reason to reach support hand-off; got ${report.get()}"
+            }
+        }
     }
 
     @Test fun helpLight() = help(false, false, "light")
-    @Test fun helpSelectedLight() = help(false, true, "selected-light")
     @Test fun helpDark() = help(true, false, "dark")
-    @Test fun helpSelectedDark() = help(true, true, "selected-dark")
+    @Test fun helpSelectedLight() = help(false, true, "selected-light", verifySubmit = true)
+    @Test fun helpSelectedDark() = help(true, true, "selected-dark", verifySubmit = true)
 }

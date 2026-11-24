@@ -10,7 +10,7 @@ fun EatsContent(
     pendingMerchantId: String? = null,
     pendingMerchantName: String? = null,
     onPendingMerchantConsumed: () -> Unit = {},
-    onReportIssue: (String) -> Unit = {},
+    onReportIssue: (String, String?) -> Unit = { _, _ -> },
 ) {
     OrderFoodContent(
         deviceStepUpHost,

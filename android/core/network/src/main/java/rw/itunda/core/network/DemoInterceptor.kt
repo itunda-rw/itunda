@@ -57,7 +57,7 @@ internal class DemoInterceptor : Interceptor {
             path == "api/v1/merchant/reviews/my-reviews" -> """{"success":true,"reviews":[]}"""
             path == "api/v1/messages/presence" -> """{"success":true,"presence":{"u-c1":true,"u-c2":true}}"""
             path == "api/v1/orders/my-orders" -> """{"success":true,"orders":[]}"""
-            path == "api/v1/eats/orders/my-orders" -> EatsDemoData.myOrders()
+            path == "api/v1/eats/orders/my-orders" -> if (NetworkClient.demoEatsOrdersFixture) EatsDemoData.prototypeOrders() else EatsDemoData.myOrders()
             path == "api/v1/support/tickets" -> """{"success":true,"tickets":[]}"""
             path == "api/v1/account/transactions" -> """{"success":true,"transactions":[]}"""
             path.startsWith("api/v1/eats/orders/") -> EatsDemoData.orderDetail()
