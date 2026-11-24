@@ -31,8 +31,8 @@ import rw.itunda.core.designsystem.theme.IdsIcons
 
 /** Prototype `.glx` card on the You tab: white, 24dp radius, 20dp above the title and 6dp below the last row. */
 @Composable
-internal fun YouCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Ids.colors.background).padding(top = 20.dp, bottom = 6.dp), content = content)
+internal fun YouCard(modifier: Modifier = Modifier, topPadding: androidx.compose.ui.unit.Dp = 20.dp, content: @Composable ColumnScope.() -> Unit) {
+    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Ids.colors.background).padding(top = topPadding, bottom = 6.dp), content = content)
 }
 
 /** Card title (20sp/800) with an optional 13sp caption under it. */

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -113,8 +114,9 @@ fun MyEntryPoint(
         try { myBookingReviews = rw.itunda.core.network.NetworkClient.apiService.getMyBookingReviews().reviews } catch (_: Exception) { }
     }
 
-    Column(Modifier.fillMaxSize().background(Ids.colors.surfaceSoft)) {
-    Row(Modifier.fillMaxWidth().height(74.dp).padding(start = 24.dp, end = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+    val pageTop = if (Ids.colors.background.luminance() < 0.5f) androidx.compose.ui.graphics.Color(0xFF101013) else androidx.compose.ui.graphics.Color(0xFFF2F4F6)
+    Column(Modifier.fillMaxSize().background(Ids.colors.background)) {
+    Row(Modifier.fillMaxWidth().background(pageTop).height(86.dp).padding(start = 24.dp, end = 18.dp), verticalAlignment = Alignment.CenterVertically) {
         Text("You", color = Ids.colors.textPrimary, fontSize = 24.sp, lineHeight = 33.6.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
         Box(Modifier.size(48.dp).pressScaleClickable(onClick = onOpenSettings), contentAlignment = Alignment.Center) {
             rw.itunda.core.designsystem.components.ItundaArt("gear", rw.itunda.core.designsystem.components.ItundaArtSet.Line, 24.dp, tint = Ids.colors.textPrimary)
@@ -122,11 +124,11 @@ fun MyEntryPoint(
     }
     LazyColumn(
         modifier = Modifier.weight(1f).fillMaxWidth(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 15.dp, end = 15.dp, top = 12.dp, bottom = 24.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 15.dp, end = 15.dp, top = 0.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            YouCard(Modifier.padding(top = 0.dp)) {
+            YouCard(topPadding = 8.dp) {
                 profile?.let { u ->
                     Row(Modifier.padding(horizontal = 12.dp).fillMaxWidth().height(84.dp).clip(RoundedCornerShape(16.dp)).pressScaleClickable { showProfile = true }.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(68.dp).clip(CircleShape).background(androidx.compose.ui.graphics.Color(0xFFFFF4D1)), contentAlignment = Alignment.Center) {
@@ -140,7 +142,7 @@ fun MyEntryPoint(
                                 color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold,
                             )
                         }
-                        rw.itunda.core.designsystem.components.ItundaArt("back", rw.itunda.core.designsystem.components.ItundaArtSet.Line, 16.dp, tint = Ids.colors.textTertiary, modifier = Modifier.graphicsLayer { rotationZ = 180f })
+                        androidx.compose.material3.Icon(rw.itunda.core.designsystem.theme.IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(16.dp))
                     }
                 }
                 PinUpgradeCard()
