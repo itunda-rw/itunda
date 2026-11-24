@@ -103,7 +103,7 @@ class EatsOrdersScreenshotTest {
 
     private fun receipt(dark: Boolean, name: String) {
         showOrders(dark = dark, filled = true)
-        rule.onAllNodesWithText("Receipt").onFirst().performClick()
+        rule.onAllNodesWithText("Receipt")[0].performClick()
         rule.waitUntil(60_000) {
             rule.onAllNodesWithText("2 × Croissant").fetchSemanticsNodes().isNotEmpty()
         }
@@ -117,7 +117,7 @@ class EatsOrdersScreenshotTest {
     private fun help(dark: Boolean, selected: Boolean, name: String, verifySubmit: Boolean = false) {
         val report = AtomicReference<Pair<String, String?>?>(null)
         showOrders(dark = dark, filled = true, report = report)
-        rule.onAllNodesWithText("Help").onFirst().performClick()
+        rule.onAllNodesWithText("Help")[0].performClick()
         rule.waitUntil(60_000) {
             rule.onAllNodesWithText("Report a problem").fetchSemanticsNodes().isNotEmpty()
         }

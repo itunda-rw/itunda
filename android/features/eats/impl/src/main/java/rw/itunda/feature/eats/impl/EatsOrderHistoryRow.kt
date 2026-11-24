@@ -82,8 +82,7 @@ internal fun EatsOrderHistoryRow(
                 ?.joinToString(" · ") { "${it.quantity} × ${it.productName}" }
                 ?: if (items == null) "Loading items…" else "Items unavailable"
             Text(itemSummary, color = p.secondary, fontSize = 14.sp, lineHeight = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Spacer(Modifier.height(2.dp))
-            Row(Modifier.fillMaxWidth().height(44.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.padding(top = 2.dp).fillMaxWidth().height(44.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (order.status != "DELIVERED") EatsOrderAction("Track", p.accent, onClick = onTrack)
                 if (order.status == "DELIVERED" || order.status == "CANCELLED") {
                     EatsOrderAction(if (reordering) "Reordering…" else "Reorder", p.accent, enabled = !reordering, onClick = onReorder)
