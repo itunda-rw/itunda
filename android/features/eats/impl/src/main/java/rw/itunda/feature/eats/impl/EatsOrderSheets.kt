@@ -11,8 +11,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,14 +44,14 @@ internal fun EatsOrdersPageHeader(title: String?, onBack: () -> Unit, topInset: 
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.padding(start = 6.dp).size(48.dp).pressScaleClickable(onClick = onBack),
+            Modifier.padding(start = 6.dp).size(48.dp).offset(y = 5.dp).pressScaleClickable(onClick = onBack),
             contentAlignment = Alignment.Center,
         ) {
             Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back", modifier = Modifier.size(24.dp), tint = p.primary)
         }
         if (!title.isNullOrBlank()) {
             Spacer(Modifier.width(4.dp))
-            Text(title, color = p.primary, fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.3).sp)
+            Text(title, modifier = Modifier.offset(y = 5.dp), color = p.primary, fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.3).sp)
         }
     }
 }
@@ -84,20 +84,20 @@ fun EatsReceiptSheet(
                 items.forEach { item ->
                     EatsReceiptItemRow(
                         label = "${item.quantity} × ${item.productName}",
-                        amount = formatEatsRwf(item.unitPrice * item.quantity),
+                        amount = formatEatsReceiptRwf(item.unitPrice * item.quantity),
                     )
                 }
             }
             Spacer(Modifier.height(6.dp))
-            EatsReceiptAmountRow("Items", formatEatsRwf(order.itemsSubtotal))
-            EatsReceiptAmountRow("Delivery", if (order.deliveryFee <= 0.0) "Free" else formatEatsRwf(order.deliveryFee))
-            if (order.platformFee > 0.0) EatsReceiptAmountRow("Service fee", formatEatsRwf(order.platformFee))
-            if (order.promotionDiscount > 0.0) EatsReceiptAmountRow("Discount", formatEatsRwf(-order.promotionDiscount))
-            EatsReceiptAmountRow("Total", formatEatsRwf(order.totalAmount), strong = true)
+            EatsReceiptAmountRow("Items", formatEatsReceiptRwf(order.itemsSubtotal))
+            EatsReceiptAmountRow("Delivery", if (order.deliveryFee <= 0.0) "Free" else formatEatsReceiptRwf(order.deliveryFee))
+            if (order.platformFee > 0.0) EatsReceiptAmountRow("Service fee", formatEatsReceiptRwf(order.platformFee))
+            if (order.promotionDiscount > 0.0) EatsReceiptAmountRow("Discount", formatEatsReceiptRwf(-order.promotionDiscount))
+            EatsReceiptAmountRow("Total", formatEatsReceiptRwf(order.totalAmount), strong = true)
             EatsReceiptAmountRow("Status", EATS_STATUS_LABEL[order.status] ?: order.status)
             EatsReceiptAmountRow("Paid with", "itunda Pay")
             if (order.deliveryAddress.isNotBlank()) EatsReceiptAmountRow("Address", order.deliveryAddress)
-            if (!order.deliveryNotes.isNullOrBlank()) EatsReceiptAmountRow("Note", order.deliveryNotes)
+            order.deliveryNotes?.takeIf { it.isNotBlank() }?.let { EatsReceiptAmountRow("Note", it) }
         }
         Box(
             Modifier.fillMaxWidth().height(114.dp).padding(horizontal = 24.dp),
@@ -242,4 +242,4 @@ private fun EatsHelpButton(
     }
 }
 
-private fun formatEatsRwf(amount: Double): String = String.format(Locale.US, "%,.0f RWF", amount)
+private fun formatEatsReceiptRwf(amount: Double): String = String.format(Locale.US, "%,.0f RWF", amount)
