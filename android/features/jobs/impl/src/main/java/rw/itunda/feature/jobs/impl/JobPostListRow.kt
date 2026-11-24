@@ -20,15 +20,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
+import rw.itunda.core.designsystem.components.ItundaArt
+import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.JobPostDto
 
 private fun tileFor(category: String): Pair<String, Color> = when {
-    category.contains("food", true) || category.contains("kitchen", true) -> "☕" to Color(0xFFEDE4F7)
-    category.contains("shop", true) || category.contains("retail", true) -> "🛍" to Color(0xFFF9E3D8)
-    category.contains("tutor", true) || category.contains("teach", true) -> "🎓" to Color(0xFFDDEEFA)
-    else -> "💼" to Color(0xFFFFF1CC)
+    category.contains("food", true) || category.contains("kitchen", true) -> "coffee" to Color(0xFFE7DDF7)
+    category.contains("shop", true) || category.contains("retail", true) -> "bag" to Color(0xFFF9E3D8)
+    category.contains("tutor", true) || category.contains("teach", true) -> "school" to Color(0xFFDDEEFA)
+    else -> "briefcase" to Color(0xFFFFF1CC)
 }
 
 /** Prototype Jobs row: title, place and time, pay per period, tags, and a category tile on the right. */
@@ -41,20 +43,20 @@ fun JobPostListRow(
     trailing: @Composable () -> Unit = {},
     onOpen: () -> Unit,
 ) {
-    val (emoji, tint) = tileFor(categoryLabel)
+    val (art, tint) = tileFor(categoryLabel)
     val period = when (post.payType) { "HOURLY" -> " / hr"; "DAILY" -> " / day"; else -> " / task" }
-    Row(modifier.fillMaxWidth().pressScaleClickable(onClick = onOpen).padding(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(modifier.fillMaxWidth().pressScaleClickable(onClick = onOpen).padding(vertical = 18.dp, horizontal = 0.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(post.title, color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(listOfNotNull(post.neighborhood, timeAgo).joinToString(" · "), color = Ids.colors.textSecondary, fontSize = 12.sp)
+            Text(post.title, color = Ids.colors.textPrimary, fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(listOfNotNull(post.neighborhood, timeAgo).joinToString(" · "), color = Ids.colors.textSecondary, fontSize = 13.sp, lineHeight = 18.sp)
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(String.format(Locale.US, "%,.0f RWF", post.payAmount), color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                Text(period, color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(bottom = 1.dp))
+                Text(String.format(Locale.US, "%,.0f RWF", post.payAmount), color = Ids.colors.textPrimary, fontSize = 18.sp, lineHeight = 24.sp, fontWeight = FontWeight.ExtraBold)
+                Text(period, color = Ids.colors.textSecondary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 2.dp))
             }
-            Text("New · $categoryLabel", color = Ids.colors.textTertiary, fontSize = 12.sp)
+            Text("New · $categoryLabel", color = Ids.colors.textSecondary, fontSize = 13.sp, lineHeight = 18.sp)
         }
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Box(Modifier.size(84.dp).clip(RoundedCornerShape(14.dp)).background(tint), contentAlignment = Alignment.Center) { Text(emoji, fontSize = 36.sp) }
+            Box(Modifier.size(76.dp).clip(RoundedCornerShape(22.dp)).background(tint), contentAlignment = Alignment.Center) { ItundaArt(art, ItundaArtSet.Proto, 46.dp, fit = true) }
             trailing()
         }
     }

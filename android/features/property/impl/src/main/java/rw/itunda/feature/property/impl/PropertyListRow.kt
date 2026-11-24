@@ -19,6 +19,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
+import rw.itunda.core.designsystem.components.ItundaArt
+import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.PropertyListingDto
@@ -40,23 +42,23 @@ fun PropertyListRow(
         listing.sizeSqm?.let { String.format(Locale.US, "%.0f m²", it) },
     ).joinToString(" · ")
     Row(
-        modifier.fillMaxWidth().pressScaleClickable(onClick = onOpen).padding(vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier.fillMaxWidth().pressScaleClickable(onClick = onOpen).padding(vertical = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Box(Modifier.size(84.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
-            Text("🏠", fontSize = 36.sp)
+        Box(Modifier.size(96.dp).clip(RoundedCornerShape(16.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
+            ItundaArt("house", ItundaArtSet.Proto, 56.dp, fit = true)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(listing.title, color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(listing.title, color = Ids.colors.textPrimary, fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 trailing()
             }
-            Text(listOfNotNull(listing.neighborhood, timeAgo).joinToString(" · "), color = Ids.colors.textSecondary, fontSize = 12.sp)
+            Text(listOfNotNull(listing.neighborhood, timeAgo).joinToString(" · "), color = Ids.colors.textSecondary, fontSize = 13.sp, lineHeight = 18.sp)
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(String.format(Locale.US, "%,.0f RWF", listing.price), color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                if (isRent) Text(" / month", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(bottom = 1.dp))
+                Text(String.format(Locale.US, "%,.0f RWF", listing.price), color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 24.sp, fontWeight = FontWeight.Bold)
+                if (isRent) Text(" / month", color = Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 2.dp))
             }
-            Text(facts, color = Ids.colors.textTertiary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(facts, color = Ids.colors.textSecondary, fontSize = 13.sp, lineHeight = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
