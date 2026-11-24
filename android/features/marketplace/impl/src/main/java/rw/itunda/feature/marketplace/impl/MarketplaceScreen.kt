@@ -1027,12 +1027,12 @@ fun ListingRow(
                             fontSize = 16.sp,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).padding(end = 6.dp),
                         )
                         if (!isMine) {
                             WishlistHeart(
                                 favorited = favorited,
-                                size = 20.dp,
+                                size = 17.dp,
                                 modifier = Modifier.semantics { contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist" }
                                     .pressScaleClickable(enabled = !favoriteBusy, onClick = onToggleFavorite),
                             )
