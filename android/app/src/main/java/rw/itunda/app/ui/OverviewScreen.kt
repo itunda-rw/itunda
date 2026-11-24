@@ -1,6 +1,5 @@
 package rw.itunda.app.ui
 
-import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.dashedBorder
 import rw.itunda.core.designsystem.theme.Ids
@@ -40,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import rw.itunda.app.R
@@ -136,21 +136,17 @@ fun OverviewScreen(
     }
 
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(20.dp)) {
-            BackTopBar(title = stringResource(R.string.overview_title), onBack = onBack)
-        }
-        LazyColumn(Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        rw.itunda.core.designsystem.components.ProtoTopBar(stringResource(R.string.overview_title), onBack)
+        LazyColumn(Modifier.fillMaxSize().padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             val current = overview
             if (current == null) {
                 if (error != null) item { Text(error!!, color = MaterialTheme.colorScheme.error) }
                 else item { SkeletonBlock() }
             } else {
                 item {
-                    Card(Modifier.fillMaxWidth().clickable { showNetWorthDetail = true }) {
-                        Column(Modifier.padding(16.dp)) {
-                            Text(stringResource(R.string.overview_net_worth), style = MaterialTheme.typography.labelMedium)
-                            Text(stringResource(R.string.overview_amount_rwf, current.netWorth), style = MaterialTheme.typography.headlineMedium)
-                        }
+                    Column(Modifier.fillMaxWidth().clickable { showNetWorthDetail = true }.padding(top = 16.dp, bottom = 8.dp)) {
+                        Text(stringResource(R.string.overview_net_worth), color = Ids.colors.textSecondary, fontSize = 14.sp, lineHeight = 20.sp)
+                        Text("${java.text.NumberFormat.getInstance(java.util.Locale.US).format(current.netWorth)} RWF", color = Ids.colors.textPrimary, fontSize = 44.sp, lineHeight = 52.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp)
                     }
                 }
                 item {
