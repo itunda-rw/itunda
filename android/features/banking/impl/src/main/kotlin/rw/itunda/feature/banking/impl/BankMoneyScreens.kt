@@ -147,7 +147,7 @@ internal fun BankMoveScreen(onBack: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 AccountBox("From", from, Modifier.weight(1f))
                 Box(Modifier.size(48.dp).clip(CircleShape).background(Ids.colors.surfaceSoft).pressScaleClickable { flip = !flip }, contentAlignment = Alignment.Center) {
-                    Icon(Icons.Filled.Sync, contentDescription = "Swap accounts", modifier = Modifier.size(26.dp), tint = Ids.colors.brand)
+                    Icon(Icons.Filled.Sync, contentDescription = "Swap accounts", modifier = Modifier.size(22.dp), tint = Ids.colors.textPrimary)
                 }
                 AccountBox("To", to, Modifier.weight(1f))
             }
