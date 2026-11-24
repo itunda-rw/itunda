@@ -71,16 +71,18 @@ fun ProtoExploreContent(
     val sections = if (q.isEmpty()) exploreSections else listOf(
         ExploreSection("Results", exploreSections.flatMap { it.rows }.filter { it.title.contains(q, true) || it.subtitle.contains(q, true) }),
     )
+    val dark = Ids.colors.background.luminance() < 0.5f
+    val headerBg = if (dark) androidx.compose.ui.graphics.Color(0xFF101013) else Ids.colors.surfaceSoft
+    val bodyBg = if (dark) androidx.compose.ui.graphics.Color(0xFF222227) else Ids.colors.surfaceSoft
+    Column(Modifier.fillMaxSize().background(bodyBg)) {
+    Box(Modifier.fillMaxWidth().background(headerBg).height(70.dp).padding(top = 22.dp, start = 24.dp, end = 18.dp)) {
+        AllTopBar(onOpenAuthentication = { onOpen("verify") }, onOpenHelp = onHelp, onOpenSettings = onSettings, onOpenMiniApps = { onOpen("apps") })
+    }
     LazyColumn(
-        Modifier.fillMaxSize().background(if (Ids.colors.background.luminance() < 0.5f) androidx.compose.ui.graphics.Color(0xFF101013) else Ids.colors.surfaceSoft),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 15.dp, end = 15.dp, bottom = 96.dp),
+        Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 15.dp, end = 15.dp, top = 12.dp, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item {
-            Box(Modifier.fillMaxWidth().height(70.dp).padding(top = 22.dp, start = 9.dp, end = 3.dp)) {
-                AllTopBar(onOpenAuthentication = { onOpen("verify") }, onOpenHelp = onHelp, onOpenSettings = onSettings, onOpenMiniApps = { onOpen("apps") })
-            }
-        }
         item { MenuSearchBar(query = query, onQueryChange = onQuery, placeholder = "Search") }
         if (q.isEmpty()) {
             item { QuickTiles(onOpen) }
@@ -88,12 +90,13 @@ fun ProtoExploreContent(
         }
         items(sections) { section -> SectionCard(section, onOpen) }
     }
+    }
 }
 
 @Composable
 private fun QuickTiles(onOpen: (String) -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Ids.colors.surface).padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 19.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(exploreCard()).padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 19.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         quickTiles.forEach { (key, art, label) ->
@@ -110,7 +113,7 @@ private fun QuickTiles(onOpen: (String) -> Unit) {
 
 @Composable
 private fun SectionCard(section: ExploreSection, onOpen: (String) -> Unit) {
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Ids.colors.surface).padding(top = 20.dp, bottom = 6.dp)) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(exploreCard()).padding(top = 20.dp, bottom = 6.dp)) {
         Text(
             section.title, color = Ids.colors.textPrimary, fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp,
             modifier = Modifier.padding(start = 20.dp).height(36.dp),
@@ -133,3 +136,8 @@ private fun SectionCard(section: ExploreSection, onOpen: (String) -> Unit) {
         }
     }
 }
+
+/** Prototype card colour: dark mode cards (#17171C) sit darker than the page (#222227). */
+@Composable
+internal fun exploreCard(): androidx.compose.ui.graphics.Color =
+    if (Ids.colors.background.luminance() < 0.5f) androidx.compose.ui.graphics.Color(0xFF17171C) else Ids.colors.surface

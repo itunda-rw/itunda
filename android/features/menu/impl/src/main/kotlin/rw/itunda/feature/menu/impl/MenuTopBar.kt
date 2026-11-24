@@ -72,7 +72,7 @@ internal fun MenuSearchBar(query: String, onQueryChange: (String) -> Unit, place
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(22.dp))
-            .background(Ids.colors.surface)
+            .background(exploreCard())
             .height(44.dp)
             .padding(horizontal = 16.dp)
     ) {
