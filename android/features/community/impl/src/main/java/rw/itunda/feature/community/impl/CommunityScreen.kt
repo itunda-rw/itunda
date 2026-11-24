@@ -60,7 +60,7 @@ import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.HoodReportAction
 import rw.itunda.core.designsystem.components.ListingActionButton
-import rw.itunda.core.designsystem.itundaface.HeartFilled
+import rw.itunda.core.designsystem.itundaface.HeartOutline
 import rw.itunda.core.designsystem.itundaface.SpeechBubbleGlyph
 import rw.itunda.core.designsystem.components.NeighborhoodSetupPrompt
 import rw.itunda.core.designsystem.components.ScrollFog
@@ -702,7 +702,7 @@ fun CommunityPostCard(
             }
             Text(post.body, color = Ids.colors.textPrimary, fontSize = 15.sp, lineHeight = 22.sp, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Outlined.FavoriteBorder, contentDescription = null, tint = Ids.colors.textSecondary, modifier = Modifier.size(22.dp))
+                HeartOutline(size = 22.dp)
                 Text("${post.likeCount}", color = Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(end = 18.dp))
                 SpeechBubbleGlyph(size = 18.dp)
                 Text("${post.commentCount}", color = Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
