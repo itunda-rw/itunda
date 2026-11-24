@@ -532,8 +532,7 @@ fun ItundaAppScreen(
         // BankDashboard.tsx already established (pendingRideIssueTransactionId), see
         // SupportScreen.kt's own doc comment for the full account.
         var pendingRideIssueTransactionId by rememberSaveable { mutableStateOf<String?>(null) }
-        var pendingEatsIssueTransactionId by rememberSaveable { mutableStateOf<String?>(null) }
-        var pendingEatsIssueDescription by rememberSaveable { mutableStateOf<String?>(null) }
+        var pendingEatsIssue by rememberSaveable { mutableStateOf<Pair<String, String?>?>(null) }
         // Real USSD basic-banking access (USSD product-completeness pass, 2026-09-08) --
         // first Android entry point for the "Set USSD PIN" screen bank-mfe already has.
         var showUssdSettings by rememberSaveable { mutableStateOf(false) }
@@ -1263,7 +1262,7 @@ fun ItundaAppScreen(
                         pendingMerchantId = pendingEatsMerchantId,
                         pendingMerchantName = pendingEatsMerchantName,
                         onPendingMerchantConsumed = { pendingEatsMerchantId = null; pendingEatsMerchantName = null },
-                        onReportIssue = { transactionId, reason -> pendingEatsIssueTransactionId = transactionId; pendingEatsIssueDescription = reason; showSupport = true },
+                        onReportIssue = { transactionId, reason -> pendingEatsIssue = transactionId to reason; showSupport = true },
                     )
                 }
             }
@@ -1409,9 +1408,9 @@ fun ItundaAppScreen(
         if (showSupport) {
             BackHandler { showSupport = false }
             SupportScreen(
-                onBack = { showSupport = false; pendingRideIssueTransactionId = null; pendingEatsIssueTransactionId = null; pendingEatsIssueDescription = null },
-                initialTransactionId = pendingEatsIssueTransactionId ?: pendingRideIssueTransactionId, initialCategory = when { pendingEatsIssueTransactionId != null -> "EATS_ORDER_ISSUE"; pendingRideIssueTransactionId != null -> "RIDE_ISSUE"; else -> null }, initialDescription = pendingEatsIssueDescription,
-                onConsumedInitial = { pendingRideIssueTransactionId = null; pendingEatsIssueTransactionId = null; pendingEatsIssueDescription = null },
+                onBack = { showSupport = false; pendingRideIssueTransactionId = null; pendingEatsIssue = null },
+                initialTransactionId = pendingEatsIssue?.first ?: pendingRideIssueTransactionId, initialCategory = when { pendingEatsIssue != null -> "EATS_ORDER_ISSUE"; pendingRideIssueTransactionId != null -> "RIDE_ISSUE"; else -> null }, initialDescription = pendingEatsIssue?.second,
+                onConsumedInitial = { pendingRideIssueTransactionId = null; pendingEatsIssue = null },
             )
             return@IdsTheme
         }
