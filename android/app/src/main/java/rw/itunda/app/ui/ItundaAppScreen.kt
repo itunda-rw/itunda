@@ -1387,16 +1387,10 @@ fun ItundaAppScreen(
             BackHandler { showOverview = false }
             OverviewScreen(
                 onBack = { showOverview = false },
+                onOpenBank = { showOverview = false; showBank = true },
+                onOpenPay = { showOverview = false; selectedTab = ItundaTab.Pay },
                 onOpenCard = { showOverview = false; showCard = true },
                 onOpenLoans = { showOverview = false; showLoans = true },
-                onOpenInvest = { showOverview = false; showInvest = true },
-                onOpenProperty = { showOverview = false; showProperty = true },
-                onOpenVehicleValuation = { showOverview = false; showVehicleValuation = true },
-                onSend = { accountId, accountName, balance ->
-                    showOverview = false
-                    transferFromAccount = TransferFromAccount(accountId, accountName, balance)
-                    transferStep = TransferStep.Recipient
-                },
             )
             return@IdsTheme
         }
