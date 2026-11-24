@@ -73,7 +73,7 @@ internal fun chatTimeLabel(iso: String, now: java.time.Instant = java.time.Insta
 internal fun ProtoChatRow(conversation: ConversationSummaryDto, online: Boolean, onClick: () -> Unit, onPinToggle: (() -> Unit)?) {
     val unread = conversation.unreadCount > 0
     Row(
-        Modifier.fillMaxWidth().height(77.8.dp).combinedClickable(onClick = onClick, onLongClick = onPinToggle),
+        Modifier.fillMaxWidth().height(if (conversation.source != null) 77.8.dp else 80.dp).combinedClickable(onClick = onClick, onLongClick = onPinToggle),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(48.dp), contentAlignment = Alignment.BottomEnd) {
@@ -82,7 +82,6 @@ internal fun ProtoChatRow(conversation: ConversationSummaryDto, online: Boolean,
                 Box(Modifier.size(48.dp).clip(CircleShape).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) { ItundaArt(sourceArt, ItundaArtSet.Color, 28.dp) }
                 Box(Modifier.size(18.dp).clip(CircleShape).background(Ids.colors.background).padding(2.dp), contentAlignment = Alignment.Center) { ItundaArt("user", ItundaArtSet.Line, 12.dp, tint = Ids.colors.textTertiary) }
             } else ChatFace(conversation.otherUserName, 48)
-            if (online && conversation.source == null) Box(Modifier.size(12.dp).clip(CircleShape).background(Ids.colors.background).padding(2.dp).clip(CircleShape).background(Ids.colors.success))
         }
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
