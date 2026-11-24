@@ -929,7 +929,7 @@ private fun isListingBoosted(boostedUntil: String?): Boolean {
 // in-place expansion (an earlier pass here guessed at in-place expand without
 // checking; this replaces that guess with the verified real behavior).
 @Composable
-internal fun ListingRow(
+fun ListingRow(
     listing: ListingDto, isMine: Boolean,
     favorited: Boolean = false, favoriteBusy: Boolean = false, onToggleFavorite: () -> Unit = {},
     viewerLocation: Pair<Double, Double>? = null,
@@ -1114,7 +1114,7 @@ internal fun ListingRow(
 // inline into every row of the browse list -- moved here unchanged, just reached by
 // navigation instead of always being visible.
 @Composable
-internal fun ListingDetailScreen(
+fun ListingDetailScreen(
     listing: ListingDto, isMine: Boolean, onBack: () -> Unit, onChanged: () -> Unit, onMessageSeller: (String) -> Unit, onMakeOffer: (String, Double) -> Unit,
     favorited: Boolean = false, favoriteBusy: Boolean = false, onToggleFavorite: () -> Unit = {},
     sellerTrustScore: Int? = null,
