@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -45,7 +46,8 @@ fun JobPostListRow(
 ) {
     val (art, tint) = tileFor(categoryLabel)
     val period = when (post.payType) { "HOURLY" -> " / hr"; "DAILY" -> " / day"; else -> " / task" }
-    Row(modifier.fillMaxWidth().pressScaleClickable(onClick = onOpen).padding(vertical = 18.dp, horizontal = 0.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+    val divider = Ids.colors.surfaceSoft
+    Row(modifier.fillMaxWidth().drawBehind { drawLine(divider, androidx.compose.ui.geometry.Offset(0f, size.height), androidx.compose.ui.geometry.Offset(size.width, size.height), 1.dp.toPx()) }.pressScaleClickable(onClick = onOpen).padding(vertical = 18.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(post.title, color = Ids.colors.textPrimary, fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(listOfNotNull(post.neighborhood, timeAgo).joinToString(" · "), color = Ids.colors.textSecondary, fontSize = 13.sp, lineHeight = 18.sp)
