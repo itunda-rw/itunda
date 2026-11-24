@@ -673,15 +673,15 @@ fun CommunityPostCard(
         shape = androidx.compose.ui.graphics.RectangleShape, colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpen),
     ) {
-        Column(modifier = Modifier.padding(vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(modifier = Modifier.padding(top = 18.dp, bottom = 26.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(40.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Color(0xFFE4F3E8)), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(36.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
                         rw.itunda.core.designsystem.components.ItundaArt("community", rw.itunda.core.designsystem.components.ItundaArtSet.Color, 28.dp)
                     }
                     Column(Modifier.padding(start = 10.dp)) {
-                        Text(post.authorName ?: categoryLabel, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Text(listOfNotNull(post.neighborhood, relativeTimeAgo(post.createdAt)).joinToString(" · "), color = Ids.colors.textSecondary, fontSize = 12.sp)
+                        Text(post.authorName ?: categoryLabel, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp, lineHeight = 24.sp)
+                        Text(listOfNotNull(post.neighborhood, relativeTimeAgo(post.createdAt)).joinToString(" · "), color = Ids.colors.textSecondary, fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium)
                     }
                 }
                 if (isMine) {
@@ -700,21 +700,21 @@ fun CommunityPostCard(
                     }
                 } else HoodReportAction(targetType = "COMMUNITY_POST", targetId = post.id, asMenu = true)
             }
-            Text(post.body, color = Ids.colors.textPrimary, fontSize = 15.sp, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            Text(post.body, color = Ids.colors.textPrimary, fontSize = 15.sp, lineHeight = 22.sp, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                HeartFilled(size = 16.dp)
-                Text("${post.likeCount}", color = Ids.colors.textSecondary, fontSize = 14.sp, modifier = Modifier.padding(end = 12.dp))
-                SpeechBubbleGlyph(size = 16.dp)
-                Text("${post.commentCount}", color = Ids.colors.textSecondary, fontSize = 14.sp)
+                androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Outlined.FavoriteBorder, contentDescription = null, tint = Ids.colors.textSecondary, modifier = Modifier.size(22.dp))
+                Text("${post.likeCount}", color = Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(end = 18.dp))
+                SpeechBubbleGlyph(size = 18.dp)
+                Text("${post.commentCount}", color = Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
             if (post.category == "meetup") {
                 // Real 당근모임-style structured date/capacity (2026-07-25) -- see
                 // backend CommunityPost.eventDate/capacity's own doc comment.
                 val eventDate = post.eventDate
                 if (eventDate != null) {
-                    Column(Modifier.fillMaxWidth().background(Ids.colors.surfaceSoft, RoundedCornerShape(12.dp)).padding(horizontal = 14.dp, vertical = 10.dp)) {
-                        Text(formatMeetupDate(eventDate), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Text("${listOfNotNull(post.neighborhood).joinToString()}${if (post.neighborhood != null) " · " else ""}$joinedCount going${post.capacity?.let { " of $it" } ?: ""}", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                    Column(Modifier.fillMaxWidth().background(Ids.colors.surfaceSoft, RoundedCornerShape(16.dp)).padding(horizontal = 14.dp, vertical = 10.dp)) {
+                        Text(formatMeetupDate(eventDate), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp, lineHeight = 20.sp)
+                        Text("${listOfNotNull(post.neighborhood).joinToString()}${if (post.neighborhood != null) " · " else ""}$joinedCount going", color = Ids.colors.textPrimary, fontSize = 14.sp, lineHeight = 20.sp)
                     }
                 }
                 // Real AI-generated 모임 summary (2026-08-28) -- see backend
