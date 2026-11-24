@@ -882,9 +882,10 @@ fun MarketplaceContent(
 // internal so MarketplaceRecentlyViewed.kt (same module) can reuse this directly
 // instead of a third near-duplicate placeholder.
 @Composable
-internal fun ListingPhotoPlaceholder() {
+internal fun ListingPhotoPlaceholder(category: String = "") {
+    val art = when { category.contains("electr", true) || category.contains("phone", true) -> "airtime"; category.contains("furn", true) || category.contains("home", true) -> "house"; else -> "bag" }
     Box(modifier = Modifier.fillMaxSize().background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
-        Icon(Icons.Outlined.ShoppingBag, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(40.dp))
+        rw.itunda.core.designsystem.components.ItundaArt(art, rw.itunda.core.designsystem.components.ItundaArtSet.Proto, 56.dp, fit = true)
     }
 }
 
@@ -958,7 +959,7 @@ fun ListingRow(
             // own identical fix; see IdsInteractions.kt's pressScaleClickable doc
             // comment for the full sourced account.
             Row(
-                modifier = Modifier.fillMaxWidth().pressScaleClickable(isScrollTouched = isScrollTouched, onClick = onOpen).padding(vertical = 12.dp),
+                modifier = Modifier.fillMaxWidth().pressScaleClickable(isScrollTouched = isScrollTouched, onClick = onOpen).padding(vertical = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 // v1038 Marketplace feed uses a 96dp square thumbnail with a 16dp radius.
@@ -979,11 +980,11 @@ fun ListingRow(
                         ) {
                             when (painter.state) {
                                 is coil.compose.AsyncImagePainter.State.Success -> SubcomposeAsyncImageContent()
-                                else -> ListingPhotoPlaceholder()
+                                else -> ListingPhotoPlaceholder(listing.category)
                             }
                         }
                     } else {
-                        ListingPhotoPlaceholder()
+                        ListingPhotoPlaceholder(listing.category)
                     }
                     if (listing.status.equals("SOLD", ignoreCase = true)) {
                         Box(
@@ -1017,10 +1018,10 @@ fun ListingRow(
                         ) { Text("AD", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold) }
                     }
                 }
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            listing.title,
+                            listing.title, lineHeight = 22.sp,
                             color = Ids.colors.textPrimary,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 16.sp,
@@ -1029,14 +1030,6 @@ fun ListingRow(
                             modifier = Modifier.weight(1f),
                         )
                         if (!isMine) {
-                            Text(
-                                if (hiding) "…" else "Hide",
-                                color = Ids.colors.textSecondary,
-                                fontSize = 11.sp,
-                                modifier = Modifier.padding(end = 8.dp)
-                                    .semantics { contentDescription = "Hide this listing -- you won't see it again" }
-                                    .pressScaleClickable(enabled = !hiding, onClick = onHide),
-                            )
                             WishlistHeart(
                                 favorited = favorited,
                                 size = 20.dp,
@@ -1060,7 +1053,7 @@ fun ListingRow(
                     Text(
                         listOfNotNull(listing.neighborhood?.takeIf { it.isNotBlank() }, distanceLabel, relativeTimeAgo(listing.createdAt)).joinToString(" · "),
                         color = Ids.colors.textSecondary,
-                        fontSize = 13.sp,
+                        fontSize = 13.sp, lineHeight = 18.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -1072,10 +1065,26 @@ fun ListingRow(
                     // same pattern this file's own CommunityPostCard-equivalent ❤️/💬
                     // counts already use, not a deviation from "themes stay common."
                     if (listing.price <= 0.0) {
-                        Text("Free 🧡", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                        Text("Free", color = Ids.colors.textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, lineHeight = 24.sp)
                     } else {
-                        Text(String.format(Locale.US, "%,.0f RWF", listing.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text(String.format(Locale.US, "%,.0f RWF", listing.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, lineHeight = 24.sp)
                     }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            WishlistHeart(
+                                favorited = liked,
+                                size = 12.dp,
+                                modifier = Modifier.semantics { contentDescription = if (liked) "Unlike" else "Like" }.pressScaleClickable {
+                                    displayedLikeCount = if (liked) (displayedLikeCount - 1).coerceAtLeast(0) else displayedLikeCount + 1
+                                    onToggleLike()
+                                },
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("$displayedLikeCount", color = Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        }
                 }
             }
             // Real like count (2026-08-03) -- matches a real 당근마켓 screenshot's
@@ -1083,22 +1092,6 @@ fun ListingRow(
             // NOT shown alongside it (unlike the real reference) -- there is no real
             // comment-thread feature on listings yet, and this app doesn't fabricate
             // a count for a feature that doesn't exist.
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                WishlistHeart(
-                    favorited = liked,
-                    size = 16.dp,
-                    modifier = Modifier.semantics { contentDescription = if (liked) "Unlike" else "Like" }.pressScaleClickable {
-                        displayedLikeCount = if (liked) (displayedLikeCount - 1).coerceAtLeast(0) else displayedLikeCount + 1
-                        onToggleLike()
-                    },
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("$displayedLikeCount", color = Ids.colors.textTertiary, fontSize = 12.sp)
-            }
         // Real flat-list hairline divider (2026-08-03) -- matches FlatSection's own
         // established real-Toss/Karrot list pattern (core/designsystem's own doc
         // comment on that composable): rows separated by a thin line, never a card
