@@ -261,7 +261,10 @@ internal fun OrderFoodContent(
                 val newCart = mutableMapOf<String, EatsCartLine>()
                 orderDetail.items.forEach { item ->
                     val product = activeProducts[item.productId]
-                    if (product != null && product.eatsOptionGroups().isEmpty()) {
+                    // Optional add-ons can be skipped; only a required group blocks a bare reorder line.
+                    val canReorderWithoutSelectingRequiredOptions =
+                        product != null && product.eatsOptionGroups().none { it.required }
+                    if (canReorderWithoutSelectingRequiredOptions) {
                         val key = eatsCartKey(item.productId, emptyList())
                         newCart[key] = EatsCartLine(item.productId, (newCart[key]?.quantity ?: 0) + item.quantity)
                     }

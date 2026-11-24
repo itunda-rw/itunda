@@ -3,6 +3,7 @@ package rw.itunda.screenshots
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.key
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -35,7 +36,7 @@ class EatsIntegratedScreenshotTest {
     @Before fun enablePrototypeDemo() { NetworkClient.demoMode = true }
     @After fun disablePrototypeDemo() { NetworkClient.demoMode = false }
 
-    private fun show(dark: Boolean) {
+    private fun show(dark: Boolean, waitForBrowseData: Boolean = true) {
         NetworkClient.demoMode = true
         rule.activity.actionBar?.hide()
         val sessionKey = Any()
@@ -46,8 +47,15 @@ class EatsIntegratedScreenshotTest {
                 }
             }
         }
-        rule.waitUntil(60_000) {
-            rule.onAllNodesWithText("Popular this week", substring = true).fetchSemanticsNodes().isNotEmpty()
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithContentDescription("Search restaurants").fetchSemanticsNodes().isNotEmpty()
+        }
+        if (waitForBrowseData) {
+            // The count is present only after the restaurant response is loaded; unlike the Popular rail,
+            // it does not depend on every returned restaurant having a rating.
+            rule.waitUntil(60_000) {
+                rule.onAllNodesWithText("14").fetchSemanticsNodes().isNotEmpty()
+            }
         }
     }
 
@@ -205,7 +213,7 @@ class EatsIntegratedScreenshotTest {
     @Test fun browseCouponsSheetDark() = browseCoupons(true)
 
     private fun browseAddressPicker(dark: Boolean) {
-        show(dark)
+        show(dark, waitForBrowseData = false)
         rule.onNodeWithContentDescription("Change delivery address").performClick()
         rule.onNodeWithText("Your rider will go to the address you pick.").assertExists()
         capture("eats-prototype-browse-address-sheet-${if (dark) "dark" else "light"}")
@@ -215,7 +223,7 @@ class EatsIntegratedScreenshotTest {
     @Test fun browseAddressPickerDark() = browseAddressPicker(true)
 
     private fun browseNewAddressForm(dark: Boolean) {
-        show(dark)
+        show(dark, waitForBrowseData = false)
         rule.onNodeWithContentDescription("Change delivery address").performClick()
         rule.onNodeWithText("Add a new address").performClick()
         rule.onNodeWithText("Street or landmark").assertExists()

@@ -73,8 +73,12 @@ internal fun EatsOrderHistoryRow(
                 )
                 Text(formatEatsOrderRwf(order.totalAmount), color = p.primary, fontSize = 16.sp, lineHeight = 22.4.sp, fontWeight = FontWeight.Bold)
             }
+            val statusLabel = when (order.status) {
+                "CANCELLED" -> "Cancelled"
+                else -> EATS_STATUS_LABEL[order.status] ?: order.status
+            }
             Text(
-                EATS_STATUS_LABEL[order.status] ?: order.status,
+                statusLabel,
                 color = if (order.status == "CANCELLED") p.accent else p.secondary,
                 fontSize = 14.sp, lineHeight = 19.6.sp, fontWeight = FontWeight.Bold, maxLines = 1,
             )

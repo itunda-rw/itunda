@@ -5,6 +5,7 @@ import androidx.compose.runtime.key
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -59,8 +60,8 @@ class EatsOrdersScreenshotTest {
                 }
             }
         }
-        rule.waitUntil(60_000) {
-            rule.onAllNodesWithText("Popular this week", substring = true).fetchSemanticsNodes().isNotEmpty()
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithContentDescription("Orders").fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithContentDescription("Orders").performClick()
         if (filled) {
@@ -80,6 +81,10 @@ class EatsOrdersScreenshotTest {
     @Test fun ordersEmptyLight() {
         showOrders(dark = false, filled = false)
         capture("eats-prototype-orders-empty-light")
+        rule.onNodeWithText("Browse restaurants").performClick()
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithContentDescription("Search restaurants").fetchSemanticsNodes().isNotEmpty()
+        }
     }
 
     @Test fun ordersEmptyDark() {
@@ -91,6 +96,8 @@ class EatsOrdersScreenshotTest {
         showOrders(dark = false, filled = true)
         rule.onAllNodesWithText("Kigali Bakery").assertCountEquals(2)
         rule.onAllNodesWithText("2 × Croissant").assertCountEquals(2)
+        rule.onNodeWithText("Cancelled").assertExists()
+        rule.onAllNodesWithText("Cancelled — refunded").assertCountEquals(0)
         capture("eats-prototype-orders-filled-light")
     }
 
@@ -98,6 +105,8 @@ class EatsOrdersScreenshotTest {
         showOrders(dark = true, filled = true)
         rule.onAllNodesWithText("Kigali Bakery").assertCountEquals(2)
         rule.onAllNodesWithText("2 × Croissant").assertCountEquals(2)
+        rule.onNodeWithText("Cancelled").assertExists()
+        rule.onAllNodesWithText("Cancelled — refunded").assertCountEquals(0)
         capture("eats-prototype-orders-filled-dark")
     }
 
@@ -109,6 +118,10 @@ class EatsOrdersScreenshotTest {
         }
         rule.onAllNodesWithText("2,400 RWF").assertCountEquals(3)
         capture("eats-prototype-orders-receipt-$name")
+        rule.onNodeWithText("OK").performClick()
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Orders").fetchSemanticsNodes().isNotEmpty()
+        }
     }
 
     @Test fun receiptLight() = receipt(false, "light")
@@ -136,6 +149,11 @@ class EatsOrdersScreenshotTest {
             assert(report.get() == ("demo-txn-7207" to "Food was cold")) {
                 "Expected selected help reason to reach support hand-off; got ${report.get()}"
             }
+        } else {
+            rule.onNodeWithText("Cancel").performClick()
+            rule.waitUntil(10_000) {
+                rule.onAllNodesWithText("Orders").fetchSemanticsNodes().isNotEmpty()
+            }
         }
     }
 
@@ -143,4 +161,20 @@ class EatsOrdersScreenshotTest {
     @Test fun helpDark() = help(true, false, "dark")
     @Test fun helpSelectedLight() = help(false, true, "selected-light", verifySubmit = true)
     @Test fun helpSelectedDark() = help(true, true, "selected-dark", verifySubmit = true)
+
+    @Test fun reorderKeepsProductsWithOptionalAddOns() {
+        showOrders(dark = false, filled = true)
+        rule.onAllNodesWithText("Reorder")[0].performClick()
+        rule.waitUntil(20_000) {
+            rule.onAllNodesWithText("Checkout (2 items)").fetchSemanticsNodes().isNotEmpty()
+        }
+        capture("eats-prototype-restaurant-menu-cart-filled-light")
+    }
+
+    @Test fun trackFromCancelledOrderOpensTracking() {
+        showOrders(dark = false, filled = true)
+        rule.onNodeWithText("Track").performClick()
+        rule.onNodeWithText("Order cancelled").assertExists()
+        capture("eats-prototype-orders-track-cancelled-light")
+    }
 }
