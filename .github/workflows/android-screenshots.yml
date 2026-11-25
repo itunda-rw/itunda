@@ -82,14 +82,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -e
-          rm -rf /tmp/shots-repo && mkdir -p /tmp/shots-repo/${GITHUB_SHA::7}
-          cp -r android/screenshots/build/screenshots/. /tmp/shots-repo/${GITHUB_SHA::7}/ 2>/dev/null || true
+          rm -rf /tmp/shots-repo
+          git clone --depth 1 --branch ci-screenshots "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" /tmp/shots-repo
           cd /tmp/shots-repo
-          ls -R . | head -50
-          git init -q -b ci-screenshots
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          mkdir -p "${GITHUB_SHA::7}"
+          cp -r "$GITHUB_WORKSPACE/android/screenshots/build/screenshots/." "${GITHUB_SHA::7}/" 2>/dev/null || true
           git config user.name "ci-screenshots"
           git config user.email "ci-screenshots@users.noreply.github.com"
           git add -A
           git commit -q -m "screenshots for ${GITHUB_SHA}" || exit 0
-          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git push -f origin ci-screenshots
+          git fetch origin ci-screenshots
+          git rebase origin/ci-screenshots
+          git push origin ci-screenshots
