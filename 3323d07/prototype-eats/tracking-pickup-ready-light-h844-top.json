@@ -1,0 +1,62 @@
+{
+  "screenKey": "etrack",
+  "screenText": "Your pickup\nReady now\nKigali Bakery · Pickup · ⚡ Cheetah delivery\nOrder accepted\nPreparing\nReady for pickup\nPicked up\nReady by 06:03\n2 × Croissant\n2,400 RWF\nTotal\n2,400 RWF\nEA-7207",
+  "sheetText": "",
+  "scroll": {
+    "top": 0,
+    "height": 844,
+    "client": 844
+  },
+  "controls": [
+    {
+      "tag": "button",
+      "text": "",
+      "id": "",
+      "className": "ib",
+      "role": null,
+      "ariaLabel": "Back",
+      "onClick": "back()",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "",
+      "id": "",
+      "className": "ib",
+      "role": null,
+      "ariaLabel": "Call rider",
+      "onClick": "eRider()",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Tracking your order",
+      "id": "edone",
+      "className": "btn",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "done()",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "text": "",
+      "id": "t26dn",
+      "className": "",
+      "role": null,
+      "ariaLabel": "Latest messages",
+      "onClick": null,
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "",
+      "id": "",
+      "className": "v36 hit44a",
+      "role": null,
+      "ariaLabel": "Button",
+      "onClick": null,
+      "disabled": false
+    }
+  ]
+}

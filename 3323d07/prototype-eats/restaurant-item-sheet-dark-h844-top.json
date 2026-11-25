@@ -1,0 +1,502 @@
+{
+  "screenKey": "erest",
+  "screenText": "Kigali Bakery\nKigali Bakery\n★ 4.8\n(320 reviews) · 1.2 km\nBread, pastries and cakes\n15-25 min · Fee Free · Min 2,000\nArrives by 06:01–06:11\nDelivery\nPickup\nGroup order\nMenu\nInfo\nReviews\nPopular\nPastries\nCakes\nBread\nDrinks\nPopular\nCroissant\nButtery, baked this morning\n1,200 RWF\n+\nMandazi, 6 pieces\nSweet fried dough\n1,000 RWF\n+\nPastries\nCroissant\nButtery, baked this morning\n1,200 RWF\n+\nMandazi, 6 pieces\nSweet fried dough\n1,000 RWF\n+\nSamosa, 4 pieces\nBeef or vegetable\n1,600 RWF\n+\nCakes\nVanilla cake slice\nSoft sponge, light cream\n2,200 RWF\n+\nChocolate cake slice\nRich and moist\n2,500 RWF\n+\nBread\nFresh bread loaf\nBaked every morning\n1,500 RWF\n+\nWhole wheat loaf\nSeeds on top\n1,800 RWF\n+\nDrinks\nFruit juice\nPassion or mango\n1,800 RWF\n+\nHot milk tea\nSpiced, large\n1,000 RWF\n+",
+  "sheetText": "Croissant\n1,200 RWF\nButtery, baked this morning\nAdd-ons\nButter portion\n+300 RWF\nHoney\n+400 RWF\nPreferences\nNo onions\nExtra spicy\nLess salt\nNo sugar\n1\nAdd · 1,200 RWF",
+  "scroll": {
+    "top": 0,
+    "height": 2485,
+    "client": 844
+  },
+  "controls": [
+    {
+      "tag": "button",
+      "text": "",
+      "id": "",
+      "className": "e2-rb",
+      "role": null,
+      "ariaLabel": "Back",
+      "onClick": "back()",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "",
+      "id": "",
+      "className": "e2-rb",
+      "role": null,
+      "ariaLabel": "Share",
+      "onClick": "e2Share()",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "",
+      "id": "",
+      "className": "e2-rb",
+      "role": null,
+      "ariaLabel": "Save",
+      "onClick": "e2Fav(0)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Delivery",
+      "id": "",
+      "className": "on v420hit",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "e2Pk(false)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Pickup",
+      "id": "",
+      "className": "v420hit",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "e2Pk(true)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Group order",
+      "id": "",
+      "className": "tap g816",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "egStart()",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Menu",
+      "id": "",
+      "className": "on",
+      "role": "tab",
+      "ariaLabel": null,
+      "onClick": "eTab('menu')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Info",
+      "id": "",
+      "className": "v420hit",
+      "role": "tab",
+      "ariaLabel": null,
+      "onClick": "eTab('info')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Reviews",
+      "id": "",
+      "className": "",
+      "role": "tab",
+      "ariaLabel": null,
+      "onClick": "eTab('reviews')",
+      "disabled": false
+    },
+    {
+      "tag": "input",
+      "text": "",
+      "id": "e2mq",
+      "className": "hs13",
+      "role": null,
+      "ariaLabel": "Search the menu",
+      "onClick": null,
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Popular",
+      "id": "",
+      "className": "on v420hit",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "e2Sec(0)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Pastries",
+      "id": "",
+      "className": "v420hit",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "e2Sec(1)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Cakes",
+      "id": "",
+      "className": "v420hit",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "e2Sec(2)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Bread",
+      "id": "",
+      "className": "v420hit",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "e2Sec(3)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Drinks",
+      "id": "",
+      "className": "v420hit",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "e2Sec(4)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Croissant Buttery, baked this morning 1,200 RWF",
+      "id": "",
+      "className": "e2-itx",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eItem(0)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "+",
+      "id": "",
+      "className": "e2-pl",
+      "role": null,
+      "ariaLabel": "Add Croissant",
+      "onClick": "eAdd(0)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Mandazi, 6 pieces Sweet fried dough 1,000 RWF",
+      "id": "",
+      "className": "e2-itx",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eItem(1)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "+",
+      "id": "",
+      "className": "e2-pl",
+      "role": null,
+      "ariaLabel": "Add Mandazi, 6 pieces",
+      "onClick": "eAdd(1)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Croissant Buttery, baked this morning 1,200 RWF",
+      "id": "",
+      "className": "e2-itx",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eItem(0)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "+",
+      "id": "",
+      "className": "e2-pl",
+      "role": null,
+      "ariaLabel": "Add Croissant",
+      "onClick": "eAdd(0)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Mandazi, 6 pieces Sweet fried dough 1,000 RWF",
+      "id": "",
+      "className": "e2-itx",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eItem(1)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "+",
+      "id": "",
+      "className": "e2-pl",
+      "role": null,
+      "ariaLabel": "Add Mandazi, 6 pieces",
+      "onClick": "eAdd(1)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Samosa, 4 pieces Beef or vegetable 1,600 RWF",
+      "id": "",
+      "className": "e2-itx",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eItem(2)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "+",
+      "id": "",
+      "className": "e2-pl",
+      "role": null,
+      "ariaLabel": "Add Samosa, 4 pieces",
+      "onClick": "eAdd(2)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Vanilla cake slice Soft sponge, light cream 2,200 RWF",
+      "id": "",
+      "className": "e2-itx",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eItem(3)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "+",
+      "id": "",
+      "className": "e2-pl",
+      "role": null,
+      "ariaLabel": "Add Vanilla cake slice",
+      "onClick": "eAdd(3)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Chocolate cake slice Rich and moist 2,500 RWF",
+      "id": "",
+      "className": "e2-itx",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eItem(4)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "+",
+      "id": "",
+      "className": "e2-pl",
+      "role": null,
+      "ariaLabel": "Add Chocolate cake slice",
+      "onClick": "eAdd(4)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Fresh bread loaf Baked every morning 1,500 RWF",
+      "id": "",
+      "className": "e2-itx",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eItem(5)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "+",
+      "id": "",
+      "className": "e2-pl",
+      "role": null,
+      "ariaLabel": "Add Fresh bread loaf",
+      "onClick": "eAdd(5)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Whole wheat loaf Seeds on top 1,800 RWF",
+      "id": "",
+      "className": "e2-itx",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eItem(6)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "+",
+      "id": "",
+      "className": "e2-pl",
+      "role": null,
+      "ariaLabel": "Add Whole wheat loaf",
+      "onClick": "eAdd(6)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Fruit juice Passion or mango 1,800 RWF",
+      "id": "",
+      "className": "e2-itx",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eItem(7)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "+",
+      "id": "",
+      "className": "e2-pl",
+      "role": null,
+      "ariaLabel": "Add Fruit juice",
+      "onClick": "eAdd(7)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Hot milk tea Spiced, large 1,000 RWF",
+      "id": "",
+      "className": "e2-itx",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eItem(8)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "+",
+      "id": "",
+      "className": "e2-pl",
+      "role": null,
+      "ariaLabel": "Add Hot milk tea",
+      "onClick": "eAdd(8)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "",
+      "id": "",
+      "className": "ib",
+      "role": null,
+      "ariaLabel": "Back",
+      "onClick": "closeSheet()",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Butter portion +300 RWF",
+      "id": "",
+      "className": "",
+      "role": "checkbox",
+      "ariaLabel": null,
+      "onClick": "eIad(9)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Honey +400 RWF",
+      "id": "",
+      "className": "",
+      "role": "checkbox",
+      "ariaLabel": null,
+      "onClick": "eIad(10)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "No onions",
+      "id": "",
+      "className": "cch ",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eIp(0)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Extra spicy",
+      "id": "",
+      "className": "cch ",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eIp(1)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Less salt",
+      "id": "",
+      "className": "cch ",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eIp(2)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "No sugar",
+      "id": "",
+      "className": "cch ",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eIp(3)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "",
+      "id": "",
+      "className": "ib",
+      "role": null,
+      "ariaLabel": "Remove one",
+      "onClick": "eIq(-1)",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "text": "",
+      "id": "",
+      "className": "ib",
+      "role": null,
+      "ariaLabel": "Add one",
+      "onClick": "eIq(1)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Add · 1,200 RWF",
+      "id": "",
+      "className": "btn",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eIAdd()",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "",
+      "id": "t26dn",
+      "className": "",
+      "role": null,
+      "ariaLabel": "Latest messages",
+      "onClick": null,
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "",
+      "id": "",
+      "className": "v36 hit44a",
+      "role": null,
+      "ariaLabel": "Button",
+      "onClick": null,
+      "disabled": false
+    }
+  ]
+}

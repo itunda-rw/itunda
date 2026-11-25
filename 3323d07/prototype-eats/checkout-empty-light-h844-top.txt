@@ -1,0 +1,16 @@
+scrollTop=0 scrollHeight=844 clientHeight=844
+0 | div.bar | 0.0 | 0.0 | 390.0 | 70.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 0px | none | -0.176px | 22.4px | 
+1 | button.ib | 6.0 | 16.0 | 48.0 | 48.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | svg | 18.0 | 28.0 | 24.0 | 24.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+3 | path | 23.0 | 34.0 | 14.0 | 12.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+1 | b | 58.0 | 26.0 | 46.4 | 28.0 | 20px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.3px | 28px | Cart
+0 | div.ez688e | 0.0 | 70.0 | 390.0 | 262.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+1 | div.g | 147.0 | 158.0 | 96.0 | 96.0 | 16px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 32px | none | -0.176px | 22.4px | 
+2 | svg | 179.5 | 190.5 | 31.0 | 31.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+3 | g | 183.6 | 193.1 | 22.8 | 25.8 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+4 | svg | 183.6 | 193.1 | 22.8 | 25.8 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+5 | path | 189.7 | 193.1 | 10.6 | 8.3 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+5 | rect | 183.6 | 199.9 | 22.8 | 19.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+5 | path | 191.2 | 209.8 | 7.6 | 2.3 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+1 | div.t | 32.0 | 274.0 | 326.0 | 28.0 | 20px | 800 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.3px | 28px | Your cart is empty
+1 | div.s | 32.0 | 310.0 | 326.0 | 22.0 | 14px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Add something from Kigali Bake
