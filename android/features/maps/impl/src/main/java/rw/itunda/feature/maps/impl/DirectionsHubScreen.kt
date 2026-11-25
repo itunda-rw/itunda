@@ -2,6 +2,7 @@ package rw.itunda.feature.maps.impl
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -62,11 +63,12 @@ fun DirectionsHubScreen(onBack: () -> Unit, onOpenMap: (query: String?) -> Unit)
     var cityOpen by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().background(Ids.colors.background).verticalScroll(rememberScrollState())) {
         ProtoTopBar("Directions", onBack)
-        Row(Modifier.padding(horizontal = 24.dp).fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.height(7.dp))
+        Row(Modifier.padding(horizontal = 24.dp).fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 16.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(Modifier.size(10.dp).clip(CircleShape).background(Color(0xFF30B27F)))
+                Box(Modifier.size(12.dp).border(2.dp, Color(0xFF30B27F), CircleShape))
                 Box(Modifier.padding(vertical = 3.dp).size(width = 1.dp, height = 22.dp).background(Ids.colors.textTertiary.copy(alpha = 0.5f)))
-                Box(Modifier.size(10.dp).clip(CircleShape).background(Color(0xFFF04452)))
+                Box(Modifier.size(12.dp).border(2.dp, Color(0xFFF04452), CircleShape))
             }
             Column(Modifier.padding(start = 16.dp)) {
                 Text("My location · KG 11 Ave, Kimironko", color = Ids.colors.textPrimary, fontSize = 16.sp, lineHeight = 22.sp, modifier = Modifier.height(32.dp))
@@ -74,8 +76,8 @@ fun DirectionsHubScreen(onBack: () -> Unit, onOpenMap: (query: String?) -> Unit)
             }
         }
         Row(Modifier.padding(start = 24.dp, end = 24.dp, top = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            HubPill("Home · 24 min", height = 40) { onOpenMap("Home") }
-            HubPill("Work · 25 min", height = 40) { onOpenMap("Work") }
+            HubPill("Home", height = 40, suffix = "· 24 min") { onOpenMap("Home") }
+            HubPill("Work", height = 40, suffix = "· 25 min") { onOpenMap("Work") }
         }
         HubHeading("Recent routes")
         recentRoutes.forEach { (t, sub, q) -> HubRow(t, sub, onClick = { onOpenMap(q) }) { Icon(Icons.Outlined.Schedule, null, tint = Ids.colors.textTertiary, modifier = Modifier.size(22.dp)) } }

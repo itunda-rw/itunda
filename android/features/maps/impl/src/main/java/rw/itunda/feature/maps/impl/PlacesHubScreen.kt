@@ -59,10 +59,11 @@ fun PlacesHubScreen(onBack: () -> Unit, onOpenMap: (category: String?, query: St
     val shown = nearYou.filter { (!openNow || hour < it.closes.substringBefore(":").toInt()) && (!reservable || it.reservable) && (!delivery || it.delivery) }
     Column(Modifier.fillMaxSize().background(Ids.colors.background).verticalScroll(rememberScrollState())) {
         ProtoTopBar("Places", onBack)
+        Box(Modifier.height(7.dp))
         Box(Modifier.padding(horizontal = 24.dp).fillMaxWidth().height(44.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft).clickable { onOpenMap(null, null) }.padding(horizontal = 14.dp), contentAlignment = Alignment.CenterStart) {
             Text("Search places", color = Ids.colors.textPrimary, fontSize = 16.sp)
         }
-        Row(Modifier.padding(vertical = 14.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.padding(top = 14.dp, bottom = 4.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             categoryChips.forEach { (label, meta) ->
                 Row(Modifier.height(44.dp).clip(RoundedCornerShape(22.dp)).background(Ids.colors.surfaceSoft).clickable { onOpenMap(meta.second, null) }.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(meta.first, fontSize = 20.sp)
@@ -71,7 +72,7 @@ fun PlacesHubScreen(onBack: () -> Unit, onOpenMap: (category: String?, query: St
             }
         }
         HubHeading("Near you")
-        Row(Modifier.padding(horizontal = 24.dp).padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.padding(horizontal = 24.dp).padding(top = 6.dp, bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             HubPill("Open now", openNow) { openNow = !openNow }
             HubPill("Reservable", reservable) { reservable = !reservable }
             HubPill("Delivery", delivery) { delivery = !delivery }
@@ -93,17 +94,17 @@ fun PlacesHubScreen(onBack: () -> Unit, onOpenMap: (category: String?, query: St
 private fun PlaceRow(p: HubPlace, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 24.dp, vertical = 13.dp)) {
         Column(Modifier.weight(1f)) {
-            Text(p.name, color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 26.sp, fontWeight = FontWeight.SemiBold)
-            Text(p.kind, color = Ids.colors.textSecondary, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium)
+            Text(p.name, color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 26.sp, fontWeight = FontWeight.SemiBold, style = hubTrim)
+            Text(p.kind, color = Ids.colors.textSecondary, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium, style = hubTrim)
             Text(buildAnnotatedString {
                 withStyle(SpanStyle(color = Color(0xFFF5B700))) { append("★ ") }
                 withStyle(SpanStyle(color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)) { append(p.rating) }
                 append(" · ${p.reviews} reviews")
-            }, color = Ids.colors.textSecondary, fontSize = 14.sp, lineHeight = 17.sp, modifier = Modifier.padding(top = 4.dp))
+            }, color = Ids.colors.textSecondary, fontSize = 14.sp, lineHeight = 17.sp, style = hubTrim, modifier = Modifier.padding(top = 4.dp))
             Text(buildAnnotatedString {
                 withStyle(SpanStyle(color = Color(0xFF12803C), fontWeight = FontWeight.Bold)) { append("Open till ${p.closes}") }
                 append(" · ${p.distance}")
-            }, color = Ids.colors.textSecondary, fontSize = 14.sp, lineHeight = 17.sp, modifier = Modifier.padding(top = 6.dp))
+            }, color = Ids.colors.textSecondary, fontSize = 14.sp, lineHeight = 17.sp, style = hubTrim, modifier = Modifier.padding(top = 6.dp))
         }
         Box(Modifier.padding(start = 12.dp).size(64.dp).clip(RoundedCornerShape(18.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) { Text(p.emoji, fontSize = 30.sp) }
     }
