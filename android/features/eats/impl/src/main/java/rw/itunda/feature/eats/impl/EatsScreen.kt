@@ -36,6 +36,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -186,8 +187,16 @@ internal fun OrderFoodContent(
     // Re-fetch once a real location fix lands, so a browse that already rendered
     // (no distance/ETA yet, permission check + GPS fix both take real time) upgrades
     // in place instead of requiring the user to pull-to-refresh themselves.
-    LaunchedEffect(browseLocation) { if (browseLocation != null) loadRestaurants() }
+    LaunchedEffect(browseLocation) {
+        if (browseLocation != null) {
+            // Keep the first LazyColumn measure stable before a location-enriched result changes its item count.
+            withFrameNanos { }
+            loadRestaurants()
+        }
+    }
     LaunchedEffect(Unit) {
+        // Let the initial skeleton measure once before the synchronous demo/network response replaces it.
+        withFrameNanos { }
         loadRestaurants()
         loadFavorites()
         // Restaurant names are needed by Orders, receipts, tracking, and Reorder.
