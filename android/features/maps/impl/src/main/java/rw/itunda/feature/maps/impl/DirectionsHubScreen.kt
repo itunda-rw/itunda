@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -54,6 +55,7 @@ private val busStops = listOf(
 private val intercity = listOf(Triple("Huye", "about 2 h · 3,500 RWF", "Fastest"), Triple("Musanze", "about 2 h · 3,000 RWF", "Cheapest"), Triple("Rubavu", "about 3 h 30 · 4,000 RWF", null), Triple("Rusizi", "about 5 h · 7,500 RWF", null))
 
 /** Prototype "Directions" hub: from/to card, Recent routes, Bus stops, Bus lines, Fares and rides. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DirectionsHubScreen(onBack: () -> Unit, onOpenMap: (query: String?) -> Unit) {
     BackHandler(onBack = onBack)
