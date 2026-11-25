@@ -1,0 +1,18 @@
+scrollTop=0 scrollHeight=2600 clientHeight=2600
+0 | div.bar | 0.0 | 0.0 | 390.0 | 70.0 | 16px | 400 | rgb(249, 250, 251) | rgb(23, 23, 28) | none | 0px | none | -0.176px | 22.4px | 
+1 | button.ib | 6.0 | 16.0 | 48.0 | 48.0 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | svg | 18.0 | 28.0 | 24.0 | 24.0 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+3 | path | 23.0 | 34.0 | 14.0 | 12.0 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+0 | div.pad | 0.0 | 70.0 | 390.0 | 158.0 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+1 | div.h1 | 24.0 | 90.0 | 342.0 | 76.0 | 30px | 700 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.6px | 38px | How was your order?
+1 | div | 24.0 | 180.0 | 342.0 | 48.0 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | button.ib | 24.0 | 180.0 | 48.0 | 48.0 | 34px | 400 | rgb(245, 166, 35) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 47.6px | 
+3 | span.ig.ig-s.ig-gold | 31.8 | 187.8 | 32.3 | 32.3 | 34px | 400 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 34px | ★
+2 | button.ib | 78.0 | 180.0 | 48.0 | 48.0 | 34px | 400 | rgb(245, 166, 35) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 47.6px | 
+3 | span.ig.ig-s.ig-gold | 85.8 | 187.8 | 32.3 | 32.3 | 34px | 400 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 34px | ★
+2 | button.ib | 132.0 | 180.0 | 48.0 | 48.0 | 34px | 400 | rgb(245, 166, 35) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 47.6px | 
+3 | span.ig.ig-s.ig-gold | 139.8 | 187.8 | 32.3 | 32.3 | 34px | 400 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 34px | ★
+2 | button.ib | 186.0 | 180.0 | 48.0 | 48.0 | 34px | 400 | rgb(245, 166, 35) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 47.6px | 
+3 | span.ig.ig-s.ig-gold | 193.8 | 187.8 | 32.3 | 32.3 | 34px | 400 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 34px | ★
+2 | button.ib | 240.0 | 180.0 | 48.0 | 48.0 | 34px | 400 | rgb(245, 166, 35) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 47.6px | 
+3 | span.ig.ig-s.ig-gold | 247.8 | 187.8 | 32.3 | 32.3 | 34px | 400 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 34px | ★
