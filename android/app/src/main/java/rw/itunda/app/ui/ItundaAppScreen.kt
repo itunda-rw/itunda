@@ -488,6 +488,7 @@ fun ItundaAppScreen(
         var showJobs by rememberSaveable { mutableStateOf(false) }
         var showProperty by rememberSaveable { mutableStateOf(false) }
         var showMap by rememberSaveable { mutableStateOf(false) }
+        var mapHub by rememberSaveable { mutableStateOf<String?>(null) }
         var mapSearchQueryForScreen by rememberSaveable { mutableStateOf<String?>(null) }
         var mapSharedFolderForScreen by rememberSaveable { mutableStateOf<Pair<String, String>?>(null) }
         // Real "Delivery" pill deep-link, Maps -> Eats (2026-08-09) -- itunda's
@@ -1352,7 +1353,8 @@ fun ItundaAppScreen(
         if (showMap) {
             BackHandler { showMap = false }
             MapsEntryPoint(
-                onBack = { showMap = false },
+                onBack = { showMap = false; mapHub = null },
+                initialHub = mapHub,
                 initialCategory = if (showAgentCash) "ITUNDA_AGENT" else null,
                 initialSearchQuery = mapSearchQueryForScreen,
                 initialSharedFolder = mapSharedFolderForScreen,
@@ -1937,7 +1939,9 @@ fun ItundaAppScreen(
                             onOpenSettings = { showSettings = true },
                             onOpenInvest = { showInvest = true },
                             onOpenBank = { showBank = true },
-                            onOpenMap = { showMap = true },
+                            onOpenMap = { mapHub = null; showMap = true },
+                            onOpenPlaces = { mapHub = "places"; showMap = true },
+                            onOpenDirections = { mapHub = "directions"; showMap = true },
                             onOpenOverview = { showOverview = true },
                             onOpenLoans = { showLoans = true },
                             onOpenSupport = { showSupport = true },

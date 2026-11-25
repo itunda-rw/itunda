@@ -62,6 +62,8 @@ fun MenuEntryPoint(
     onOpenInvest: () -> Unit = {},
     onOpenBank: () -> Unit = {},
     onOpenMap: () -> Unit = {},
+    onOpenPlaces: () -> Unit = onOpenMap,
+    onOpenDirections: () -> Unit = onOpenMap,
     onOpenOverview: () -> Unit = {},
     onOpenLoans: () -> Unit = {},
     onOpenSupport: () -> Unit = {},
@@ -162,7 +164,7 @@ fun MenuEntryPoint(
         onOpen = { key ->
             when (key) {
                 "shop" -> onOpenShop(); "eats" -> onOpenEats(); "front" -> onOpenFront(); "marketplace" -> onOpenMarketplace()
-                "community" -> onOpenCommunity(); "jobs" -> onOpenJobs(); "property" -> onOpenProperty(); "places", "directions" -> onOpenMap()
+                "community" -> onOpenCommunity(); "jobs" -> onOpenJobs(); "property" -> onOpenProperty(); "places" -> onOpenPlaces(); "directions" -> onOpenDirections()
                 "benefits" -> onOpenRewardTasksMiniApp(); "invest" -> onOpenInvest(); "week26" -> onOpenWeeklySavings(); "day31" -> onOpenGrow31Savings()
                 "open" -> onOpenBank(); "assets" -> onOpenOverview(); "card" -> onOpenCard(); "transit" -> onOpenTransit(); "spending" -> onOpenSpending()
                 "group" -> onOpenGroupAccounts(); "family" -> onOpenFamilyLink(); "fx" -> onOpenForeignCurrency(); "subs" -> onOpenSubscriptions()
