@@ -17,6 +17,7 @@ fun EatsContent(
     onPendingMerchantConsumed: () -> Unit = {},
     onReportIssue: (String, String?) -> Unit = { _, _ -> },
 ) {
+    // Match the v1038 EATS text contract instead of inheriting platform Roboto metrics.
     ProvideTextStyle(
         TextStyle(
             fontFamily = PretendardFontFamily,
