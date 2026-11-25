@@ -36,7 +36,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
+import kotlinx.coroutines.yield
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -190,7 +190,7 @@ internal fun OrderFoodContent(
     LaunchedEffect(browseLocation) {
         if (browseLocation != null) {
             // Keep the first LazyColumn measure stable before a location-enriched result changes its item count.
-            withFrameNanos { }
+            yield()
             loadRestaurants()
         }
     }
