@@ -71,18 +71,18 @@ fun PlacesHubScreen(onBack: () -> Unit, onOpenMap: (category: String?, query: St
                 }
             }
         }
-        HubHeading("Near you")
+        HubHeading("Near you", 25.dp)
         Row(Modifier.padding(horizontal = 24.dp).padding(top = 6.dp, bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             HubPill("Open now", openNow) { openNow = !openNow }
             HubPill("Reservable", reservable) { reservable = !reservable }
             HubPill("Delivery", delivery) { delivery = !delivery }
         }
         shown.forEach { p -> PlaceRow(p) { onOpenMap(null, p.name) } }
-        HubHeading("My places")
+        HubHeading("My places", 25.dp)
         HubRow("Saved", onClick = { onOpenMap(null, null) })
         HubRow("Reservations", onClick = { onOpenMap(null, null) })
         HubRow("My reviews", onClick = { onOpenMap(null, null) })
-        HubHeading("Recent")
+        HubHeading("Recent", 25.dp)
         HubRow("Nyamirambo Coffee House", trailing = "15 Oct", onClick = { onOpenMap(null, "Nyamirambo Coffee House") }) { HubGlyph("bus") }
         Box(Modifier.padding(start = 24.dp, end = 24.dp, top = 22.dp, bottom = 40.dp).fillMaxWidth().height(58.dp).clip(RoundedCornerShape(18.dp)).background(Ids.colors.brand).clickable { onOpenMap(null, null) }, contentAlignment = Alignment.Center) {
             Text("Pay at a place", color = Color(0xFF17171C), fontSize = 18.sp, fontWeight = FontWeight.Bold)
@@ -92,7 +92,7 @@ fun PlacesHubScreen(onBack: () -> Unit, onOpenMap: (category: String?, query: St
 
 @Composable
 private fun PlaceRow(p: HubPlace, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 24.dp, vertical = 13.dp)) {
+    Row(Modifier.fillMaxWidth().height(115.6.dp).clickable(onClick = onClick).padding(start = 24.dp, end = 24.dp, top = 13.dp)) {
         Column(Modifier.weight(1f)) {
             Text(p.name, color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 26.sp, fontWeight = FontWeight.SemiBold, style = hubTrim)
             Text(p.kind, color = Ids.colors.textSecondary, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium, style = hubTrim)

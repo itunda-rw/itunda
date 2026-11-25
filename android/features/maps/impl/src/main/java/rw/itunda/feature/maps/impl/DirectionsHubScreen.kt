@@ -64,7 +64,7 @@ fun DirectionsHubScreen(onBack: () -> Unit, onOpenMap: (query: String?) -> Unit)
     Column(Modifier.fillMaxSize().background(Ids.colors.background).verticalScroll(rememberScrollState())) {
         ProtoTopBar("Directions", onBack)
         Box(Modifier.height(7.dp))
-        Row(Modifier.padding(horizontal = 24.dp).fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 16.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(horizontal = 24.dp).fillMaxWidth().height(102.dp).clip(RoundedCornerShape(22.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(Modifier.size(12.dp).border(2.dp, Color(0xFF30B27F), CircleShape))
                 Box(Modifier.padding(vertical = 3.dp).size(width = 1.dp, height = 22.dp).background(Ids.colors.textTertiary.copy(alpha = 0.5f)))
@@ -75,19 +75,19 @@ fun DirectionsHubScreen(onBack: () -> Unit, onOpenMap: (query: String?) -> Unit)
                 Text("Where to?", color = Ids.colors.textSecondary, fontSize = 16.sp, lineHeight = 22.sp, modifier = Modifier.clickable { onOpenMap(null) }.height(32.dp))
             }
         }
-        Row(Modifier.padding(start = 24.dp, end = 24.dp, top = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.padding(start = 24.dp, end = 24.dp, top = 13.dp, bottom = 5.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             HubPill("Home", height = 40, suffix = "· 24 min") { onOpenMap("Home") }
             HubPill("Work", height = 40, suffix = "· 25 min") { onOpenMap("Work") }
         }
-        HubHeading("Recent routes")
+        HubHeading("Recent routes", 21.dp)
         recentRoutes.forEach { (t, sub, q) -> HubRow(t, sub, onClick = { onOpenMap(q) }) { Icon(Icons.Outlined.Schedule, null, tint = Ids.colors.textTertiary, modifier = Modifier.size(22.dp)) } }
-        HubHeading("Bus stops near you")
+        HubHeading("Bus stops near you", 21.dp)
         busStops.forEach { (t, sub, q) -> HubRow(t, sub, onClick = { onOpenMap(q) }) { HubGlyph("bus") } }
-        HubHeading("Bus lines")
+        HubHeading("Bus lines", 21.dp)
         FlowRow(Modifier.padding(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("102", "305", "311", "322").forEach { HubPill(it, height = 40, fontSize = 15) { onOpenMap("Bus $it") } }
         }
-        HubHeading("Fares and rides")
+        HubHeading("Fares and rides", 21.dp)
         HubRow("Bus fare · Tap&Go", onClick = { onOpenMap(null) }) { HubGlyph("card") }
         HubRow("Ride or bike there", "Moto, car, or a rented bike", onClick = { onOpenMap(null) }) { HubGlyph("mcar") }
         Row(Modifier.padding(start = 24.dp, end = 24.dp, top = 6.dp, bottom = 40.dp).fillMaxWidth().height(56.dp).clickable { cityOpen = !cityOpen }, verticalAlignment = Alignment.CenterVertically) {

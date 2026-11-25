@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -27,8 +28,8 @@ internal val hubTrim = androidx.compose.ui.text.TextStyle(lineHeightStyle = andr
 
 /** Prototype section heading (19sp / 800) used by the Places and Directions hubs. */
 @Composable
-internal fun HubHeading(title: String) {
-    Text(title, color = Ids.colors.textPrimary, fontSize = 19.sp, lineHeight = 26.sp, fontWeight = FontWeight.ExtraBold, style = hubTrim, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 14.dp))
+internal fun HubHeading(title: String, top: androidx.compose.ui.unit.Dp = 24.dp) {
+    Text(title, color = Ids.colors.textPrimary, fontSize = 19.sp, lineHeight = 26.sp, fontWeight = FontWeight.ExtraBold, style = hubTrim, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = top, bottom = 13.6.dp))
 }
 
 /** Prototype grey pill: 36dp tall filter chip; filled dark when selected. */
@@ -47,7 +48,7 @@ internal fun HubPill(label: String, selected: Boolean = false, height: Int = 36,
 /** 42dp grey circle + title (+ optional subtitle) row, the hubs' shared list row. */
 @Composable
 internal fun HubRow(title: String, subtitle: String? = null, trailing: String? = null, onClick: () -> Unit, icon: @Composable () -> Unit = {}) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 24.dp, vertical = if (subtitle != null) 16.dp else 14.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().height(if (subtitle != null) 74.4.dp else 70.dp).clickable(onClick = onClick).padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(42.dp).clip(CircleShape).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) { icon() }
         Column(Modifier.weight(1f).padding(start = 14.dp)) {
             Text(title, color = Ids.colors.textPrimary, fontSize = if (subtitle != null) 17.sp else 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold, style = hubTrim)
