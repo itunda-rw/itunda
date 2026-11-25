@@ -44,6 +44,7 @@ import androidx.core.content.ContextCompat
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
@@ -189,10 +190,21 @@ internal fun OrderFoodContent(
     LaunchedEffect(Unit) {
         loadRestaurants()
         loadFavorites()
-        try {
-            val allRes = NetworkClient.apiService.getShoppingMerchants(businessType = "RESTAURANT")
-            if (allRes.success) allRestaurants = allRes.merchants
-        } catch (e: Exception) { /* non-critical, only backs the Reorder lookup */ }
+        // Restaurant names are needed by Orders, receipts, tracking, and Reorder.
+        // A single transient failure must not leave every order stuck with a fallback name.
+        repeat(3) { attempt ->
+            if (allRestaurants == null) {
+                try {
+                    val allRes = NetworkClient.apiService.getShoppingMerchants(businessType = "RESTAURANT")
+                    if (allRes.success) allRestaurants = allRes.merchants
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    // Non-critical lookup; retry below before leaving the fallback label in place.
+                }
+                if (allRestaurants == null && attempt < 2) delay(500L * (attempt + 1))
+            }
+        }
     }
     // Real category/search filter (2026-07-19), debounced so typing doesn't re-fetch on
     // every keystroke -- LaunchedEffect's own cancel-and-restart-on-key-change is the

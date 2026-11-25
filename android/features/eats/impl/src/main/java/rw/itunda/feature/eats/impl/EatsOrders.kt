@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
@@ -46,6 +47,24 @@ import rw.itunda.core.network.ShoppingMerchantDto
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
 import java.util.Locale
+
+/**
+ * Order history and receipt rows need item details from a second endpoint.
+ * Retry short-lived network failures so one missed request cannot leave a permanent
+ * "Loading items" row or an incomplete receipt for the lifetime of this screen.
+ */
+private suspend fun fetchEatsOrderItems(orderId: String): List<EatsOrderItemDto>? {
+    for (attempt in 0..3) {
+        try {
+            return NetworkClient.apiService.getEatsOrder(orderId).items
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            if (attempt < 3) delay(400L * (1 shl attempt))
+        }
+    }
+    return null
+}
 
 @Composable
 internal fun MyEatsOrdersView(
@@ -138,8 +157,9 @@ internal fun MyEatsOrdersView(
     LaunchedEffect(allOrders.map { it.id }) {
         allOrders.forEach { order ->
             if (order.id !in orderItems) {
-                runCatching { NetworkClient.apiService.getEatsOrder(order.id).items }
-                    .onSuccess { orderItems = orderItems + (order.id to it) }
+                fetchEatsOrderItems(order.id)?.let { items ->
+                    orderItems = orderItems + (order.id to items)
+                }
             }
         }
     }
@@ -149,11 +169,10 @@ internal fun MyEatsOrdersView(
         receiptItems = orderItems[order.id]
         if (receiptItems == null) {
             coroutineScope.launch {
-                runCatching { NetworkClient.apiService.getEatsOrder(order.id).items }
-                    .onSuccess {
-                        orderItems = orderItems + (order.id to it)
-                        receiptItems = it
-                    }
+                fetchEatsOrderItems(order.id)?.let { items ->
+                    orderItems = orderItems + (order.id to items)
+                    receiptItems = items
+                }
             }
         }
     }
