@@ -59,7 +59,7 @@ fun PlacesHubScreen(onBack: () -> Unit, onOpenMap: (category: String?, query: St
     val shown = nearYou.filter { (!openNow || hour < it.closes.substringBefore(":").toInt()) && (!reservable || it.reservable) && (!delivery || it.delivery) }
     Column(Modifier.fillMaxSize().background(Ids.colors.background).verticalScroll(rememberScrollState())) {
         ProtoTopBar("Places", onBack)
-        Box(Modifier.height(7.dp))
+        Box(Modifier.height(12.dp))
         Box(Modifier.padding(horizontal = 24.dp).fillMaxWidth().height(44.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft).clickable { onOpenMap(null, null) }.padding(horizontal = 14.dp), contentAlignment = Alignment.CenterStart) {
             Text("Search places", color = Ids.colors.textPrimary, fontSize = 16.sp)
         }
@@ -71,7 +71,7 @@ fun PlacesHubScreen(onBack: () -> Unit, onOpenMap: (category: String?, query: St
                 }
             }
         }
-        HubHeading("Near you", 25.dp)
+        HubHeading("Near you", 27.dp)
         Row(Modifier.padding(horizontal = 24.dp).padding(top = 6.dp, bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             HubPill("Open now", openNow) { openNow = !openNow }
             HubPill("Reservable", reservable) { reservable = !reservable }
@@ -95,7 +95,7 @@ private fun PlaceRow(p: HubPlace, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().height(115.6.dp).clickable(onClick = onClick).padding(start = 24.dp, end = 24.dp, top = 13.dp)) {
         Column(Modifier.weight(1f)) {
             Text(p.name, color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 26.sp, fontWeight = FontWeight.SemiBold, style = hubTrim)
-            Text(p.kind, color = Ids.colors.textSecondary, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium, style = hubTrim)
+            Text(p.kind, color = Ids.colors.textSecondary, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium, style = hubTrim, modifier = Modifier.padding(top = 6.dp))
             Text(buildAnnotatedString {
                 withStyle(SpanStyle(color = Color(0xFFF5B700))) { append("★ ") }
                 withStyle(SpanStyle(color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)) { append(p.rating) }

@@ -52,7 +52,7 @@ internal fun HubRow(title: String, subtitle: String? = null, trailing: String? =
         Box(Modifier.size(42.dp).clip(CircleShape).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) { icon() }
         Column(Modifier.weight(1f).padding(start = 14.dp)) {
             Text(title, color = Ids.colors.textPrimary, fontSize = if (subtitle != null) 17.sp else 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold, style = hubTrim)
-            if (subtitle != null) Text(subtitle, color = Ids.colors.textSecondary, fontSize = 14.sp, lineHeight = 17.sp, style = hubTrim)
+            if (subtitle != null) Text(subtitle, color = Ids.colors.textSecondary, fontSize = 14.sp, lineHeight = 17.sp, style = hubTrim, modifier = Modifier.padding(top = 6.dp))
         }
         if (trailing != null) Text(trailing, color = Ids.colors.textSecondary, fontSize = 14.sp)
     }
