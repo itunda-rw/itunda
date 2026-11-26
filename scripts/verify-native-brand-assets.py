@@ -54,8 +54,8 @@ for density, size in [("mdpi", 48), ("hdpi", 72), ("xhdpi", 96), ("xxhdpi", 144)
 adaptive = ROOT / "android/app/src/main/res/drawable/itunda_adaptive_foreground.png"
 check(adaptive.is_file(), f"missing {adaptive}")
 if adaptive.is_file():
-    check(png_size(adaptive) == (108, 108), f"{adaptive}: expected 108x108, got {png_size(adaptive)}")
-    check_render_matches(adaptive, ADAPTIVE_FOREGROUND_SVG, 108)
+    check(png_size(adaptive) == (432, 432), f"{adaptive}: expected 432x432, got {png_size(adaptive)}")
+    check_render_matches(adaptive, ADAPTIVE_FOREGROUND_SVG, 432)
 
 icon_dir = ROOT / "ios/App/Resources/Assets.xcassets/AppIcon.appiconset"
 catalog = json.loads((icon_dir / "Contents.json").read_text())

@@ -2,4 +2,4 @@
 <!-- Bitmap is rendered directly from the canonical v3 adaptive-foreground SVG in CI. -->
 <bitmap xmlns:android="http://schemas.android.com/apk/res/android"
     android:src="@drawable/itunda_adaptive_foreground"
-    android:gravity="center" />
+    android:gravity="fill" />
