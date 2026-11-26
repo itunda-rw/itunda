@@ -106,7 +106,8 @@ internal fun LazyListScope.eatsBrowseItems(
             EatsSortChip("Free delivery", null, active = filters.sortMode == "free_delivery") { filters.sortMode = "free_delivery" }
             EatsSortChip("Nearest", null, active = filters.sortMode == "nearest") { filters.sortMode = "nearest" }
             Box(Modifier.padding(horizontal = 2.dp).width(1.dp).height(20.dp).background(palette.divider))
-            EatsSortChip("Open now", null, active = filters.openNowOnly) { filters.openNowOnly = !filters.openNowOnly }
+                EatsSortChip("Open now", null, active = filters.openNowOnly) { filters.openNowOnly = !filters.openNowOnly }
+            }
         }
     }
     when {
