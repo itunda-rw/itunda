@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -141,15 +140,15 @@ fun PlacesHubScreen(onBack: () -> Unit, onOpenMap: (category: String?, query: St
                 )
             }
             HubHeading("My places", 25.dp)
-            HubRow("Saved", trailing = null, onClick = { onOpenMap(null, null) }) { HubGlyph("star") }
+            HubRow("Saved", trailing = null, onClick = { onOpenMap(null, null) }) { Text("⭐", fontSize = 20.sp) }
             HubRow(
                 "Reservations",
                 trailing = reservations.size.takeIf { it > 0 }?.toString(),
                 onClick = { showReservations = true },
-            ) { HubGlyph("calendar") }
-            HubRow("My reviews", onClick = { onOpenMap(null, null) }) { HubGlyph("message-circle") }
+            ) { Text("📅", fontSize = 20.sp) }
+            HubRow("My reviews", onClick = { onOpenMap(null, null) }) { Text("💬", fontSize = 20.sp) }
             HubHeading("Recent", 25.dp)
-            HubRow("Nyamirambo Coffee House", trailing = "15 Oct", onClick = { onOpenMap(null, "Nyamirambo Coffee House") }) { HubGlyph("pin") }
+            HubRow("Nyamirambo Coffee House", trailing = "15 Oct", onClick = { onOpenMap(null, "Nyamirambo Coffee House") }) { Text("📍", fontSize = 20.sp) }
             Box(
                 Modifier.padding(start = 24.dp, end = 24.dp, top = 22.dp, bottom = 40.dp)
                     .fillMaxWidth().height(58.dp).clip(RoundedCornerShape(18.dp))
@@ -264,7 +263,7 @@ private fun ReservationSheet(
         Column(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                 .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                .background(Ids.colors.background).clickable(enabled = false) {}
+                .background(Ids.colors.background).clickable { }
                 .padding(horizontal = 24.dp, vertical = 22.dp),
         ) {
             Text("Reserve a table", color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
@@ -301,7 +300,7 @@ private fun ReservationsSheet(
         Column(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                 .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                .background(Ids.colors.background).padding(horizontal = 24.dp, vertical = 22.dp),
+                .background(Ids.colors.background).clickable { }.padding(horizontal = 24.dp, vertical = 22.dp),
         ) {
             Text("Reservations", color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
             if (reservations.isEmpty()) {
