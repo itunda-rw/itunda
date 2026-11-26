@@ -170,6 +170,7 @@ class MainActivity : FragmentActivity() {
                 }
                 IdsTheme(darkTheme = darkTheme) {
                     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                        var uiDemoMode by remember { mutableStateOf(false) }
                         val sessionState by SessionManager.sessionState.collectAsStateWithLifecycle()
                         when (sessionState) {
                             is SessionState.LoggedIn -> {
@@ -229,7 +230,18 @@ class MainActivity : FragmentActivity() {
                             }
                             is SessionState.LoggedOut -> {
                                 AppUnlockState.unlockedThisProcess = false
-                                LoginScreen(onLoggedIn = {})
+                                if (BuildConfig.DEBUG && uiDemoMode) {
+                                    // UI-only test entry: PrototypeParityScreen has no auth token,
+                                    // persisted session, or backend login side effect.
+                                    PrototypeParityScreen()
+                                } else {
+                                    LoginScreen(
+                                        onLoggedIn = {},
+                                        onDemoMode = if (BuildConfig.DEBUG) {
+                                            { uiDemoMode = true }
+                                        } else null,
+                                    )
+                                }
                             }
                         }
                         // Real Toss TDS Toast component, mounted once at the true app
