@@ -57,10 +57,10 @@ fun EatsSearchHeader(
         ) {
             ItundaArt("search", ItundaArtSet.Line, 20.dp, tint = palette.secondary)
             Box(Modifier.padding(start = 10.dp)) {
-                if (searchInput.isEmpty()) Text("Search restaurants", color = Ids.colors.textTertiary, fontSize = 16.sp)
+                if (searchInput.isEmpty()) Text("Search restaurants", color = Ids.colors.textTertiary, fontSize = 16.sp, lineHeight = 22.4.sp)
                 BasicTextField(
                     value = searchInput, onValueChange = onSearchChange, singleLine = true,
-                    textStyle = TextStyle(color = palette.primary, fontSize = 16.sp),
+                    textStyle = TextStyle(color = palette.primary, fontSize = 16.sp, lineHeight = 22.4.sp, letterSpacing = (-0.176).sp),
                     cursorBrush = SolidColor(palette.accent),
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -70,7 +70,7 @@ fun EatsSearchHeader(
             Spacer(Modifier.height(if (showSearch) 14.dp else 4.dp))
             BoxWithConstraints(Modifier.fillMaxWidth()) {
                 Row(
-                    Modifier.offset(x = 1.dp).requiredWidth(maxWidth + 40.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+                    Modifier.offset(x = 0.dp).requiredWidth(maxWidth + 40.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -81,7 +81,7 @@ fun EatsSearchHeader(
                             .pressScaleClickable { onSelectCategory(c) }.padding(horizontal = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(c ?: "All", color = if (on) palette.selectedText else palette.secondary, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                        Text(c ?: "All", color = if (on) palette.selectedText else palette.secondary, fontSize = 16.sp, lineHeight = 22.4.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                     }
                 }
                 }

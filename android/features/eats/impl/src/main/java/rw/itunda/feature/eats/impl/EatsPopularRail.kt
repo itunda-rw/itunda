@@ -4,13 +4,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -48,12 +51,15 @@ fun EatsPopularRail(
             fontSize = 19.sp,
             lineHeight = 26.6.sp,
             fontWeight = FontWeight.Black,
-            modifier = Modifier.padding(start = 4.dp, top = 18.dp, bottom = 16.dp),
+            letterSpacing = (-0.4).sp,
+            modifier = Modifier.padding(start = 4.dp, top = 24.dp, bottom = 10.dp),
         )
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(start = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            Row(
+                Modifier.requiredWidth(maxWidth + 40.dp).horizontalScroll(rememberScrollState())
+                    .padding(start = 24.dp, bottom = 6.4.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
             top.forEachIndexed { index, merchant ->
                 val prototype = merchant.toEatsPrototypeRestaurant()
                 Column(Modifier.width(148.dp).pressScaleClickable(onClick = { onOpen(merchant) })) {
@@ -90,17 +96,19 @@ fun EatsPopularRail(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.width(132.dp).padding(top = 8.dp),
                     )
-                    Row(Modifier.width(132.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.width(132.dp).padding(top = 1.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             String.format(Locale.US, "%.1f", merchant.rating ?: 0.0),
                             color = palette.primary,
                             fontSize = 13.sp,
+                            lineHeight = 18.2.sp,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
                             " (${merchant.reviewCount}) · ${merchant.deliveryTimeMinutes?.let { minutes -> "${if (isPickup) maxOf(10, minutes - 10) else minutes} min" } ?: ""}",
                             color = palette.secondary,
                             fontSize = 13.sp,
+                            lineHeight = 18.2.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
                     }
@@ -114,8 +122,8 @@ fun EatsPopularRail(
 @Composable
 fun EatsSectionHeader(title: String, count: Int?, modifier: Modifier = Modifier) {
     val palette = eatsPrototypePalette()
-    Row(modifier.fillMaxWidth().height(60.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, Modifier.weight(1f), color = palette.primary, fontSize = 19.sp, lineHeight = 26.6.sp, fontWeight = FontWeight.Black)
-        if (count != null) Text("$count", color = palette.secondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+    Row(modifier.padding(horizontal = 4.dp).fillMaxWidth().height(60.6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(title, Modifier.weight(1f).offset(y = 7.dp), color = palette.primary, fontSize = 19.sp, lineHeight = 26.6.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.4).sp)
+        if (count != null) Text("$count", color = palette.secondary, fontSize = 13.sp, lineHeight = 18.2.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.offset(y = 10.dp))
     }
 }

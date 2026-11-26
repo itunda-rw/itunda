@@ -56,7 +56,7 @@ fun EatsDeliveryPickupRow(state: EatsBrowseState) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text(addressLabel, color = palette.primary, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text(addressLabel, color = palette.primary, fontSize = 14.sp, lineHeight = 19.6.sp, fontWeight = FontWeight.Bold, maxLines = 1)
             ItundaArt("chev", ItundaArtSet.Line, 16.dp, tint = palette.secondary, modifier = Modifier.rotate(90f))
         }
         EatsModeSwitch(

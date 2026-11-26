@@ -7,12 +7,13 @@ import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
-import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.swipeUp
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.After
 import org.junit.Before
@@ -50,6 +51,9 @@ class EatsIntegratedScreenshotTest {
         rule.waitUntil(10_000) {
             rule.onAllNodesWithContentDescription("Search restaurants").fetchSemanticsNodes().isNotEmpty()
         }
+        // Drain the first Compose frame before waiting for the demo fixture to populate the list.
+        rule.runOnIdle { NetworkClient.demoMode = true }
+        rule.waitForIdle()
         if (waitForBrowseData) {
             // The count is present only after the restaurant response is loaded; unlike the Popular rail,
             // it does not depend on every returned restaurant having a rating.
@@ -60,6 +64,13 @@ class EatsIntegratedScreenshotTest {
     }
 
     private fun capture(name: String) = rule.onRoot().captureRoboImage("build/screenshots/$name.png")
+
+    private fun scrollBrowseBy(delta: Float) {
+        rule.onNodeWithTag("eats-browse-list").performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
+            scrollBy(0f, delta)
+        }
+        rule.waitForIdle()
+    }
 
     @Test fun browseDefaultLight() {
         show(false)
@@ -144,15 +155,27 @@ class EatsIntegratedScreenshotTest {
         capture("eats-prototype-browse-saved-light")
     }
 
+    @Test fun browseMiddleLight() {
+        show(false)
+        scrollBrowseBy(888f)
+        capture("eats-prototype-browse-middle-light")
+    }
+
+    @Test fun browseMiddleDark() {
+        show(true)
+        scrollBrowseBy(888f)
+        capture("eats-prototype-browse-middle-dark")
+    }
+
     @Test fun browseLowerLight() {
         show(false)
-        repeat(3) { rule.onRoot().performTouchInput { swipeUp() } }
+        scrollBrowseBy(1776f)
         capture("eats-prototype-browse-lower-light")
     }
 
     @Test fun browseLowerDark() {
         show(true)
-        repeat(3) { rule.onRoot().performTouchInput { swipeUp() } }
+        scrollBrowseBy(1776f)
         capture("eats-prototype-browse-lower-dark")
     }
 

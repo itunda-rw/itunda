@@ -4,12 +4,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
@@ -88,16 +90,17 @@ internal fun LazyListScope.eatsBrowseItems(
         EatsSectionHeader(
             if (filterActive) "Results" else "Restaurants near you",
             visible?.size,
-            Modifier.padding(start = 4.dp),
         )
     }
     item {
         val palette = eatsPrototypePalette()
-        Row(
-            Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 14.dp).horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            Row(
+                Modifier.requiredWidth(maxWidth + 40.dp).horizontalScroll(rememberScrollState())
+                    .padding(start = 24.dp, bottom = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
             EatsSortChip("Fastest", null, active = filters.sortMode == "delivery_time") { filters.sortMode = "delivery_time" }
             EatsSortChip("Top rated", null, active = filters.sortMode == "rating") { filters.sortMode = "rating" }
             EatsSortChip("Free delivery", null, active = filters.sortMode == "free_delivery") { filters.sortMode = "free_delivery" }

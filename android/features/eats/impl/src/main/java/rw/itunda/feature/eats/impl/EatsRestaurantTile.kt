@@ -111,14 +111,15 @@ fun EatsRestaurantTile(
             modifier = Modifier.padding(top = 8.dp),
         )
         Row(Modifier.padding(top = 1.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("★", color = Color(0xFFFFB321), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text("★", color = Color(0xFFFFB321), fontSize = 13.sp, lineHeight = 18.2.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(4.dp))
-            Text("$rating · $eta", color = palette.secondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            Text("$rating · $eta", color = palette.secondary, fontSize = 13.sp, lineHeight = 18.2.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
         }
         Text(
             deliveryLine,
             color = if (deliveryLine == "Free delivery") palette.accent else palette.secondary,
             fontSize = 13.sp,
+            lineHeight = 18.2.sp,
             fontWeight = if (deliveryLine == "Free delivery") FontWeight.Bold else FontWeight.SemiBold,
             maxLines = 1,
             modifier = Modifier.padding(top = 1.dp),

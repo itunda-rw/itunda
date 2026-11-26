@@ -68,7 +68,7 @@ internal fun EatsModeSwitch(isPickup: Boolean, onModeChange: (Boolean) -> Unit, 
                     .padding(horizontal = 10.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(label, color = if (selected) palette.selectedText else palette.secondary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(label, color = if (selected) palette.selectedText else palette.secondary, fontSize = 13.sp, lineHeight = 18.2.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -101,10 +101,10 @@ fun EatsBrowseHeader(
             ) {
                 ItundaArt("search", ItundaArtSet.Line, 20.dp, tint = palette.secondary)
                 Box(Modifier.weight(1f)) {
-                    if (searchInput.isEmpty()) Text("Search restaurants", color = palette.secondary, fontSize = 15.sp)
+                    if (searchInput.isEmpty()) Text("Search restaurants", color = palette.secondary, fontSize = 15.sp, lineHeight = 21.sp)
                     BasicTextField(
                         value = searchInput, onValueChange = onSearchChange, singleLine = true,
-                        textStyle = TextStyle(color = palette.primary, fontSize = 15.sp),
+                        textStyle = TextStyle(color = palette.primary, fontSize = 15.sp, lineHeight = 21.sp, letterSpacing = (-0.176).sp),
                         cursorBrush = SolidColor(palette.accent),
                         modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Search restaurants" },
                     )

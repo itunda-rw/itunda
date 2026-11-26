@@ -124,6 +124,7 @@ fun EatsSortChip(label: String, icon: androidx.compose.ui.graphics.vector.ImageV
             color = if (active) palette.selectedText else palette.secondary,
             fontWeight = FontWeight.Bold,
             fontSize = 14.sp,
+            lineHeight = 19.6.sp,
             maxLines = 1, softWrap = false,
         )
     }

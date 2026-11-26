@@ -5,6 +5,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.theme.PretendardFontFamily
 
 // Consumer Eats entry point. Rider delivery surfaces are kept in their own app.
@@ -21,6 +23,9 @@ fun EatsContent(
     ProvideTextStyle(
         TextStyle(
             fontFamily = PretendardFontFamily,
+            // v1038 body metrics are consistently 1.4 line-height with -0.176px tracking.
+            lineHeight = 1.4.em,
+            letterSpacing = (-0.176).sp,
             lineHeightStyle = LineHeightStyle(
                 LineHeightStyle.Alignment.Center,
                 LineHeightStyle.Trim.None,

@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.core.content.ContextCompat
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -395,7 +396,7 @@ internal fun OrderFoodContent(
                 )
                 LazyColumn(
                     state = eatsListState,
-                    modifier = Modifier.weight(1f).padding(horizontal = Ids.layout.screenHorizontal).trackScrollPressedKey(eatsListState, eatsTouchedKey),
+                    modifier = Modifier.weight(1f).padding(horizontal = Ids.layout.screenHorizontal).trackScrollPressedKey(eatsListState, eatsTouchedKey).testTag("eats-browse-list"),
                     verticalArrangement = Arrangement.Top,
                 ) {
                     if (view == OrderFoodView.GROUP) {
