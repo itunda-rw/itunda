@@ -39,6 +39,16 @@ class RecentMapSearchesStore(context: Context) {
         return next
     }
 
+    fun remove(place: PlaceSearchResultDto): List<PlaceSearchResultDto> {
+        val next = getAll().filterNot { it.latitude == place.latitude && it.longitude == place.longitude }
+        if (next.isEmpty()) {
+            prefs.edit().remove(KEY_RECENT).apply()
+        } else {
+            prefs.edit().putString(KEY_RECENT, gson.toJson(next)).apply()
+        }
+        return next
+    }
+
     fun clear() {
         prefs.edit().remove(KEY_RECENT).apply()
     }
