@@ -1364,7 +1364,7 @@ fun MapScreen(
                 onQueryChange = { query = it },
                 onRunSearch = { runSearch() },
                 onClearQuery = { query = ""; searchResults = null },
-                onSearchFocusChange = { searchFocused = it },
+                onSearchFocusChange = { focused -> if (focused) searchFocused = true },
                 onCategoryClick = { categoryId -> searchNearbyCategory(categoryId) },
                 onToggleItinerary = {
                     if (itineraryBuilding) {
@@ -1760,6 +1760,31 @@ fun MapScreen(
                         }
                     }
                 }
+            }
+            if (searchFocused) {
+                MapSearchScreen(
+                    query = query,
+                    searching = searching,
+                    searchResults = searchResults,
+                    error = error,
+                    recentSearches = recentSearches,
+                    categories = categories,
+                    onBack = { searchFocused = false },
+                    onQueryChange = { query = it },
+                    onRunSearch = { runSearch() },
+                    onSelectPlace = { place ->
+                        recentSearches = recentSearchesStore.add(place)
+                        searchFocused = false
+                        if (itineraryBuilding) addItineraryStop(place) else selectPlace(place)
+                    },
+                    onRemoveRecent = { place -> recentSearches = recentSearchesStore.remove(place) },
+                    onClearRecentSearches = { recentSearchesStore.clear(); recentSearches = emptyList() },
+                    onQuickSearch = { value -> query = value; searchResults = null },
+                    onCategoryClick = { categoryId ->
+                        searchFocused = false
+                        searchNearbyCategory(categoryId)
+                    },
+                )
             }
         } // end full-bleed map BoxWithConstraints
     }
