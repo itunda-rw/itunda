@@ -117,6 +117,7 @@ fun EatsPopularRail(
         }
     }
 }
+}
 
 /** Section title with a trailing count, as in the prototype's "Restaurants near you  14". */
 @Composable
