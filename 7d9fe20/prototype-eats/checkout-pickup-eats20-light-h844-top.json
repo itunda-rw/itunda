@@ -1,0 +1,202 @@
+{
+  "screenKey": "echeck",
+  "screenText": "Cart\nDelivery\nPickup\nPick up at\nKG 11 Ave, Kimironko\nYour order\nKigali Bakery\nCroissant\n1,200 RWF\n2\nAdd more items\nEATS20 · 20% off items (max 2,000 RWF)\nRemove\nItems\n2,400 RWF\nDiscount\n−480 RWF\nPickup\nFree\nTotal\n1,920 RWF\nYou earn 24 points with this order\nPay with\nitunda Pay · 120,500 RWF",
+  "sheetText": "",
+  "scroll": {
+    "top": 0,
+    "height": 881,
+    "client": 844
+  },
+  "controls": [
+    {
+      "tag": "button",
+      "text": "",
+      "id": "",
+      "className": "ib",
+      "role": null,
+      "ariaLabel": "Back",
+      "onClick": "back()",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Delivery",
+      "id": "",
+      "className": "v420hit hit44b",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "setPickup(false);render('fade-none')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Pickup",
+      "id": "",
+      "className": "on v420hit hit44b",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "setPickup(true);render('fade-none')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "",
+      "id": "",
+      "className": "ib v420hit hit44b",
+      "role": null,
+      "ariaLabel": "Remove one",
+      "onClick": "eAdj(0,-1)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "",
+      "id": "",
+      "className": "ib v420hit hit44b",
+      "role": null,
+      "ariaLabel": "Add one",
+      "onClick": "eAdj(0,1)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Add more items",
+      "id": "",
+      "className": "tap",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "back()",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Delivery",
+      "id": "",
+      "className": "",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "setPickup(false);render('fade-none')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Pickup",
+      "id": "",
+      "className": "on",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "setPickup(true);render('fade-none')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "As soon as possible",
+      "id": "",
+      "className": "cch on",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eSched(null)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "05:00",
+      "id": "",
+      "className": "cch ",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eSched('05:00')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "05:30",
+      "id": "",
+      "className": "cch ",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eSched('05:30')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "06:00",
+      "id": "",
+      "className": "cch ",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eSched('06:00')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "06:30",
+      "id": "",
+      "className": "cch ",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eSched('06:30')",
+      "disabled": false
+    },
+    {
+      "tag": "input",
+      "text": "",
+      "id": "enote",
+      "className": "",
+      "role": null,
+      "ariaLabel": "Note for the restaurant",
+      "onClick": null,
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Remove",
+      "id": "",
+      "className": "cch hit44a",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "ePromoX()",
+      "disabled": false
+    },
+    {
+      "tag": "div",
+      "text": "Pay with itunda Pay · 120,500 RWF",
+      "id": "",
+      "className": "tap v420hit hit44b",
+      "role": "button",
+      "ariaLabel": null,
+      "onClick": "epmOpen()",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Pay 1,920 RWF",
+      "id": "",
+      "className": "btn",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "ePay()",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "",
+      "id": "t26dn",
+      "className": "",
+      "role": null,
+      "ariaLabel": "Latest messages",
+      "onClick": null,
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "",
+      "id": "",
+      "className": "v36 hit44a",
+      "role": null,
+      "ariaLabel": "Button",
+      "onClick": null,
+      "disabled": false
+    }
+  ]
+}
