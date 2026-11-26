@@ -65,6 +65,7 @@ fun MapSearchScreen(
     query: String,
     searching: Boolean,
     searchResults: List<PlaceSearchResultDto>?,
+    error: String?,
     recentSearches: List<PlaceSearchResultDto>,
     categories: List<MapPlaceCategory>,
     onBack: () -> Unit,
@@ -206,6 +207,8 @@ fun MapSearchScreen(
                     }
                 }
             }
+
+            error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp)) }
 
             if (query.isNotBlank()) {
                 if (searching) {
