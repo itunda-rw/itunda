@@ -77,6 +77,7 @@ fun PlacesHubScreen(onBack: () -> Unit, onOpenMap: (category: String?, query: St
             HubPill("Reservable", reservable) { reservable = !reservable }
             HubPill("Delivery", delivery) { delivery = !delivery }
         }
+        Box(Modifier.height(6.dp))
         shown.forEach { p -> PlaceRow(p) { onOpenMap(null, p.name) } }
         HubHeading("My places", 25.dp)
         HubRow("Saved", onClick = { onOpenMap(null, null) })

@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -65,14 +67,14 @@ fun DirectionsHubScreen(onBack: () -> Unit, onOpenMap: (query: String?) -> Unit)
         ProtoTopBar("Directions", onBack)
         Box(Modifier.height(12.dp))
         Row(Modifier.padding(horizontal = 24.dp).fillMaxWidth().height(102.dp).clip(RoundedCornerShape(22.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(Modifier.size(12.dp).border(2.dp, Color(0xFF30B27F), CircleShape))
-                Box(Modifier.padding(vertical = 3.dp).size(width = 1.dp, height = 22.dp).background(Ids.colors.textTertiary.copy(alpha = 0.5f)))
-                Box(Modifier.size(12.dp).border(2.dp, Color(0xFFF04452), CircleShape))
+            Box(Modifier.width(12.dp).height(92.dp).padding(bottom = 4.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(width = 1.dp, height = 28.dp).background(Ids.colors.textTertiary.copy(alpha = 0.4f)))
+                Box(Modifier.align(Alignment.TopCenter).padding(top = 18.dp).size(10.dp).background(Color(0xFF30B27F), CircleShape))
+                Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 18.dp).size(10.dp).background(Color(0xFFF04452), CircleShape))
             }
-            Column(Modifier.padding(start = 16.dp)) {
-                Text("My location · KG 11 Ave, Kimironko", color = Ids.colors.textPrimary, fontSize = 16.sp, lineHeight = 22.sp, modifier = Modifier.height(32.dp))
-                Text("Where to?", color = Ids.colors.textSecondary, fontSize = 16.sp, lineHeight = 22.sp, modifier = Modifier.clickable { onOpenMap(null) }.height(32.dp))
+            Column(Modifier.padding(start = 16.dp).padding(bottom = 4.dp)) {
+                Text("My location · KG 11 Ave, Kimironko", color = Ids.colors.textPrimary, fontSize = 16.sp, lineHeight = 22.sp, modifier = Modifier.height(46.dp).wrapContentHeight(Alignment.CenterVertically))
+                Text("Where to?", color = Ids.colors.textSecondary, fontSize = 16.sp, lineHeight = 22.sp, modifier = Modifier.clickable { onOpenMap(null) }.height(46.dp).wrapContentHeight(Alignment.CenterVertically))
             }
         }
         Row(Modifier.padding(start = 24.dp, end = 24.dp, top = 13.dp, bottom = 5.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
