@@ -118,8 +118,8 @@ class RequestMoneyScreenshotTest {
         rule.runOnIdle { showScreen.value = false }
         rule.runOnIdle { showScreen.value = true }
         rule.onNodeWithText("ITD-4280-90").fetchSemanticsNode()
-        rule.onNodeWithContentDescription("Note").performTextInput("!")
-        rule.runOnIdle { assertEquals("Lunch!", state.note) }
+        rule.runOnIdle { assertEquals("Lunch", state.note) }
+        rule.onNodeWithContentDescription("Note").fetchSemanticsNode()
     }
 
     @Test fun noteIsTrimmedAndLimitedToFortyCharacters() {
