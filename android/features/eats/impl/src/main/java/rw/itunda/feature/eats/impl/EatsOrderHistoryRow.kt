@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -86,7 +87,7 @@ internal fun EatsOrderHistoryRow(
                 ?.joinToString(" · ") { "${it.quantity} × ${it.productName}" }
                 ?: if (items == null) "Loading items…" else "Items unavailable"
             Text(itemSummary, color = p.secondary, fontSize = 14.sp, lineHeight = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Row(Modifier.padding(top = 2.dp).fillMaxWidth().height(44.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.padding(top = 2.dp).fillMaxWidth().height(44.dp).offset(y = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (order.status != "DELIVERED") EatsOrderAction("Track", p.accent, onClick = onTrack)
                 if (order.status == "DELIVERED" || order.status == "CANCELLED") {
                     EatsOrderAction(if (reordering) "Reordering…" else "Reorder", p.accent, enabled = !reordering, onClick = onReorder)

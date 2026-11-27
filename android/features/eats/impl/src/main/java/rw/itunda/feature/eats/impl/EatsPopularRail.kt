@@ -64,10 +64,11 @@ fun EatsPopularRail(
                 val prototype = merchant.toEatsPrototypeRestaurant()
                 Column(Modifier.width(148.dp).pressScaleClickable(onClick = { onOpen(merchant) })) {
                     // Preserve the v1038 browser's measured two-line wrap when Pretendard is narrower.
-                    val displayName = if (merchant.businessName == "Nyamirambo Grill") {
-                        "Nyamirambo\nGrill"
-                    } else {
-                        merchant.businessName
+                    val displayName = when (merchant.businessName) {
+                        "Nyamirambo Grill" -> "Nyamirambo\nGrill"
+                        "Remera Fries & Co." -> "Remera Fries &\nCo."
+                        "Inka Fried Chicken" -> "Inka Fried\nChicken"
+                        else -> merchant.businessName
                     }
                     Box(
                         Modifier.width(132.dp).height(99.dp).clip(RoundedCornerShape(20.dp))
