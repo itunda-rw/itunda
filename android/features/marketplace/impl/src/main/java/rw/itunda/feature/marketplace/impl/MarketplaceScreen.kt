@@ -203,10 +203,7 @@ fun MarketplaceContent(
         BackHandler { showNewListing = false }
     }
     LaunchedEffect(requestNewListingSignal) {
-        if (requestNewListingSignal > 0) {
-            view = HoodView.MINE
-            showNewListing = true
-        }
+        if (requestNewListingSignal > 0) showNewListing = true
     }
     LaunchedEffect(requestedView) {
         val (signal, key) = requestedView
@@ -254,11 +251,17 @@ fun MarketplaceContent(
     // from, matching this file's own existing "opt-in, never assumed" discipline for
     // seller location-sharing.
     val context = LocalContext.current
+    var selectedMarketplaceSort by rememberSaveable { mutableStateOf("Latest") }
+    var requestNearestAfterLocation by remember { mutableStateOf(false) }
     var browseLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     val requestBrowseLocation = rememberRealLocationRequester(
         onLocating = {},
-        onSuccess = { lat, lng -> browseLocation = lat to lng },
-        onError = {},
+        onSuccess = { lat, lng ->
+            browseLocation = lat to lng
+            if (requestNearestAfterLocation) selectedMarketplaceSort = "Nearest"
+            requestNearestAfterLocation = false
+        },
+        onError = { requestNearestAfterLocation = false; error = it },
     )
     LaunchedEffect(Unit) {
         val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
@@ -478,10 +481,11 @@ fun MarketplaceContent(
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var searchExpanded by rememberSaveable { mutableStateOf(false) }
     var recentMarketplaceSearches by rememberSaveable { mutableStateOf(listOf<String>()) }
-    var selectedMarketplaceSort by rememberSaveable { mutableStateOf("Latest") }
     var showBrowseFilters by remember { mutableStateOf(false) }
     var selectedMaxPrice by rememberSaveable { mutableStateOf(0) }
     var selectedNeighborhood by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedConditions by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var listingConditions by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var searchResults by remember { mutableStateOf<List<ListingDto>?>(null) }
     LaunchedEffect(selectedBrowseCategory, view) {
         val browseViews = setOf(HoodView.BROWSE, HoodView.NEARBY, HoodView.NEIGHBORHOOD)
@@ -553,17 +557,19 @@ fun MarketplaceContent(
             val areaFiltered = selectedNeighborhood?.let { area ->
                 priceFiltered.filter { it.neighborhood.equals(area, ignoreCase = true) }
             } ?: priceFiltered
+            val conditionFiltered = if (selectedConditions.isEmpty()) areaFiltered else
+                areaFiltered.filter { listingConditions[it.id] in selectedConditions }
             when (selectedMarketplaceSort) {
                 "Nearest" -> {
                     val location = browseLocation
-                    if (location == null) areaFiltered else areaFiltered.sortedBy { listing ->
+                    if (location == null) conditionFiltered else conditionFiltered.sortedBy { listing ->
                         val latitude = listing.latitude
                         val longitude = listing.longitude
                         if (latitude == null || longitude == null) Double.POSITIVE_INFINITY
                         else haversineKm(location.first, location.second, latitude, longitude)
                     }
                 }
-                else -> areaFiltered.sortedByDescending { listing ->
+                else -> conditionFiltered.sortedByDescending { listing ->
                     runCatching { Instant.parse(listing.createdAt).toEpochMilli() }.getOrDefault(0L)
                 }
             }
@@ -724,10 +730,14 @@ fun MarketplaceContent(
                     selectedCategory = selectedBrowseCategory,
                     onCategorySelected = { selectedBrowseCategory = it },
                     sortLabel = selectedMarketplaceSort,
-                    filterCount = (if (selectedMaxPrice > 0) 1 else 0) + (if (selectedNeighborhood != null) 1 else 0),
+                    filterCount = (if (selectedMaxPrice > 0) 1 else 0) + (if (selectedNeighborhood != null) 1 else 0) + (if (selectedConditions.isNotEmpty()) 1 else 0),
                     onFilterClick = { showBrowseFilters = true },
                     onSortClick = {
-                        selectedMarketplaceSort = if (selectedMarketplaceSort == "Latest") "Nearest" else "Latest"
+                        if (!requestNearestAfterLocation) {
+                            if (selectedMarketplaceSort == "Nearest") selectedMarketplaceSort = "Latest"
+                            else if (browseLocation != null) selectedMarketplaceSort = "Nearest"
+                            else { requestNearestAfterLocation = true; requestBrowseLocation() }
+                        }
                     },
                 )
             }
@@ -736,7 +746,7 @@ fun MarketplaceContent(
             if (displayListings == null) {
                 item { SkeletonBlock() }
             } else if (visibleListings.isNullOrEmpty()) {
-                item { EmptyState("No matches. Try fewer filters.", icon = Icons.Outlined.ShoppingBag) }
+                item { EmptyState("Nothing here yet. Be the first to post.", icon = Icons.Outlined.ShoppingBag) }
             } else {
                 items(visibleListings, key = { it.id }) { listing ->
                     ListingRow(
@@ -758,18 +768,6 @@ fun MarketplaceContent(
         } else {
         favoriteNotice?.let { notice ->
             item { Text(notice, color = Ids.colors.brand, fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
-        }
-        if (view == HoodView.MINE) {
-            item {
-                if (!showNewListing) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Ids.colors.brand).pressScaleClickable { showNewListing = true }.padding(vertical = 14.dp),
-                        contentAlignment = Alignment.Center,
-                    ) { Text(stringResource(R.string.marketplace_new_listing_cta), color = Color.White, fontWeight = FontWeight.Bold) }
-                } else {
-                    NewListingForm(onCreated = { showNewListing = false; load() }, onCancel = { showNewListing = false })
-                }
-            }
         }
         if (view == HoodView.NEIGHBORHOOD && neighborhoodChecked && neighborhoodName == null) {
             item { NeighborhoodSetupPrompt(onDone = { load() }) }
@@ -800,21 +798,15 @@ fun MarketplaceContent(
         } else if (visibleListings.isNullOrEmpty() && (view != HoodView.NEIGHBORHOOD || neighborhoodName != null)) {
             item {
                 EmptyState(
-                    // Real copy-voice fix (item 244, round 5 of the empty-state pass --
-                    // docs/COPY_VOICE.md's rules, never applied to Marketplace/Community/
-                    // Jobs/Property on any platform until now): say what's missing AND
-                    // what fixes it, per this screen's own real, visible affordance
-                    // ("+ List an item" above, in the MINE view) rather than a bare
-                    // absence report.
                     when {
                         view == HoodView.BROWSE && selectedBrowseCategory == "Saved" -> "Tap the heart on a listing to save it here."
                         view == HoodView.BROWSE && selectedBrowseCategory == "Bought" -> "Things you buy with itunda show up here."
                         view == HoodView.BROWSE && selectedBrowseCategory == "Mine" -> "You have not listed anything yet."
                         else -> when (view) {
-                        HoodView.BROWSE -> "No matches. Try fewer filters."
+                        HoodView.BROWSE -> "Nothing here yet. Be the first to post."
                         HoodView.NEARBY -> "No listings near you yet — try Browse to see listings from everywhere."
                         HoodView.NEIGHBORHOOD -> "No listings in your neighborhood yet — try Browse to see listings from everywhere."
-                        HoodView.MINE -> "You haven't listed anything yet — tap \"+ List an item\" above to list your first one."
+                        HoodView.MINE -> "Nothing here yet. Be the first to post."
                         HoodView.PURCHASES -> "No purchases recorded yet — items you buy will show up here."
                         HoodView.WISHLIST -> "No saved listings yet — tap ♡ on any listing to save it here."
                         HoodView.ALERTS -> "" // unreachable -- ALERTS is intercepted earlier
@@ -873,11 +865,21 @@ fun MarketplaceContent(
         maxPrice = selectedMaxPrice,
         selectedNeighborhood = selectedNeighborhood,
         neighborhoods = availableNeighborhoods,
+        selectedConditions = selectedConditions,
         onDismiss = { showBrowseFilters = false },
-        onApply = { maxPrice, area ->
+        onApply = { maxPrice, area, conditions ->
             selectedMaxPrice = maxPrice
             selectedNeighborhood = area
+            selectedConditions = conditions
         },
+    )
+    if (showNewListing) NewListingForm(
+        onCreated = { listingId, condition ->
+            listingConditions = listingConditions + (listingId to condition)
+            showNewListing = false
+            load()
+        },
+        onCancel = { showNewListing = false },
     )
 }
 
@@ -1300,7 +1302,6 @@ fun ListingDetailScreen(
                 TrustBadge(sellerTrustScore)
             }
             Text(listing.description, color = Ids.colors.textSecondary, fontSize = 13.sp)
-            VehicleDetailSection(listing)
             listing.meetingPlace?.let {
                 Text("Suggested hand-off: $it", color = Ids.colors.textSecondary, fontSize = 12.sp)
             }

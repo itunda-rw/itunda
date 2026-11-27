@@ -53,21 +53,23 @@ fun MarketplaceBrowseControls(
     }
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
-            text = "↕ $sortLabel",
+            text = "$sortLabel ⇅",
             color = Ids.colors.textSecondary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.pressScaleClickable(onClick = onSortClick).padding(vertical = 8.dp),
+            modifier = Modifier.height(44.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft)
+                .pressScaleClickable(onClick = onSortClick).padding(horizontal = 16.dp, vertical = 10.dp),
         )
         Text(
             text = if (filterCount > 0) "Filter · $filterCount" else "Filter",
             color = if (filterCount > 0) Ids.colors.textPrimary else Ids.colors.textSecondary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.pressScaleClickable(onClick = onFilterClick).padding(vertical = 8.dp),
+            modifier = Modifier.height(44.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft)
+                .pressScaleClickable(onClick = onFilterClick).padding(horizontal = 16.dp, vertical = 10.dp),
         )
     }
 }

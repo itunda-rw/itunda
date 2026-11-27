@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 
-/** Filters backed by fields currently returned by ListingDto. */
+/** Price, area and condition filters; condition values remain local until the API exposes them. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MarketplaceFilterSheet(
@@ -35,19 +35,34 @@ fun MarketplaceFilterSheet(
     maxPrice: Int,
     selectedNeighborhood: String?,
     neighborhoods: List<String>,
+    selectedConditions: Set<String>,
     onDismiss: () -> Unit,
-    onApply: (Int, String?) -> Unit,
+    onApply: (Int, String?, Set<String>) -> Unit,
 ) {
     if (!visible) return
     var draftMaxPrice by remember(visible, maxPrice) { mutableStateOf(maxPrice) }
     var draftNeighborhood by remember(visible, selectedNeighborhood) { mutableStateOf(selectedNeighborhood) }
+    var draftConditions by remember(visible, selectedConditions) { mutableStateOf(selectedConditions) }
+    val conditions = listOf("New", "Like new", "Good", "Fair")
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text("Filter", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
-            Text("Maximum price (RWF)", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textSecondary)
+            Text("Condition", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textSecondary)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                conditions.chunked(2).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        row.forEach { condition ->
+                            FilterOption(condition, condition in draftConditions) {
+                                draftConditions = if (condition in draftConditions) draftConditions - condition else draftConditions + condition
+                            }
+                        }
+                    }
+                }
+            }
+            Text("Max price (RWF)", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textSecondary)
             Row(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -73,11 +88,11 @@ fun MarketplaceFilterSheet(
                 TextButton(onClick = {
                     draftMaxPrice = 0
                     draftNeighborhood = null
-                    onApply(0, null)
-                    onDismiss()
+                    draftConditions = emptySet()
+                    onApply(0, null, emptySet())
                 }) { Text("Reset") }
                 TextButton(onClick = {
-                    onApply(draftMaxPrice, draftNeighborhood)
+                    onApply(draftMaxPrice, draftNeighborhood, draftConditions)
                     onDismiss()
                 }) { Text("Show results", fontWeight = FontWeight.Bold) }
             }

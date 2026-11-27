@@ -19,6 +19,7 @@ import rw.itunda.feature.marketplace.impl.ListingDetailScreen
 import rw.itunda.feature.marketplace.impl.ListingRow
 import rw.itunda.feature.marketplace.impl.MarketplaceBrowseControls
 import rw.itunda.feature.marketplace.impl.MarketplaceFilterSheet
+import rw.itunda.feature.marketplace.impl.NewListingForm
 
 /** Marketplace rows, detail, browse controls and filter sheet in both themes. */
 @RunWith(RobolectricTestRunner::class)
@@ -88,6 +89,15 @@ class MarketplaceScreenshotTest {
         rule.onRoot().captureRoboImage("build/screenshots/$name.png")
     }
 
+    private fun captureSellSheet(dark: Boolean, name: String) {
+        rule.setContent {
+            IdsTheme(darkTheme = dark) {
+                NewListingForm(onCreated = { _, _ -> }, onCancel = {})
+            }
+        }
+        rule.onRoot().captureRoboImage("build/screenshots/$name.png")
+    }
+
     private fun captureFilterSheet(dark: Boolean, name: String) {
         rule.setContent {
             IdsTheme(darkTheme = dark) {
@@ -96,8 +106,9 @@ class MarketplaceScreenshotTest {
                     maxPrice = 50000,
                     selectedNeighborhood = "Kimironko",
                     neighborhoods = listOf("Kimironko", "Remera", "Kacyiru"),
+                    selectedConditions = setOf("Good"),
                     onDismiss = {},
-                    onApply = { _, _ -> },
+                    onApply = { _, _, _ -> },
                 )
             }
         }
@@ -112,4 +123,6 @@ class MarketplaceScreenshotTest {
     @Test fun browseControlsDark() = captureBrowseControls(dark = true, name = "market-browse-controls-dark")
     @Test fun filterSheetLight() = captureFilterSheet(dark = false, name = "market-filter")
     @Test fun filterSheetDark() = captureFilterSheet(dark = true, name = "market-filter-dark")
+    @Test fun sellSheetLight() = captureSellSheet(dark = false, name = "market-sell")
+    @Test fun sellSheetDark() = captureSellSheet(dark = true, name = "market-sell-dark")
 }
