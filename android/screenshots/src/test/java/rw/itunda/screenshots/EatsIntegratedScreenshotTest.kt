@@ -55,10 +55,11 @@ class EatsIntegratedScreenshotTest {
         rule.runOnIdle { NetworkClient.demoMode = true }
         rule.waitForIdle()
         if (waitForBrowseData) {
-            // The count is present only after the restaurant response is loaded; unlike the Popular rail,
-            // it does not depend on every returned restaurant having a rating.
+            // The section count sits below the Popular rail and may not be composed until a LazyColumn scroll.
+            // The first rail card is visible in the initial viewport and deterministic in the demo fixture.
             rule.waitUntil(60_000) {
-                rule.onAllNodesWithText("14").fetchSemanticsNodes().isNotEmpty()
+                rule.onAllNodesWithText("Popular this week").fetchSemanticsNodes().isNotEmpty() &&
+                    rule.onAllNodesWithText("Nyamirambo Grill").fetchSemanticsNodes().isNotEmpty()
             }
         }
     }

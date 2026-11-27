@@ -65,9 +65,12 @@ class EatsOrdersScreenshotTest {
         }
         rule.onNodeWithContentDescription("Orders").performClick()
         if (filled) {
+            // Separate waits identify whether restaurant lookup or item-detail loading stalled.
             rule.waitUntil(60_000) {
-                rule.onAllNodesWithText("Kigali Bakery").fetchSemanticsNodes().size >= 2 &&
-                    rule.onAllNodesWithText("2 × Croissant").fetchSemanticsNodes().size >= 2
+                rule.onAllNodesWithText("Kigali Bakery").fetchSemanticsNodes().size >= 2
+            }
+            rule.waitUntil(60_000) {
+                rule.onAllNodesWithText("2 × Croissant").fetchSemanticsNodes().size >= 2
             }
         } else {
             rule.waitUntil(60_000) {
