@@ -172,3 +172,41 @@ internal fun PocketDialogButton(label: String, primary: Boolean, modifier: Modif
 
 /** Demo itunda Bank balance the Fill action draws from (the figure the empty state quotes). */
 internal const val POCKET_BANK_BALANCE = 842_300L
+
+/** One Fill or Take out in a pocket's history (prototype `pkr`). */
+internal data class PocketMove(val out: Boolean, val amount: Long, val balance: Long, val time: String)
+
+internal fun pocketNow(): String = java.time.LocalTime.now().let { String.format(java.util.Locale.US, "%02d:%02d", it.hour, it.minute) }
+
+@Composable
+private fun PocketMoveRow(m: PocketMove) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(40.dp).clip(CircleShape).background(if (m.out) Ids.colors.textTertiary else Ids.colors.brand), contentAlignment = Alignment.Center) {
+            Text(if (m.out) "−" else "+", color = androidx.compose.ui.graphics.Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        }
+        Column(Modifier.weight(1f).padding(start = 14.dp)) {
+            Text(if (m.out) "Take out" else "Fill", color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 24.sp, letterSpacing = (-0.2).sp, fontWeight = FontWeight.SemiBold)
+            Text(m.time, color = Ids.colors.textTertiary, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text((if (m.out) "−" else "+") + rwf(m.amount) + " RWF", color = if (m.out) Ids.colors.textPrimary else Ids.colors.brand, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+            Text(rwf(m.balance) + " RWF", color = Ids.colors.textTertiary, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
+        }
+    }
+}
+
+/** Prototype pkFilter: a "Show" sheet with All, Fills and Take-outs. */
+@Composable
+private fun PocketFilterDialog(selected: Int, onClose: () -> Unit, onPick: (Int) -> Unit) {
+    Dialog(onDismissRequest = onClose) {
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Ids.colors.background).padding(24.dp)) {
+            Text("Show", color = Ids.colors.textPrimary, fontSize = 22.sp, lineHeight = 30.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(bottom = 8.dp))
+            listOf("All", "Fills", "Take-outs").forEachIndexed { i, l ->
+                Row(Modifier.fillMaxWidth().height(56.dp).pressScaleClickable { onPick(i) }, verticalAlignment = Alignment.CenterVertically) {
+                    Text(l, color = if (i == selected) Ids.colors.brand else Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    if (i == selected) Text("✓", color = Ids.colors.brand, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
