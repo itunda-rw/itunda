@@ -89,7 +89,7 @@ fun AirtimeScreen(onBack: () -> Unit) {
                     textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 24.sp, lineHeight = 33.6.sp, letterSpacing = (-0.5).sp, fontWeight = FontWeight.Bold),
                     cursorBrush = SolidColor(Ids.colors.brand), modifier = Modifier.fillMaxWidth(),
                 )
-                if (phone.isEmpty()) Text("078 000 0000", color = Ids.colors.textTertiary, fontSize = 24.sp, lineHeight = 33.6.sp, letterSpacing = (-0.5).sp, fontWeight = FontWeight.Bold)
+                if (phone.isEmpty()) Text("078 000 0000", color = Ids.colors.textTertiary.copy(alpha = 0.7f), fontSize = 24.sp, lineHeight = 33.6.sp, letterSpacing = (-0.5).sp, fontWeight = FontWeight.Bold)
             }
             Row(Modifier.padding(top = 6.dp).heightIn20(), verticalAlignment = Alignment.CenterVertically) {
                 when {
@@ -130,7 +130,7 @@ fun AirtimeScreen(onBack: () -> Unit) {
                     )
                     if (amount == 0L) Text("0", color = Ids.colors.textTertiary, fontSize = 40.sp, lineHeight = 56.sp, letterSpacing = (-1).sp, fontWeight = FontWeight.Bold)
                 }
-                Text("RWF", color = Ids.colors.textTertiary, fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 14.dp))
+                Text("RWF", color = Ids.colors.textTertiary, fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
             }
             Row(Modifier.padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(500L, 1000L, 2000L, 5000L).forEach { n -> AirChip("+${fmt(n)}", Modifier.weight(1f)) { amount = minOf(amount + n, 99_999_999L) } }
