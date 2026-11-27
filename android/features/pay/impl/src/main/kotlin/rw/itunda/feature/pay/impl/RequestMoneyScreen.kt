@@ -106,16 +106,6 @@ private fun requestMoneyPalette(): RequestMoneyPalette {
     }
 }
 
-private fun requestMoneyCode(amount: Long): String {
-    val number = BigDecimal.valueOf(amount)
-        .divide(BigDecimal.valueOf(100))
-        .add(BigDecimal.valueOf(4_210))
-        .stripTrailingZeros()
-        .toPlainString()
-        .padStart(4, '0')
-    return "ITD-$number-90"
-}
-
 @Composable
 fun RequestMoneyScreen(
     onBack: () -> Unit,
