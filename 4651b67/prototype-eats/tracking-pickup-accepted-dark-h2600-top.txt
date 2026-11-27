@@ -31,7 +31,7 @@ scrollTop=0 scrollHeight=2600 clientHeight=2600
 1 | div.tl. | 285.0 | 376.0 | 81.0 | 43.0 | 13px | 700 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 16px | 
 2 | i | 285.0 | 376.0 | 81.0 | 4.0 | 13px | 700 | rgb(158, 164, 174) | rgb(44, 44, 53) | none | 2px | none | -0.176px | 16px | 
 0 | div.ez-ts | 0.0 | 419.0 | 390.0 | 138.6 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-1 | div | 24.0 | 441.0 | 342.0 | 21.0 | 15px | 700 | rgb(179, 174, 255) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Ready by 04:48
+1 | div | 24.0 | 441.0 | 342.0 | 21.0 | 15px | 700 | rgb(179, 174, 255) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Ready by 05:11
 1 | div | 24.0 | 462.0 | 342.0 | 95.6 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | div | 24.0 | 472.0 | 342.0 | 31.0 | 15px | 400 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 
 3 | span | 24.0 | 477.0 | 99.2 | 21.0 | 15px | 400 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 2 × Croissant
@@ -43,23 +43,3 @@ scrollTop=0 scrollHeight=2600 clientHeight=2600
 0 | div.pad | 0.0 | 557.6 | 390.0 | 62.0 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 1 | div.chips | 24.0 | 561.6 | 342.0 | 58.0 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | button.cch | 24.0 | 567.6 | 308.0 | 52.0 | 15px | 700 | rgb(255, 107, 94) | rgba(0, 0, 0, 0) | none | 16px | rgba(0, 0, 0, 0) 0px 0px 0px 0px | -0.176px | 21px | Cancel order
-0 | div | 24.0 | 635.6 | 342.0 | 267.0 | 16px | 400 | rgb(249, 250, 251) | rgb(44, 44, 53) | none | 20px | none | -0.176px | 22.4px | 
-1 | div | 40.0 | 651.6 | 310.0 | 24.0 | 17px | 700 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 24px | Your order
-1 | div.mu.sm | 40.0 | 677.6 | 310.0 | 20.0 | 14px | 400 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 20px | Kigali Bakery, EA-7207
-1 | div | 40.0 | 705.6 | 310.0 | 34.0 | 15px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
-2 | div | 40.0 | 705.6 | 310.0 | 34.0 | 15px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
-3 | span | 40.0 | 711.6 | 99.2 | 22.0 | 15px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 2 × Croissant
-3 | span.mu | 307.9 | 711.6 | 42.1 | 22.0 | 15px | 400 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 2,400
-1 | div | 40.0 | 747.6 | 310.0 | 139.0 | 15px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
-2 | div | 40.0 | 754.6 | 310.0 | 34.0 | 15px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
-3 | span.mu | 40.0 | 760.6 | 71.7 | 22.0 | 15px | 400 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Pick up at
-3 | span | 254.5 | 760.6 | 95.5 | 22.0 | 15px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Kigali Bakery
-2 | div | 40.0 | 788.6 | 310.0 | 34.0 | 15px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
-3 | span.mu | 40.0 | 794.6 | 69.0 | 22.0 | 15px | 400 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Your note
-3 | span | 145.0 | 794.6 | 205.0 | 22.0 | 15px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Please call when you arrive.
-2 | div | 40.0 | 822.6 | 310.0 | 34.0 | 15px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
-3 | span.mu | 40.0 | 828.6 | 66.3 | 22.0 | 15px | 400 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Paid with
-3 | span | 272.8 | 828.6 | 77.2 | 22.0 | 15px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | itunda Pay
-2 | div | 40.0 | 856.6 | 310.0 | 30.0 | 17px | 700 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
-3 | span | 40.0 | 864.6 | 45.6 | 22.0 | 17px | 700 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Total
-3 | span | 248.4 | 864.6 | 101.6 | 22.0 | 17px | 700 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 2,400 RWF

@@ -22,8 +22,8 @@ scrollTop=0 scrollHeight=2600 clientHeight=2600
 2 | svg | 106.5 | 78.0 | 16.0 | 16.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 
 3 | path | 110.5 | 84.3 | 8.0 | 4.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 
 1 | div.ez-md | 210.9 | 67.0 | 155.1 | 38.0 | 16px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 16px | none | -0.176px | 22.4px | 
-2 | button.on.v420hit.hit44b | 213.9 | 70.0 | 79.3 | 32.0 | 13px | 700 | rgb(255, 255, 255) | rgb(25, 31, 40) | none | 13px | none | -0.176px | 18.2px | Delivery
-2 | button.v420hit.hit44b | 295.2 | 70.0 | 67.8 | 32.0 | 13px | 700 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 13px | none | -0.176px | 18.2px | Pickup
+2 | button.on.v420hit | 213.9 | 70.0 | 79.3 | 32.0 | 13px | 700 | rgb(255, 255, 255) | rgb(25, 31, 40) | none | 13px | none | -0.176px | 18.2px | Delivery
+2 | button.v420hit | 295.2 | 70.0 | 67.8 | 32.0 | 13px | 700 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 13px | none | -0.176px | 18.2px | Pickup
 0 | div.ez-tabs.v28m | 0.0 | 108.0 | 390.0 | 48.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 1 | button.on | 16.0 | 112.0 | 50.8 | 44.0 | 16px | 700 | rgb(255, 255, 255) | rgb(25, 31, 40) | none | 14px | none | -0.176px | 22.4px | All
 1 | button | 70.8 | 112.0 | 115.4 | 44.0 | 16px | 700 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 14px | none | -0.176px | 22.4px | Brochette
@@ -40,13 +40,13 @@ scrollTop=0 scrollHeight=2600 clientHeight=2600
 0 | div.ez-h | 0.0 | 156.0 | 390.0 | 60.6 | 19px | 800 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.4px | 26.6px | 
 1 | b | 24.0 | 180.0 | 76.5 | 26.6 | 19px | 900 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.4px | 26.6px | Results
 1 | span | 357.0 | 187.0 | 9.0 | 18.2 | 13px | 600 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | normal | 18.2px | 3
-0 | div.ez-fl.v28m | 0.0 | 212.6 | 390.0 | 54.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-1 | button.on.v420hit.hit44b | 20.0 | 216.6 | 84.5 | 36.0 | 14px | 700 | rgb(255, 255, 255) | rgb(25, 31, 40) | none | 18px | none | -0.176px | 19.6px | Fastest
-1 | button.v420hit.hit44b | 116.5 | 216.6 | 101.2 | 36.0 | 14px | 700 | rgb(107, 118, 132) | rgb(242, 244, 246) | none | 18px | none | -0.176px | 19.6px | Top rated
-1 | button.v420hit.hit44b | 229.7 | 216.6 | 128.9 | 36.0 | 14px | 700 | rgb(107, 118, 132) | rgb(242, 244, 246) | none | 18px | none | -0.176px | 19.6px | Free delivery
-1 | button.v420hit.hit44b | 370.6 | 216.6 | 88.9 | 36.0 | 14px | 700 | rgb(107, 118, 132) | rgb(242, 244, 246) | none | 18px | none | -0.176px | 19.6px | Nearest
-1 | hr | 473.5 | 224.6 | 1.0 | 20.0 | 16px | 400 | rgb(128, 128, 128) | rgb(242, 244, 246) | none | 0px | none | -0.176px | 22.4px | 
-1 | button.v420hit.hit44b | 488.5 | 216.6 | 105.4 | 36.0 | 14px | 700 | rgb(107, 118, 132) | rgb(242, 244, 246) | none | 18px | none | -0.176px | 19.6px | Open now
+0 | div.ez-fl.v28m | 0.0 | 216.6 | 390.0 | 50.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+1 | button.on.v420hit | 24.0 | 216.6 | 84.5 | 36.0 | 14px | 700 | rgb(255, 255, 255) | rgb(25, 31, 40) | none | 18px | none | -0.176px | 19.6px | Fastest
+1 | button.v420hit | 116.5 | 216.6 | 101.2 | 36.0 | 14px | 700 | rgb(107, 118, 132) | rgb(242, 244, 246) | none | 18px | none | -0.176px | 19.6px | Top rated
+1 | button.v420hit | 225.7 | 216.6 | 128.9 | 36.0 | 14px | 700 | rgb(107, 118, 132) | rgb(242, 244, 246) | none | 18px | none | -0.176px | 19.6px | Free delivery
+1 | button.v420hit | 362.6 | 216.6 | 88.9 | 36.0 | 14px | 700 | rgb(107, 118, 132) | rgb(242, 244, 246) | none | 18px | none | -0.176px | 19.6px | Nearest
+1 | hr | 461.5 | 224.6 | 1.0 | 20.0 | 16px | 400 | rgb(128, 128, 128) | rgb(242, 244, 246) | none | 0px | none | -0.176px | 22.4px | 
+1 | button.v420hit | 472.5 | 216.6 | 105.4 | 36.0 | 14px | 700 | rgb(107, 118, 132) | rgb(242, 244, 246) | none | 18px | none | -0.176px | 19.6px | Open now
 0 | div.ez-g | 0.0 | 266.6 | 390.0 | 490.8 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 1 | div.ez-c.tap | 20.0 | 266.6 | 169.0 | 235.4 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | div.ez-cv | 20.0 | 266.6 | 169.0 | 169.0 | 16px | 400 | rgb(25, 31, 40) | rgb(231, 221, 247) | none | 20px | none | -0.176px | 22.4px | 
@@ -59,7 +59,7 @@ scrollTop=0 scrollHeight=2600 clientHeight=2600
 6 | path | 70.8 | 333.8 | 53.5 | 12.4 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | rect | 78.8 | 381.3 | 39.6 | 5.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 3 | span.ez-tg | 28.0 | 274.6 | 47.2 | 24.2 | 13px | 800 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 10px | none | -0.176px | 18.2px | New
-3 | button.ez-hr.hit44a | 145.0 | 391.6 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
+3 | button.ez-hr | 145.0 | 391.6 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
 4 | svg | 153.0 | 399.6 | 20.0 | 20.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 5 | svg | 154.0 | 401.0 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | path | 154.0 | 401.0 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
@@ -78,7 +78,7 @@ scrollTop=0 scrollHeight=2600 clientHeight=2600
 6 | path | 251.3 | 356.7 | 68.4 | 26.5 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | g | 269.0 | 332.4 | 37.5 | 15.5 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 7 | path | 269.0 | 332.4 | 37.5 | 15.5 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-3 | button.ez-hr.hit44a | 326.0 | 391.6 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
+3 | button.ez-hr | 326.0 | 391.6 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
 4 | svg | 334.0 | 399.6 | 20.0 | 20.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 5 | svg | 335.0 | 401.0 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | path | 335.0 | 401.0 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
@@ -96,7 +96,7 @@ scrollTop=0 scrollHeight=2600 clientHeight=2600
 4 | path | 75.1 | 604.4 | 58.8 | 14.2 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 4 | circle | 97.2 | 587.6 | 14.7 | 14.7 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 3 | span.ez-tg | 28.0 | 530.0 | 71.4 | 24.2 | 13px | 800 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 10px | none | -0.176px | 18.2px | Popular
-3 | button.ez-hr.hit44a | 145.0 | 647.0 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
+3 | button.ez-hr | 145.0 | 647.0 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
 4 | svg | 153.0 | 655.0 | 20.0 | 20.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 5 | svg | 154.0 | 656.4 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | path | 154.0 | 656.4 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 

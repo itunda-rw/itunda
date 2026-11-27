@@ -35,7 +35,7 @@ scrollTop=0 scrollHeight=2600 clientHeight=2600
 1 | div.ez-dn | 24.0 | 496.9 | 342.0 | 36.0 | 30px | 800 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | 8px | 36px | 4821
 1 | div.sm.mu | 24.0 | 534.9 | 342.0 | 20.0 | 13px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 20px | Tell your rider this code at t
 0 | div.ez-ts | 0.0 | 554.9 | 390.0 | 169.6 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-1 | div | 24.0 | 576.9 | 342.0 | 21.0 | 15px | 700 | rgb(91, 84, 214) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Arrives by 04:46
+1 | div | 24.0 | 576.9 | 342.0 | 21.0 | 15px | 700 | rgb(91, 84, 214) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Arrives by 05:09
 1 | div | 24.0 | 597.9 | 342.0 | 126.6 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | div | 24.0 | 607.9 | 342.0 | 31.0 | 15px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 
 3 | span | 24.0 | 612.9 | 99.2 | 21.0 | 15px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 2 × Croissant
@@ -50,9 +50,9 @@ scrollTop=0 scrollHeight=2600 clientHeight=2600
 0 | div.pad | 0.0 | 724.5 | 390.0 | 62.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 1 | div.chips | 24.0 | 728.5 | 342.0 | 58.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | button.cch | 24.0 | 734.5 | 308.0 | 52.0 | 15px | 700 | rgb(196, 40, 27) | rgba(0, 0, 0, 0) | none | 16px | rgba(0, 0, 0, 0) 0px 0px 0px 0px | -0.176px | 21px | Cancel order
-0 | div | 24.0 | 802.5 | 342.0 | 323.0 | 16px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 20px | none | -0.176px | 22.4px | 
+0 | div | 24.0 | 802.5 | 342.0 | 267.0 | 16px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 20px | none | -0.176px | 22.4px | 
 1 | div | 40.0 | 818.5 | 310.0 | 24.0 | 17px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 24px | Your order
-1 | div.mu.sm | 40.0 | 844.5 | 310.0 | 20.0 | 14px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 20px | Kigali Bakery, EA-7207 · 2 ite
+1 | div.mu.sm | 40.0 | 844.5 | 310.0 | 20.0 | 14px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 20px | Kigali Bakery, EA-7207
 1 | div | 40.0 | 872.5 | 310.0 | 34.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
 2 | div | 40.0 | 872.5 | 310.0 | 34.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
 3 | span | 40.0 | 878.5 | 99.2 | 22.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 2 × Croissant
@@ -70,6 +70,3 @@ scrollTop=0 scrollHeight=2600 clientHeight=2600
 2 | div | 40.0 | 1023.5 | 310.0 | 30.0 | 17px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
 3 | span | 40.0 | 1031.5 | 45.6 | 22.0 | 17px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Total
 3 | span | 248.4 | 1031.5 | 101.6 | 22.0 | 17px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 2,400 RWF
-1 | button.e810 | 40.0 | 1061.5 | 310.0 | 48.0 | 16px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-2 | span | 40.0 | 1074.3 | 132.3 | 22.4 | 16px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | Call restaurant
-2 | span | 343.6 | 1074.3 | 6.4 | 22.4 | 16px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | ›

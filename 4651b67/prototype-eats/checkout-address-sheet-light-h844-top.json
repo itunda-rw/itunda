@@ -1,6 +1,6 @@
 {
   "screenKey": "echeck",
-  "screenText": "Cart\nDelivery\nPickup\nDeliver to\nKimironko, KG 11 Ave\nChange\nYour order\nKigali Bakery\nCroissant\n1,200 RWF\n2\nAdd more items\nAdd a side or drink\n+\nHot milk tea\n1,000 RWF\n+\nFruit juice\n1,800 RWF\nDelivery time\nAs soon as possible\n05:30\n06:00\n06:30\n07:00\nTip your rider (optional)\nNo tip\n500\n1,000\n2,000\nItems\n2,400 RWF\nDelivery\nFree\nTotal\n2,400 RWF\nYou earn 24 points with this order\nPay with\nitunda Pay · 120,500 RWF",
+  "screenText": "Cart\nDelivery\nPickup\nDeliver to\nKimironko, KG 11 Ave\nChange\nYour order\nKigali Bakery\nCroissant\n1,200 RWF\n2\nAdd more items\nAdd a side or drink\n+\nHot milk tea\n1,000 RWF\n+\nFruit juice\n1,800 RWF\nDelivery time\nAs soon as possible\n06:00\n06:30\n07:00\n07:30\nTip your rider (optional)\nNo tip\n500\n1,000\n2,000\nItems\n2,400 RWF\nDelivery\nFree\nTotal\n2,400 RWF\nYou earn 24 points with this order\nPay with\nitunda Pay · 120,500 RWF",
   "sheetText": "Delivery address\nYour rider will go to the address you pick.\nHome\nKimironko, KG 11 Ave\nWork\nKacyiru, KG 7 Ave\n+\nAdd a new address\nClose\nUse this address",
   "scroll": {
     "top": 0,
@@ -170,16 +170,6 @@
     },
     {
       "tag": "button",
-      "text": "05:30",
-      "id": "",
-      "className": "cch ",
-      "role": null,
-      "ariaLabel": null,
-      "onClick": "eSched('05:30')",
-      "disabled": false
-    },
-    {
-      "tag": "button",
       "text": "06:00",
       "id": "",
       "className": "cch ",
@@ -206,6 +196,16 @@
       "role": null,
       "ariaLabel": null,
       "onClick": "eSched('07:00')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "07:30",
+      "id": "",
+      "className": "cch ",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eSched('07:30')",
       "disabled": false
     },
     {

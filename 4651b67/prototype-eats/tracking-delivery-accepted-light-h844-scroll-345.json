@@ -1,10 +1,10 @@
 {
   "screenKey": "etrack",
-  "screenText": "Your delivery\nAbout 20 min\nKigali Bakery · ⚡ Cheetah delivery\nRestaurant confirmed your order\nOrder accepted\nPreparing\nOn the way\nDelivered\nDelivery code\n4821\nTell your rider this code at the door. Not before.\nArrives by 04:47\n2 × Croissant\n2,400 RWF\nTotal\n2,400 RWF\nDelivered to\nKimironko, KG 11 Ave\nEA-7207\nCancel order\nYour order\nKigali Bakery, EA-7207 · 2 items\n2 × Croissant\n2,400\nDelivery to\nKimironko, KG 11 Ave\nYour note\nPlease call when you arrive.\nPaid with\nitunda Pay\nTotal\n2,400 RWF\nCall restaurant\n›",
+  "screenText": "Your delivery\nAbout 20 min\nKigali Bakery · ⚡ Cheetah delivery\nRestaurant confirmed your order\nOrder accepted\nPreparing\nOn the way\nDelivered\nDelivery code\n4821\nTell your rider this code at the door. Not before.\nArrives by 05:10\n2 × Croissant\n2,400 RWF\nTotal\n2,400 RWF\nDelivered to\nKimironko, KG 11 Ave\nEA-7207\nCancel order\nYour order\nKigali Bakery, EA-7207\n2 × Croissant\n2,400\nDelivery to\nKimironko, KG 11 Ave\nYour note\nPlease call when you arrive.\nPaid with\nitunda Pay\nTotal\n2,400 RWF",
   "sheetText": "",
   "scroll": {
     "top": 345,
-    "height": 1245,
+    "height": 1189,
     "client": 844
   },
   "controls": [
@@ -36,16 +36,6 @@
       "role": null,
       "ariaLabel": null,
       "onClick": "eCancel()",
-      "disabled": false
-    },
-    {
-      "tag": "button",
-      "text": "Call restaurant ›",
-      "id": "",
-      "className": "e810",
-      "role": null,
-      "ariaLabel": null,
-      "onClick": "toast('Calling Kigali Bakery')",
       "disabled": false
     },
     {

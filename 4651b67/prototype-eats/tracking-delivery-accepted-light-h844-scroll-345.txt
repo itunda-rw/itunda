@@ -1,4 +1,4 @@
-scrollTop=345 scrollHeight=1245 clientHeight=844
+scrollTop=345 scrollHeight=1189 clientHeight=844
 0 | div.bar | 0.0 | 0.0 | 390.0 | 70.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 0px | none | -0.176px | 22.4px | 
 1 | button.ib | 6.0 | 16.0 | 48.0 | 48.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | svg | 18.0 | 28.0 | 24.0 | 24.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
@@ -35,7 +35,7 @@ scrollTop=345 scrollHeight=1245 clientHeight=844
 1 | div.ez-dn | 24.0 | 151.9 | 342.0 | 36.0 | 30px | 800 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | 8px | 36px | 4821
 1 | div.sm.mu | 24.0 | 189.9 | 342.0 | 20.0 | 13px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 20px | Tell your rider this code at t
 0 | div.ez-ts | 0.0 | 209.9 | 390.0 | 169.6 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-1 | div | 24.0 | 231.9 | 342.0 | 21.0 | 15px | 700 | rgb(91, 84, 214) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Arrives by 04:47
+1 | div | 24.0 | 231.9 | 342.0 | 21.0 | 15px | 700 | rgb(91, 84, 214) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Arrives by 05:10
 1 | div | 24.0 | 252.9 | 342.0 | 126.6 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | div | 24.0 | 262.9 | 342.0 | 31.0 | 15px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 
 3 | span | 24.0 | 267.9 | 99.2 | 21.0 | 15px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 2 × Croissant
@@ -50,9 +50,9 @@ scrollTop=345 scrollHeight=1245 clientHeight=844
 0 | div.pad | 0.0 | 379.5 | 390.0 | 62.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 1 | div.chips | 24.0 | 383.5 | 342.0 | 58.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | button.cch | 24.0 | 389.5 | 308.0 | 52.0 | 15px | 700 | rgb(196, 40, 27) | rgba(0, 0, 0, 0) | none | 16px | rgba(0, 0, 0, 0) 0px 0px 0px 0px | -0.176px | 21px | Cancel order
-0 | div | 24.0 | 457.5 | 342.0 | 323.0 | 16px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 20px | none | -0.176px | 22.4px | 
+0 | div | 24.0 | 457.5 | 342.0 | 267.0 | 16px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 20px | none | -0.176px | 22.4px | 
 1 | div | 40.0 | 473.5 | 310.0 | 24.0 | 17px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 24px | Your order
-1 | div.mu.sm | 40.0 | 499.5 | 310.0 | 20.0 | 14px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 20px | Kigali Bakery, EA-7207 · 2 ite
+1 | div.mu.sm | 40.0 | 499.5 | 310.0 | 20.0 | 14px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 20px | Kigali Bakery, EA-7207
 1 | div | 40.0 | 527.5 | 310.0 | 34.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
 2 | div | 40.0 | 527.5 | 310.0 | 34.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
 3 | span | 40.0 | 533.5 | 99.2 | 22.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 2 × Croissant
@@ -70,6 +70,3 @@ scrollTop=345 scrollHeight=1245 clientHeight=844
 2 | div | 40.0 | 678.5 | 310.0 | 30.0 | 17px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
 3 | span | 40.0 | 686.5 | 45.6 | 22.0 | 17px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Total
 3 | span | 248.4 | 686.5 | 101.6 | 22.0 | 17px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 2,400 RWF
-1 | button.e810 | 40.0 | 716.5 | 310.0 | 48.0 | 16px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-2 | span | 40.0 | 729.3 | 132.3 | 22.4 | 16px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | Call restaurant
-2 | span | 343.6 | 729.3 | 6.4 | 22.4 | 16px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | ›

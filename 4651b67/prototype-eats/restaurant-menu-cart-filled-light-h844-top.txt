@@ -12,15 +12,15 @@ scrollTop=0 scrollHeight=2485 clientHeight=844
 6 | circle | 67.6 | 143.0 | 3.8 | 3.8 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | circle | 57.8 | 147.2 | 3.8 | 3.8 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | circle | 42.1 | 156.5 | 3.8 | 3.8 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-1 | span.g3 | 272.0 | 92.0 | 87.9 | 87.9 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-2 | svg | 272.0 | 92.0 | 87.9 | 87.9 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-3 | g | 285.9 | 99.2 | 60.1 | 73.6 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-4 | svg | 285.9 | 99.2 | 60.1 | 73.6 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-5 | path | 315.0 | 99.2 | 6.2 | 24.9 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-5 | path | 285.9 | 122.0 | 49.7 | 50.8 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-5 | path | 285.9 | 122.0 | 49.7 | 8.3 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-5 | circle | 321.2 | 107.5 | 24.9 | 24.9 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-5 | circle | 326.4 | 112.7 | 14.5 | 14.5 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+1 | span.g3 | 271.6 | 91.6 | 88.8 | 88.8 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | svg | 271.6 | 91.6 | 88.8 | 88.8 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+3 | g | 285.6 | 98.8 | 60.7 | 74.3 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+4 | svg | 285.6 | 98.8 | 60.7 | 74.3 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+5 | path | 315.0 | 98.8 | 6.3 | 25.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+5 | path | 285.6 | 121.9 | 50.2 | 51.3 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+5 | path | 285.6 | 121.9 | 50.2 | 8.4 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+5 | circle | 321.2 | 107.2 | 25.1 | 25.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+5 | circle | 326.5 | 112.4 | 14.7 | 14.7 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 1 | svg | 135.0 | 50.0 | 120.0 | 120.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | g | 145.6 | 64.4 | 98.9 | 91.5 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 3 | svg | 145.6 | 64.4 | 98.9 | 91.5 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
@@ -38,7 +38,7 @@ scrollTop=0 scrollHeight=2485 clientHeight=844
 2 | span | 24.0 | 273.6 | 176.5 | 19.6 | 14px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | Bread, pastries and cakes
 1 | div.ez-meta | 0.0 | 293.2 | 390.0 | 25.6 | 14px | 600 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | 
 2 | b | 24.0 | 300.2 | 77.4 | 16.0 | 14px | 800 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | 15-25 min
-1 | div.ez-arr | 0.0 | 322.8 | 390.0 | 19.6 | 14px | 600 | rgb(91, 84, 214) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | Arrives by 04:42–04:52
+1 | div.ez-arr | 0.0 | 322.8 | 390.0 | 19.6 | 14px | 600 | rgb(91, 84, 214) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | Arrives by 05:05–05:15
 1 | div.ez-rmd | 0.0 | 342.4 | 390.0 | 52.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | div.ez-md | 24.0 | 356.4 | 155.1 | 38.0 | 16px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 16px | none | -0.176px | 22.4px | 
 3 | button.on.v420hit | 27.0 | 359.4 | 79.3 | 32.0 | 13px | 700 | rgb(255, 255, 255) | rgb(25, 31, 40) | none | 13px | none | -0.176px | 18.2px | Delivery

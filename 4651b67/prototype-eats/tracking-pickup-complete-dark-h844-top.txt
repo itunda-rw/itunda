@@ -36,7 +36,7 @@ scrollTop=0 scrollHeight=844 clientHeight=844
 3 | span.ig.ig-s.ig-gold | 48.4 | 436.8 | 14.3 | 14.3 | 15px | 700 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 15px | ★
 2 | button.cch | 183.0 | 429.0 | 149.0 | 52.0 | 15px | 700 | rgb(249, 250, 251) | rgb(44, 44, 53) | none | 16px | rgba(0, 0, 0, 0) 0px 0px 0px 0px | -0.176px | 21px | Get help
 0 | div.ez-ts | 0.0 | 481.0 | 390.0 | 138.6 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-1 | div | 24.0 | 503.0 | 342.0 | 21.0 | 15px | 700 | rgb(179, 174, 255) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Ready by 04:49
+1 | div | 24.0 | 503.0 | 342.0 | 21.0 | 15px | 700 | rgb(179, 174, 255) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Ready by 05:12
 1 | div | 24.0 | 524.0 | 342.0 | 95.6 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | div | 24.0 | 534.0 | 342.0 | 31.0 | 15px | 400 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 
 3 | span | 24.0 | 539.0 | 99.2 | 21.0 | 15px | 400 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 2 × Croissant

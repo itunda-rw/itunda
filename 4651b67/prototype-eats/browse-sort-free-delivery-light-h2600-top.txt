@@ -22,10 +22,10 @@ scrollTop=0 scrollHeight=2620 clientHeight=2600
 2 | svg | 106.5 | 78.0 | 16.0 | 16.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 
 3 | path | 110.5 | 84.3 | 8.0 | 4.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 
 1 | div.ez-md | 210.9 | 67.0 | 155.1 | 38.0 | 16px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 16px | none | -0.176px | 22.4px | 
-2 | button.on.v420hit.hit44b | 213.9 | 70.0 | 79.3 | 32.0 | 13px | 700 | rgb(255, 255, 255) | rgb(26, 32, 41) | none | 13px | rgba(0, 0, 0, 0) 0px 0.00306008px 0.00612015px 0px | -0.176px | 18.2px | Delivery
+2 | button.on.v420hit.hit44b | 213.9 | 70.0 | 79.3 | 32.0 | 13px | 700 | rgb(255, 255, 255) | rgb(25, 31, 40) | none | 13px | none | -0.176px | 18.2px | Delivery
 2 | button.v420hit.hit44b | 295.2 | 70.0 | 67.8 | 32.0 | 13px | 700 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 13px | none | -0.176px | 18.2px | Pickup
 0 | div.ez-tabs | 0.0 | 108.0 | 390.0 | 48.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-1 | button.on | 16.0 | 112.0 | 50.8 | 44.0 | 16px | 700 | rgb(255, 255, 255) | rgb(26, 32, 41) | none | 14px | none | -0.176px | 22.4px | All
+1 | button.on | 16.0 | 112.0 | 50.8 | 44.0 | 16px | 700 | rgb(255, 255, 255) | rgb(25, 31, 40) | none | 14px | none | -0.176px | 22.4px | All
 1 | button | 70.8 | 112.0 | 115.4 | 44.0 | 16px | 700 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 14px | none | -0.176px | 22.4px | Brochette
 1 | button | 190.2 | 112.0 | 97.3 | 44.0 | 16px | 700 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 14px | none | -0.176px | 22.4px | Chicken
 1 | button | 291.5 | 112.0 | 73.8 | 44.0 | 16px | 700 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 14px | none | -0.176px | 22.4px | Pizza
@@ -174,7 +174,7 @@ scrollTop=0 scrollHeight=2620 clientHeight=2600
 0 | div.ez-fl | 0.0 | 642.0 | 390.0 | 54.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 1 | button.v420hit.hit44b | 20.0 | 646.0 | 84.5 | 36.0 | 14px | 700 | rgb(107, 118, 132) | rgb(242, 244, 246) | none | 18px | none | -0.176px | 19.6px | Fastest
 1 | button.v420hit.hit44b | 116.5 | 646.0 | 101.2 | 36.0 | 14px | 700 | rgb(107, 118, 132) | rgb(242, 244, 246) | none | 18px | none | -0.176px | 19.6px | Top rated
-1 | button.on.v420hit.hit44b | 229.7 | 646.0 | 128.9 | 36.0 | 14px | 700 | rgb(255, 255, 255) | rgb(26, 32, 41) | none | 18px | none | -0.176px | 19.6px | Free delivery
+1 | button.on.v420hit.hit44b | 229.7 | 646.0 | 128.9 | 36.0 | 14px | 700 | rgb(255, 255, 255) | rgb(25, 31, 40) | none | 18px | none | -0.176px | 19.6px | Free delivery
 1 | button.v420hit.hit44b | 370.6 | 646.0 | 88.9 | 36.0 | 14px | 700 | rgb(107, 118, 132) | rgb(242, 244, 246) | none | 18px | none | -0.176px | 19.6px | Nearest
 1 | hr | 473.5 | 654.0 | 1.0 | 20.0 | 16px | 400 | rgb(128, 128, 128) | rgb(242, 244, 246) | none | 0px | none | -0.176px | 22.4px | 
 1 | button.v420hit.hit44b | 488.5 | 646.0 | 105.4 | 36.0 | 14px | 700 | rgb(107, 118, 132) | rgb(242, 244, 246) | none | 18px | none | -0.176px | 19.6px | Open now

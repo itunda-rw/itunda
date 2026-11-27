@@ -1,4 +1,4 @@
-scrollTop=0 scrollHeight=882 clientHeight=844
+scrollTop=0 scrollHeight=1245 clientHeight=844
 0 | div.bar | 0.0 | 0.0 | 390.0 | 70.0 | 16px | 400 | rgb(249, 250, 251) | rgb(23, 23, 28) | none | 0px | none | -0.176px | 22.4px | 
 1 | button.ib | 6.0 | 16.0 | 48.0 | 48.0 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | svg | 18.0 | 28.0 | 24.0 | 24.0 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
@@ -35,7 +35,7 @@ scrollTop=0 scrollHeight=882 clientHeight=844
 1 | div.ez-dn | 24.0 | 496.9 | 342.0 | 36.0 | 30px | 800 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | 8px | 36px | 4821
 1 | div.sm.mu | 24.0 | 534.9 | 342.0 | 20.0 | 13px | 400 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 20px | Tell your rider this code at t
 0 | div.ez-ts | 0.0 | 554.9 | 390.0 | 169.6 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-1 | div | 24.0 | 576.9 | 342.0 | 21.0 | 15px | 700 | rgb(179, 174, 255) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Arrives by 04:49
+1 | div | 24.0 | 576.9 | 342.0 | 21.0 | 15px | 700 | rgb(179, 174, 255) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Arrives by 05:12
 1 | div | 24.0 | 597.9 | 342.0 | 126.6 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | div | 24.0 | 607.9 | 342.0 | 31.0 | 15px | 400 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 
 3 | span | 24.0 | 612.9 | 99.2 | 21.0 | 15px | 400 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 2 × Croissant
@@ -50,3 +50,26 @@ scrollTop=0 scrollHeight=882 clientHeight=844
 0 | div.pad | 0.0 | 724.5 | 390.0 | 62.0 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 1 | div.chips | 24.0 | 728.5 | 342.0 | 58.0 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | button.cch | 24.0 | 734.5 | 308.0 | 52.0 | 15px | 700 | rgb(255, 107, 94) | rgba(0, 0, 0, 0) | none | 16px | rgba(0, 0, 0, 0) 0px 0px 0px 0px | -0.176px | 21px | Cancel order
+0 | div | 24.0 | 802.5 | 342.0 | 323.0 | 16px | 400 | rgb(249, 250, 251) | rgb(44, 44, 53) | none | 20px | none | -0.176px | 22.4px | 
+1 | div | 40.0 | 818.5 | 310.0 | 24.0 | 17px | 700 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 24px | Your order
+1 | div.mu.sm | 40.0 | 844.5 | 310.0 | 20.0 | 14px | 400 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 20px | Kigali Bakery, EA-7207 · 2 ite
+1 | div | 40.0 | 872.5 | 310.0 | 34.0 | 15px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
+2 | div | 40.0 | 872.5 | 310.0 | 34.0 | 15px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
+3 | span | 40.0 | 878.5 | 99.2 | 22.0 | 15px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 2 × Croissant
+3 | span.mu | 307.9 | 878.5 | 42.1 | 22.0 | 15px | 400 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 2,400
+1 | div | 40.0 | 914.5 | 310.0 | 139.0 | 15px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
+2 | div | 40.0 | 921.5 | 310.0 | 34.0 | 15px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
+3 | span.mu | 40.0 | 927.5 | 80.2 | 22.0 | 15px | 400 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Delivery to
+3 | span | 191.8 | 927.5 | 158.2 | 22.0 | 15px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Kimironko, KG 11 Ave
+2 | div | 40.0 | 955.5 | 310.0 | 34.0 | 15px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
+3 | span.mu | 40.0 | 961.5 | 69.0 | 22.0 | 15px | 400 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Your note
+3 | span | 145.0 | 961.5 | 205.0 | 22.0 | 15px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Please call when you arrive.
+2 | div | 40.0 | 989.5 | 310.0 | 34.0 | 15px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
+3 | span.mu | 40.0 | 995.5 | 66.3 | 22.0 | 15px | 400 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Paid with
+3 | span | 272.8 | 995.5 | 77.2 | 22.0 | 15px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | itunda Pay
+2 | div | 40.0 | 1023.5 | 310.0 | 30.0 | 17px | 700 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
+3 | span | 40.0 | 1031.5 | 45.6 | 22.0 | 17px | 700 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Total
+3 | span | 248.4 | 1031.5 | 101.6 | 22.0 | 17px | 700 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 2,400 RWF
+1 | button.e810 | 40.0 | 1061.5 | 310.0 | 48.0 | 16px | 700 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | span | 40.0 | 1074.3 | 132.3 | 22.4 | 16px | 700 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | Call restaurant
+2 | span | 343.6 | 1074.3 | 6.4 | 22.4 | 16px | 700 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | ›

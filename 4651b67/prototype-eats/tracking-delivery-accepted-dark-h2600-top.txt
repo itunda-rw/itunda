@@ -35,7 +35,7 @@ scrollTop=0 scrollHeight=2600 clientHeight=2600
 1 | div.ez-dn | 24.0 | 496.9 | 342.0 | 36.0 | 30px | 800 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | 8px | 36px | 4821
 1 | div.sm.mu | 24.0 | 534.9 | 342.0 | 20.0 | 13px | 400 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 20px | Tell your rider this code at t
 0 | div.ez-ts | 0.0 | 554.9 | 390.0 | 169.6 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-1 | div | 24.0 | 576.9 | 342.0 | 21.0 | 15px | 700 | rgb(179, 174, 255) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Arrives by 04:48
+1 | div | 24.0 | 576.9 | 342.0 | 21.0 | 15px | 700 | rgb(179, 174, 255) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Arrives by 05:11
 1 | div | 24.0 | 597.9 | 342.0 | 126.6 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | div | 24.0 | 607.9 | 342.0 | 31.0 | 15px | 400 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 
 3 | span | 24.0 | 612.9 | 99.2 | 21.0 | 15px | 400 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 2 × Croissant

@@ -67,10 +67,10 @@ scrollTop=0 scrollHeight=2600 clientHeight=2600
 1 | div | 24.0 | 636.0 | 342.0 | 21.0 | 15px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Delivery time
 1 | div.chips.v28m | 24.0 | 665.0 | 342.0 | 44.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | button.cch.on.hit44a | 24.0 | 667.0 | 200.2 | 40.0 | 15px | 600 | rgb(255, 255, 255) | rgb(25, 31, 40) | none | 18px | none | -0.176px | 21px | As soon as possible
-2 | button.cch.hit44a | 234.2 | 667.0 | 84.9 | 40.0 | 15px | 600 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 18px | rgba(0, 0, 0, 0) 0px 0px 0px 0px | -0.176px | 21px | 05:30
-2 | button.cch.hit44a | 329.1 | 667.0 | 84.9 | 40.0 | 15px | 600 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 18px | rgba(0, 0, 0, 0) 0px 0px 0px 0px | -0.176px | 21px | 06:00
-2 | button.cch.hit44a | 424.0 | 667.0 | 84.9 | 40.0 | 15px | 600 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 18px | rgba(0, 0, 0, 0) 0px 0px 0px 0px | -0.176px | 21px | 06:30
-2 | button.cch.hit44a | 518.9 | 667.0 | 84.9 | 40.0 | 15px | 600 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 18px | rgba(0, 0, 0, 0) 0px 0px 0px 0px | -0.176px | 21px | 07:00
+2 | button.cch.hit44a | 234.2 | 667.0 | 84.9 | 40.0 | 15px | 600 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 18px | rgba(0, 0, 0, 0) 0px 0px 0px 0px | -0.176px | 21px | 06:00
+2 | button.cch.hit44a | 329.1 | 667.0 | 84.9 | 40.0 | 15px | 600 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 18px | rgba(0, 0, 0, 0) 0px 0px 0px 0px | -0.176px | 21px | 06:30
+2 | button.cch.hit44a | 424.0 | 667.0 | 84.9 | 40.0 | 15px | 600 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 18px | rgba(0, 0, 0, 0) 0px 0px 0px 0px | -0.176px | 21px | 07:00
+2 | button.cch.hit44a | 518.9 | 667.0 | 84.9 | 40.0 | 15px | 600 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 18px | rgba(0, 0, 0, 0) 0px 0px 0px 0px | -0.176px | 21px | 07:30
 0 | div.pad | 0.0 | 707.0 | 390.0 | 91.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 1 | div | 24.0 | 723.0 | 342.0 | 21.0 | 15px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 
 2 | span.mu | 142.2 | 724.0 | 81.6 | 18.0 | 15px | 600 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | (optional)

@@ -22,7 +22,7 @@
       "tag": "button",
       "text": "Browse restaurants",
       "id": "",
-      "className": "cch on",
+      "className": "cch on hit44a",
       "role": null,
       "ariaLabel": null,
       "onClick": "back()",

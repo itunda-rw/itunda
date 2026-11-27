@@ -12,15 +12,15 @@ scrollTop=0 scrollHeight=2600 clientHeight=2600
 6 | circle | 67.6 | 143.0 | 3.8 | 3.8 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | circle | 57.8 | 147.2 | 3.8 | 3.8 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | circle | 42.1 | 156.5 | 3.8 | 3.8 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-1 | span.g3 | 273.5 | 93.5 | 85.1 | 85.1 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-2 | svg | 273.5 | 93.5 | 85.1 | 85.1 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-3 | g | 286.9 | 100.4 | 58.2 | 71.2 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-4 | svg | 286.9 | 100.4 | 58.2 | 71.2 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-5 | path | 315.0 | 100.4 | 6.0 | 24.1 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-5 | path | 286.9 | 122.5 | 48.1 | 49.1 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-5 | path | 286.9 | 122.5 | 48.1 | 8.0 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-5 | circle | 321.0 | 108.4 | 24.1 | 24.1 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-5 | circle | 326.0 | 113.4 | 14.0 | 14.0 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+1 | span.g3 | 274.5 | 94.5 | 83.0 | 83.0 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | svg | 274.5 | 94.5 | 83.0 | 83.0 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+3 | g | 287.6 | 101.3 | 56.8 | 69.5 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+4 | svg | 287.6 | 101.3 | 56.8 | 69.5 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+5 | path | 315.0 | 101.3 | 5.9 | 23.5 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+5 | path | 287.6 | 122.8 | 47.0 | 47.9 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+5 | path | 287.6 | 122.8 | 47.0 | 7.8 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+5 | circle | 320.9 | 109.1 | 23.5 | 23.5 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+5 | circle | 325.8 | 114.0 | 13.7 | 13.7 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 1 | svg | 135.0 | 50.0 | 120.0 | 120.0 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | g | 145.6 | 64.4 | 98.9 | 91.5 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 3 | svg | 145.6 | 64.4 | 98.9 | 91.5 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
@@ -38,7 +38,7 @@ scrollTop=0 scrollHeight=2600 clientHeight=2600
 2 | span | 24.0 | 273.6 | 176.5 | 19.6 | 14px | 400 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | Bread, pastries and cakes
 1 | div.ez-meta | 0.0 | 293.2 | 390.0 | 25.6 | 14px | 600 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | 
 2 | b | 24.0 | 300.2 | 77.4 | 16.0 | 14px | 800 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | 15-25 min
-1 | div.ez-arr | 0.0 | 322.8 | 390.0 | 19.6 | 14px | 600 | rgb(179, 174, 255) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | Arrives by 04:43–04:53
+1 | div.ez-arr | 0.0 | 322.8 | 390.0 | 19.6 | 14px | 600 | rgb(179, 174, 255) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | Arrives by 05:06–05:16
 1 | div.ez-rmd | 0.0 | 342.4 | 390.0 | 52.0 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | div.ez-md | 24.0 | 356.4 | 155.1 | 38.0 | 16px | 400 | rgb(249, 250, 251) | rgb(44, 44, 53) | none | 16px | none | -0.176px | 22.4px | 
 3 | button.on.v420hit.hit44b | 27.0 | 359.4 | 79.3 | 32.0 | 13px | 700 | rgb(23, 23, 28) | rgb(249, 250, 251) | none | 13px | none | -0.176px | 18.2px | Delivery
@@ -213,44 +213,44 @@ scrollTop=0 scrollHeight=2600 clientHeight=2600
 6 | path | 296.8 | 2302.7 | 9.8 | 6.5 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 5 | button.e2-pl.hit44a | 330.0 | 2342.8 | 38.0 | 38.0 | 20px | 700 | rgb(23, 23, 28) | rgb(143, 137, 255) | none | 19px | none | -0.176px | 28px | +
 0 | div.sheet.v6pg.ez-pd | 24.0 | 22.0 | 342.0 | 2578.0 | 16px | 400 | rgb(242, 244, 248) | rgb(23, 23, 28) | none | 0px | none | -0.176px | normal | 
-1 | div.v6h | 24.0 | 29.0 | 342.0 | 70.0 | 16px | 400 | rgb(242, 244, 248) | rgb(23, 23, 28) | none | 0px | none | -0.176px | normal | 
-2 | button.ib | 36.0 | 45.0 | 48.0 | 48.0 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-3 | svg | 48.0 | 57.0 | 24.0 | 24.0 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-4 | path | 53.0 | 63.0 | 14.0 | 12.0 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-1 | div.v6b | 24.0 | 100.2 | 342.0 | 2402.0 | 16px | 400 | rgb(242, 244, 248) | rgb(23, 23, 28) | none | 0px | none | -0.176px | normal | 
-2 | div.ez-pic | 48.0 | 108.2 | 294.0 | 168.0 | 16px | 400 | rgb(242, 244, 248) | rgb(255, 232, 199) | none | 22px | none | -0.176px | normal | 
-3 | svg | 135.0 | 132.2 | 120.0 | 120.0 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-4 | g | 145.6 | 146.5 | 98.9 | 91.5 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-5 | svg | 145.6 | 146.5 | 98.9 | 91.5 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-6 | path | 145.6 | 146.5 | 98.9 | 91.5 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-6 | path | 146.2 | 200.1 | 97.8 | 37.8 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-6 | g | 171.4 | 165.4 | 53.6 | 22.1 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-7 | path | 171.4 | 165.4 | 53.6 | 22.1 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-2 | div.ez-pn | 48.0 | 290.2 | 294.0 | 59.0 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-3 | div.h1 | 48.0 | 290.2 | 294.0 | 38.0 | 30px | 700 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.6px | 38px | Croissant
-3 | div | 48.0 | 330.2 | 294.0 | 19.0 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 1,200 RWF
-2 | div.mu | 48.0 | 361.2 | 294.0 | 21.0 | 15px | 400 | rgb(180, 187, 199) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Buttery, baked this morning
-2 | div | 48.0 | 400.2 | 294.0 | 18.0 | 15px | 800 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | Add-ons
-2 | button.hit44a | 48.0 | 422.2 | 294.0 | 42.0 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-3 | span | 48.0 | 433.7 | 164.9 | 19.0 | 16px | 700 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | Butter portion
-3 | span.mu | 224.9 | 433.7 | 83.1 | 19.0 | 16px | 400 | rgb(180, 187, 199) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | +300 RWF
-3 | span | 320.0 | 432.2 | 22.0 | 22.0 | 14px | 400 | rgb(23, 23, 28) | rgba(0, 0, 0, 0) | none | 7px | none | -0.176px | normal | 
-2 | button.hit44a | 48.0 | 464.2 | 294.0 | 42.0 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-3 | span | 48.0 | 475.7 | 164.9 | 19.0 | 16px | 700 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | Honey
-3 | span.mu | 224.9 | 475.7 | 83.1 | 19.0 | 16px | 400 | rgb(180, 187, 199) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | +400 RWF
-3 | span | 320.0 | 474.2 | 22.0 | 22.0 | 14px | 400 | rgb(23, 23, 28) | rgba(0, 0, 0, 0) | none | 7px | none | -0.176px | normal | 
-2 | div | 48.0 | 524.2 | 294.0 | 18.0 | 15px | 800 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | Preferences
-2 | div.chips | 48.0 | 552.2 | 294.0 | 264.0 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-3 | button.cch. | 48.0 | 552.2 | 270.0 | 52.0 | 16px | 600 | rgb(242, 244, 248) | rgba(255, 255, 255, 0.12) | none | 16px | none | -0.176px | normal | No onions
-3 | button.cch. | 48.0 | 612.2 | 270.0 | 52.0 | 16px | 600 | rgb(242, 244, 248) | rgba(255, 255, 255, 0.12) | none | 16px | none | -0.176px | normal | Extra spicy
-3 | button.cch. | 48.0 | 672.2 | 270.0 | 52.0 | 16px | 600 | rgb(242, 244, 248) | rgba(255, 255, 255, 0.12) | none | 16px | none | -0.176px | normal | Less salt
-3 | button.cch. | 48.0 | 732.2 | 270.0 | 52.0 | 16px | 600 | rgb(242, 244, 248) | rgba(255, 255, 255, 0.12) | none | 16px | none | -0.176px | normal | No sugar
-1 | div.cta.v6cta | 24.0 | 2504.7 | 342.0 | 100.0 | 16px | 700 | rgb(242, 244, 248) | rgb(23, 23, 28) | none | 16px | none | -0.32px | normal | 
-2 | div.ez-q | 48.0 | 2521.7 | 122.0 | 52.0 | 16px | 700 | rgb(242, 244, 248) | rgba(255, 255, 255, 0.12) | none | 26px | none | -0.32px | normal | 
-3 | button.ib | 52.0 | 2525.7 | 44.0 | 44.0 | 16px | 700 | rgb(242, 244, 248) | rgba(255, 255, 255, 0.12) | none | 22px | none | -0.32px | normal | 
-4 | svg | 65.0 | 2538.7 | 18.0 | 18.0 | 16px | 700 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.32px | normal | 
-3 | b | 98.0 | 2537.7 | 22.0 | 20.0 | 17px | 900 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.32px | normal | 1
-3 | button.ib | 122.0 | 2525.7 | 44.0 | 44.0 | 16px | 700 | rgb(242, 244, 248) | rgba(255, 255, 255, 0.12) | none | 22px | none | -0.32px | normal | 
-4 | svg | 135.0 | 2538.7 | 18.0 | 18.0 | 16px | 700 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.32px | normal | 
-5 | path | 138.8 | 2542.5 | 10.5 | 10.5 | 16px | 700 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.32px | normal | 
-2 | button.btn | 182.0 | 2518.7 | 160.0 | 58.0 | 18px | 700 | rgb(23, 23, 28) | rgb(143, 137, 255) | none | 18px | none | -0.36px | normal | Add · 1,200 RWF
+1 | div.v6h | 24.0 | 29.4 | 342.0 | 70.0 | 16px | 400 | rgb(242, 244, 248) | rgb(23, 23, 28) | none | 0px | none | -0.176px | normal | 
+2 | button.ib | 36.0 | 45.4 | 48.0 | 48.0 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+3 | svg | 48.0 | 57.4 | 24.0 | 24.0 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+4 | path | 53.0 | 63.4 | 14.0 | 12.0 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+1 | div.v6b | 24.0 | 101.0 | 342.0 | 2402.0 | 16px | 400 | rgb(242, 244, 248) | rgb(23, 23, 28) | none | 0px | none | -0.176px | normal | 
+2 | div.ez-pic | 48.0 | 109.0 | 294.0 | 168.0 | 16px | 400 | rgb(242, 244, 248) | rgb(255, 232, 199) | none | 22px | none | -0.176px | normal | 
+3 | svg | 135.0 | 133.0 | 120.0 | 120.0 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+4 | g | 145.6 | 147.4 | 98.9 | 91.5 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+5 | svg | 145.6 | 147.4 | 98.9 | 91.5 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+6 | path | 145.6 | 147.4 | 98.9 | 91.5 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+6 | path | 146.2 | 201.0 | 97.8 | 37.8 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+6 | g | 171.4 | 166.3 | 53.6 | 22.1 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+7 | path | 171.4 | 166.3 | 53.6 | 22.1 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+2 | div.ez-pn | 48.0 | 291.0 | 294.0 | 59.0 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+3 | div.h1 | 48.0 | 291.0 | 294.0 | 38.0 | 30px | 700 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.6px | 38px | Croissant
+3 | div | 48.0 | 331.0 | 294.0 | 19.0 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 1,200 RWF
+2 | div.mu | 48.0 | 362.0 | 294.0 | 21.0 | 15px | 400 | rgb(180, 187, 199) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Buttery, baked this morning
+2 | div | 48.0 | 401.0 | 294.0 | 18.0 | 15px | 800 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | Add-ons
+2 | button.hit44a | 48.0 | 423.0 | 294.0 | 42.0 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+3 | span | 48.0 | 434.5 | 164.9 | 19.0 | 16px | 700 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | Butter portion
+3 | span.mu | 224.9 | 434.5 | 83.1 | 19.0 | 16px | 400 | rgb(180, 187, 199) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | +300 RWF
+3 | span | 320.0 | 433.0 | 22.0 | 22.0 | 14px | 400 | rgb(23, 23, 28) | rgba(0, 0, 0, 0) | none | 7px | none | -0.176px | normal | 
+2 | button.hit44a | 48.0 | 465.0 | 294.0 | 42.0 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+3 | span | 48.0 | 476.5 | 164.9 | 19.0 | 16px | 700 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | Honey
+3 | span.mu | 224.9 | 476.5 | 83.1 | 19.0 | 16px | 400 | rgb(180, 187, 199) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | +400 RWF
+3 | span | 320.0 | 475.0 | 22.0 | 22.0 | 14px | 400 | rgb(23, 23, 28) | rgba(0, 0, 0, 0) | none | 7px | none | -0.176px | normal | 
+2 | div | 48.0 | 525.0 | 294.0 | 18.0 | 15px | 800 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | Preferences
+2 | div.chips | 48.0 | 553.0 | 294.0 | 264.0 | 16px | 400 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+3 | button.cch. | 48.0 | 553.0 | 270.0 | 52.0 | 16px | 600 | rgb(242, 244, 248) | rgba(255, 255, 255, 0.12) | none | 16px | none | -0.176px | normal | No onions
+3 | button.cch. | 48.0 | 613.0 | 270.0 | 52.0 | 16px | 600 | rgb(242, 244, 248) | rgba(255, 255, 255, 0.12) | none | 16px | none | -0.176px | normal | Extra spicy
+3 | button.cch. | 48.0 | 673.0 | 270.0 | 52.0 | 16px | 600 | rgb(242, 244, 248) | rgba(255, 255, 255, 0.12) | none | 16px | none | -0.176px | normal | Less salt
+3 | button.cch. | 48.0 | 733.0 | 270.0 | 52.0 | 16px | 600 | rgb(242, 244, 248) | rgba(255, 255, 255, 0.12) | none | 16px | none | -0.176px | normal | No sugar
+1 | div.cta.v6cta | 24.0 | 2506.6 | 342.0 | 100.0 | 16px | 700 | rgb(242, 244, 248) | rgb(23, 23, 28) | none | 16px | none | -0.32px | normal | 
+2 | div.ez-q | 48.0 | 2523.6 | 122.0 | 52.0 | 16px | 700 | rgb(242, 244, 248) | rgba(255, 255, 255, 0.12) | none | 26px | none | -0.32px | normal | 
+3 | button.ib | 52.0 | 2527.6 | 44.0 | 44.0 | 16px | 700 | rgb(242, 244, 248) | rgba(255, 255, 255, 0.12) | none | 22px | none | -0.32px | normal | 
+4 | svg | 65.0 | 2540.6 | 18.0 | 18.0 | 16px | 700 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.32px | normal | 
+3 | b | 98.0 | 2539.6 | 22.0 | 20.0 | 17px | 900 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.32px | normal | 1
+3 | button.ib | 122.0 | 2527.6 | 44.0 | 44.0 | 16px | 700 | rgb(242, 244, 248) | rgba(255, 255, 255, 0.12) | none | 22px | none | -0.32px | normal | 
+4 | svg | 135.0 | 2540.6 | 18.0 | 18.0 | 16px | 700 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.32px | normal | 
+5 | path | 138.8 | 2544.4 | 10.5 | 10.5 | 16px | 700 | rgb(242, 244, 248) | rgba(0, 0, 0, 0) | none | 0px | none | -0.32px | normal | 
+2 | button.btn | 182.0 | 2520.6 | 160.0 | 58.0 | 18px | 700 | rgb(23, 23, 28) | rgb(143, 137, 255) | none | 18px | none | -0.36px | normal | Add · 1,200 RWF

@@ -457,44 +457,44 @@ scrollTop=0 scrollHeight=2620 clientHeight=2600
 3 | b | 217.4 | 2487.2 | 22.5 | 15.0 | 13px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 18.2px | 4.3
 2 | div.ez-m | 201.0 | 2505.4 | 169.0 | 18.2 | 13px | 600 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 18.2px | Delivery 2,000
 0 | div.sheet.v6pg.v6na | 0.0 | 0.0 | 390.0 | 2600.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 0px | none | -0.176px | normal | 
-1 | div.v6h | 0.0 | 7.4 | 390.0 | 70.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 0px | none | -0.176px | normal | 
-2 | button.ib | 6.0 | 23.4 | 48.0 | 48.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-3 | svg | 18.0 | 35.4 | 24.0 | 24.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-4 | path | 23.0 | 41.4 | 14.0 | 12.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-1 | div.v6b | 0.0 | 79.1 | 390.0 | 2426.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 0px | none | -0.176px | normal | 
-2 | div.h1 | 24.0 | 85.1 | 342.0 | 34.0 | 26px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.6px | 34px | Delivery address
-2 | div.mu | 24.0 | 125.1 | 342.0 | 18.0 | 15px | 400 | rgb(86, 97, 112) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | Your rider will go to the addr
-2 | div | 24.0 | 153.1 | 342.0 | 136.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-3 | div | 24.0 | 153.1 | 342.0 | 68.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-4 | button.ea-r | 24.0 | 153.1 | 342.0 | 68.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-5 | span.ea-ic | 24.0 | 167.1 | 40.0 | 40.0 | 16px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 14px | none | -0.176px | normal | 
-6 | svg | 34.0 | 177.1 | 20.0 | 20.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-7 | svg | 35.6 | 179.7 | 16.7 | 14.7 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-8 | rect | 37.8 | 185.3 | 12.4 | 9.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-8 | rect | 44.0 | 185.3 | 6.2 | 9.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-8 | path | 35.6 | 179.7 | 16.7 | 7.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-8 | rect | 42.1 | 188.7 | 3.8 | 5.7 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-5 | span.ea-tx | 78.0 | 167.1 | 252.0 | 40.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-6 | b | 78.0 | 167.1 | 252.0 | 20.0 | 17px | 500 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | Home
-6 | span | 78.0 | 187.1 | 252.0 | 20.0 | 14px | 400 | rgb(86, 97, 112) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 20px | Kimironko, KG 11 Ave
-5 | span.ea-rd | 344.0 | 176.1 | 22.0 | 22.0 | 16px | 400 | rgb(90, 81, 236) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-6 | svg | 344.0 | 176.1 | 22.0 | 22.0 | 16px | 400 | rgb(90, 81, 236) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-7 | path | 348.6 | 182.9 | 12.8 | 9.0 | 16px | 400 | rgb(90, 81, 236) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-3 | div | 24.0 | 221.1 | 342.0 | 68.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-4 | button.ea-r.on | 24.0 | 221.1 | 342.0 | 68.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-5 | span.ea-ic | 24.0 | 235.1 | 40.0 | 40.0 | 16px | 400 | rgb(91, 84, 214) | rgb(238, 237, 255) | none | 14px | none | -0.176px | normal | 
-6 | svg | 34.0 | 245.1 | 20.0 | 20.0 | 16px | 400 | rgb(91, 84, 214) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-7 | g | 35.7 | 247.8 | 16.5 | 14.5 | 16px | 400 | rgb(91, 84, 214) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-8 | svg | 35.7 | 247.8 | 16.5 | 14.5 | 16px | 400 | rgb(91, 84, 214) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-5 | span.ea-tx | 78.0 | 235.1 | 252.0 | 40.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-6 | b | 78.0 | 235.1 | 252.0 | 20.0 | 17px | 800 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | Work
-6 | span | 78.0 | 255.1 | 252.0 | 20.0 | 14px | 400 | rgb(86, 97, 112) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 20px | Kacyiru, KG 7 Ave
-5 | span.ea-rd | 344.0 | 244.1 | 22.0 | 22.0 | 16px | 400 | rgb(90, 81, 236) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-6 | svg | 344.0 | 244.1 | 22.0 | 22.0 | 16px | 400 | rgb(90, 81, 236) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-7 | path | 348.6 | 250.9 | 12.8 | 9.0 | 16px | 400 | rgb(90, 81, 236) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-2 | button.ea-add | 24.0 | 289.1 | 342.0 | 68.0 | 17px | 700 | rgb(90, 81, 236) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
-3 | span.ea-ic | 24.0 | 303.1 | 40.0 | 40.0 | 22px | 400 | rgb(91, 84, 214) | rgb(238, 237, 255) | none | 14px | none | -0.176px | normal | +
-1 | div.cta.v6cta | 0.0 | 2508.6 | 390.0 | 98.0 | 16px | 700 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 16px | none | -0.32px | normal | 
-2 | div.row2 | 24.0 | 2522.6 | 342.0 | 56.0 | 16px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.32px | normal | 
-3 | button.btn.sec2 | 24.0 | 2522.6 | 116.3 | 56.0 | 17px | 600 | rgb(91, 84, 214) | rgb(238, 237, 255) | none | 18px | none | -0.34px | normal | Close
-3 | button.btn | 152.3 | 2522.6 | 213.7 | 56.0 | 17px | 700 | rgb(23, 23, 28) | rgb(143, 137, 255) | none | 18px | none | -0.34px | normal | Use this address
+1 | div.v6h | 0.0 | 7.0 | 390.0 | 70.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 0px | none | -0.176px | normal | 
+2 | button.ib | 6.0 | 23.0 | 48.0 | 48.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+3 | svg | 18.0 | 35.0 | 24.0 | 24.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+4 | path | 23.0 | 41.0 | 14.0 | 12.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+1 | div.v6b | 0.0 | 78.2 | 390.0 | 2426.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 0px | none | -0.176px | normal | 
+2 | div.h1 | 24.0 | 84.2 | 342.0 | 34.0 | 26px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.6px | 34px | Delivery address
+2 | div.mu | 24.0 | 124.2 | 342.0 | 18.0 | 15px | 400 | rgb(86, 97, 112) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | Your rider will go to the addr
+2 | div | 24.0 | 152.2 | 342.0 | 136.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+3 | div | 24.0 | 152.2 | 342.0 | 68.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+4 | button.ea-r | 24.0 | 152.2 | 342.0 | 68.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+5 | span.ea-ic | 24.0 | 166.2 | 40.0 | 40.0 | 16px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 14px | none | -0.176px | normal | 
+6 | svg | 34.0 | 176.2 | 20.0 | 20.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+7 | svg | 35.6 | 178.8 | 16.7 | 14.7 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+8 | rect | 37.8 | 184.4 | 12.4 | 9.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+8 | rect | 44.0 | 184.4 | 6.2 | 9.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+8 | path | 35.6 | 178.8 | 16.7 | 7.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+8 | rect | 42.1 | 187.8 | 3.8 | 5.7 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+5 | span.ea-tx | 78.0 | 166.2 | 252.0 | 40.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+6 | b | 78.0 | 166.2 | 252.0 | 20.0 | 17px | 500 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | Home
+6 | span | 78.0 | 186.2 | 252.0 | 20.0 | 14px | 400 | rgb(86, 97, 112) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 20px | Kimironko, KG 11 Ave
+5 | span.ea-rd | 344.0 | 175.2 | 22.0 | 22.0 | 16px | 400 | rgb(90, 81, 236) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+6 | svg | 344.0 | 175.2 | 22.0 | 22.0 | 16px | 400 | rgb(90, 81, 236) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+7 | path | 348.6 | 182.0 | 12.8 | 9.0 | 16px | 400 | rgb(90, 81, 236) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+3 | div | 24.0 | 220.2 | 342.0 | 68.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+4 | button.ea-r.on | 24.0 | 220.2 | 342.0 | 68.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+5 | span.ea-ic | 24.0 | 234.2 | 40.0 | 40.0 | 16px | 400 | rgb(91, 84, 214) | rgb(238, 237, 255) | none | 14px | none | -0.176px | normal | 
+6 | svg | 34.0 | 244.2 | 20.0 | 20.0 | 16px | 400 | rgb(91, 84, 214) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+7 | g | 35.7 | 246.9 | 16.5 | 14.5 | 16px | 400 | rgb(91, 84, 214) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+8 | svg | 35.7 | 246.9 | 16.5 | 14.5 | 16px | 400 | rgb(91, 84, 214) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+5 | span.ea-tx | 78.0 | 234.2 | 252.0 | 40.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+6 | b | 78.0 | 234.2 | 252.0 | 20.0 | 17px | 800 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | Work
+6 | span | 78.0 | 254.2 | 252.0 | 20.0 | 14px | 400 | rgb(86, 97, 112) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 20px | Kacyiru, KG 7 Ave
+5 | span.ea-rd | 344.0 | 243.2 | 22.0 | 22.0 | 16px | 400 | rgb(90, 81, 236) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+6 | svg | 344.0 | 243.2 | 22.0 | 22.0 | 16px | 400 | rgb(90, 81, 236) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+7 | path | 348.6 | 250.0 | 12.8 | 9.0 | 16px | 400 | rgb(90, 81, 236) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+2 | button.ea-add | 24.0 | 288.2 | 342.0 | 68.0 | 17px | 700 | rgb(90, 81, 236) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | normal | 
+3 | span.ea-ic | 24.0 | 302.2 | 40.0 | 40.0 | 22px | 400 | rgb(91, 84, 214) | rgb(238, 237, 255) | none | 14px | none | -0.176px | normal | +
+1 | div.cta.v6cta | 0.0 | 2506.7 | 390.0 | 98.0 | 16px | 700 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 16px | none | -0.32px | normal | 
+2 | div.row2 | 24.0 | 2520.7 | 342.0 | 56.0 | 16px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.32px | normal | 
+3 | button.btn.sec2 | 24.0 | 2520.7 | 116.3 | 56.0 | 17px | 600 | rgb(91, 84, 214) | rgb(238, 237, 255) | none | 18px | none | -0.34px | normal | Close
+3 | button.btn | 152.3 | 2520.7 | 213.7 | 56.0 | 17px | 700 | rgb(23, 23, 28) | rgb(143, 137, 255) | none | 18px | none | -0.34px | normal | Use this address

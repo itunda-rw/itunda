@@ -24,7 +24,7 @@ scrollTop=0 scrollHeight=2856 clientHeight=844
 1 | div.ez-md | 210.9 | 67.0 | 155.1 | 38.0 | 16px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 16px | none | -0.176px | 22.4px | 
 2 | button.on.v420hit | 213.9 | 70.0 | 79.3 | 32.0 | 13px | 700 | rgb(255, 255, 255) | rgb(25, 31, 40) | none | 13px | none | -0.176px | 18.2px | Delivery
 2 | button.v420hit | 295.2 | 70.0 | 67.8 | 32.0 | 13px | 700 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 13px | none | -0.176px | 18.2px | Pickup
-0 | div.ez-tabs | 0.0 | 108.0 | 390.0 | 48.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+0 | div.ez-tabs.v28m | 0.0 | 108.0 | 390.0 | 48.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 1 | button.on | 16.0 | 112.0 | 50.8 | 44.0 | 16px | 700 | rgb(255, 255, 255) | rgb(25, 31, 40) | none | 14px | none | -0.176px | 22.4px | All
 1 | button | 70.8 | 112.0 | 115.4 | 44.0 | 16px | 700 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 14px | none | -0.176px | 22.4px | Brochette
 1 | button | 190.2 | 112.0 | 97.3 | 44.0 | 16px | 700 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 14px | none | -0.176px | 22.4px | Chicken
@@ -114,7 +114,7 @@ scrollTop=0 scrollHeight=2856 clientHeight=844
 3 | b | 40.4 | 573.8 | 22.5 | 15.0 | 13px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 18.2px | 4.8
 0 | div.ez-h | 0.0 | 591.0 | 390.0 | 60.6 | 19px | 800 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.4px | 26.6px | 
 1 | b | 24.0 | 615.0 | 185.6 | 26.6 | 19px | 900 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.4px | 26.6px | Popular this week
-0 | div.ez-rail | 0.0 | 651.6 | 390.0 | 170.6 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+0 | div.ez-rail.v28m | 0.0 | 651.6 | 390.0 | 170.6 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 1 | div.ez-rk | 24.0 | 651.6 | 148.0 | 170.6 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | b | 32.0 | 653.6 | 17.9 | 30.0 | 26px | 800 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 30px | 1
 2 | button.ez-c.tap | 24.0 | 651.6 | 132.0 | 164.2 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
@@ -192,7 +192,7 @@ scrollTop=0 scrollHeight=2856 clientHeight=844
 0 | div.ez-h | 0.0 | 822.1 | 390.0 | 60.6 | 19px | 800 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.4px | 26.6px | 
 1 | b | 24.0 | 846.1 | 223.2 | 26.6 | 19px | 900 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.4px | 26.6px | Restaurants near you
 1 | span | 347.9 | 853.1 | 18.1 | 18.2 | 13px | 600 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | normal | 18.2px | 14
-0 | div.ez-fl | 0.0 | 882.7 | 390.0 | 50.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+0 | div.ez-fl.v28m | 0.0 | 882.7 | 390.0 | 50.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 1 | button.on.v420hit | 24.0 | 882.7 | 84.5 | 36.0 | 14px | 700 | rgb(255, 255, 255) | rgb(25, 31, 40) | none | 18px | none | -0.176px | 19.6px | Fastest
 1 | button.v420hit | 116.5 | 882.7 | 101.2 | 36.0 | 14px | 700 | rgb(107, 118, 132) | rgb(242, 244, 246) | none | 18px | none | -0.176px | 19.6px | Top rated
 1 | button.v420hit | 225.7 | 882.7 | 128.9 | 36.0 | 14px | 700 | rgb(107, 118, 132) | rgb(242, 244, 246) | none | 18px | none | -0.176px | 19.6px | Free delivery

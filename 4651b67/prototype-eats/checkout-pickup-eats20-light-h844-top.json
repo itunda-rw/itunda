@@ -100,16 +100,6 @@
     },
     {
       "tag": "button",
-      "text": "05:30",
-      "id": "",
-      "className": "cch ",
-      "role": null,
-      "ariaLabel": null,
-      "onClick": "eSched('05:30')",
-      "disabled": false
-    },
-    {
-      "tag": "button",
       "text": "06:00",
       "id": "",
       "className": "cch ",
@@ -136,6 +126,16 @@
       "role": null,
       "ariaLabel": null,
       "onClick": "eSched('07:00')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "07:30",
+      "id": "",
+      "className": "cch ",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eSched('07:30')",
       "disabled": false
     },
     {

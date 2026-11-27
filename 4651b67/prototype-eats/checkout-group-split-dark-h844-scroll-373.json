@@ -1,6 +1,6 @@
 {
   "screenKey": "echeck",
-  "screenText": "Cart\nDelivery\nPickup\nDeliver to\nKimironko, KG 11 Ave\nChange\nYour order\nKigali Bakery\nCroissant\n1,200 RWF\n2\nMandazi, 6 pieces\n1,000 RWF\n1\nAdd more items\nAdd a side or drink\n+\nHot milk tea\n1,000 RWF\n+\nFruit juice\n1,800 RWF\nDelivery time\nAs soon as possible\n05:30\n06:00\n06:30\n07:00\nTip your rider (optional)\nNo tip\n500\n1,000\n2,000\nGroup order · 3 people\nManage\nYou\n1,200 RWF\nAmina K.\n1 item\n1,000 RWF\nEric M.\n1 item\n1,200 RWF\nI pay for everyone\nSplit the bill\nYou pay now. Each friend gets a request for their items: 2,200 RWF in total.\nItems\n3,400 RWF\nDelivery\nFree\nTotal\n3,400 RWF\nYou earn 34 points with this order\nPay with\nitunda Pay · 120,500 RWF",
+  "screenText": "Cart\nDelivery\nPickup\nDeliver to\nKimironko, KG 11 Ave\nChange\nYour order\nKigali Bakery\nCroissant\n1,200 RWF\n2\nMandazi, 6 pieces\n1,000 RWF\n1\nAdd more items\nAdd a side or drink\n+\nHot milk tea\n1,000 RWF\n+\nFruit juice\n1,800 RWF\nDelivery time\nAs soon as possible\n06:00\n06:30\n07:00\n07:30\nTip your rider (optional)\nNo tip\n500\n1,000\n2,000\nGroup order · 3 people\nManage\nYou\n1,200 RWF\nAmina K.\n1 item\n1,000 RWF\nEric M.\n1 item\n1,200 RWF\nI pay for everyone\nSplit the bill\nYou pay now. Each friend gets a request for their items: 2,200 RWF in total.\nItems\n3,400 RWF\nDelivery\nFree\nTotal\n3,400 RWF\nYou earn 34 points with this order\nPay with\nitunda Pay · 120,500 RWF",
   "sheetText": "",
   "scroll": {
     "top": 373,
@@ -190,16 +190,6 @@
     },
     {
       "tag": "button",
-      "text": "05:30",
-      "id": "",
-      "className": "cch hit44a",
-      "role": null,
-      "ariaLabel": null,
-      "onClick": "eSched('05:30')",
-      "disabled": false
-    },
-    {
-      "tag": "button",
       "text": "06:00",
       "id": "",
       "className": "cch hit44a",
@@ -226,6 +216,16 @@
       "role": null,
       "ariaLabel": null,
       "onClick": "eSched('07:00')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "07:30",
+      "id": "",
+      "className": "cch hit44a",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eSched('07:30')",
       "disabled": false
     },
     {

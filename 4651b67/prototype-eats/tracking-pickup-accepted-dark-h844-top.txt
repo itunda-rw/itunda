@@ -31,7 +31,7 @@ scrollTop=0 scrollHeight=844 clientHeight=844
 1 | div.tl. | 285.0 | 376.0 | 81.0 | 43.0 | 13px | 700 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 16px | 
 2 | i | 285.0 | 376.0 | 81.0 | 4.0 | 13px | 700 | rgb(158, 164, 174) | rgb(44, 44, 53) | none | 2px | none | -0.176px | 16px | 
 0 | div.ez-ts | 0.0 | 419.0 | 390.0 | 138.6 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-1 | div | 24.0 | 441.0 | 342.0 | 21.0 | 15px | 700 | rgb(179, 174, 255) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Ready by 04:49
+1 | div | 24.0 | 441.0 | 342.0 | 21.0 | 15px | 700 | rgb(179, 174, 255) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Ready by 05:12
 1 | div | 24.0 | 462.0 | 342.0 | 95.6 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | div | 24.0 | 472.0 | 342.0 | 31.0 | 15px | 400 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 
 3 | span | 24.0 | 477.0 | 99.2 | 21.0 | 15px | 400 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 2 × Croissant

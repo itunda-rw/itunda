@@ -19,9 +19,9 @@ scrollTop=0 scrollHeight=2600 clientHeight=2600
 2 | path | 63.0 | 205.3 | 11.7 | 12.8 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | circle | 311.0 | 296.8 | 25.5 | 25.5 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | path | 317.4 | 303.2 | 12.8 | 12.8 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-2 | g | 77.8 | 203.9 | 21.3 | 21.3 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-3 | circle | 77.8 | 203.9 | 21.3 | 21.3 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-3 | circle | 84.7 | 210.8 | 7.4 | 7.4 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | g | 76.8 | 203.6 | 21.3 | 21.3 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+3 | circle | 76.8 | 203.6 | 21.3 | 21.3 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+3 | circle | 83.8 | 210.5 | 7.4 | 7.4 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 1 | div.cap | 13.0 | 354.3 | 364.0 | 40.6 | 14px | 700 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 0px | none | -0.176px | 19.6px | 
 2 | span | 27.0 | 371.1 | 8.0 | 8.0 | 14px | 700 | rgb(25, 31, 40) | rgb(143, 137, 255) | none | 4px | none | -0.176px | 19.6px | 
 0 | div.pad | 0.0 | 395.9 | 390.0 | 59.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
@@ -84,7 +84,7 @@ scrollTop=0 scrollHeight=2600 clientHeight=2600
 3 | span | 40.0 | 858.9 | 45.6 | 22.0 | 17px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Total
 3 | span | 248.4 | 858.9 | 101.6 | 22.0 | 17px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 2,400 RWF
 0 | div.ez-ts | 0.0 | 920.9 | 390.0 | 169.6 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-1 | div | 24.0 | 942.9 | 342.0 | 21.0 | 15px | 700 | rgb(91, 84, 214) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Arrives by 04:46
+1 | div | 24.0 | 942.9 | 342.0 | 21.0 | 15px | 700 | rgb(91, 84, 214) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Arrives by 05:09
 1 | div | 24.0 | 963.9 | 342.0 | 126.6 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | div | 24.0 | 973.9 | 342.0 | 31.0 | 15px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 
 3 | span | 24.0 | 978.9 | 99.2 | 21.0 | 15px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 2 × Croissant

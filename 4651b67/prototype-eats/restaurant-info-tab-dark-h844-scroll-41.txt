@@ -38,7 +38,7 @@ scrollTop=41 scrollHeight=926 clientHeight=844
 2 | span | 24.0 | 232.6 | 176.5 | 19.6 | 14px | 400 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | Bread, pastries and cakes
 1 | div.ez-meta | 0.0 | 252.2 | 390.0 | 25.6 | 14px | 600 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | 
 2 | b | 24.0 | 259.2 | 77.4 | 16.0 | 14px | 800 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | 15-25 min
-1 | div.ez-arr | 0.0 | 281.8 | 390.0 | 19.6 | 14px | 600 | rgb(179, 174, 255) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | Arrives by 04:43–04:53
+1 | div.ez-arr | 0.0 | 281.8 | 390.0 | 19.6 | 14px | 600 | rgb(179, 174, 255) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | Arrives by 05:07–05:17
 1 | div.ez-rmd | 0.0 | 301.4 | 390.0 | 52.0 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | div.ez-md | 24.0 | 315.4 | 155.1 | 38.0 | 16px | 400 | rgb(249, 250, 251) | rgb(44, 44, 53) | none | 16px | none | -0.176px | 22.4px | 
 3 | button.on.v420hit | 27.0 | 318.4 | 79.3 | 32.0 | 13px | 700 | rgb(23, 23, 28) | rgb(249, 250, 251) | none | 13px | none | -0.176px | 18.2px | Delivery

@@ -38,7 +38,7 @@ scrollTop=1641 scrollHeight=2485 clientHeight=844
 2 | span | 24.0 | -1367.4 | 176.5 | 19.6 | 14px | 400 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | Bread, pastries and cakes
 1 | div.ez-meta | 0.0 | -1347.8 | 390.0 | 25.6 | 14px | 600 | rgb(158, 164, 174) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | 
 2 | b | 24.0 | -1340.8 | 77.4 | 16.0 | 14px | 800 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | 15-25 min
-1 | div.ez-arr | 0.0 | -1318.2 | 390.0 | 19.6 | 14px | 600 | rgb(179, 174, 255) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | Arrives by 04:43–04:53
+1 | div.ez-arr | 0.0 | -1318.2 | 390.0 | 19.6 | 14px | 600 | rgb(179, 174, 255) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | Arrives by 05:07–05:17
 1 | div.ez-rmd | 0.0 | -1298.6 | 390.0 | 52.0 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | div.ez-md | 24.0 | -1284.6 | 155.1 | 38.0 | 16px | 400 | rgb(249, 250, 251) | rgb(44, 44, 53) | none | 16px | none | -0.176px | 22.4px | 
 3 | button.on.v420hit.hit44b | 27.0 | -1281.6 | 79.3 | 32.0 | 13px | 700 | rgb(23, 23, 28) | rgb(249, 250, 251) | none | 13px | none | -0.176px | 18.2px | Delivery
@@ -60,9 +60,9 @@ scrollTop=1641 scrollHeight=2485 clientHeight=844
 2 | input.hs13 | 68.0 | -1112.6 | 284.0 | 44.0 | 15px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 
 1 | div.e2-sc.v28m | 0.0 | 108.0 | 390.0 | 57.0 | 16px | 400 | rgb(249, 250, 251) | rgb(23, 23, 28) | none | 0px | none | -0.176px | 22.4px | 
 2 | button.v420hit.hit44b | -81.0 | 118.0 | 87.8 | 36.0 | 14px | 700 | rgb(249, 250, 251) | rgb(44, 44, 53) | none | 18px | none | -0.176px | 19.6px | Popular
-2 | button.v420hit.hit44b | 18.8 | 118.0 | 90.5 | 36.0 | 14px | 700 | rgb(249, 250, 251) | rgb(118, 119, 125) | none | 18px | none | -0.176px | 19.6px | Pastries
+2 | button.v420hit.hit44b | 18.8 | 118.0 | 90.5 | 36.0 | 14px | 700 | rgb(249, 250, 251) | rgb(153, 153, 158) | none | 18px | none | -0.176px | 19.6px | Pastries
 2 | button.v420hit.hit44b | 121.3 | 118.0 | 73.6 | 36.0 | 14px | 700 | rgb(249, 250, 251) | rgb(44, 44, 53) | none | 18px | none | -0.176px | 19.6px | Cakes
-2 | button.v420hit.hit44b.on | 206.9 | 118.0 | 73.7 | 36.0 | 14px | 700 | rgb(23, 23, 28) | rgb(175, 175, 179) | none | 18px | none | -0.176px | 19.6px | Bread
+2 | button.v420hit.hit44b.on | 206.9 | 118.0 | 73.7 | 36.0 | 14px | 700 | rgb(23, 23, 28) | rgb(140, 141, 146) | none | 18px | none | -0.176px | 19.6px | Bread
 2 | button.v420hit.hit44b | 292.6 | 118.0 | 77.9 | 36.0 | 14px | 700 | rgb(249, 250, 251) | rgb(44, 44, 53) | none | 18px | none | -0.176px | 19.6px | Drinks
 1 | div | 0.0 | -1011.6 | 390.0 | 1759.4 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | div.e2-sec | 0.0 | -1011.6 | 390.0 | 324.7 | 16px | 400 | rgb(249, 250, 251) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 

@@ -1,4 +1,4 @@
-scrollTop=0 scrollHeight=1027 clientHeight=844
+scrollTop=0 scrollHeight=844 clientHeight=844
 0 | div.bar | 0.0 | 0.0 | 390.0 | 70.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 0px | none | -0.176px | 22.4px | 
 1 | button.ib | 6.0 | 16.0 | 48.0 | 48.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | svg | 18.0 | 28.0 | 24.0 | 24.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
@@ -32,36 +32,13 @@ scrollTop=0 scrollHeight=1027 clientHeight=844
 2 | i | 285.0 | 376.0 | 81.0 | 4.0 | 13px | 700 | rgb(107, 118, 132) | rgb(242, 244, 246) | none | 2px | none | -0.176px | 16px | 
 0 | div.pad | 0.0 | 419.0 | 390.0 | 10.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 1 | div.sm.mu | 24.0 | 423.0 | 342.0 | 6.0 | 14px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 20px | 
-0 | div | 24.0 | 445.0 | 342.0 | 323.0 | 16px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 20px | none | -0.176px | 22.4px | 
-1 | div | 40.0 | 461.0 | 310.0 | 24.0 | 17px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 24px | Your order
-1 | div.mu.sm | 40.0 | 487.0 | 310.0 | 20.0 | 14px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 20px | Kigali Bakery, EA-7207 · 2 ite
-1 | div | 40.0 | 515.0 | 310.0 | 34.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
-2 | div | 40.0 | 515.0 | 310.0 | 34.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
-3 | span | 40.0 | 521.0 | 99.2 | 22.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 2 × Croissant
-3 | span.mu | 307.9 | 521.0 | 42.1 | 22.0 | 15px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 2,400
-1 | div | 40.0 | 557.0 | 310.0 | 139.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
-2 | div | 40.0 | 564.0 | 310.0 | 34.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
-3 | span.mu | 40.0 | 570.0 | 71.7 | 22.0 | 15px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Pick up at
-3 | span | 254.5 | 570.0 | 95.5 | 22.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Kigali Bakery
-2 | div | 40.0 | 598.0 | 310.0 | 34.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
-3 | span.mu | 40.0 | 604.0 | 69.0 | 22.0 | 15px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Your note
-3 | span | 145.0 | 604.0 | 205.0 | 22.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Please call when you arrive.
-2 | div | 40.0 | 632.0 | 310.0 | 34.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
-3 | span.mu | 40.0 | 638.0 | 66.3 | 22.0 | 15px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Paid with
-3 | span | 272.8 | 638.0 | 77.2 | 22.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | itunda Pay
-2 | div | 40.0 | 666.0 | 310.0 | 30.0 | 17px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
-3 | span | 40.0 | 674.0 | 45.6 | 22.0 | 17px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Total
-3 | span | 248.4 | 674.0 | 101.6 | 22.0 | 17px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 2,400 RWF
-1 | button.e810 | 40.0 | 704.0 | 310.0 | 48.0 | 16px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-2 | span | 40.0 | 716.8 | 132.3 | 22.4 | 16px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | Call restaurant
-2 | span | 343.6 | 716.8 | 6.4 | 22.4 | 16px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | ›
-0 | div.ez-ts | 0.0 | 792.0 | 390.0 | 138.6 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-1 | div | 24.0 | 814.0 | 342.0 | 21.0 | 15px | 700 | rgb(91, 84, 214) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Ready by 04:47
-1 | div | 24.0 | 835.0 | 342.0 | 95.6 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-2 | div | 24.0 | 845.0 | 342.0 | 31.0 | 15px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 
-3 | span | 24.0 | 850.0 | 99.2 | 21.0 | 15px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 2 × Croissant
-3 | span | 276.6 | 850.0 | 89.4 | 21.0 | 15px | 600 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 2,400 RWF
-2 | div | 24.0 | 876.0 | 342.0 | 32.4 | 16px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-3 | span | 24.0 | 881.0 | 42.8 | 22.4 | 16px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | Total
-3 | span | 270.5 | 881.0 | 95.5 | 22.4 | 16px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 2,400 RWF
-2 | div | 24.0 | 908.4 | 342.0 | 22.2 | 13px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 18.2px | EA-7207
+0 | div.ez-ts | 0.0 | 429.0 | 390.0 | 138.6 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+1 | div | 24.0 | 451.0 | 342.0 | 21.0 | 15px | 700 | rgb(91, 84, 214) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Ready by 05:10
+1 | div | 24.0 | 472.0 | 342.0 | 95.6 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | div | 24.0 | 482.0 | 342.0 | 31.0 | 15px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 
+3 | span | 24.0 | 487.0 | 99.2 | 21.0 | 15px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 2 × Croissant
+3 | span | 276.6 | 487.0 | 89.4 | 21.0 | 15px | 600 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 2,400 RWF
+2 | div | 24.0 | 513.0 | 342.0 | 32.4 | 16px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+3 | span | 24.0 | 518.0 | 42.8 | 22.4 | 16px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | Total
+3 | span | 270.5 | 518.0 | 95.5 | 22.4 | 16px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 2,400 RWF
+2 | div | 24.0 | 545.4 | 342.0 | 22.2 | 13px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 18.2px | EA-7207

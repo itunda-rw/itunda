@@ -22,8 +22,8 @@ scrollTop=1006 scrollHeight=2856 clientHeight=844
 2 | svg | 106.5 | -928.0 | 16.0 | 16.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 
 3 | path | 110.5 | -921.7 | 8.0 | 4.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 
 1 | div.ez-md | 210.9 | -939.0 | 155.1 | 38.0 | 16px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 16px | none | -0.176px | 22.4px | 
-2 | button.on.v420hit.hit44b | 213.9 | -936.0 | 79.3 | 32.0 | 13px | 700 | rgb(255, 255, 255) | rgb(25, 31, 40) | none | 13px | none | -0.176px | 18.2px | Delivery
-2 | button.v420hit.hit44b | 295.2 | -936.0 | 67.8 | 32.0 | 13px | 700 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 13px | none | -0.176px | 18.2px | Pickup
+2 | button.on.v420hit | 213.9 | -936.0 | 79.3 | 32.0 | 13px | 700 | rgb(255, 255, 255) | rgb(25, 31, 40) | none | 13px | none | -0.176px | 18.2px | Delivery
+2 | button.v420hit | 295.2 | -936.0 | 67.8 | 32.0 | 13px | 700 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 13px | none | -0.176px | 18.2px | Pickup
 0 | div.ez-tabs.v28m | 0.0 | -898.0 | 390.0 | 48.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 1 | button.on | 16.0 | -894.0 | 50.8 | 44.0 | 16px | 700 | rgb(255, 255, 255) | rgb(25, 31, 40) | none | 14px | none | -0.176px | 22.4px | All
 1 | button | 70.8 | -894.0 | 115.4 | 44.0 | 16px | 700 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 14px | none | -0.176px | 22.4px | Brochette
@@ -103,7 +103,7 @@ scrollTop=1006 scrollHeight=2856 clientHeight=844
 6 | path | 73.6 | -531.7 | 48.9 | 18.9 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | g | 86.2 | -549.1 | 26.8 | 11.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 7 | path | 86.2 | -549.1 | 26.8 | 11.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-3 | button.ez-hr.hit44a | 128.0 | -524.2 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
+3 | button.ez-hr | 128.0 | -524.2 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
 4 | svg | 136.0 | -516.2 | 20.0 | 20.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 5 | svg | 137.0 | -514.8 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | path | 137.0 | -514.8 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
@@ -192,13 +192,13 @@ scrollTop=1006 scrollHeight=2856 clientHeight=844
 0 | div.ez-h | 0.0 | -183.9 | 390.0 | 60.6 | 19px | 800 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.4px | 26.6px | 
 1 | b | 24.0 | -159.9 | 223.2 | 26.6 | 19px | 900 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.4px | 26.6px | Restaurants near you
 1 | span | 347.9 | -152.9 | 18.1 | 18.2 | 13px | 600 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | normal | 18.2px | 14
-0 | div.ez-fl.v28m | 0.0 | -127.3 | 390.0 | 54.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-1 | button.on.v420hit.hit44b | 20.0 | -123.3 | 84.5 | 36.0 | 14px | 700 | rgb(255, 255, 255) | rgb(25, 31, 40) | none | 18px | none | -0.176px | 19.6px | Fastest
-1 | button.v420hit.hit44b | 116.5 | -123.3 | 101.2 | 36.0 | 14px | 700 | rgb(107, 118, 132) | rgb(242, 244, 246) | none | 18px | none | -0.176px | 19.6px | Top rated
-1 | button.v420hit.hit44b | 229.7 | -123.3 | 128.9 | 36.0 | 14px | 700 | rgb(107, 118, 132) | rgb(242, 244, 246) | none | 18px | none | -0.176px | 19.6px | Free delivery
-1 | button.v420hit.hit44b | 370.6 | -123.3 | 88.9 | 36.0 | 14px | 700 | rgb(107, 118, 132) | rgb(242, 244, 246) | none | 18px | none | -0.176px | 19.6px | Nearest
-1 | hr | 473.5 | -115.3 | 1.0 | 20.0 | 16px | 400 | rgb(128, 128, 128) | rgb(242, 244, 246) | none | 0px | none | -0.176px | 22.4px | 
-1 | button.v420hit.hit44b | 488.5 | -123.3 | 105.4 | 36.0 | 14px | 700 | rgb(107, 118, 132) | rgb(242, 244, 246) | none | 18px | none | -0.176px | 19.6px | Open now
+0 | div.ez-fl.v28m | 0.0 | -123.3 | 390.0 | 50.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+1 | button.on.v420hit | 24.0 | -123.3 | 84.5 | 36.0 | 14px | 700 | rgb(255, 255, 255) | rgb(25, 31, 40) | none | 18px | none | -0.176px | 19.6px | Fastest
+1 | button.v420hit | 116.5 | -123.3 | 101.2 | 36.0 | 14px | 700 | rgb(107, 118, 132) | rgb(242, 244, 246) | none | 18px | none | -0.176px | 19.6px | Top rated
+1 | button.v420hit | 225.7 | -123.3 | 128.9 | 36.0 | 14px | 700 | rgb(107, 118, 132) | rgb(242, 244, 246) | none | 18px | none | -0.176px | 19.6px | Free delivery
+1 | button.v420hit | 362.6 | -123.3 | 88.9 | 36.0 | 14px | 700 | rgb(107, 118, 132) | rgb(242, 244, 246) | none | 18px | none | -0.176px | 19.6px | Nearest
+1 | hr | 461.5 | -115.3 | 1.0 | 20.0 | 16px | 400 | rgb(128, 128, 128) | rgb(242, 244, 246) | none | 0px | none | -0.176px | 22.4px | 
+1 | button.v420hit | 472.5 | -123.3 | 105.4 | 36.0 | 14px | 700 | rgb(107, 118, 132) | rgb(242, 244, 246) | none | 18px | none | -0.176px | 19.6px | Open now
 0 | div.ez-g | 0.0 | -73.3 | 390.0 | 1827.6 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 1 | div.ez-c.tap | 20.0 | -73.3 | 169.0 | 255.4 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | div.ez-cv | 20.0 | -73.3 | 169.0 | 169.0 | 16px | 400 | rgb(25, 31, 40) | rgb(231, 221, 247) | none | 20px | none | -0.176px | 22.4px | 
@@ -211,7 +211,7 @@ scrollTop=1006 scrollHeight=2856 clientHeight=844
 6 | path | 70.8 | -6.1 | 53.5 | 12.4 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | rect | 78.8 | 41.4 | 39.6 | 5.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 3 | span.ez-tg | 28.0 | -65.3 | 47.2 | 24.2 | 13px | 800 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 10px | none | -0.176px | 18.2px | New
-3 | button.ez-hr.hit44a | 145.0 | 51.7 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
+3 | button.ez-hr | 145.0 | 51.7 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
 4 | svg | 153.0 | 59.7 | 20.0 | 20.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 5 | svg | 154.0 | 61.2 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | path | 154.0 | 61.2 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
@@ -232,7 +232,7 @@ scrollTop=1006 scrollHeight=2856 clientHeight=844
 6 | circle | 290.5 | -16.0 | 23.8 | 23.8 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | circle | 295.4 | -11.0 | 13.9 | 13.9 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 3 | span.ez-tg | 209.0 | -65.3 | 47.2 | 24.2 | 13px | 800 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 10px | none | -0.176px | 18.2px | New
-3 | button.ez-hr.hit44a | 326.0 | 51.7 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
+3 | button.ez-hr | 326.0 | 51.7 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
 4 | svg | 334.0 | 59.7 | 20.0 | 20.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 5 | svg | 335.0 | 61.2 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | path | 335.0 | 61.2 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
@@ -251,7 +251,7 @@ scrollTop=1006 scrollHeight=2856 clientHeight=844
 6 | path | 70.3 | 292.2 | 68.4 | 26.5 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | g | 88.0 | 267.9 | 37.5 | 15.5 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 7 | path | 88.0 | 267.9 | 37.5 | 15.5 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-3 | button.ez-hr.hit44a | 145.0 | 327.1 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
+3 | button.ez-hr | 145.0 | 327.1 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
 4 | svg | 153.0 | 335.1 | 20.0 | 20.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 5 | svg | 154.0 | 336.5 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | path | 154.0 | 336.5 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
@@ -273,7 +273,7 @@ scrollTop=1006 scrollHeight=2856 clientHeight=844
 7 | rect | 287.6 | 252.7 | 9.6 | 36.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 7 | rect | 299.3 | 256.9 | 9.6 | 31.8 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | path | 255.8 | 280.2 | 59.4 | 44.6 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-3 | button.ez-hr.hit44a | 326.0 | 327.1 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
+3 | button.ez-hr | 326.0 | 327.1 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
 4 | svg | 334.0 | 335.1 | 20.0 | 20.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 5 | svg | 335.0 | 336.5 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | path | 335.0 | 336.5 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
@@ -293,7 +293,7 @@ scrollTop=1006 scrollHeight=2856 clientHeight=844
 4 | circle | 83.0 | 565.6 | 11.6 | 11.5 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 4 | path | 102.4 | 515.6 | 12.6 | 7.5 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 3 | span.ez-tg | 28.0 | 465.5 | 70.7 | 24.2 | 13px | 800 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 10px | none | -0.176px | 18.2px | 20% off
-3 | button.ez-hr.hit44a | 145.0 | 582.5 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
+3 | button.ez-hr | 145.0 | 582.5 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
 4 | svg | 153.0 | 590.5 | 20.0 | 20.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 5 | svg | 154.0 | 591.9 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | path | 154.0 | 591.9 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
@@ -314,7 +314,7 @@ scrollTop=1006 scrollHeight=2856 clientHeight=844
 4 | rect | 256.1 | 549.3 | 58.8 | 10.5 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 4 | path | 256.1 | 561.9 | 58.8 | 10.5 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 3 | span.ez-tg | 209.0 | 465.5 | 71.4 | 24.2 | 13px | 800 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 10px | none | -0.176px | 18.2px | Popular
-3 | button.ez-hr.hit44a | 326.0 | 582.5 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
+3 | button.ez-hr | 326.0 | 582.5 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
 4 | svg | 334.0 | 590.5 | 20.0 | 20.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 5 | svg | 335.0 | 591.9 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | path | 335.0 | 591.9 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
@@ -333,7 +333,7 @@ scrollTop=1006 scrollHeight=2856 clientHeight=844
 4 | circle | 96.1 | 792.1 | 10.5 | 10.5 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 4 | path | 70.9 | 799.5 | 67.2 | 28.4 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 3 | span.ez-tg | 28.0 | 720.9 | 47.2 | 24.2 | 13px | 800 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 10px | none | -0.176px | 18.2px | New
-3 | button.ez-hr.hit44a | 145.0 | 837.9 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
+3 | button.ez-hr | 145.0 | 837.9 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
 4 | svg | 153.0 | 845.9 | 20.0 | 20.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 5 | svg | 154.0 | 847.3 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | path | 154.0 | 847.3 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
@@ -354,7 +354,7 @@ scrollTop=1006 scrollHeight=2856 clientHeight=844
 7 | rect | 267.9 | 779.8 | 30.9 | 30.9 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 7 | rect | 279.7 | 791.5 | 32.4 | 32.4 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 3 | span.ez-tg | 209.0 | 720.9 | 71.4 | 24.2 | 13px | 800 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 10px | none | -0.176px | 18.2px | Popular
-3 | button.ez-hr.hit44a | 326.0 | 837.9 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
+3 | button.ez-hr | 326.0 | 837.9 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
 4 | svg | 334.0 | 845.9 | 20.0 | 20.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 5 | svg | 335.0 | 847.3 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | path | 335.0 | 847.3 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
@@ -371,7 +371,7 @@ scrollTop=1006 scrollHeight=2856 clientHeight=844
 4 | path | 75.1 | 1050.6 | 58.8 | 14.2 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 4 | circle | 97.2 | 1033.8 | 14.7 | 14.7 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 3 | span.ez-tg | 28.0 | 976.2 | 71.4 | 24.2 | 13px | 800 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 10px | none | -0.176px | 18.2px | Popular
-3 | button.ez-hr.hit44a | 145.0 | 1093.2 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
+3 | button.ez-hr | 145.0 | 1093.2 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
 4 | svg | 153.0 | 1101.2 | 20.0 | 20.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 5 | svg | 154.0 | 1102.7 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | path | 154.0 | 1102.7 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
@@ -391,7 +391,7 @@ scrollTop=1006 scrollHeight=2856 clientHeight=844
 7 | ellipse | 269.8 | 1028.7 | 9.0 | 7.8 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 7 | ellipse | 285.5 | 1024.6 | 8.9 | 6.9 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | path | 247.4 | 1050.5 | 76.2 | 35.9 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-3 | button.ez-hr.hit44a | 326.0 | 1093.2 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
+3 | button.ez-hr | 326.0 | 1093.2 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
 4 | svg | 334.0 | 1101.2 | 20.0 | 20.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 5 | svg | 335.0 | 1102.7 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | path | 335.0 | 1102.7 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
@@ -411,7 +411,7 @@ scrollTop=1006 scrollHeight=2856 clientHeight=844
 7 | rect | 73.7 | 1277.3 | 32.4 | 32.4 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 7 | rect | 86.9 | 1290.5 | 30.9 | 30.9 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 7 | rect | 98.7 | 1302.3 | 32.4 | 32.4 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-3 | button.ez-hr.hit44a | 145.0 | 1348.6 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
+3 | button.ez-hr | 145.0 | 1348.6 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
 4 | svg | 153.0 | 1356.6 | 20.0 | 20.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 5 | svg | 154.0 | 1358.0 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | path | 154.0 | 1358.0 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
@@ -430,7 +430,7 @@ scrollTop=1006 scrollHeight=2856 clientHeight=844
 4 | circle | 288.1 | 1299.2 | 11.5 | 11.6 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 4 | circle | 280.8 | 1318.1 | 9.5 | 9.5 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 4 | circle | 268.7 | 1289.2 | 4.2 | 4.2 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-3 | button.ez-hr.hit44a | 326.0 | 1348.6 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
+3 | button.ez-hr | 326.0 | 1348.6 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
 4 | svg | 334.0 | 1356.6 | 20.0 | 20.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 5 | svg | 335.0 | 1358.0 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | path | 335.0 | 1358.0 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
@@ -448,7 +448,7 @@ scrollTop=1006 scrollHeight=2856 clientHeight=844
 4 | circle | 85.1 | 1575.6 | 7.4 | 7.3 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 4 | circle | 87.1 | 1577.6 | 3.4 | 3.4 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 4 | path | 104.5 | 1570.9 | 3.7 | 25.2 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
-3 | button.ez-hr.hit44a | 145.0 | 1624.0 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
+3 | button.ez-hr | 145.0 | 1624.0 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
 4 | svg | 153.0 | 1632.0 | 20.0 | 20.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 5 | svg | 154.0 | 1633.4 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | path | 154.0 | 1633.4 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
@@ -467,7 +467,7 @@ scrollTop=1006 scrollHeight=2856 clientHeight=844
 4 | circle | 289.7 | 1583.5 | 6.3 | 6.3 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 4 | path | 270.8 | 1560.4 | 27.3 | 12.6 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 3 | span.ez-cl | 209.0 | 1633.8 | 118.2 | 26.2 | 13px | 800 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 12px | none | -0.176px | 18.2px | Back at 17:00
-3 | button.ez-hr.hit44a | 326.0 | 1624.0 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
+3 | button.ez-hr | 326.0 | 1624.0 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 18px | none | -0.176px | 22.4px | 
 4 | svg | 334.0 | 1632.0 | 20.0 | 20.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 5 | svg | 335.0 | 1633.4 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 6 | path | 335.0 | 1633.4 | 18.0 | 17.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 

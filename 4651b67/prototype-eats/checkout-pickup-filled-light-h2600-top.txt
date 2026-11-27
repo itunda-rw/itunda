@@ -7,8 +7,8 @@ scrollTop=0 scrollHeight=2600 clientHeight=2600
 0 | div.pad | 0.0 | 70.0 | 390.0 | 299.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 1 | div.ez-ck | 24.0 | 82.0 | 342.0 | 127.2 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | div.ez-md | 24.0 | 82.0 | 155.1 | 38.0 | 16px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 16px | none | -0.176px | 22.4px | 
-3 | button.v420hit.hit44b | 27.0 | 85.0 | 79.3 | 32.0 | 13px | 700 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 13px | none | -0.176px | 18.2px | Delivery
-3 | button.on.v420hit.hit44b | 108.3 | 85.0 | 67.8 | 32.0 | 13px | 700 | rgb(255, 255, 255) | rgb(25, 31, 40) | none | 13px | none | -0.176px | 18.2px | Pickup
+3 | button.v420hit | 27.0 | 85.0 | 79.3 | 32.0 | 13px | 700 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 13px | none | -0.176px | 18.2px | Delivery
+3 | button.on.v420hit | 108.3 | 85.0 | 67.8 | 32.0 | 13px | 700 | rgb(255, 255, 255) | rgb(25, 31, 40) | none | 13px | none | -0.176px | 18.2px | Pickup
 2 | div.ez-ckad | 24.0 | 132.0 | 342.0 | 59.2 | 16px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 16px | none | -0.176px | 22.4px | 
 3 | span.t | 38.0 | 142.0 | 314.0 | 39.2 | 16px | 600 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 4 | small | 38.0 | 142.0 | 314.0 | 18.2 | 13px | 600 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 18.2px | Pick up at
@@ -26,10 +26,10 @@ scrollTop=0 scrollHeight=2600 clientHeight=2600
 7 | path | 42.9 | 283.0 | 16.1 | 6.6 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | div | 88.0 | 269.8 | 150.0 | 42.4 | 16px | 600 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.3px | 22.4px | 
 3 | div.sm.mu | 88.0 | 292.2 | 150.0 | 20.0 | 14px | 500 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.3px | 20px | 1,200 RWF
-2 | button.ib.v420hit.hit44b | 250.0 | 273.0 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 12px | none | -0.176px | 22.4px | 
+2 | button.ib.v420hit | 250.0 | 273.0 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 12px | none | -0.176px | 22.4px | 
 3 | svg | 260.0 | 283.0 | 16.0 | 16.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 2 | b | 298.0 | 279.8 | 20.0 | 22.4 | 16px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 2
-2 | button.ib.v420hit.hit44b | 330.0 | 273.0 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 12px | none | -0.176px | 22.4px | 
+2 | button.ib.v420hit | 330.0 | 273.0 | 36.0 | 36.0 | 16px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 12px | none | -0.176px | 22.4px | 
 3 | svg | 340.0 | 283.0 | 16.0 | 16.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 4 | path | 343.3 | 286.3 | 9.3 | 9.3 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
 1 | button.tap | 24.0 | 325.0 | 157.6 | 44.0 | 15px | 700 | rgb(91, 84, 214) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 
@@ -47,7 +47,7 @@ scrollTop=0 scrollHeight=2600 clientHeight=2600
 2 | span | 24.0 | 474.0 | 48.3 | 25.2 | 18px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 25.2px | Total
 2 | span | 200.6 | 463.0 | 165.4 | 39.2 | 28px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.5px | 39.2px | 2,400 RWF
 1 | div.ez-pt | 24.0 | 502.2 | 342.0 | 29.6 | 14px | 600 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | You earn 24 points with this o
-1 | div.tap.v420hit.hit44b | 24.0 | 545.8 | 342.0 | 19.6 | 14px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | 
+1 | div.tap.v420hit | 24.0 | 545.8 | 342.0 | 19.6 | 14px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | 
 2 | span.mu | 24.0 | 545.8 | 57.4 | 19.6 | 14px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | Pay with
 2 | b | 148.9 | 545.8 | 217.1 | 19.6 | 14px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | 
 3 | svg | 352.0 | 548.6 | 14.0 | 14.0 | 14px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | 
