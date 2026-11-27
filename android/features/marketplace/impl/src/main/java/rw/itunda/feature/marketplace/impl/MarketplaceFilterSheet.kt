@@ -30,7 +30,7 @@ import rw.itunda.core.designsystem.theme.Ids
 /** Filters backed by fields currently returned by ListingDto. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun MarketplaceFilterSheet(
+fun MarketplaceFilterSheet(
     visible: Boolean,
     maxPrice: Int,
     selectedNeighborhood: String?,

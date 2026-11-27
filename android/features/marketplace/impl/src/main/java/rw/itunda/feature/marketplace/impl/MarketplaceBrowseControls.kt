@@ -21,14 +21,13 @@ import rw.itunda.core.designsystem.theme.Ids
 
 /** v1038 Marketplace category tabs and browse actions. */
 @Composable
-internal fun MarketplaceBrowseControls(
+fun MarketplaceBrowseControls(
     selectedCategory: String,
     onCategorySelected: (String) -> Unit,
     sortLabel: String,
     filterCount: Int,
     onFilterClick: () -> Unit,
     onSortClick: () -> Unit,
-    nearestAvailable: Boolean = true,
 ) {
     val categories = listOf("All", "Electronics", "Phones", "Home", "Fashion", "Kids", "Sports", "Free")
     Row(
@@ -58,10 +57,10 @@ internal fun MarketplaceBrowseControls(
     ) {
         Text(
             text = "↕ $sortLabel",
-            color = if (nearestAvailable) Ids.colors.textSecondary else Ids.colors.textTertiary,
+            color = Ids.colors.textSecondary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.pressScaleClickable(enabled = nearestAvailable, onClick = onSortClick).padding(vertical = 8.dp),
+            modifier = Modifier.pressScaleClickable(onClick = onSortClick).padding(vertical = 8.dp),
         )
         Text(
             text = if (filterCount > 0) "Filter · $filterCount" else "Filter",
