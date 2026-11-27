@@ -79,7 +79,7 @@ internal fun PocketMoveScreen(name: String, emoji: String, dir: Int, pocketBalan
             }
         }
         Box(Modifier.fillMaxWidth().heightIn(min = 96.dp).padding(start = 24.dp, end = 24.dp, top = 36.dp)) {
-            Text(amountText, color = if (bad) Ids.colors.danger else if (v > 0) Ids.colors.textPrimary else Ids.colors.textTertiary, fontSize = if (v > 0) 40.sp else 26.sp, lineHeight = 48.sp, letterSpacing = (if (v > 0) -1 else -0.6).sp, fontWeight = FontWeight.ExtraBold)
+            Text(amountText, color = if (bad) Ids.colors.danger else if (v > 0) Ids.colors.textPrimary else Ids.colors.textTertiary, fontSize = if (v > 0) 40.sp else 26.sp, lineHeight = 48.sp, letterSpacing = (if (v > 0) -1.0 else -0.6).sp, fontWeight = FontWeight.ExtraBold)
         }
         val msg = when {
             bad -> if (inn) "That’s more than your balance of ${rwf(POCKET_BANK_BALANCE)} RWF. Try a smaller amount." else "Only ${rwf(pocketBalance)} RWF in this pocket"
