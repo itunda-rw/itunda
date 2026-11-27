@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -16,7 +15,6 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
-import androidx.compose.ui.test.runOnIdle
 import androidx.compose.runtime.mutableStateOf
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Assert.assertEquals
@@ -71,20 +69,20 @@ class RequestMoneyScreenshotTest {
         rule.setContent { IdsTheme(darkTheme = false) { RequestMoneyScreen({}, state) } }
         rule.onNodeWithText("+2,000").performClick()
         rule.runOnIdle { assertEquals(7_000L, state.amount) }
-        rule.onNodeWithText("ITD-4280-90").assertExists()
+        rule.onNodeWithText("ITD-4280-90").fetchSemanticsNode()
         rule.onNodeWithText("+5,000").performClick()
         rule.runOnIdle { assertEquals(12_000L, state.amount) }
         rule.onNodeWithText("+10,000").performClick()
         rule.runOnIdle { assertEquals(22_000L, state.amount) }
         rule.onNodeWithText("+25,000").performClick()
         rule.runOnIdle { assertEquals(47_000L, state.amount) }
-        rule.onNodeWithText("ITD-4680-90").assertExists()
+        rule.onNodeWithText("ITD-4680-90").fetchSemanticsNode()
     }
 
     @Test fun maximumRequestAmountIsValid() {
         val state = RequestMoneyState(initialAmount = 5_000_000L)
         rule.setContent { IdsTheme(darkTheme = false) { RequestMoneyScreen({}, state) } }
-        rule.onNodeWithText("ITD-54210-90").assertExists()
+        rule.onNodeWithText("ITD-54210-90").fetchSemanticsNode()
         rule.onNodeWithText("Copy").assertIsEnabled()
         rule.onNodeWithText("Share request").assertIsEnabled()
     }
@@ -92,19 +90,19 @@ class RequestMoneyScreenshotTest {
     @Test fun amountValidationDisablesCopyAndShare() {
         val state = RequestMoneyState(initialAmount = 99L)
         rule.setContent { IdsTheme(darkTheme = false) { RequestMoneyScreen({}, state) } }
-        rule.onNodeWithText("The least you can request is 100 RWF.").assertExists()
+        rule.onNodeWithText("The least you can request is 100 RWF.").fetchSemanticsNode()
         rule.onNodeWithText("Copy").assertIsNotEnabled()
         rule.onNodeWithText("Share request").assertIsNotEnabled()
         rule.onNodeWithContentDescription("Amount in RWF").performTextClearance()
         rule.onNodeWithContentDescription("Amount in RWF").performTextInput("100")
-        rule.onNodeWithText("ITD-4211-90").assertExists()
-        rule.onNodeWithText("Copy").assertExists()
+        rule.onNodeWithText("ITD-4211-90").fetchSemanticsNode()
+        rule.onNodeWithText("Copy").fetchSemanticsNode()
     }
 
     @Test fun fractionalAmountsKeepPrototypeCodeFormatting() {
         val state = RequestMoneyState(initialAmount = 150L)
         rule.setContent { IdsTheme(darkTheme = false) { RequestMoneyScreen({}, state) } }
-        rule.onNodeWithText("ITD-4211.5-90").assertExists()
+        rule.onNodeWithText("ITD-4211.5-90").fetchSemanticsNode()
     }
 
     @Test fun amountAndNotePersistWhenScreenIsReopened() {
@@ -119,7 +117,7 @@ class RequestMoneyScreenshotTest {
         rule.onNodeWithContentDescription("Note").performTextInput("Lunch")
         rule.runOnIdle { showScreen.value = false }
         rule.runOnIdle { showScreen.value = true }
-        rule.onNodeWithText("ITD-4280-90").assertExists()
+        rule.onNodeWithText("ITD-4280-90").fetchSemanticsNode()
         rule.onNodeWithContentDescription("Note").performTextInput("!")
         rule.runOnIdle { assertEquals("Lunch!", state.note) }
     }
@@ -147,7 +145,7 @@ class RequestMoneyScreenshotTest {
         val clipboard = context!!.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val copied = clipboard.primaryClip!!.getItemAt(0).text.toString()
         assertEquals("Please pay me 5,000 RWF on itunda. Code: ITD-4260-90 · Lunch", copied)
-        rule.onNodeWithText("Request code").assertExists()
+        rule.onNodeWithText("Request code").fetchSemanticsNode()
     }
 
     @Test fun shareOpensNativeChooserWithCompleteRequest() {
