@@ -222,7 +222,6 @@ fun RequestMoneyScreen(
                         RequestMoneyChip(
                             text = "+${formatMoney(BigDecimal.valueOf(increment))}",
                             palette = palette,
-                            modifier = Modifier,
                         ) {
                             state.amount = (state.amount + increment).coerceAtMost(MAX_INPUT_AMOUNT)
                         }
@@ -298,7 +297,6 @@ fun RequestMoneyScreen(
                 background = palette.tint,
                 foreground = palette.tintText,
                 enabled = valid,
-                fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f),
             ) {
                 clipboard.setText(AnnotatedString(requestText))
@@ -309,7 +307,6 @@ fun RequestMoneyScreen(
                 background = palette.brand,
                 foreground = palette.onBrand,
                 enabled = valid,
-                fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f),
             ) {
                 val sendIntent = Intent(Intent.ACTION_SEND).apply {
@@ -443,7 +440,6 @@ private fun RequestMoneyActionButton(
     background: Color,
     foreground: Color,
     enabled: Boolean,
-    fontWeight: FontWeight,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
