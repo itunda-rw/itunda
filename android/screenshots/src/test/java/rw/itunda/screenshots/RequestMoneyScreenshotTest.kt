@@ -7,6 +7,7 @@ import android.content.Intent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -71,6 +72,14 @@ class RequestMoneyScreenshotTest {
         rule.onNodeWithText("+25,000").performClick()
         rule.runOnIdle { assertEquals(47_000L, state.amount) }
         rule.onNodeWithText("ITD-4680-90").assertExists()
+    }
+
+    @Test fun maximumRequestAmountIsValid() {
+        val state = RequestMoneyState(initialAmount = 5_000_000L)
+        rule.setContent { IdsTheme(darkTheme = false) { RequestMoneyScreen({}, state) } }
+        rule.onNodeWithText("ITD-54210-90").assertExists()
+        rule.onNodeWithText("Copy").assertIsEnabled()
+        rule.onNodeWithText("Share request").assertIsEnabled()
     }
 
     @Test fun amountValidationDisablesCopyAndShare() {

@@ -161,7 +161,6 @@ fun RequestMoneyScreen(
                 )
                 Row(
                     Modifier.fillMaxWidth().padding(top = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     val amountText = if (amount == 0L) "" else formatMoney(amount.toDouble())
@@ -174,7 +173,7 @@ fun RequestMoneyScreen(
                                 else -> (digits.toLongOrNull() ?: MAX_INPUT_AMOUNT).coerceAtMost(MAX_INPUT_AMOUNT)
                             }
                         },
-                        modifier = Modifier.weight(1f).semantics {
+                        modifier = Modifier.weight(1f).alignByBaseline().semantics {
                             contentDescription = strings.amountAccessibility
                         },
                         singleLine = true,
@@ -211,6 +210,7 @@ fun RequestMoneyScreen(
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = PretendardFontFamily,
+                        modifier = Modifier.alignByBaseline(),
                     )
                 }
                 Text(

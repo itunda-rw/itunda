@@ -75,13 +75,9 @@ fun PayEntryPoint(
     onOpenCard: () -> Unit,
     payAMerchantSection: @Composable (Boolean, ((() -> Unit) -> Unit), (Boolean) -> Unit) -> Unit,
     onOpenRewardsMiniApp: () -> Unit,
-    // Real IA-consistency fix (2026-09-11, product-completeness cycle 2 --
-    // see project_itunda_pay_product_completeness memory): bank-mfe's own
-    // PayHub.tsx already surfaces Request Money directly in the Pay tab
-    // (RequestMoneyCard); Android only ever reached it via the Explore/Menu
-    // tab. Reuses the existing RequestMoneyScreen (:app) -- no new screen or
-    // duplicated logic, just a second, real navigation entry point matching
-    // web's own placement.
+    // The prototype exposes Request money from both Pay and Menu/Explore.
+    // Both entry points open the same code generator in :features:pay:impl;
+    // keep one flow rather than introducing a second implementation.
     onOpenRequestMoney: () -> Unit = {},
 ) {
     ProtoPayTab(

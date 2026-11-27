@@ -1775,7 +1775,7 @@ fun ItundaAppScreen(
             ForeignCurrencyScreen(onBack = { showForeignCurrency = false })
             return@IdsTheme
         }
-        // Real person-to-person payment request screen (item 170) -- same pattern.
+        // Prototype-matched sample payment request-code screen (item 170).
         if (showRequestMoney) {
             BackHandler { showRequestMoney = false }
             RequestMoneyScreen(onBack = { showRequestMoney = false })
