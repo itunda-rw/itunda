@@ -725,7 +725,6 @@ fun MarketplaceContent(
                     onCategorySelected = { selectedBrowseCategory = it },
                     sortLabel = selectedMarketplaceSort,
                     filterCount = (if (selectedMaxPrice > 0) 1 else 0) + (if (selectedNeighborhood != null) 1 else 0),
-                    nearestAvailable = browseLocation != null,
                     onFilterClick = { showBrowseFilters = true },
                     onSortClick = {
                         selectedMarketplaceSort = if (selectedMarketplaceSort == "Latest") "Nearest" else "Latest"
