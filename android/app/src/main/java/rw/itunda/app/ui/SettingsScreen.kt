@@ -106,6 +106,9 @@ fun SettingsScreen(
     // below, and the feed itself moved to be reached from Home's bell icon directly
     // (see ItundaAppScreen.kt's own showNotificationsFeed state).
     var showDeviceList by remember { mutableStateOf(false) }
+    var showSecurityScreen by remember { mutableStateOf(false) }
+    var pinCheckIndex by remember { mutableStateOf(0) }
+    var quickSignInEnabled by remember { mutableStateOf(true) }
     var showNotificationSettings by remember { mutableStateOf(false) }
     // Real PIN app-unlock setup (2026-08-13) -- see TokenStore.setPin's own doc
     // comment and PinScreen.kt. hasPin is local @Composable state (not re-read from
@@ -144,6 +147,58 @@ fun SettingsScreen(
                 hasPin = true
                 showPinSetup = false
             },
+        )
+        return
+    }
+
+    if (showSecurityScreen) {
+        val activity = LocalRealActivity.current
+        val biometricAvailable = remember(activity) { NIDABiometricAuth(activity).isAvailable() }
+        val tokenStore = remember { NetworkClient.currentTokenStore() }
+        var appLockEnabled by remember { mutableStateOf(tokenStore.isAppLockEnabled()) }
+        val deviceKeyManager = remember { DeviceKeyManager() }
+        var hasDeviceKey by remember { mutableStateOf(deviceKeyManager.hasKey()) }
+        rw.itunda.feature.my.impl.SettingsSecurityScreen(
+            language = locale,
+            pinCheckIndex = pinCheckIndex,
+            onPinCheckIndexChanged = { pinCheckIndex = (pinCheckIndex + 1) % 3 },
+            quickSignInEnabled = quickSignInEnabled,
+            onQuickSignInChanged = { quickSignInEnabled = it },
+            biometricAvailable = biometricAvailable,
+            appLockEnabled = appLockEnabled,
+            onAppLockChanged = { checked ->
+                if (checked && !hasPin) {
+                    showPinSetup = true
+                } else {
+                    appLockEnabled = checked
+                    tokenStore.setAppLockEnabled(checked)
+                }
+            },
+            hasDeviceKey = hasDeviceKey,
+            onRemoveDeviceKey = {
+                deviceKeyManager.removeKey()
+                hasDeviceKey = false
+            },
+            onRegisterDeviceKey = { password, onResult ->
+                try {
+                    val publicKey = deviceKeyManager.generateKeyPair()
+                    viewModel.registerDeviceKey(publicKey, password) { success, error ->
+                        if (success) {
+                            hasDeviceKey = true
+                        } else {
+                            deviceKeyManager.removeKey()
+                            hasDeviceKey = false
+                        }
+                        onResult(success, error)
+                    }
+                } catch (error: Exception) {
+                    deviceKeyManager.removeKey()
+                    onResult(false, error.message)
+                }
+            },
+            onChangePin = { showPinSetup = true },
+            onOpenDevices = { showDeviceList = true },
+            onBack = { showSecurityScreen = false },
         )
         return
     }
@@ -289,184 +344,15 @@ fun SettingsScreen(
                 }
             }
 
-            // Real biometric app-lock toggle (2026-07-21) -- see AppLockScreen.kt's own
-            // doc comment. Only shown when the device actually has biometrics
-            // enrolled; a tappable row that goes nowhere is worse than not showing it,
-            // same discipline this screen's own header comment already established
-            // for the "보안" rows this app deliberately doesn't fake.
             item {
-                // Real Toss layout fix (2026-08-12) -- this whole card used to be
-                // conditional on biometricAvailable, which hid "Services logged in
-                // with Toss" too on any device without biometrics enrolled; that row
-                // is real device management, unrelated to biometrics, so the card and
-                // its header now always render, with only the two biometric-specific
-                // rows inside gated on availability.
-                val activity = LocalRealActivity.current
-                val biometricAvailable = remember { NIDABiometricAuth(activity).isAvailable() }
                 SettingsCard {
-                    // Real Toss section name (2026-08-12) -- "Authentication & Security"
-                    // is the real header on the real Toss Settings screenshot; itunda's
-                    // own shorter "Security" was close but not the actual real label.
                     Text(stringResource(R.string.settings_authentication_security), color = Ids.colors.textTertiary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                     Spacer(modifier = Modifier.height(4.dp))
-                if (biometricAvailable) {
-                    val tokenStore = remember { NetworkClient.currentTokenStore() }
-                    var appLockEnabled by remember { mutableStateOf(tokenStore.isAppLockEnabled()) }
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(stringResource(R.string.settings_unlock_biometrics), color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-                            Text(stringResource(R.string.settings_unlock_biometrics_body), color = Ids.colors.textTertiary, fontSize = 13.sp)
-                        }
-                        rw.itunda.core.designsystem.components.IdsSwitch(
-                            checked = appLockEnabled,
-                            onCheckedChange = {
-                                appLockEnabled = it
-                                tokenStore.setAppLockEnabled(it)
-                            },
-                        )
-                    }
-                    // Real PIN fallback (2026-08-13) -- see TokenStore.setPin's own
-                    // doc comment. Offered alongside biometric (not gated behind
-                    // appLockEnabled being off) since real Toss always has a PIN as
-                    // biometric's standing fallback, not something a user only
-                    // reaches after disabling biometric first.
-                    SettingsChevronRow(if (hasPin) "Change PIN" else "Set PIN") { showPinSetup = true }
-
-                    // Real Keystore-signed-challenge device verification (item 246) --
-                    // see DeviceKeyManager's own doc comment. A hardware-backed key,
-                    // gated behind this same password re-entry cost (registerDeviceKey
-                    // enforces it server-side too, never trusting a client-only check),
-                    // that turns every FUTURE device step-up (TransferFlow.kt's
-                    // DeviceStepUpDialog) into a fingerprint/face prompt instead.
-                    val deviceKeyManager = remember { DeviceKeyManager() }
-                    var hasDeviceKey by remember { mutableStateOf(deviceKeyManager.hasKey()) }
-                    var showKeyPasswordPrompt by remember { mutableStateOf(false) }
-                    var keyRegisterError by remember { mutableStateOf<String?>(null) }
-                    var keyRegistering by remember { mutableStateOf(false) }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(stringResource(R.string.settings_verify_biometrics), color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-                            Text(stringResource(R.string.settings_verify_biometrics_body), color = Ids.colors.textTertiary, fontSize = 13.sp)
-                        }
-                        Switch(
-                            checked = hasDeviceKey,
-                            onCheckedChange = { checked ->
-                                if (checked) {
-                                    keyRegisterError = null
-                                    showKeyPasswordPrompt = true
-                                } else {
-                                    deviceKeyManager.removeKey()
-                                    hasDeviceKey = false
-                                }
-                            },
-                            colors = SwitchDefaults.colors(checkedTrackColor = Ids.colors.brand),
-                        )
-                    }
-
-                    if (showKeyPasswordPrompt) {
-                        var password by remember { mutableStateOf("") }
-                        AlertDialog(
-                            onDismissRequest = { showKeyPasswordPrompt = false; keyRegisterError = null },
-                            title = { Text(stringResource(R.string.settings_confirm_password)) },
-                            text = {
-                                Column {
-                                    Text(
-                                        stringResource(R.string.settings_confirm_password_body),
-                                        color = Ids.colors.textTertiary,
-                                        fontSize = 13.sp,
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    OutlinedTextField(
-                                        value = password,
-                                        onValueChange = { password = it },
-                                        visualTransformation = PasswordVisualTransformation(),
-                                        singleLine = true,
-                                        label = { Text(stringResource(R.string.settings_password)) },
-                                    )
-                                    keyRegisterError?.let {
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(it, color = Ids.colors.danger, fontSize = 12.sp)
-                                    }
-                                }
-                            },
-                            confirmButton = {
-                                TextButton(
-                                    enabled = password.isNotBlank() && !keyRegistering,
-                                    onClick = {
-                                        keyRegistering = true
-                                        val publicKey = deviceKeyManager.generateKeyPair()
-                                        viewModel.registerDeviceKey(publicKey, password) { success, error ->
-                                            keyRegistering = false
-                                            if (success) {
-                                                hasDeviceKey = true
-                                                showKeyPasswordPrompt = false
-                                            } else {
-                                                // Don't leave an unregistered key sitting in the Keystore --
-                                                // hasDeviceKey must keep meaning "the server also has this key".
-                                                deviceKeyManager.removeKey()
-                                                keyRegisterError = error
-                                            }
-                                        }
-                                    },
-                                ) { Text(if (keyRegistering) stringResource(R.string.settings_verifying) else stringResource(R.string.settings_confirm)) }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = { showKeyPasswordPrompt = false; keyRegisterError = null }) { Text(stringResource(R.string.settings_cancel)) }
-                            },
-                        )
-                    }
-                    } else {
-                        // Real fix (2026-08-13, direct user correction): this whole
-                        // app-lock section used to require biometric hardware to
-                        // exist at all before showing ANY app-lock option -- a
-                        // device with no biometric sensor got no real re-entry
-                        // challenge whatsoever, even though PIN never depended on
-                        // biometric hardware in the first place. See TokenStore
-                        // .setPin's own doc comment.
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Box(
-                                modifier = Modifier.size(44.dp).clip(CircleShape).background(Ids.colors.chip),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(Icons.Outlined.Fingerprint, contentDescription = null, tint = Ids.colors.textPrimary)
-                            }
-                            Spacer(modifier = Modifier.width(14.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("App lock", color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                                Text("Require a PIN to open itunda", color = Ids.colors.textTertiary, fontSize = 13.sp)
-                            }
-                            val pinLockTokenStore = remember { NetworkClient.currentTokenStore() }
-                            var pinLockEnabled by remember { mutableStateOf(pinLockTokenStore.isAppLockEnabled() && hasPin) }
-                            Switch(
-                                checked = pinLockEnabled,
-                                onCheckedChange = { checked ->
-                                    if (checked && !hasPin) {
-                                        showPinSetup = true
-                                    } else {
-                                        pinLockEnabled = checked
-                                        pinLockTokenStore.setAppLockEnabled(checked)
-                                    }
-                                },
-                                colors = SwitchDefaults.colors(checkedTrackColor = Ids.colors.brand),
-                            )
-                        }
-                        SettingsChevronRow(if (hasPin) "Change PIN" else "Set PIN") { showPinSetup = true }
-                    }
-                    // Real Toss position (2026-08-12) -- "Services logged in with
-                    // Toss" is always present on the real screenshot regardless of
-                    // biometric availability; itunda's real equivalent is its own
-                    // device list (see DeviceListScreen below), just relocated from
-                    // its own former standalone card to this row.
+                    SettingsChevronRow(when (locale) {
+                        "rw" -> "Umutekano"
+                        "fr" -> "Sécurité"
+                        else -> "Security"
+                    }) { showSecurityScreen = true }
                     SettingsChevronRow(stringResource(R.string.settings_devices)) { showDeviceList = true }
                 }
             }
