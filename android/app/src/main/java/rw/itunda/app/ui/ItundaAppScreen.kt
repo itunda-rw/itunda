@@ -195,6 +195,7 @@ import rw.itunda.feature.home.impl.HomeEntryPoint
 import rw.itunda.feature.pay.impl.AutoTransferEntryPoint
 import rw.itunda.feature.pay.impl.DelayedTransferEntryPoint
 import rw.itunda.feature.pay.impl.PayEntryPoint
+import rw.itunda.feature.pay.impl.RequestMoneyScreen
 import rw.itunda.feature.pay.impl.ScheduledTransferEntryPoint
 import rw.itunda.feature.pay.impl.TransferHubEntryPoint
 import rw.itunda.feature.menu.impl.MenuEntryPoint
