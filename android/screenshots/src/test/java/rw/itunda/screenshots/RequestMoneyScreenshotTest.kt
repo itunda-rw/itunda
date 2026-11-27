@@ -93,10 +93,16 @@ class RequestMoneyScreenshotTest {
 
     @Test fun amountAndNotePersistWhenScreenIsReopened() {
         val state = RequestMoneyState()
-        rule.setContent { IdsTheme(darkTheme = false) { RequestMoneyScreen({}, state) } }
+        val showScreen = mutableStateOf(true)
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                if (showScreen.value) RequestMoneyScreen({}, state)
+            }
+        }
         rule.onNodeWithText("+2,000").performClick()
         rule.onNodeWithContentDescription("Note").performTextInput("Lunch")
-        rule.setContent { IdsTheme(darkTheme = false) { RequestMoneyScreen({}, state) } }
+        rule.runOnIdle { showScreen.value = false }
+        rule.runOnIdle { showScreen.value = true }
         rule.onNodeWithText("ITD-4280-90").assertExists()
         rule.onNodeWithContentDescription("Note").performTextInput("!")
         rule.runOnIdle { assertEquals("Lunch!", state.note) }
