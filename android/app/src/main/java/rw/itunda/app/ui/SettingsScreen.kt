@@ -19,19 +19,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -41,7 +39,10 @@ import androidx.compose.ui.unit.sp
 import rw.itunda.app.R
 import rw.itunda.core.network.AppLocalePreference
 import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.SessionManager
 import rw.itunda.core.network.NotificationDto
+import kotlinx.coroutines.launch
+import android.widget.Toast
 import rw.itunda.core.network.TextScaleOption
 import rw.itunda.core.network.TextScalePreference
 import rw.itunda.core.network.ThemeMode
@@ -72,7 +73,6 @@ import rw.itunda.core.identity.NIDABiometricAuth
  * uses, found and fixed the same day: it used to hold only screen-local state that
  * never propagated past LoginScreen's own subtree.
  */
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     viewModel: MainViewModel,
@@ -81,11 +81,12 @@ fun SettingsScreen(
     onOpenPay: () -> Unit = {},
 ) {
     val profile by viewModel.profile.collectAsState()
-    val unreadCount by viewModel.unreadNotificationCount.collectAsState()
     val devices by viewModel.devices.collectAsState()
     val deviceError by viewModel.deviceError.collectAsState()
     val baseContext = LocalContext.current
     val locale by AppLocalePreference.locale.collectAsState()
+    val rootTextScale by TextScalePreference.option.collectAsState()
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) { viewModel.loadSettingsData() }
 
@@ -208,15 +209,6 @@ fun SettingsScreen(
     // since Settings' own notifications list is exactly the kind of live, changing
     // data itunda's pull-to-refresh research already named as the reason Home got
     // this gesture in the first place.
-    val pullToRefreshState = rememberPullToRefreshState()
-    val isLoadingSettings by viewModel.isLoadingSettings.collectAsState()
-    LaunchedEffect(pullToRefreshState.isRefreshing) {
-        if (pullToRefreshState.isRefreshing) viewModel.loadSettingsData()
-    }
-    LaunchedEffect(isLoadingSettings) {
-        if (!isLoadingSettings) pullToRefreshState.endRefresh()
-    }
-
     // Theme and text size open as full-screen pickers (prototype), applying on tap.
     var showThemeDialog by remember { mutableStateOf(false) }
     if (showThemeDialog) {
@@ -243,249 +235,73 @@ fun SettingsScreen(
     }
     var showTextScaleDialog by remember { mutableStateOf(false) }
     if (showTextScaleDialog) {
-        val textScale by TextScalePreference.option.collectAsState()
         SettingsPickerScreen(
             title = stringResource(R.string.settings_text_size),
-            options = TextScaleOption.values().map { o -> PickerOption(o.label, textScale == o, 17f * o.multiplier) { TextScalePreference.set(o) } },
+            options = TextScaleOption.values().map { o -> PickerOption(o.label, rootTextScale == o, 17f * o.multiplier) { TextScalePreference.set(o) } },
             onBack = { showTextScaleDialog = false },
         )
         return
     }
 
-    Box(Modifier.fillMaxSize().nestedScroll(pullToRefreshState.nestedScrollConnection)) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Ids.colors.background)
-    ) {
-        rw.itunda.core.designsystem.components.ProtoTopBar(stringResource(R.string.settings_title), onBack)
-
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            // Real Toss layout (2026-08-12), matching a direct user-provided screenshot
-            // of the real Toss app's own Settings screen: separate rounded cards per
-            // section (My info / Authentication & Security / Display / Devices /
-            // Notifications), not one continuous flat list with inline dividers -- the
-            // divider-per-section pattern this screen used before was itunda's own
-            // invented layout, not sourced from a real screenshot. "Language" moved
-            // here from the top bar's own EN/RW toggle to match the real screenshot's
-            // placement (a row inside the first card, right under My info) -- same
-              // real, already-working AppLocalePreference, just relocated.
-            item {
-                SettingsCard {
-                    Text(stringResource(R.string.settings_my_info), color = Ids.colors.textTertiary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier.size(44.dp).clip(CircleShape).background(Ids.colors.chip),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Outlined.Person, contentDescription = null, tint = Ids.colors.textPrimary)
-                        }
-                        Spacer(modifier = Modifier.width(14.dp))
-                        Column {
-                            Text(
-                                profile?.let { "${it.firstName} ${it.lastName}" } ?: "—",
-                                color = Ids.colors.textPrimary,
-                                fontSize = 17.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(profile?.phoneNumber ?: "", color = Ids.colors.textTertiary, fontSize = 14.sp)
-                        }
-                    }
-                    androidx.compose.material3.Divider(color = Ids.colors.divider)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .pressScaleClickable { showLanguagePicker = true }
-                            .padding(vertical = 14.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(stringResource(R.string.settings_language), color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-                        // Real Toss row shape (2026-08-12, direct screenshot comparison)
-                        // -- every row in this card ends with a chevron, including this
-                        // one (value + chevron together), not just a bare value.
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            val languageName = when (locale) {
-                                "rw" -> "Kinyarwanda"
-                                "fr" -> "Français"
-                                else -> "English"
-                            }
-                            Text(languageName, color = Ids.colors.brand, fontSize = 15.sp, fontWeight = FontWeight.Medium)
-                            Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
-                        }
-                    }
-                    // Real Toss position (2026-08-12) -- both rows live in this same
-                    // first card, right under Language, on the real screenshot. Each
-                    // now opens a real destination instead of dumping content inline
-                    // (see this screen's own header comment).
-                    Row(
-                        modifier = Modifier.fillMaxWidth().pressScaleClickable { showNotificationSettings = true }.padding(vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(stringResource(R.string.settings_notifications), color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (unreadCount > 0) {
-                                Text(unreadCount.toString(), color = Ids.colors.brand, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                                Spacer(modifier = Modifier.width(6.dp))
-                            }
-                            Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
-                        }
-                    }
-                    SettingsChevronRow(stringResource(R.string.settings_theme_vibration)) { showThemeDialog = true }
-                    SettingsChevronRow(stringResource(R.string.settings_text_size)) { showTextScaleDialog = true }
-                }
+    rw.itunda.feature.my.impl.SettingsHomeScreen(
+        profile = profile,
+        language = locale,
+        textSizeLabel = rootTextScale.label,
+        deviceModel = android.os.Build.MODEL,
+        deviceCount = devices.size,
+        sendLimitLabel = "500,000 RWF",
+        payLabel = "Pay balance",
+        moneyNotificationsEnabled = isNotificationChannelEnabled(baseContext, rw.itunda.app.push.NotificationChannels.CHANNEL_MONEY),
+        generalNotificationsEnabled = isNotificationChannelEnabled(baseContext, rw.itunda.app.push.NotificationChannels.CHANNEL_GENERAL),
+        onMoneyNotificationsClick = { showNotificationSettings = true },
+        onGeneralNotificationsClick = { showNotificationSettings = true },
+        onBack = onBack,
+        onOpenDisplay = { showThemeDialog = true },
+        onOpenTextSize = { showTextScaleDialog = true },
+        onOpenLanguage = { showLanguagePicker = true },
+        onOpenManageContacts = {
+            Toast.makeText(
+                baseContext,
+                when (locale) {
+                    "rw" -> "Gucunga abo uziranye ntibiraboneka."
+                    "fr" -> "La gestion des contacts n'est pas encore disponible."
+                    else -> "Contact management isn't available in this build yet."
+                },
+                Toast.LENGTH_SHORT,
+            ).show()
+        },
+        onOpenNotifications = { showNotificationSettings = true },
+        onOpenSecurity = { showSecurityScreen = true },
+        onOpenDevices = { showDeviceList = true },
+        onOpenSendLimits = onOpenSend,
+        onOpenPay = onOpenPay,
+        onMarkAllRead = { viewModel.markAllNotificationsRead() },
+        onOpenLegal = { documentId ->
+            val title = when (documentId) {
+                "credit_data_policy" -> baseContext.getString(R.string.settings_credit_data_policy)
+                "privacy_policy" -> baseContext.getString(R.string.settings_privacy_policy)
+                else -> baseContext.getString(R.string.settings_terms_consent)
             }
-
-            item {
-                SettingsCard {
-                    Text(stringResource(R.string.settings_authentication_security), color = Ids.colors.textTertiary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    SettingsChevronRow(when (locale) {
-                        "rw" -> "Umutekano"
-                        "fr" -> "Sécurité"
-                        else -> "Security"
-                    }) { showSecurityScreen = true }
-                    SettingsChevronRow(stringResource(R.string.settings_devices)) { showDeviceList = true }
-                }
+            openLegalDocument = documentId to title
+        },
+        onSignOut = {
+            scope.launch {
+                SessionManager.logout()
+                onBack()
             }
-
-            // Real Toss layout (2026-08-12, direct user screenshot) -- the real
-            // Settings screen has its own "Transfer & Payment" card (Send, Toss Pay)
-            // duplicating quick access to money-moving features that also live in
-            // the Explore tab's own Shortcuts grid ("Send" -> onOpenTransferHub) and
-            // bottom nav ("Pay" tab) -- real Toss surfaces the exact same actions in
-            // both places rather than making Settings a dead end. Both rows route to
-            // the same real, already-shipped screens, nothing new built here.
-            item {
-                SettingsCard {
-                    Text(stringResource(R.string.settings_transfer_payment), color = Ids.colors.textTertiary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    SettingsChevronRow(stringResource(R.string.settings_send), onClick = onOpenSend)
-                    SettingsChevronRow(stringResource(R.string.settings_pay), onClick = onOpenPay)
-                }
-            }
-
-            // Real Toss position (2026-08-12, direct user screenshot comparison) --
-            // the real All-tab screenshots have no "Notifications & consent" section;
-            // Legal Documents lives in Settings only. These 3 rows were relocated
-            // here from ItundaAppScreen.kt's Explore-tab menu, not newly invented.
-            // Made real (2026-08-30, market-readiness audit): each row now opens a
-            // real itunda-branded document via LegalDocumentScreen -- see that
-            // file's own doc comment for why these were left honestly inert until
-            // now (no document screen existed to link to).
-            item {
-                SettingsCard {
-                    Text(stringResource(R.string.settings_legal_documents), color = Ids.colors.textTertiary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    SettingsChevronRow(stringResource(R.string.settings_credit_data_policy)) {
-                        openLegalDocument = "credit_data_policy" to baseContext.getString(R.string.settings_credit_data_policy)
-                    }
-                    SettingsChevronRow(stringResource(R.string.settings_privacy_policy)) {
-                        openLegalDocument = "privacy_policy" to baseContext.getString(R.string.settings_privacy_policy)
-                    }
-                    SettingsChevronRow(stringResource(R.string.settings_terms_consent)) {
-                        openLegalDocument = "terms_of_service" to baseContext.getString(R.string.settings_terms_consent)
-                    }
-                }
-            }
-
-            // Real Toss security model (2026-08-30, toss.tech-adjacent research --
-            // "why Toss has no traditional logout"): app-lock (biometric/PIN on every
-            // open, already the real default here -- see TokenStore.isAppLockEnabled)
-            // replaces session-timeout logout, because forcing a full re-login after
-            // logout means redoing phone verification, a WORSE security posture (a
-            // fresh SIM-swap/OTP-interception window) than just re-authenticating
-            // locally on an already-trusted device. Direct user decision (2026-08-30,
-            // "like toss"): the standalone Log out row is removed to match. The
-            // underlying SessionManager.logout() (real server-side refresh-token
-            // revocation + push-token unregister) is NOT deleted -- it's still the
-            // correct response to a genuine 401 (MainViewModel's own forced-logout
-            // path) -- only this manual, always-available UI affordance is gone.
-            item {
-                Spacer(modifier = Modifier.height(24.dp))
-            }
-        }
-    }
-    PullToRefreshContainer(state = pullToRefreshState, modifier = Modifier.align(Alignment.TopCenter))
-    }
+        },
+    )
 }
 
-// Real device management sub-screen (2026-08-12) -- extracted out of the main
-// Settings list (see SettingsScreen's own header comment on why): same real
-// GET/POST/DELETE /api/v1/auth/devices-backed data and DeviceRow as before, just
-// reached via "Services logged in with Toss" instead of dumped inline.
-@Composable
-internal fun DeviceListScreen(
-    devices: List<rw.itunda.core.network.TrustedDeviceDto>,
-    onRevoke: (String) -> Unit,
-    onBack: () -> Unit,
-    error: String? = null,
-) {
-    Column(modifier = Modifier.fillMaxSize().background(Ids.colors.background)) {
-        SettingsSubScreenHeader(stringResource(R.string.settings_devices), onBack)
-        error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)) }
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
-            contentPadding = PaddingValues(vertical = 12.dp),
-        ) {
-            items(devices, key = { it.deviceId }) { device ->
-                DeviceRow(device, onRevoke = { onRevoke(device.deviceId) })
-            }
-            item {
-                // Real bulk action: revokes every other device one by one through the same endpoint.
-                val thisId = remember { NetworkClient.currentDeviceStore().getOrCreateDeviceId() }
-                val others = devices.filter { it.deviceId != thisId }
-                if (others.isNotEmpty()) {
-                    Box(
-                        Modifier.padding(top = 16.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Ids.colors.brand.copy(alpha = 0.12f))
-                            .pressScaleClickable { others.forEach { onRevoke(it.deviceId) } }.padding(vertical = 18.dp),
-                        contentAlignment = Alignment.Center,
-                    ) { Text(stringResource(R.string.settings_sign_out_others), color = Ids.colors.textBrand, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
-                }
-            }
-        }
+private fun isNotificationChannelEnabled(
+    context: android.content.Context,
+    channelId: String,
+): Boolean {
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+        val manager = context.getSystemService(android.app.NotificationManager::class.java) ?: return false
+        return manager.getNotificationChannel(channelId)?.importance != android.app.NotificationManager.IMPORTANCE_NONE
     }
-}
-
-// Real "Manage notifications" screen (2026-08-12, direct user clarification against
-// real Toss reference screenshots) -- Toss's own version has real per-category
-// server-side toggles (its own notification-preferences backend), which itunda has
-// no equivalent of yet; building fake switches that don't actually change what gets
-// sent would be exactly the "looks tappable, does nothing" dishonesty this project's
-// own established discipline forbids (see FlatRow's own doc comment). The real,
-// honest destination itunda DOES have: its two actual Android notification channels
-// (NotificationChannels.CHANNEL_MONEY/CHANNEL_GENERAL, already live since the FCM
-// push work), each with its own real OS-level settings page
-// (Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS) where the user can genuinely mute,
-// re-tone, or change the importance of that category -- a real per-category control,
-// just backed by Android's own settings surface instead of a fabricated in-app one.
-@Composable
-private fun NotificationSettingsScreen(onBack: () -> Unit) {
-    val context = LocalContext.current
-    Column(modifier = Modifier.fillMaxSize().background(Ids.colors.background)) {
-        SettingsSubScreenHeader(stringResource(R.string.settings_manage_notifications), onBack)
-        Text("Choose what itunda can notify you about.", color = Ids.colors.textTertiary, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp))
-        listOf(
-            Triple(stringResource(R.string.settings_channel_money), "Money in, money out, bills", rw.itunda.app.push.NotificationChannels.CHANNEL_MONEY),
-            Triple(stringResource(R.string.settings_channel_general), "Offers, community and map updates", rw.itunda.app.push.NotificationChannels.CHANNEL_GENERAL),
-        ).forEach { (title, sub, channel) ->
-            Row(Modifier.fillMaxWidth().pressScaleClickable { context.startActivity(channelSettingsIntent(context, channel)) }.padding(horizontal = 24.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(title, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                    Text(sub, color = Ids.colors.textTertiary, fontSize = 14.sp)
-                }
-                Text("Manage", color = Ids.colors.textBrand, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-            }
-        }
-    }
+    return androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
 }
 
 private fun channelSettingsIntent(context: android.content.Context, channelId: String) =
