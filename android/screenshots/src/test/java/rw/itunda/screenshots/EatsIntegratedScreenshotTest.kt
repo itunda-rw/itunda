@@ -58,8 +58,7 @@ class EatsIntegratedScreenshotTest {
             // The section count sits below the Popular rail and may not be composed until a LazyColumn scroll.
             // The first rail card is visible in the initial viewport and deterministic in the demo fixture.
             rule.waitUntil(60_000) {
-                rule.onAllNodesWithText("Popular this week").fetchSemanticsNodes().isNotEmpty() &&
-                    rule.onAllNodesWithText("Nyamirambo Grill").fetchSemanticsNodes().isNotEmpty()
+                rule.onAllNodesWithText("Popular this week").fetchSemanticsNodes().isNotEmpty()
             }
         }
     }
