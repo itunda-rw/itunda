@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -147,7 +146,9 @@ fun RequestMoneyScreen(
                 Text(
                     strings.amount,
                     color = palette.secondary,
-                    fontSize = 13.sp,
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp,
+                    letterSpacing = (-0.28).sp,
                     fontFamily = PretendardFontFamily,
                 )
                 Row(
@@ -173,8 +174,8 @@ fun RequestMoneyScreen(
                         textStyle = TextStyle(
                             color = palette.text,
                             fontSize = 40.sp,
-                            lineHeight = 48.sp,
-                            fontWeight = FontWeight.ExtraBold,
+                            lineHeight = 56.sp,
+                            fontWeight = FontWeight.Bold,
                             letterSpacing = (-1).sp,
                             fontFamily = PretendardFontFamily,
                         ),
@@ -186,8 +187,8 @@ fun RequestMoneyScreen(
                                         "0",
                                         color = palette.tertiary,
                                         fontSize = 40.sp,
-                                        lineHeight = 48.sp,
-                                        fontWeight = FontWeight.ExtraBold,
+                                        lineHeight = 56.sp,
+                                        fontWeight = FontWeight.Bold,
                                         letterSpacing = (-1).sp,
                                         fontFamily = PretendardFontFamily,
                                     )
@@ -198,19 +199,21 @@ fun RequestMoneyScreen(
                     )
                     Text(
                         "RWF",
-                        color = palette.tertiary,
+                        color = palette.secondary,
                         fontSize = 20.sp,
-                        lineHeight = 24.sp,
+                        lineHeight = 28.sp,
                         fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.4).sp,
                         fontFamily = PretendardFontFamily,
                         modifier = Modifier.padding(bottom = 5.dp),
                     )
                 }
                 Text(
                     amountHint,
-                    color = if (invalid) palette.error else palette.tertiary,
-                    fontSize = 13.sp,
+                    color = if (invalid) palette.error else palette.secondary,
+                    fontSize = 14.sp,
                     lineHeight = 20.sp,
+                    letterSpacing = (-0.28).sp,
                     fontFamily = PretendardFontFamily,
                     modifier = Modifier.padding(top = 6.dp).heightIn(min = 20.dp),
                 )
@@ -219,7 +222,11 @@ fun RequestMoneyScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     listOf(2_000L, 5_000L, 10_000L, 25_000L).forEach { increment ->
-                        RequestMoneyChip("+${formatMoney(BigDecimal.valueOf(increment))}", palette) {
+                        RequestMoneyChip(
+                            text = "+${formatMoney(BigDecimal.valueOf(increment))}",
+                            palette = palette,
+                            modifier = Modifier.weight(1f),
+                        ) {
                             state.amount = (state.amount + increment).coerceAtMost(MAX_INPUT_AMOUNT)
                         }
                     }
@@ -228,7 +235,9 @@ fun RequestMoneyScreen(
                     strings.note,
                     color = palette.text,
                     fontSize = 15.sp,
-                    fontWeight = FontWeight.ExtraBold,
+                    lineHeight = 21.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.3).sp,
                     fontFamily = PretendardFontFamily,
                     modifier = Modifier.padding(top = 28.dp),
                 )
@@ -241,22 +250,23 @@ fun RequestMoneyScreen(
                 Column(
                     Modifier.fillMaxWidth()
                         .padding(top = 24.dp)
-                        .clip(RoundedCornerShape(18.dp))
-                        .background(palette.chip)
-                        .padding(horizontal = 18.dp, vertical = 16.dp),
+                        .padding(top = 20.dp, bottom = 16.dp),
                 ) {
                     Text(
                         strings.requestCode,
                         color = palette.secondary,
-                        fontSize = 13.sp,
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp,
+                        letterSpacing = (-0.28).sp,
                         fontFamily = PretendardFontFamily,
                     )
                     Text(
                         code,
                         color = if (valid) palette.text else palette.tertiary,
                         fontSize = 24.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = if (valid) 1.sp else 0.sp,
+                        lineHeight = 33.6.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
                         fontFamily = PretendardFontFamily,
                         modifier = Modifier.padding(top = 4.dp),
                     )
@@ -268,7 +278,9 @@ fun RequestMoneyScreen(
                     Text(
                         codeDescription,
                         color = palette.secondary,
-                        fontSize = 13.sp,
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp,
+                        letterSpacing = (-0.28).sp,
                         fontFamily = PretendardFontFamily,
                         modifier = Modifier.padding(top = 4.dp),
                     )
@@ -279,7 +291,7 @@ fun RequestMoneyScreen(
         Row(
             Modifier.fillMaxWidth()
                 .background(palette.background)
-                .padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 24.dp),
+                .padding(start = 24.dp, end = 24.dp, top = 14.dp, bottom = 28.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             RequestMoneyActionButton(
@@ -287,6 +299,7 @@ fun RequestMoneyScreen(
                 background = palette.tint,
                 foreground = palette.tintText,
                 enabled = valid,
+                fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f),
             ) {
                 clipboard.setText(AnnotatedString(requestText))
@@ -297,6 +310,7 @@ fun RequestMoneyScreen(
                 background = palette.brand,
                 foreground = palette.onBrand,
                 enabled = valid,
+                fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f),
             ) {
                 val sendIntent = Intent(Intent.ACTION_SEND).apply {
@@ -310,7 +324,7 @@ fun RequestMoneyScreen(
 }
 
 @Composable
-// v1038 uses a 44dp back target, 18sp title and 4dp gap; BackTopBar has different fixed metrics.
+// v1038 uses a 48dp back target, 20sp title and 4dp gap; BackTopBar has different fixed metrics.
 private fun RequestMoneyTopBar(
     title: String,
     palette: RequestMoneyPalette,
@@ -319,12 +333,12 @@ private fun RequestMoneyTopBar(
     Row(
         Modifier.fillMaxWidth()
             .background(palette.background)
-            .padding(start = 12.dp, end = 12.dp, top = 16.dp, bottom = 6.dp),
+            .padding(start = 6.dp, end = 12.dp, top = 16.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Box(
-            Modifier.size(44.dp)
+            Modifier.size(48.dp)
                 .pressScaleClickable { onBack() }
                 .semantics {
                     role = Role.Button
@@ -337,8 +351,10 @@ private fun RequestMoneyTopBar(
         Text(
             title,
             color = palette.text,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.ExtraBold,
+            fontSize = 20.sp,
+            lineHeight = 28.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = (-0.3).sp,
             fontFamily = PretendardFontFamily,
         )
     }
@@ -348,22 +364,25 @@ private fun RequestMoneyTopBar(
 private fun RequestMoneyChip(
     text: String,
     palette: RequestMoneyPalette,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     Box(
-        Modifier.height(38.dp)
-            .clip(CircleShape)
+        modifier.height(44.dp)
+            .clip(RoundedCornerShape(20.dp))
             .background(palette.chip)
             .pressScaleClickable { onClick() }
             .semantics { role = Role.Button }
-            .padding(horizontal = 14.dp),
+            .padding(horizontal = 2.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text,
             color = palette.text,
             fontSize = 14.sp,
+            lineHeight = 19.6.sp,
             fontWeight = FontWeight.Bold,
+            letterSpacing = (-0.28).sp,
             fontFamily = PretendardFontFamily,
         )
     }
@@ -389,7 +408,9 @@ private fun RequestMoneyNoteField(
             textStyle = TextStyle(
                 color = palette.text,
                 fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
+                lineHeight = 22.4.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = (-0.32).sp,
                 fontFamily = PretendardFontFamily,
             ),
             cursorBrush = SolidColor(palette.text),
@@ -398,9 +419,11 @@ private fun RequestMoneyNoteField(
                     if (value.isEmpty()) {
                         Text(
                             strings.notePlaceholder,
-                            color = palette.secondary,
+                            color = palette.tertiary,
                             fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
+                            lineHeight = 22.4.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            letterSpacing = (-0.32).sp,
                             fontFamily = PretendardFontFamily,
                         )
                     }
@@ -415,18 +438,19 @@ private fun RequestMoneyNoteField(
     }
 }
 
-// v1038's 56dp actions use screen-specific tint colours not represented by IdsButton variants.
+// v1038's 58dp actions use screen-specific tint colours not represented by IdsButton variants.
 @Composable
 private fun RequestMoneyActionButton(
     text: String,
     background: Color,
     foreground: Color,
     enabled: Boolean,
+    fontWeight: FontWeight,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     Box(
-        modifier.height(56.dp)
+        modifier.height(58.dp)
             .clip(RoundedCornerShape(18.dp))
             .background(background)
             .alpha(if (enabled) 1f else 0.35f)
@@ -440,8 +464,9 @@ private fun RequestMoneyActionButton(
         Text(
             text,
             color = foreground,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.ExtraBold,
+            fontSize = 18.sp,
+            fontWeight = fontWeight,
+            letterSpacing = (-0.36).sp,
             fontFamily = PretendardFontFamily,
         )
     }
