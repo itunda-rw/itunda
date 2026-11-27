@@ -49,7 +49,7 @@ internal fun BankPocketDetail(
     var autoFill by remember { mutableStateOf(false) }
     var filter by remember { mutableStateOf(0) } // 0 all, 1 fills, 2 take-outs
     var filterOpen by remember { mutableStateOf(false) }
-    move?.let { dir -> PocketMoveDialog(name, dir, if (dir > 0) POCKET_BANK_BALANCE else amount, { move = null }) { v -> onMove(dir * v); move = null } }
+    move?.let { dir -> PocketMoveScreen(name, emoji, dir, amount, { move = null }) { v -> onMove(dir * v); move = null }; return }
     if (filterOpen) PocketFilterDialog(filter, { filterOpen = false }) { filter = it; filterOpen = false }
     if (manage) PocketManageDialog(name, isJar, canDelete, taken, { manage = false }, onRename, onDelete)
     Column(Modifier.fillMaxSize().background(Ids.colors.background)) {
@@ -161,7 +161,7 @@ private fun PocketManageDialog(name: String, isJar: Boolean, canDelete: Boolean,
 }
 
 @Composable
-private fun PocketDialogButton(label: String, primary: Boolean, modifier: Modifier = Modifier.fillMaxWidth(), enabled: Boolean = true, height: androidx.compose.ui.unit.Dp = 52.dp, onClick: () -> Unit) {
+internal fun PocketDialogButton(label: String, primary: Boolean, modifier: Modifier = Modifier.fillMaxWidth(), enabled: Boolean = true, height: androidx.compose.ui.unit.Dp = 52.dp, onClick: () -> Unit) {
     Box(
         modifier.height(height).clip(RoundedCornerShape(16.dp))
             .background(if (primary) Ids.colors.brand.copy(alpha = if (enabled) 1f else 0.3f) else Ids.colors.surfaceSoft)
@@ -170,71 +170,5 @@ private fun PocketDialogButton(label: String, primary: Boolean, modifier: Modifi
     ) { Text(label, color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
 }
 
-/** Demo itunda Bank balance the Fill action draws from (the same figure the empty state quotes). */
-private const val POCKET_BANK_BALANCE = 842_300L
-
-/** Prototype mvAsk, trimmed: pick an amount up to what is available, then Fill or Take out. */
-@Composable
-private fun PocketMoveDialog(name: String, dir: Int, max: Long, onClose: () -> Unit, onConfirm: (Long) -> Unit) {
-    var text by remember { mutableStateOf("") }
-    val v = text.toLongOrNull() ?: 0L
-    val ok = v in 1..max
-    Dialog(onDismissRequest = onClose) {
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Ids.colors.background).padding(24.dp)) {
-            Text(if (dir > 0) "Fill $name" else "Take out of $name", color = Ids.colors.textPrimary, fontSize = 22.sp, lineHeight = 30.sp, fontWeight = FontWeight.ExtraBold)
-            Text(if (dir > 0) "From itunda Bank · ${rwf(max)} RWF available" else "${rwf(max)} RWF in this pocket", color = Ids.colors.textTertiary, fontSize = 14.sp, modifier = Modifier.padding(top = 6.dp, bottom = 16.dp))
-            Box(Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 16.dp), contentAlignment = Alignment.CenterStart) {
-                BasicTextField(
-                    text, { t -> if (t.length <= 9 && t.all { it.isDigit() }) text = t }, singleLine = true,
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
-                    textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold), cursorBrush = SolidColor(Ids.colors.brand), modifier = Modifier.fillMaxWidth(),
-                )
-                if (text.isEmpty()) Text("Amount in RWF", color = Ids.colors.textTertiary, fontSize = 18.sp)
-            }
-            if (v > max) Text("That's more than ${rwf(max)} RWF", color = Ids.colors.textTertiary, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
-            Spacer(Modifier.height(20.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                PocketDialogButton("Cancel", false, Modifier.weight(1f)) { onClose() }
-                PocketDialogButton(if (dir > 0) "Fill" else "Take out", true, Modifier.weight(1f), enabled = ok) { onConfirm(v) }
-            }
-        }
-    }
-}
-
-/** One Fill or Take out in a pocket's history (prototype `pkr`). */
-internal data class PocketMove(val out: Boolean, val amount: Long, val balance: Long, val time: String)
-
-internal fun pocketNow(): String = java.time.LocalTime.now().let { String.format(java.util.Locale.US, "%02d:%02d", it.hour, it.minute) }
-
-@Composable
-private fun PocketMoveRow(m: PocketMove) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(40.dp).clip(CircleShape).background(if (m.out) Ids.colors.textTertiary else Ids.colors.brand), contentAlignment = Alignment.Center) {
-            Text(if (m.out) "−" else "+", color = androidx.compose.ui.graphics.Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-        }
-        Column(Modifier.weight(1f).padding(start = 14.dp)) {
-            Text(if (m.out) "Take out" else "Fill", color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 24.sp, letterSpacing = (-0.2).sp, fontWeight = FontWeight.SemiBold)
-            Text(m.time, color = Ids.colors.textTertiary, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            Text((if (m.out) "−" else "+") + rwf(m.amount) + " RWF", color = if (m.out) Ids.colors.textPrimary else Ids.colors.brand, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-            Text(rwf(m.balance) + " RWF", color = Ids.colors.textTertiary, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
-        }
-    }
-}
-
-/** Prototype pkFilter: a "Show" sheet with All, Fills and Take-outs. */
-@Composable
-private fun PocketFilterDialog(selected: Int, onClose: () -> Unit, onPick: (Int) -> Unit) {
-    Dialog(onDismissRequest = onClose) {
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Ids.colors.background).padding(24.dp)) {
-            Text("Show", color = Ids.colors.textPrimary, fontSize = 22.sp, lineHeight = 30.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(bottom = 8.dp))
-            listOf("All", "Fills", "Take-outs").forEachIndexed { i, l ->
-                Row(Modifier.fillMaxWidth().height(56.dp).pressScaleClickable { onPick(i) }, verticalAlignment = Alignment.CenterVertically) {
-                    Text(l, color = if (i == selected) Ids.colors.brand else Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    if (i == selected) Text("✓", color = Ids.colors.brand, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-    }
-}
+/** Demo itunda Bank balance the Fill action draws from (the figure the empty state quotes). */
+internal const val POCKET_BANK_BALANCE = 842_300L
