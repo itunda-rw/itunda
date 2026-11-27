@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -305,5 +306,16 @@ private fun MarketplaceSellChip(label: String, selected: Boolean, onClick: () ->
             .background(if (selected) Ids.colors.surfaceSoft else Ids.colors.surface)
             .pressScaleClickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 9.dp),
+    )
+}
+
+@Composable
+fun MarketplacePrototypeEmptyState(message: String = "Nothing here yet. Be the first to post.") {
+    Text(
+        text = message,
+        color = Ids.colors.textSecondary,
+        fontSize = 14.sp,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 30.dp),
     )
 }

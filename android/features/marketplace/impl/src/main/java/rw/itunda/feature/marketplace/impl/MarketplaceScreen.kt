@@ -667,7 +667,7 @@ fun MarketplaceContent(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
                         label = "Search",
-                        placeholder = "Search marketplace listings",
+                        placeholder = "Search in ${neighborhoodName ?: "your area"}",
                         modifier = Modifier.weight(1f),
                     )
                     Icon(
@@ -676,7 +676,7 @@ fun MarketplaceContent(
                         tint = Ids.colors.textSecondary,
                         modifier = Modifier.padding(12.dp).pressScaleClickable {
                             if (searchQuery.isNotBlank()) {
-                                recentMarketplaceSearches = (listOf(searchQuery.trim()) + recentMarketplaceSearches.filterNot { it.equals(searchQuery.trim(), true) }).take(5)
+                                recentMarketplaceSearches = (listOf(searchQuery.trim()) + recentMarketplaceSearches.filterNot { it.equals(searchQuery.trim(), true) }).take(6)
                             }
                             searchQuery = ""
                             searchExpanded = false
@@ -700,9 +700,11 @@ fun MarketplaceContent(
                             Text("Recent searches", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
                             Text("Clear", fontSize = 13.sp, color = Ids.colors.textSecondary, modifier = Modifier.pressScaleClickable { recentMarketplaceSearches = emptyList() }.padding(4.dp))
                         }
-                        recentMarketplaceSearches.forEach { term ->
-                            Row(modifier = Modifier.fillMaxWidth().pressScaleClickable { searchQuery = term }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text(term, fontSize = 14.sp, color = Ids.colors.textSecondary)
+                        recentMarketplaceSearches.chunked(3).forEach { terms ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                terms.forEach { term ->
+                                    Text(term, fontSize = 13.sp, color = Ids.colors.textSecondary, modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft).pressScaleClickable { searchQuery = term }.padding(horizontal = 12.dp, vertical = 8.dp))
+                                }
                             }
                         }
                     }
@@ -710,10 +712,10 @@ fun MarketplaceContent(
             }
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Popular searches", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
+                    Text("Popular near ${neighborhoodName ?: "you"}", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("Phone", "Bicycle", "Sofa").forEach { term ->
-                            Text(term, fontSize = 13.sp, color = Ids.colors.textSecondary, modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(Ids.colors.surface).pressScaleClickable { searchQuery = term }.padding(horizontal = 12.dp, vertical = 8.dp))
+                            Text(term, fontSize = 13.sp, color = Ids.colors.textSecondary, modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft).pressScaleClickable { searchQuery = term }.padding(horizontal = 12.dp, vertical = 8.dp))
                         }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -746,7 +748,7 @@ fun MarketplaceContent(
             if (displayListings == null) {
                 item { SkeletonBlock() }
             } else if (visibleListings.isNullOrEmpty()) {
-                item { EmptyState("Nothing here yet. Be the first to post.", icon = Icons.Outlined.ShoppingBag) }
+                item { MarketplacePrototypeEmptyState() }
             } else {
                 items(visibleListings, key = { it.id }) { listing ->
                     ListingRow(
@@ -808,7 +810,7 @@ fun MarketplaceContent(
                         HoodView.NEIGHBORHOOD -> "No listings in your neighborhood yet — try Browse to see listings from everywhere."
                         HoodView.MINE -> "Nothing here yet. Be the first to post."
                         HoodView.PURCHASES -> "No purchases recorded yet — items you buy will show up here."
-                        HoodView.WISHLIST -> "No saved listings yet — tap ♡ on any listing to save it here."
+                        HoodView.WISHLIST -> "Nothing here yet. Be the first to post."
                         HoodView.ALERTS -> "" // unreachable -- ALERTS is intercepted earlier
                         HoodView.HIDDEN -> "" // unreachable -- HIDDEN is intercepted earlier
                         }

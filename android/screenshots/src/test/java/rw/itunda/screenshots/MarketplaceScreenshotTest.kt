@@ -14,12 +14,14 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import rw.itunda.core.designsystem.theme.IdsTheme
+import rw.itunda.core.network.FavoriteListingDto
 import rw.itunda.core.network.ListingDto
 import rw.itunda.feature.marketplace.impl.ListingDetailScreen
 import rw.itunda.feature.marketplace.impl.ListingRow
 import rw.itunda.feature.marketplace.impl.MarketplaceBrowseControls
 import rw.itunda.feature.marketplace.impl.MarketplaceFilterSheet
 import rw.itunda.feature.marketplace.impl.NewListingForm
+import rw.itunda.feature.marketplace.impl.ListingWishlistView
 
 /** Marketplace rows, detail, browse controls and filter sheet in both themes. */
 @RunWith(RobolectricTestRunner::class)
@@ -89,6 +91,22 @@ class MarketplaceScreenshotTest {
         rule.onRoot().captureRoboImage("build/screenshots/$name.png")
     }
 
+    private fun captureSavedView(dark: Boolean, name: String) {
+        rule.setContent {
+            IdsTheme(darkTheme = dark) {
+                ListingWishlistView(
+                    onRemoved = {},
+                    onOpen = {},
+                    initialFavorites = listOf(
+                        FavoriteListingDto("1", "Samsung phone, barely used", 140000.0, "Electronics", "2026-11-26T10:00:00Z"),
+                        FavoriteListingDto("2", "Baby clothes, 0–12 months", 0.0, "Kids", "2026-11-25T09:00:00Z"),
+                    ),
+                )
+            }
+        }
+        rule.onRoot().captureRoboImage("build/screenshots/$name.png")
+    }
+
     private fun captureSellSheet(dark: Boolean, name: String) {
         rule.setContent {
             IdsTheme(darkTheme = dark) {
@@ -125,4 +143,6 @@ class MarketplaceScreenshotTest {
     @Test fun filterSheetDark() = captureFilterSheet(dark = true, name = "market-filter-dark")
     @Test fun sellSheetLight() = captureSellSheet(dark = false, name = "market-sell")
     @Test fun sellSheetDark() = captureSellSheet(dark = true, name = "market-sell-dark")
+    @Test fun savedViewLight() = captureSavedView(dark = false, name = "market-saved")
+    @Test fun savedViewDark() = captureSavedView(dark = true, name = "market-saved-dark")
 }
