@@ -88,11 +88,13 @@ fun MiniAppsHubScreen(
     var points by rememberSaveable { mutableStateOf(0) }
     var category by rememberSaveable { mutableStateOf<String?>(null) }
     var profile by rememberSaveable { mutableStateOf(false) }
+    var airtime by rememberSaveable { mutableStateOf(false) }
     val added = remember { mutableStateMapOf<String, Boolean>() }
     val context = LocalContext.current
     val soon: (String) -> Unit = { Toast.makeText(context, "$it is coming soon", Toast.LENGTH_SHORT).show() }
 
-    BackHandler { if (profile) profile = false else if (category != null) category = null else onBack() }
+    BackHandler { if (airtime) airtime = false else if (profile) profile = false else if (category != null) category = null else onBack() }
+    if (airtime) { AirtimeScreen { airtime = false }; return }
     if (profile) { MiniProfile { profile = false }; return }
     category?.let { c -> MiniCategory(c, added, { category = null }); return }
 
@@ -111,7 +113,7 @@ fun MiniAppsHubScreen(
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             when (tab) {
-                0 -> { MiniHeading("Trending now"); TRENDING.forEachIndexed { i, a -> MiniAppRow(i + 1, a) { soon(a.name) } } }
+                0 -> { MiniHeading("Trending now"); TRENDING.forEachIndexed { i, a -> MiniAppRow(i + 1, a) { if (a.name == "Airtime Top-up") airtime = true else soon(a.name) } } }
                 1 -> GamesTab(gameFilter, { gameFilter = it }, points, { points = minOf(10, points + 2); Toast.makeText(context, "+2 RWF points", Toast.LENGTH_SHORT).show() }, soon)
                 2 -> PointsTab(points)
                 else -> CategoriesTab { category = it }

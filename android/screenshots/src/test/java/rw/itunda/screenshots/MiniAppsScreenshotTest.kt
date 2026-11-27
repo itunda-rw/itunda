@@ -11,6 +11,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import rw.itunda.core.designsystem.theme.IdsTheme
+import rw.itunda.feature.menu.impl.AirtimeScreen
 import rw.itunda.feature.menu.impl.MiniAppsHubScreen
 
 @RunWith(RobolectricTestRunner::class)
@@ -29,4 +30,13 @@ class MiniAppsScreenshotTest {
     @Test fun gamesLight() = shot("mini-games-light", false, 1)
     @Test fun pointsLight() = shot("mini-points-light", false, 2)
     @Test fun categoriesLight() = shot("mini-categories-light", false, 3)
+
+    @Test fun airtimeLight() {
+        rule.setContent { IdsTheme(darkTheme = false) { AirtimeScreen(onBack = {}) } }
+        rule.onRoot().captureRoboImage("build/screenshots/mini-airtime-light.png")
+    }
+    @Test fun airtimeDark() {
+        rule.setContent { IdsTheme(darkTheme = true) { AirtimeScreen(onBack = {}) } }
+        rule.onRoot().captureRoboImage("build/screenshots/mini-airtime-dark.png")
+    }
 }
