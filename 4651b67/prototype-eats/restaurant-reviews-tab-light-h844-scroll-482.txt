@@ -1,0 +1,155 @@
+scrollTop=482 scrollHeight=1761 clientHeight=844
+0 | div.e2-hero | 0.0 | -482.0 | 390.0 | 220.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 232, 199) | none | 0px | none | -0.176px | 22.4px | 
+1 | span.o1 | 220.0 | -372.0 | 220.0 | 220.0 | 16px | 400 | rgb(25, 31, 40) | rgba(255, 255, 255, 0.35) | none | 110px | none | -0.176px | 22.4px | 
+1 | span.g2 | 18.9 | -378.7 | 74.3 | 78.9 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | svg | 18.9 | -378.7 | 72.7 | 72.7 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+3 | g | 22.4 | -375.0 | 65.6 | 65.3 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+4 | svg | 22.4 | -375.0 | 65.6 | 65.3 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+5 | path | 33.3 | -375.0 | 52.4 | 53.3 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+5 | path | 26.9 | -352.4 | 43.0 | 42.7 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+5 | g | 37.5 | -350.9 | 35.6 | 29.2 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+6 | circle | 57.8 | -349.2 | 3.8 | 3.8 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+6 | circle | 67.6 | -339.0 | 3.8 | 3.8 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+6 | circle | 57.8 | -334.8 | 3.8 | 3.8 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+6 | circle | 42.1 | -325.5 | 3.8 | 3.8 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+1 | span.g3 | 263.8 | -398.2 | 104.4 | 104.4 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | svg | 263.8 | -398.2 | 104.4 | 104.4 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+3 | g | 278.9 | -388.3 | 74.2 | 84.5 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+4 | svg | 278.9 | -388.3 | 74.2 | 84.5 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+5 | path | 317.5 | -382.2 | 11.3 | 25.6 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+5 | path | 278.9 | -366.0 | 59.3 | 60.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+5 | path | 287.8 | -366.0 | 50.4 | 18.5 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+5 | circle | 321.8 | -372.8 | 29.5 | 29.5 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+5 | circle | 328.0 | -366.7 | 17.2 | 17.2 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+1 | svg | 135.0 | -432.0 | 120.0 | 120.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | g | 145.6 | -417.6 | 98.9 | 91.5 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+3 | svg | 145.6 | -417.6 | 98.9 | 91.5 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+4 | path | 145.6 | -417.6 | 98.9 | 91.5 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+4 | path | 146.2 | -364.0 | 97.8 | 37.8 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+4 | g | 171.4 | -398.7 | 53.6 | 22.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+5 | path | 171.4 | -398.7 | 53.6 | 22.1 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+0 | div.e2-sh | 0.0 | -290.0 | 390.0 | 1472.8 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 28px 28px 0px 0px | none | -0.176px | 22.4px | 
+1 | div.e2-nmh | 0.0 | -268.0 | 390.0 | 32.0 | 26px | 800 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.6px | 32px | Kigali Bakery
+1 | div.e2-rtl | 0.0 | -236.0 | 390.0 | 25.6 | 14px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | 
+2 | b | 24.0 | -230.0 | 43.1 | 19.6 | 14px | 800 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | 
+3 | span.ig.ig-s.ig-gold | 24.4 | -228.3 | 13.3 | 13.3 | 14px | 800 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 14px | ★
+2 | span | 73.1 | -230.0 | 153.6 | 19.6 | 14px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | (320 reviews) · 1.2 km
+1 | div.e2-rtl | 0.0 | -210.4 | 390.0 | 21.6 | 14px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | 
+2 | span | 24.0 | -208.4 | 176.5 | 19.6 | 14px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | Bread, pastries and cakes
+1 | div.ez-meta | 0.0 | -188.8 | 390.0 | 25.6 | 14px | 600 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | 
+2 | b | 24.0 | -181.8 | 77.4 | 16.0 | 14px | 800 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | 15-25 min
+1 | div.ez-arr | 0.0 | -159.2 | 390.0 | 19.6 | 14px | 600 | rgb(91, 84, 214) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | Arrives by 04:42–04:52
+1 | div.ez-rmd | 0.0 | -139.6 | 390.0 | 52.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | div.ez-md | 24.0 | -125.6 | 155.1 | 38.0 | 16px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 16px | none | -0.176px | 22.4px | 
+3 | button.on.v420hit | 27.0 | -122.6 | 79.3 | 32.0 | 13px | 700 | rgb(255, 255, 255) | rgb(25, 31, 40) | none | 13px | none | -0.176px | 18.2px | Delivery
+3 | button.v420hit | 108.3 | -122.6 | 67.8 | 32.0 | 13px | 700 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 13px | none | -0.176px | 18.2px | Pickup
+1 | div | 0.0 | -87.6 | 390.0 | 56.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | button.tap.g816 | 24.0 | -75.6 | 342.0 | 44.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+3 | span | 24.0 | -64.1 | 326.0 | 21.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+4 | b | 24.0 | -64.1 | 326.0 | 21.0 | 15px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Group order
+3 | svg | 350.0 | -61.6 | 16.0 | 16.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+4 | path | 356.3 | -57.6 | 4.0 | 8.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+1 | div.e2-tabs | 0.0 | 60.0 | 390.0 | 48.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 0px | none | -0.176px | 22.4px | 
+2 | button | 24.0 | 60.0 | 48.9 | 48.0 | 16px | 800 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | Menu
+2 | button.v420hit | 98.9 | 60.0 | 34.6 | 48.0 | 16px | 800 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | Info
+2 | button.on | 159.5 | 60.0 | 73.0 | 48.0 | 16px | 800 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | Reviews
+1 | div | 0.0 | 32.4 | 390.0 | 264.6 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | div | 24.0 | 127.7 | 101.0 | 86.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+3 | div | 24.0 | 127.7 | 101.0 | 56.0 | 40px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -1px | 56px | 4.8
+3 | div.sm.mu | 24.0 | 193.7 | 101.0 | 20.0 | 17px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 20px | 320 reviews
+2 | div | 143.0 | 52.4 | 223.0 | 236.6 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+3 | div | 143.0 | 52.4 | 223.0 | 57.6 | 13px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 18.2px | 
+4 | span | 143.0 | 72.1 | 10.0 | 18.2 | 13px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 18.2px | 5
+4 | div | 163.0 | 77.2 | 159.0 | 8.0 | 13px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 4px | none | -0.176px | 18.2px | 
+5 | div | 163.0 | 77.2 | 98.6 | 8.0 | 13px | 400 | rgb(25, 31, 40) | rgb(90, 81, 236) | none | 4px | none | -0.176px | 18.2px | 
+4 | span.mu | 332.0 | 62.4 | 34.0 | 47.6 | 17px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 23.8px | 62%
+3 | div | 143.0 | 115.0 | 223.0 | 57.6 | 13px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 18.2px | 
+4 | span | 143.0 | 134.7 | 10.0 | 18.2 | 13px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 18.2px | 4
+4 | div | 163.0 | 139.8 | 159.0 | 8.0 | 13px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 4px | none | -0.176px | 18.2px | 
+5 | div | 163.0 | 139.8 | 39.8 | 8.0 | 13px | 400 | rgb(25, 31, 40) | rgb(90, 81, 236) | none | 4px | none | -0.176px | 18.2px | 
+4 | span.mu | 332.0 | 125.0 | 34.0 | 47.6 | 17px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 23.8px | 25%
+3 | div | 143.0 | 177.6 | 223.0 | 33.8 | 13px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 18.2px | 
+4 | span | 143.0 | 185.4 | 10.0 | 18.2 | 13px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 18.2px | 3
+4 | div | 163.0 | 190.5 | 159.0 | 8.0 | 13px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 4px | none | -0.176px | 18.2px | 
+5 | div | 163.0 | 190.5 | 12.7 | 8.0 | 13px | 400 | rgb(25, 31, 40) | rgb(90, 81, 236) | none | 4px | none | -0.176px | 18.2px | 
+4 | span.mu | 332.0 | 187.6 | 34.0 | 23.8 | 17px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 23.8px | 8%
+3 | div | 143.0 | 216.4 | 223.0 | 33.8 | 13px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 18.2px | 
+4 | span | 143.0 | 224.2 | 10.0 | 18.2 | 13px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 18.2px | 2
+4 | div | 163.0 | 229.3 | 159.0 | 8.0 | 13px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 4px | none | -0.176px | 18.2px | 
+5 | div | 163.0 | 229.3 | 4.8 | 8.0 | 13px | 400 | rgb(25, 31, 40) | rgb(90, 81, 236) | none | 4px | none | -0.176px | 18.2px | 
+4 | span.mu | 332.0 | 226.4 | 34.0 | 23.8 | 17px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 23.8px | 3%
+3 | div | 143.0 | 255.2 | 223.0 | 33.8 | 13px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 18.2px | 
+4 | span | 143.0 | 263.0 | 10.0 | 18.2 | 13px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 18.2px | 1
+4 | div | 163.0 | 268.0 | 159.0 | 8.0 | 13px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 4px | none | -0.176px | 18.2px | 
+5 | div | 163.0 | 268.0 | 3.2 | 8.0 | 13px | 400 | rgb(25, 31, 40) | rgb(90, 81, 236) | none | 4px | none | -0.176px | 18.2px | 
+4 | span.mu | 332.0 | 265.2 | 34.0 | 23.8 | 17px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 23.8px | 2%
+1 | div.ez-rv-s | 0.0 | 297.0 | 390.0 | 58.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | button.on | 24.0 | 311.0 | 52.1 | 44.0 | 15px | 800 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Latest
+2 | button | 94.1 | 311.0 | 103.5 | 44.0 | 15px | 700 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Most helpful
+1 | div.ez-rv2 | 0.0 | 355.0 | 390.0 | 161.2 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | div.ez-rh | 24.0 | 371.0 | 342.0 | 31.4 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+3 | b | 24.0 | 380.0 | 68.8 | 22.4 | 16px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | Aline U.
+3 | span.sm.mu | 274.4 | 381.0 | 91.6 | 20.0 | 17px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 20px | 2 days ago
+2 | div | 24.0 | 404.3 | 342.0 | 19.6 | 14px | 700 | rgb(245, 165, 36) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | 
+3 | span.ig.ig-s.ig-gold | 24.4 | 406.0 | 13.3 | 13.3 | 14px | 700 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 14px | ★
+3 | span.ig.ig-s.ig-gold | 38.5 | 406.0 | 13.3 | 13.3 | 14px | 700 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 14px | ★
+3 | span.ig.ig-s.ig-gold | 52.6 | 406.0 | 13.3 | 13.3 | 14px | 700 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 14px | ★
+3 | span.ig.ig-s.ig-gold | 66.7 | 406.0 | 13.3 | 13.3 | 14px | 700 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 14px | ★
+3 | span.ig.ig-s.ig-gold | 80.8 | 406.0 | 13.3 | 13.3 | 14px | 700 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 14px | ★
+2 | div.ez-ro | 24.0 | 425.9 | 342.0 | 18.2 | 13px | 600 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 18.2px | Ordered Hot milk tea
+2 | div.ez-rx | 24.0 | 450.1 | 342.0 | 22.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Fresh and still warm when it a
+2 | button.ez-hp. | 24.0 | 472.1 | 79.8 | 44.0 | 14px | 700 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | Helpful · 8
+1 | div.ez-rv2 | 0.0 | 516.1 | 390.0 | 161.2 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | div.ez-rh | 24.0 | 532.1 | 342.0 | 31.4 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+3 | b | 24.0 | 541.1 | 60.1 | 22.4 | 16px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | Eric M.
+3 | span.sm.mu | 269.9 | 542.1 | 96.1 | 20.0 | 17px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 20px | 1 week ago
+2 | div | 24.0 | 565.5 | 342.0 | 19.6 | 14px | 700 | rgb(245, 165, 36) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | 
+3 | span.ig.ig-s.ig-gold | 24.4 | 567.2 | 13.3 | 13.3 | 14px | 700 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 14px | ★
+3 | span.ig.ig-s.ig-gold | 38.5 | 567.2 | 13.3 | 13.3 | 14px | 700 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 14px | ★
+3 | span.ig.ig-s.ig-gold | 52.6 | 567.2 | 13.3 | 13.3 | 14px | 700 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 14px | ★
+3 | span.ig.ig-s.ig-gold | 66.7 | 567.2 | 13.3 | 13.3 | 14px | 700 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 14px | ★
+3 | span | 80.4 | 566.5 | 14.1 | 16.0 | 14px | 700 | rgb(242, 244, 246) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | 
+4 | span.ig.ig-s.ig-gold | 80.8 | 567.2 | 13.3 | 13.3 | 14px | 700 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 14px | ★
+2 | div.ez-ro | 24.0 | 587.1 | 342.0 | 18.2 | 13px | 600 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 18.2px | Ordered Croissant
+2 | div.ez-rx | 24.0 | 611.3 | 342.0 | 22.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Good portions, a little late o
+2 | button.ez-hp. | 24.0 | 633.3 | 79.8 | 44.0 | 14px | 700 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | Helpful · 3
+1 | div.ez-rv2 | 0.0 | 677.3 | 390.0 | 161.2 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | div.ez-rh | 24.0 | 693.3 | 342.0 | 31.4 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+3 | b | 24.0 | 702.3 | 78.3 | 22.4 | 16px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | Claire M.
+3 | span.sm.mu | 261.2 | 703.3 | 104.8 | 20.0 | 17px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 20px | 2 weeks ago
+2 | div | 24.0 | 726.7 | 342.0 | 19.6 | 14px | 700 | rgb(245, 165, 36) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | 
+3 | span.ig.ig-s.ig-gold | 24.4 | 728.3 | 13.3 | 13.3 | 14px | 700 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 14px | ★
+3 | span.ig.ig-s.ig-gold | 38.5 | 728.3 | 13.3 | 13.3 | 14px | 700 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 14px | ★
+3 | span.ig.ig-s.ig-gold | 52.6 | 728.3 | 13.3 | 13.3 | 14px | 700 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 14px | ★
+3 | span.ig.ig-s.ig-gold | 66.7 | 728.3 | 13.3 | 13.3 | 14px | 700 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 14px | ★
+3 | span.ig.ig-s.ig-gold | 80.8 | 728.3 | 13.3 | 13.3 | 14px | 700 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 14px | ★
+2 | div.ez-ro | 24.0 | 748.3 | 342.0 | 18.2 | 13px | 600 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 18.2px | Ordered Chocolate cake slice
+2 | div.ez-rx | 24.0 | 772.5 | 342.0 | 22.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | My weekly order. Always right.
+2 | button.ez-hp. | 24.0 | 794.5 | 79.8 | 44.0 | 14px | 700 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | Helpful · 2
+1 | div.ez-rv2 | 0.0 | 838.5 | 390.0 | 183.2 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | div.ez-rh | 24.0 | 854.5 | 342.0 | 31.4 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+3 | b | 24.0 | 863.5 | 82.0 | 22.4 | 16px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | Jean Paul
+3 | span.sm.mu | 261.2 | 864.5 | 104.8 | 20.0 | 17px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 20px | 3 weeks ago
+2 | div | 24.0 | 887.9 | 342.0 | 19.6 | 14px | 700 | rgb(245, 165, 36) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | 
+3 | span.ig.ig-s.ig-gold | 24.4 | 889.5 | 13.3 | 13.3 | 14px | 700 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 14px | ★
+3 | span.ig.ig-s.ig-gold | 38.5 | 889.5 | 13.3 | 13.3 | 14px | 700 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 14px | ★
+3 | span.ig.ig-s.ig-gold | 52.6 | 889.5 | 13.3 | 13.3 | 14px | 700 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 14px | ★
+3 | span.ig.ig-s.ig-gold | 66.7 | 889.5 | 13.3 | 13.3 | 14px | 700 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 14px | ★
+3 | span.ig.ig-s.ig-gold | 80.8 | 889.5 | 13.3 | 13.3 | 14px | 700 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 14px | ★
+2 | div.ez-ro | 24.0 | 909.5 | 342.0 | 18.2 | 13px | 600 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 18.2px | Ordered Whole wheat loaf
+2 | div.ez-rx | 24.0 | 933.6 | 342.0 | 44.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Rider was polite and quick. Pa
+2 | button.ez-hp. | 24.0 | 977.6 | 79.8 | 44.0 | 14px | 700 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | Helpful · 2
+1 | div.ez-rv2 | 0.0 | 1021.6 | 390.0 | 161.2 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | div.ez-rh | 24.0 | 1037.6 | 342.0 | 31.4 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+3 | b | 24.0 | 1046.6 | 80.4 | 22.4 | 16px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | Divine N.
+3 | span.sm.mu | 259.5 | 1047.6 | 106.5 | 20.0 | 17px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 20px | 1 month ago
+2 | div | 24.0 | 1071.0 | 342.0 | 19.6 | 14px | 700 | rgb(245, 165, 36) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | 
+3 | span.ig.ig-s.ig-gold | 24.4 | 1072.7 | 13.3 | 13.3 | 14px | 700 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 14px | ★
+3 | span.ig.ig-s.ig-gold | 38.5 | 1072.7 | 13.3 | 13.3 | 14px | 700 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 14px | ★
+3 | span.ig.ig-s.ig-gold | 52.6 | 1072.7 | 13.3 | 13.3 | 14px | 700 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 14px | ★
+3 | span.ig.ig-s.ig-gold | 66.7 | 1072.7 | 13.3 | 13.3 | 14px | 700 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 14px | ★
+3 | span | 80.4 | 1072.0 | 14.1 | 16.0 | 14px | 700 | rgb(242, 244, 246) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | 
+4 | span.ig.ig-s.ig-gold | 80.8 | 1072.7 | 13.3 | 13.3 | 14px | 700 | rgb(255, 184, 0) | rgb(255, 184, 0) | none | 0px | none | normal | 14px | ★
+2 | div.ez-ro | 24.0 | 1092.6 | 342.0 | 18.2 | 13px | 600 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 18.2px | Ordered Hot milk tea
+2 | div.ez-rx | 24.0 | 1116.8 | 342.0 | 22.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Tasty, a bit pricey for the po
+2 | button.ez-hp. | 24.0 | 1138.8 | 79.8 | 44.0 | 14px | 700 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 19.6px | Helpful · 9

@@ -1,0 +1,72 @@
+scrollTop=173 scrollHeight=1189 clientHeight=844
+0 | div.bar | 0.0 | 0.0 | 390.0 | 70.0 | 16px | 400 | rgb(25, 31, 40) | rgb(255, 255, 255) | none | 0px | none | -0.176px | 22.4px | 
+1 | button.ib | 6.0 | 16.0 | 48.0 | 48.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | svg | 18.0 | 28.0 | 24.0 | 24.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+3 | path | 23.0 | 34.0 | 14.0 | 12.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+1 | b | 58.0 | 26.0 | 144.7 | 28.0 | 20px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.3px | 28px | Your delivery
+0 | div.pad | 0.0 | -103.0 | 390.0 | 84.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+1 | div | 24.0 | -91.0 | 342.0 | 44.0 | 36px | 800 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -1px | 44px | About 20 min
+1 | div.sm.mu | 24.0 | -41.0 | 342.0 | 22.0 | 15px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
+2 | span.ef.e51 | 133.2 | -39.0 | 17.0 | 17.3 | 15px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | normal | 17.25px | ⚡
+0 | div.map97 | 12.0 | -7.0 | 366.0 | 229.9 | 16px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 28px | rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px | -0.176px | 22.4px | 
+1 | svg | 13.0 | -6.0 | 364.0 | 187.3 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 20px | none | -0.176px | 22.4px | 
+2 | rect | 13.0 | -6.0 | 364.0 | 187.3 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | path | 2.4 | 44.4 | 393.8 | 34.5 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | g | 13.0 | -6.0 | 364.0 | 187.3 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+3 | path | 13.0 | -6.0 | 364.0 | 187.3 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | path | 68.4 | 38.7 | 255.4 | 97.9 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | circle | 55.6 | 25.9 | 25.5 | 25.5 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | path | 63.0 | 32.3 | 11.7 | 12.8 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | circle | 311.0 | 123.8 | 25.5 | 25.5 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | path | 317.4 | 130.2 | 12.8 | 12.8 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+1 | div.cap | 13.0 | 181.3 | 364.0 | 40.6 | 14px | 700 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 0px | none | -0.176px | 19.6px | 
+2 | span | 27.0 | 198.1 | 8.0 | 8.0 | 14px | 700 | rgb(25, 31, 40) | rgb(143, 137, 255) | none | 4px | none | -0.176px | 19.6px | 
+0 | div.pad | 0.0 | 222.9 | 390.0 | 59.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+1 | div.tl.on | 24.0 | 238.9 | 81.0 | 43.0 | 13px | 800 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 16px | 
+2 | i | 24.0 | 238.9 | 81.0 | 4.0 | 13px | 800 | rgb(25, 31, 40) | rgb(143, 137, 255) | none | 2px | none | -0.176px | 16px | 
+1 | div.tl. | 111.0 | 238.9 | 81.0 | 43.0 | 13px | 700 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 16px | 
+2 | i | 111.0 | 238.9 | 81.0 | 4.0 | 13px | 700 | rgb(107, 118, 132) | rgb(242, 244, 246) | none | 2px | none | -0.176px | 16px | 
+1 | div.tl. | 198.0 | 238.9 | 81.0 | 43.0 | 13px | 700 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 16px | 
+2 | i | 198.0 | 238.9 | 81.0 | 4.0 | 13px | 700 | rgb(107, 118, 132) | rgb(242, 244, 246) | none | 2px | none | -0.176px | 16px | 
+1 | div.tl. | 285.0 | 238.9 | 81.0 | 43.0 | 13px | 700 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 16px | 
+2 | i | 285.0 | 238.9 | 81.0 | 4.0 | 13px | 700 | rgb(107, 118, 132) | rgb(242, 244, 246) | none | 2px | none | -0.176px | 16px | 
+0 | div.ez-dc | 0.0 | 281.9 | 390.0 | 100.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+1 | div.sm.mu | 24.0 | 301.9 | 342.0 | 20.0 | 13px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 20px | Delivery code
+1 | div.ez-dn | 24.0 | 323.9 | 342.0 | 36.0 | 30px | 800 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | 8px | 36px | 4821
+1 | div.sm.mu | 24.0 | 361.9 | 342.0 | 20.0 | 13px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 20px | Tell your rider this code at t
+0 | div.ez-ts | 0.0 | 381.9 | 390.0 | 169.6 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+1 | div | 24.0 | 403.9 | 342.0 | 21.0 | 15px | 700 | rgb(91, 84, 214) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Arrives by 04:47
+1 | div | 24.0 | 424.9 | 342.0 | 126.6 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | div | 24.0 | 434.9 | 342.0 | 31.0 | 15px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 
+3 | span | 24.0 | 439.9 | 99.2 | 21.0 | 15px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 2 × Croissant
+3 | span | 276.6 | 439.9 | 89.4 | 21.0 | 15px | 600 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 2,400 RWF
+2 | div | 24.0 | 465.9 | 342.0 | 32.4 | 16px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+3 | span | 24.0 | 470.9 | 42.8 | 22.4 | 16px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | Total
+3 | span | 270.5 | 470.9 | 95.5 | 22.4 | 16px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 2,400 RWF
+2 | div | 24.0 | 498.3 | 342.0 | 31.0 | 15px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | 
+3 | span | 24.0 | 503.3 | 89.5 | 21.0 | 15px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Delivered to
+3 | span | 186.5 | 503.3 | 179.5 | 21.0 | 15px | 600 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 21px | Kimironko, KG 11 Ave
+2 | div | 24.0 | 529.3 | 342.0 | 22.2 | 13px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 18.2px | EA-7207
+0 | div.pad | 0.0 | 551.5 | 390.0 | 62.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+1 | div.chips | 24.0 | 555.5 | 342.0 | 58.0 | 16px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22.4px | 
+2 | button.cch | 24.0 | 561.5 | 308.0 | 52.0 | 15px | 700 | rgb(196, 40, 27) | rgba(0, 0, 0, 0) | none | 16px | rgba(0, 0, 0, 0) 0px 0px 0px 0px | -0.176px | 21px | Cancel order
+0 | div | 24.0 | 629.5 | 342.0 | 267.0 | 16px | 400 | rgb(25, 31, 40) | rgb(242, 244, 246) | none | 20px | none | -0.176px | 22.4px | 
+1 | div | 40.0 | 645.5 | 310.0 | 24.0 | 17px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 24px | Your order
+1 | div.mu.sm | 40.0 | 671.5 | 310.0 | 20.0 | 14px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 20px | Kigali Bakery, EA-7207
+1 | div | 40.0 | 699.5 | 310.0 | 34.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
+2 | div | 40.0 | 699.5 | 310.0 | 34.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
+3 | span | 40.0 | 705.5 | 99.2 | 22.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 2 × Croissant
+3 | span.mu | 307.9 | 705.5 | 42.1 | 22.0 | 15px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 2,400
+1 | div | 40.0 | 741.5 | 310.0 | 139.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
+2 | div | 40.0 | 748.5 | 310.0 | 34.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
+3 | span.mu | 40.0 | 754.5 | 80.2 | 22.0 | 15px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Delivery to
+3 | span | 191.8 | 754.5 | 158.2 | 22.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Kimironko, KG 11 Ave
+2 | div | 40.0 | 782.5 | 310.0 | 34.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
+3 | span.mu | 40.0 | 788.5 | 69.0 | 22.0 | 15px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Your note
+3 | span | 145.0 | 788.5 | 205.0 | 22.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Please call when you arrive.
+2 | div | 40.0 | 816.5 | 310.0 | 34.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
+3 | span.mu | 40.0 | 822.5 | 66.3 | 22.0 | 15px | 400 | rgb(107, 118, 132) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Paid with
+3 | span | 272.8 | 822.5 | 77.2 | 22.0 | 15px | 400 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | itunda Pay
+2 | div | 40.0 | 850.5 | 310.0 | 30.0 | 17px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 
+3 | span | 40.0 | 858.5 | 45.6 | 22.0 | 17px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | Total
+3 | span | 248.4 | 858.5 | 101.6 | 22.0 | 17px | 700 | rgb(25, 31, 40) | rgba(0, 0, 0, 0) | none | 0px | none | -0.176px | 22px | 2,400 RWF

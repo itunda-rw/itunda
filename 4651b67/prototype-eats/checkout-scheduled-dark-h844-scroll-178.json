@@ -1,0 +1,322 @@
+{
+  "screenKey": "echeck",
+  "screenText": "Cart\nDelivery\nPickup\nDeliver to\nKimironko, KG 11 Ave\nChange\nYour order\nKigali Bakery\nCroissant\n1,200 RWF\n2\nAdd more items\nAdd a side or drink\n+\nHot milk tea\n1,000 RWF\n+\nFruit juice\n1,800 RWF\nDelivery time\nAs soon as possible\n05:30\n06:00\n06:30\n07:00\nTip your rider (optional)\nNo tip\n500\n1,000\n2,000\nItems\n2,400 RWF\nDelivery\nFree\nTotal\n2,400 RWF\nYou earn 24 points with this order\nPay with\nitunda Pay · 120,500 RWF",
+  "sheetText": "",
+  "scroll": {
+    "top": 178,
+    "height": 1200,
+    "client": 844
+  },
+  "controls": [
+    {
+      "tag": "button",
+      "text": "",
+      "id": "",
+      "className": "ib",
+      "role": null,
+      "ariaLabel": "Back",
+      "onClick": "back()",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Delivery",
+      "id": "",
+      "className": "on v420hit",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "setPickup(false);render('fade-none')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Pickup",
+      "id": "",
+      "className": "v420hit",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "setPickup(true);render('fade-none')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Deliver to Kimironko, KG 11 Ave Change",
+      "id": "",
+      "className": "ez-ckad tap",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eAddr()",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "",
+      "id": "",
+      "className": "ib v420hit",
+      "role": null,
+      "ariaLabel": "Remove one",
+      "onClick": "eAdj(0,-1)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "",
+      "id": "",
+      "className": "ib v420hit",
+      "role": null,
+      "ariaLabel": "Add one",
+      "onClick": "eAdj(0,1)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Add more items",
+      "id": "",
+      "className": "tap",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "back()",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Delivery",
+      "id": "",
+      "className": "on",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "setPickup(false);render('fade-none')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Pickup",
+      "id": "",
+      "className": "",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "setPickup(true);render('fade-none')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Change address",
+      "id": "",
+      "className": "cch",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eAddr()",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Leave at the door",
+      "id": "",
+      "className": "on",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "setReq('Leave at the door')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Hand it to me",
+      "id": "",
+      "className": "",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "setReq('Hand it to me')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Call when nearby",
+      "id": "",
+      "className": "",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "setReq('Call when nearby')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "+",
+      "id": "",
+      "className": "",
+      "role": null,
+      "ariaLabel": "Add Hot milk tea",
+      "onClick": "ezCartAdd(8)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "+",
+      "id": "",
+      "className": "",
+      "role": null,
+      "ariaLabel": "Add Fruit juice",
+      "onClick": "ezCartAdd(7)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "As soon as possible",
+      "id": "",
+      "className": "cch ",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eSched(null)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "05:30",
+      "id": "",
+      "className": "cch ",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eSched('05:30')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "06:00",
+      "id": "",
+      "className": "cch ",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eSched('06:00')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "06:30",
+      "id": "",
+      "className": "cch ",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eSched('06:30')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "07:00",
+      "id": "",
+      "className": "cch ",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eSched('07:00')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "No tip",
+      "id": "",
+      "className": "on",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eTip(0)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "500",
+      "id": "",
+      "className": "",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eTip(500)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "1,000",
+      "id": "",
+      "className": "",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eTip(1000)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "2,000",
+      "id": "",
+      "className": "",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "eTip(2000)",
+      "disabled": false
+    },
+    {
+      "tag": "input",
+      "text": "",
+      "id": "enote",
+      "className": "",
+      "role": null,
+      "ariaLabel": "Note for the restaurant",
+      "onClick": null,
+      "disabled": false
+    },
+    {
+      "tag": "input",
+      "text": "",
+      "id": "epm",
+      "className": "",
+      "role": null,
+      "ariaLabel": "Promo code",
+      "onClick": null,
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Apply",
+      "id": "",
+      "className": "cch on",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "ePromo()",
+      "disabled": false
+    },
+    {
+      "tag": "div",
+      "text": "Pay with itunda Pay · 120,500 RWF",
+      "id": "",
+      "className": "tap v420hit",
+      "role": "button",
+      "ariaLabel": null,
+      "onClick": "epmOpen()",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Pay 2,400 RWF",
+      "id": "",
+      "className": "btn",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "ePay()",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "",
+      "id": "t26dn",
+      "className": "",
+      "role": null,
+      "ariaLabel": "Latest messages",
+      "onClick": null,
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "",
+      "id": "",
+      "className": "v36 hit44a",
+      "role": null,
+      "ariaLabel": "Button",
+      "onClick": null,
+      "disabled": false
+    }
+  ]
+}
