@@ -478,7 +478,7 @@ fun MarketplaceContent(
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var searchExpanded by rememberSaveable { mutableStateOf(false) }
     var recentMarketplaceSearches by rememberSaveable { mutableStateOf(listOf<String>()) }
-    var selectedMarketplaceSort by rememberSaveable { mutableStateOf("Newest") }
+    var selectedMarketplaceSort by rememberSaveable { mutableStateOf("Latest") }
     var showBrowseFilters by remember { mutableStateOf(false) }
     var selectedMaxPrice by rememberSaveable { mutableStateOf(0) }
     var selectedNeighborhood by rememberSaveable { mutableStateOf<String?>(null) }
@@ -554,8 +554,15 @@ fun MarketplaceContent(
                 priceFiltered.filter { it.neighborhood.equals(area, ignoreCase = true) }
             } ?: priceFiltered
             when (selectedMarketplaceSort) {
-                "Price ↑" -> areaFiltered.sortedBy { it.price }
-                "Price ↓" -> areaFiltered.sortedByDescending { it.price }
+                "Nearest" -> {
+                    val location = browseLocation
+                    if (location == null) areaFiltered else areaFiltered.sortedBy { listing ->
+                        val latitude = listing.latitude
+                        val longitude = listing.longitude
+                        if (latitude == null || longitude == null) Double.POSITIVE_INFINITY
+                        else haversineKm(location.first, location.second, latitude, longitude)
+                    }
+                }
                 else -> areaFiltered.sortedByDescending { listing ->
                     runCatching { Instant.parse(listing.createdAt).toEpochMilli() }.getOrDefault(0L)
                 }
@@ -718,13 +725,10 @@ fun MarketplaceContent(
                     onCategorySelected = { selectedBrowseCategory = it },
                     sortLabel = selectedMarketplaceSort,
                     filterCount = (if (selectedMaxPrice > 0) 1 else 0) + (if (selectedNeighborhood != null) 1 else 0),
+                    nearestAvailable = browseLocation != null,
                     onFilterClick = { showBrowseFilters = true },
                     onSortClick = {
-                        selectedMarketplaceSort = when (selectedMarketplaceSort) {
-                            "Newest" -> "Price ↑"
-                            "Price ↑" -> "Price ↓"
-                            else -> "Newest"
-                        }
+                        selectedMarketplaceSort = if (selectedMarketplaceSort == "Latest") "Nearest" else "Latest"
                     },
                 )
             }
