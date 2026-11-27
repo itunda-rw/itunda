@@ -254,7 +254,6 @@ fun NewListingForm(onCreated: (String, String) -> Unit, onCancel: () -> Unit) {
                 label = "Details (optional)",
                 placeholder = "Any extra information for buyers?",
                 singleLine = false,
-                maxLines = 3,
                 modifier = Modifier.fillMaxWidth(),
             )
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
