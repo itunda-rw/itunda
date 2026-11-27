@@ -33,6 +33,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -122,7 +123,7 @@ fun SettingsHomeScreen(
     Column(modifier = Modifier.fillMaxSize().background(Ids.colors.background)) {
         ProtoTopBar(title = copy.settings, onBack = onBack)
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().testTag("settings-home-list"),
             contentPadding = PaddingValues(bottom = 24.dp),
         ) {
             item {

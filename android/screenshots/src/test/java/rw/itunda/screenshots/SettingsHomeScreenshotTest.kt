@@ -1,9 +1,9 @@
 package rw.itunda.screenshots
 
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToIndex
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
 import org.junit.Test
@@ -21,7 +21,7 @@ import rw.itunda.feature.my.impl.SettingsHomeScreen
 class SettingsHomeScreenshotTest {
     @get:Rule val rule = createComposeRule()
 
-    private fun renderHome(dark: Boolean, name: String, scrollTo: String? = null) {
+    private fun renderHome(dark: Boolean, name: String, scrollToIndex: Int? = null) {
         rule.setContent {
             IdsTheme(darkTheme = dark) {
                 SettingsHomeScreen(
@@ -52,7 +52,7 @@ class SettingsHomeScreenshotTest {
                 )
             }
         }
-        scrollTo?.let { rule.onNodeWithText(it).performScrollTo() }
+        scrollToIndex?.let { rule.onNodeWithTag("settings-home-list").performScrollToIndex(it) }
         rule.onRoot().captureRoboImage("build/screenshots/$name.png")
     }
 
@@ -71,10 +71,10 @@ class SettingsHomeScreenshotTest {
 
     @Test fun settingsHomeLightTop() = renderHome(false, "settings-home-light-top")
     @Test fun settingsHomeDarkTop() = renderHome(true, "settings-home-dark-top")
-    @Test fun settingsHomeLightMiddle() = renderHome(false, "settings-home-light-middle", "Transfer & Payment")
-    @Test fun settingsHomeDarkMiddle() = renderHome(true, "settings-home-dark-middle", "Transfer & Payment")
-    @Test fun settingsHomeLightBottom() = renderHome(false, "settings-home-light-bottom", "Delete account")
-    @Test fun settingsHomeDarkBottom() = renderHome(true, "settings-home-dark-bottom", "Delete account")
+    @Test fun settingsHomeLightMiddle() = renderHome(false, "settings-home-light-middle", 3)
+    @Test fun settingsHomeDarkMiddle() = renderHome(true, "settings-home-dark-middle", 3)
+    @Test fun settingsHomeLightBottom() = renderHome(false, "settings-home-light-bottom", 6)
+    @Test fun settingsHomeDarkBottom() = renderHome(true, "settings-home-dark-bottom", 6)
     @Test fun deleteAccountLight() = renderDeleteAccount(false, "settings-delete-account-light")
     @Test fun deleteAccountDark() = renderDeleteAccount(true, "settings-delete-account-dark")
 }

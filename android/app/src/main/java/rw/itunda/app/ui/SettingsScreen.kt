@@ -371,6 +371,133 @@ internal fun SettingsSubScreenHeader(title: String, onBack: () -> Unit, trailing
 // the actual Toss Settings screenshot's own card-list layout instead of one
 // continuous scrolling list with inline dividers between sections.
 @Composable
+internal fun DeviceListScreen(
+    devices: List<rw.itunda.core.network.TrustedDeviceDto>,
+    onRevoke: (String) -> Unit,
+    onBack: () -> Unit,
+    error: String? = null,
+) {
+    Column(modifier = Modifier.fillMaxSize().background(Ids.colors.background)) {
+        SettingsSubScreenHeader(stringResource(R.string.settings_devices), onBack)
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)) }
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+            contentPadding = PaddingValues(vertical = 12.dp),
+        ) {
+            items(devices, key = { it.deviceId }) { device ->
+                DeviceRow(device, onRevoke = { onRevoke(device.deviceId) })
+            }
+            item {
+                // Real bulk action: revokes every other device one by one through the same endpoint.
+                val thisId = remember { NetworkClient.currentDeviceStore().getOrCreateDeviceId() }
+                val others = devices.filter { it.deviceId != thisId }
+                if (others.isNotEmpty()) {
+                    Box(
+                        Modifier.padding(top = 16.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Ids.colors.brand.copy(alpha = 0.12f))
+                            .pressScaleClickable { others.forEach { onRevoke(it.deviceId) } }.padding(vertical = 18.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text(stringResource(R.string.settings_sign_out_others), color = Ids.colors.textBrand, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
+                }
+            }
+        }
+    }
+}
+
+// Real "Manage notifications" screen (2026-08-12, direct user clarification against
+// real Toss reference screenshots) -- Toss's own version has real per-category
+// server-side toggles (its own notification-preferences backend), which itunda has
+// no equivalent of yet; building fake switches that don't actually change what gets
+// sent would be exactly the "looks tappable, does nothing" dishonesty this project's
+// own established discipline forbids (see FlatRow's own doc comment). The real,
+// honest destination itunda DOES have: its two actual Android notification channels
+// (NotificationChannels.CHANNEL_MONEY/CHANNEL_GENERAL, already live since the FCM
+// push work), each with its own real OS-level settings page
+// (Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS) where the user can genuinely mute,
+// re-tone, or change the importance of that category -- a real per-category control,
+// just backed by Android's own settings surface instead of a fabricated in-app one.
+@Composable
+private fun NotificationSettingsScreen(onBack: () -> Unit) {
+    val context = LocalContext.current
+    Column(modifier = Modifier.fillMaxSize().background(Ids.colors.background)) {
+        SettingsSubScreenHeader(stringResource(R.string.settings_manage_notifications), onBack)
+        Text("Choose what itunda can notify you about.", color = Ids.colors.textTertiary, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp))
+        listOf(
+            Triple(stringResource(R.string.settings_channel_money), "Money in, money out, bills", rw.itunda.app.push.NotificationChannels.CHANNEL_MONEY),
+            Triple(stringResource(R.string.settings_channel_general), "Offers, community and map updates", rw.itunda.app.push.NotificationChannels.CHANNEL_GENERAL),
+        ).forEach { (title, sub, channel) ->
+            Row(Modifier.fillMaxWidth().pressScaleClickable { context.startActivity(channelSettingsIntent(context, channel)) }.padding(horizontal = 24.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(title, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                    Text(sub, color = Ids.colors.textTertiary, fontSize = 14.sp)
+                }
+                Text("Manage", color = Ids.colors.textBrand, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+// Real notifications sub-screen (2026-08-12) -- same extraction as DeviceListScreen
+// above, same real /api/v1/notifications-backed data and NotificationRow, reached
+// via the "Notifications" row in the first card instead of an inline feed.
+@Composable
+internal fun NotificationListScreen(
+    notifications: List<NotificationDto>,
+    unreadCount: Int,
+    onMarkAllRead: () -> Unit,
+    onNotificationClick: (String) -> Unit,
+    onBack: () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxSize().background(Ids.colors.background)) {
+        SettingsSubScreenHeader(stringResource(R.string.settings_notifications), onBack) {
+            if (unreadCount > 0) {
+                Text(
+                    stringResource(R.string.settings_mark_all_read),
+                    color = Ids.colors.brand,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.pressScaleClickable(onClick = onMarkAllRead),
+                )
+            }
+        }
+        if (notifications.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize().padding(top = 48.dp), contentAlignment = Alignment.TopCenter) {
+                Text(stringResource(R.string.settings_no_notifications), color = Ids.colors.textTertiary, fontSize = 14.sp)
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+                contentPadding = PaddingValues(vertical = 12.dp),
+            ) {
+                items(notifications, key = { it.id }) { notification ->
+                    NotificationRow(notification, onClick = { onNotificationClick(notification.id) })
+                }
+            }
+        }
+    }
+}
+
+// Shared back-header for the two sub-screens above, matching SettingsScreen's own
+// top bar exactly (same back-button shape/position) so navigating in feels like the
+// same screen family, not a different pattern.
+@Composable
+internal fun SettingsSubScreenHeader(title: String, onBack: () -> Unit, trailing: @Composable () -> Unit = {}) {
+    // Prototype `.bar`: 70dp, 48dp back at x=6, 20sp title inline at x=58 (re-measured 2026-11-23; the old
+    // "back arrow on its own row + 28sp title" layout did not match any prototype sub-screen).
+    Row(Modifier.fillMaxWidth().height(70.dp).padding(start = 6.dp, end = 12.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(48.dp).pressScaleClickable(onClick = onBack), contentAlignment = Alignment.Center) {
+            rw.itunda.core.designsystem.components.ItundaArt("back", rw.itunda.core.designsystem.components.ItundaArtSet.Line, 24.dp, tint = Ids.colors.textPrimary)
+        }
+        Text(title, fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.3).sp, color = Ids.colors.textPrimary, modifier = Modifier.padding(start = 4.dp).weight(1f))
+        trailing()
+    }
+}
+
+// Real Toss card container (2026-08-12) -- see this screen's own doc comment for the
+// full account of why: a real, rounded, surface-colored group per section, matching
+// the actual Toss Settings screenshot's own card-list layout instead of one
+// continuous scrolling list with inline dividers between sections.
+
+@Composable
 private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
     Column(modifier = Modifier.fillMaxWidth(), content = content)
 }
