@@ -123,7 +123,7 @@ private fun PocketManageDialog(name: String, isJar: Boolean, canDelete: Boolean,
             if (isJar) {
                 Text("Interest jar", color = Ids.colors.textPrimary, fontSize = 22.sp, lineHeight = 30.sp, fontWeight = FontWeight.ExtraBold)
                 Text("Put money aside and take it out any time. This pocket is always here, so it can't be renamed or deleted.", color = Ids.colors.textTertiary, fontSize = 15.sp, lineHeight = 22.sp, modifier = Modifier.padding(top = 8.dp, bottom = 24.dp))
-                PocketDialogButton("Close", false, onClose)
+                PocketDialogButton("Close", false, onClick = onClose)
             } else {
                 Text("Manage pocket", color = Ids.colors.textPrimary, fontSize = 22.sp, lineHeight = 30.sp, fontWeight = FontWeight.ExtraBold)
                 Text("Pocket name", color = Ids.colors.textTertiary, fontSize = 14.sp, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
