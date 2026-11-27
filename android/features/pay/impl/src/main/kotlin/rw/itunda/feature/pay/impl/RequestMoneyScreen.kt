@@ -56,6 +56,7 @@ import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.designsystem.theme.PretendardFontFamily
 
+// Measured from the v1038 Request money CSS; these screen-only roles differ from IDS tokens.
 private data class RequestMoneyPalette(
     val background: Color,
     val text: Color,

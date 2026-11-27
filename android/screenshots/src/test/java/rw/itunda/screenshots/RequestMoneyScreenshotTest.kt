@@ -66,7 +66,11 @@ class RequestMoneyScreenshotTest {
         rule.onNodeWithText("ITD-4280-90").assertExists()
         rule.onNodeWithText("+5,000").performClick()
         rule.runOnIdle { assertEquals(12_000L, state.amount) }
-        rule.onNodeWithText("ITD-4330-90").assertExists()
+        rule.onNodeWithText("+10,000").performClick()
+        rule.runOnIdle { assertEquals(22_000L, state.amount) }
+        rule.onNodeWithText("+25,000").performClick()
+        rule.runOnIdle { assertEquals(47_000L, state.amount) }
+        rule.onNodeWithText("ITD-4680-90").assertExists()
     }
 
     @Test fun amountValidationDisablesCopyAndShare() {
@@ -79,6 +83,23 @@ class RequestMoneyScreenshotTest {
         rule.onNodeWithContentDescription("Amount in RWF").performTextInput("100")
         rule.onNodeWithText("ITD-4211-90").assertExists()
         rule.onNodeWithText("Copy").assertExists()
+    }
+
+    @Test fun fractionalAmountsKeepPrototypeCodeFormatting() {
+        val state = RequestMoneyState(initialAmount = 150L)
+        rule.setContent { IdsTheme(darkTheme = false) { RequestMoneyScreen({}, state) } }
+        rule.onNodeWithText("ITD-4211.5-90").assertExists()
+    }
+
+    @Test fun amountAndNotePersistWhenScreenIsReopened() {
+        val state = RequestMoneyState()
+        rule.setContent { IdsTheme(darkTheme = false) { RequestMoneyScreen({}, state) } }
+        rule.onNodeWithText("+2,000").performClick()
+        rule.onNodeWithContentDescription("Note").performTextInput("Lunch")
+        rule.setContent { IdsTheme(darkTheme = false) { RequestMoneyScreen({}, state) } }
+        rule.onNodeWithText("ITD-4280-90").assertExists()
+        rule.onNodeWithContentDescription("Note").performTextInput("!")
+        rule.runOnIdle { assertEquals("Lunch!", state.note) }
     }
 
     @Test fun noteIsTrimmedAndLimitedToFortyCharacters() {
@@ -104,6 +125,7 @@ class RequestMoneyScreenshotTest {
         val clipboard = context!!.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val copied = clipboard.primaryClip!!.getItemAt(0).text.toString()
         assertEquals("Please pay me 5,000 RWF on itunda. Code: ITD-4260-90 · Lunch", copied)
+        rule.onNodeWithText("Request code").assertExists()
     }
 
     @Test fun shareOpensNativeChooserWithCompleteRequest() {
