@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.components.IdsToast
 import rw.itunda.core.designsystem.components.formatMoney
 import rw.itunda.core.designsystem.components.pressScaleClickable
+import java.math.BigDecimal
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.designsystem.theme.PretendardFontFamily
@@ -138,7 +139,7 @@ fun RequestMoneyScreen(
     }
     val code = if (valid) requestMoneyCode(amount) else "—"
     val requestText = if (valid) {
-        "Please pay me ${formatMoney(amount.toDouble())} RWF on itunda. Code: $code" +
+        "Please pay me ${formatMoney(BigDecimal.valueOf(amount))} RWF on itunda. Code: $code" +
             if (note.isNotEmpty()) " · $note" else ""
     } else {
         ""
@@ -163,7 +164,7 @@ fun RequestMoneyScreen(
                     Modifier.fillMaxWidth().padding(top = 6.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    val amountText = if (amount == 0L) "" else formatMoney(amount.toDouble())
+                    val amountText = if (amount == 0L) "" else formatMoney(BigDecimal.valueOf(amount))
                     BasicTextField(
                         value = amountText,
                         onValueChange = { raw ->
@@ -226,7 +227,7 @@ fun RequestMoneyScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     listOf(2_000L, 5_000L, 10_000L, 25_000L).forEach { increment ->
-                        RequestMoneyChip("+${formatMoney(increment.toDouble())}", palette) {
+                        RequestMoneyChip("+${formatMoney(BigDecimal.valueOf(increment))}", palette) {
                             state.amount = (state.amount + increment).coerceAtMost(MAX_INPUT_AMOUNT)
                         }
                     }
@@ -268,7 +269,7 @@ fun RequestMoneyScreen(
                         modifier = Modifier.padding(top = 4.dp),
                     )
                     val codeDescription = if (valid) {
-                        "${formatMoney(amount.toDouble())} RWF · ${strings.validFor}"
+                        "${formatMoney(BigDecimal.valueOf(amount))} RWF · ${strings.validFor}"
                     } else {
                         strings.enterAmount
                     }
