@@ -61,7 +61,6 @@ private data class RequestMoneyPalette(
     val background: Color,
     val text: Color,
     val secondary: Color,
-    val tertiary: Color,
     val divider: Color,
     val chip: Color,
     val tint: Color,
@@ -79,21 +78,19 @@ private fun requestMoneyPalette(): RequestMoneyPalette {
             background = Ids.colors.background,
             text = Color(0xFFF9FAFB),
             secondary = Color(0xFF9EA4AE),
-            tertiary = Color(0xFF8B95A1),
             divider = Color(0xFF3A3A44),
             chip = Ids.colors.surfaceSoft,
             tint = Color(0xFF2A2850),
             tintText = Color(0xFFB3AEFF),
             brand = Ids.colors.brand,
             onBrand = Color(0xFF17171C),
-            error = Color(0xFFC4281B),
+            error = Color(0xFFFF7B6E),
         )
     } else {
         RequestMoneyPalette(
             background = Ids.colors.background,
             text = Color(0xFF191F28),
             secondary = Color(0xFF6B7684),
-            tertiary = Color(0xFF8B95A1),
             divider = Color(0xFFE5E8EB),
             chip = Ids.colors.surfaceSoft,
             tint = Color(0xFFEEEDFF),
@@ -185,7 +182,7 @@ fun RequestMoneyScreen(
                                 if (amountText.isEmpty()) {
                                     Text(
                                         "0",
-                                        color = palette.tertiary,
+                                        color = palette.secondary,
                                         fontSize = 40.sp,
                                         lineHeight = 56.sp,
                                         fontWeight = FontWeight.Bold,
@@ -225,7 +222,7 @@ fun RequestMoneyScreen(
                         RequestMoneyChip(
                             text = "+${formatMoney(BigDecimal.valueOf(increment))}",
                             palette = palette,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier,
                         ) {
                             state.amount = (state.amount + increment).coerceAtMost(MAX_INPUT_AMOUNT)
                         }
@@ -250,7 +247,9 @@ fun RequestMoneyScreen(
                 Column(
                     Modifier.fillMaxWidth()
                         .padding(top = 24.dp)
-                        .padding(top = 20.dp, bottom = 16.dp),
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(palette.chip)
+                        .padding(horizontal = 18.dp, vertical = 16.dp),
                 ) {
                     Text(
                         strings.requestCode,
@@ -262,7 +261,7 @@ fun RequestMoneyScreen(
                     )
                     Text(
                         code,
-                        color = if (valid) palette.text else palette.tertiary,
+                        color = if (valid) palette.text else palette.secondary,
                         fontSize = 24.sp,
                         lineHeight = 33.6.sp,
                         fontWeight = FontWeight.Bold,
@@ -291,7 +290,7 @@ fun RequestMoneyScreen(
         Row(
             Modifier.fillMaxWidth()
                 .background(palette.background)
-                .padding(start = 24.dp, end = 24.dp, top = 14.dp, bottom = 28.dp),
+                .padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             RequestMoneyActionButton(
@@ -333,7 +332,7 @@ private fun RequestMoneyTopBar(
     Row(
         Modifier.fillMaxWidth()
             .background(palette.background)
-            .padding(start = 6.dp, end = 12.dp, top = 16.dp, bottom = 6.dp),
+            .padding(start = 12.dp, end = 12.dp, top = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
@@ -364,16 +363,15 @@ private fun RequestMoneyTopBar(
 private fun RequestMoneyChip(
     text: String,
     palette: RequestMoneyPalette,
-    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     Box(
-        modifier.height(44.dp)
-            .clip(RoundedCornerShape(20.dp))
+        Modifier.height(38.dp)
+            .clip(RoundedCornerShape(19.dp))
             .background(palette.chip)
             .pressScaleClickable { onClick() }
             .semantics { role = Role.Button }
-            .padding(horizontal = 2.dp),
+            .padding(horizontal = 14.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -419,7 +417,7 @@ private fun RequestMoneyNoteField(
                     if (value.isEmpty()) {
                         Text(
                             strings.notePlaceholder,
-                            color = palette.tertiary,
+                            color = palette.secondary,
                             fontSize = 16.sp,
                             lineHeight = 22.4.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -450,8 +448,8 @@ private fun RequestMoneyActionButton(
     onClick: () -> Unit,
 ) {
     Box(
-        modifier.height(58.dp)
-            .clip(RoundedCornerShape(18.dp))
+        modifier.height(52.dp)
+            .clip(RoundedCornerShape(16.dp))
             .background(background)
             .alpha(if (enabled) 1f else 0.35f)
             .pressScaleClickable(enabled = enabled) { onClick() }
@@ -464,9 +462,9 @@ private fun RequestMoneyActionButton(
         Text(
             text,
             color = foreground,
-            fontSize = 18.sp,
-            fontWeight = fontWeight,
-            letterSpacing = (-0.36).sp,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = (-0.32).sp,
             fontFamily = PretendardFontFamily,
         )
     }
