@@ -96,35 +96,3 @@ private fun Section(title: String, rows: List<ManageRow>, onOpen: (BankSub) -> U
     }
     Spacer(Modifier.height(4.dp))
 }
-
-/** Pocket detail (prototype "pocket"): icon, amount, Interest received / Auto-fill rows, empty state, Fill. */
-@Composable
-internal fun BankPocketDetail(name: String, emoji: String, amount: Long, onBack: () -> Unit) {
-    var done by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    if (done) { BankDone("Pocket filled", "Added to $name from itunda Bank.", onBack); return }
-    Column(Modifier.fillMaxSize().background(Ids.colors.background)) {
-        BankSubTopBar("", onBack)
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
-            Box(Modifier.size(64.dp).clip(RoundedCornerShape(20.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) { Text(emoji, fontSize = 30.sp) }
-            Text(name, color = Ids.colors.textTertiary, fontSize = 14.sp, modifier = Modifier.padding(top = 16.dp))
-            Text("${rwf(amount)} RWF", color = Ids.colors.textPrimary, fontSize = 34.sp, fontWeight = FontWeight.ExtraBold)
-            Spacer(Modifier.height(20.dp))
-            PocketLine("Interest received", "0 RWF")
-            PocketLine("Auto-fill", "Off")
-            Text("Nothing here yet", color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 28.dp))
-            Text(
-                "Fill it from itunda Bank, which has 842,300 RWF. Or let it fill itself.",
-                color = Ids.colors.textTertiary, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp, bottom = 14.dp),
-            )
-        }
-        BankSubCta("Fill") { done = true }
-    }
-}
-
-@Composable
-private fun PocketLine(label: String, value: String) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 14.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-        Text(value, color = Ids.colors.textTertiary, fontSize = 16.sp)
-    }
-}

@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -195,7 +196,16 @@ internal fun BankPocketsScreen(onBack: () -> Unit) {
         mutableStateListOf(Pocket("Interest jar", "💰", 0), Pocket("Emergency fund", "🔒", 50_000), Pocket("School fees", "🎓", 120_000, 300_000))
     }
     var open by remember { mutableStateOf<Pocket?>(null) }
-    open?.let { BankPocketDetail(it.name, it.emoji, it.amount) { open = null }; return }
+    open?.let { cur ->
+        BankPocketDetail(
+            name = cur.name, emoji = cur.emoji, amount = cur.amount, canDelete = cur.name != "Interest jar" && cur.amount == 0L,
+            isJar = cur.name == "Interest jar", taken = pockets.map { it.name }.filter { it != cur.name },
+            onRename = { n -> val i = pockets.indexOf(cur); if (i >= 0) { pockets[i] = cur.copy(name = n); open = pockets[i] } },
+            onDelete = { pockets.remove(cur); open = null },
+            onBack = { open = null },
+        )
+        return
+    }
     Column(Modifier.fillMaxSize().background(Ids.colors.background)) {
         BankSubTopBar("", onBack)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
@@ -243,7 +253,12 @@ internal fun BankPocketsScreen(onBack: () -> Unit) {
                         Modifier.weight(1f).height(40.dp).clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft)
                             .pressScaleClickable { if (pockets.none { it.name == n }) pockets.add(Pocket(n, e, 0)) },
                         contentAlignment = Alignment.Center,
-                    ) { Text("+ $n", color = Ids.colors.textPrimary, fontSize = 15.sp, lineHeight = 21.sp, letterSpacing = (-0.15).sp, fontWeight = FontWeight.Bold) }
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            androidx.compose.material3.Icon(Icons.Default.Add, null, tint = Ids.colors.textPrimary, modifier = Modifier.size(18.dp))
+                            Text(n, color = Ids.colors.textPrimary, fontSize = 15.sp, lineHeight = 21.sp, letterSpacing = (-0.15).sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
             }
         }
