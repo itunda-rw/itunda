@@ -188,7 +188,7 @@ private fun StmtLabel(text: String) {
     Text(text, color = Ids.colors.textPrimary, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 12.dp))
 }
 
-private data class Pocket(val name: String, val emoji: String, val amount: Long, val goal: Long? = null)
+private data class Pocket(val name: String, val emoji: String, val amount: Long, val goal: Long? = null, val history: List<PocketMove> = emptyList())
 
 @Composable
 internal fun BankPocketsScreen(onBack: () -> Unit) {
@@ -198,11 +198,11 @@ internal fun BankPocketsScreen(onBack: () -> Unit) {
     var open by remember { mutableStateOf<Pocket?>(null) }
     open?.let { cur ->
         BankPocketDetail(
-            name = cur.name, emoji = cur.emoji, amount = cur.amount, canDelete = cur.name != "Interest jar" && cur.amount == 0L,
+            name = cur.name, emoji = cur.emoji, amount = cur.amount, history = cur.history, canDelete = cur.name != "Interest jar" && cur.amount == 0L,
             isJar = cur.name == "Interest jar", taken = pockets.map { it.name }.filter { it != cur.name },
             onRename = { n -> val i = pockets.indexOf(cur); if (i >= 0) { pockets[i] = cur.copy(name = n); open = pockets[i] } },
             onDelete = { pockets.remove(cur); open = null },
-            onMove = { d -> val i = pockets.indexOf(cur); if (i >= 0) { pockets[i] = cur.copy(amount = cur.amount + d); open = pockets[i] } },
+            onMove = { d -> val i = pockets.indexOf(cur); if (i >= 0) { val nb = cur.amount + d; pockets[i] = cur.copy(amount = nb, history = listOf(PocketMove(d < 0, kotlin.math.abs(d), nb, pocketNow())) + cur.history); open = pockets[i] } },
             onBack = { open = null },
         )
         return
