@@ -179,11 +179,9 @@ fun SettingsScreen(
     }
     var showLanguagePicker by remember { mutableStateOf(false) }
     if (showLanguagePicker) {
-        SettingsPickerScreen(
-            title = stringResource(R.string.settings_language),
-            options = listOf("en" to "English", "rw" to "Kinyarwanda", "fr" to "Français").map { (code, name) ->
-                PickerOption(name, locale == code) { AppLocalePreference.set(baseContext, code) }
-            },
+        rw.itunda.feature.my.impl.SettingsLanguageScreen(
+            selectedLanguage = locale,
+            onLanguageSelected = { AppLocalePreference.set(baseContext, it) },
             onBack = { showLanguagePicker = false },
         )
         return
