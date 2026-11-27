@@ -83,7 +83,7 @@ fun ListingWishlistView(
     }
 
     when {
-        error != null -> ErrorCard(error!!)
+        error != null -> ErrorCard(error!!, onRetry = { error = null; load() })
         favorites == null -> SkeletonBlock()
         favorites!!.isEmpty() -> MarketplacePrototypeEmptyState()
         else -> Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
