@@ -202,6 +202,7 @@ internal fun BankPocketsScreen(onBack: () -> Unit) {
             isJar = cur.name == "Interest jar", taken = pockets.map { it.name }.filter { it != cur.name },
             onRename = { n -> val i = pockets.indexOf(cur); if (i >= 0) { pockets[i] = cur.copy(name = n); open = pockets[i] } },
             onDelete = { pockets.remove(cur); open = null },
+            onMove = { d -> val i = pockets.indexOf(cur); if (i >= 0) { pockets[i] = cur.copy(amount = cur.amount + d); open = pockets[i] } },
             onBack = { open = null },
         )
         return
