@@ -3,8 +3,6 @@ package rw.itunda.feature.marketplace.impl
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,14 +13,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 
-/** v1038 Marketplace category rail. Personal feeds (Saved and Mine) live in the profile menu. */
+/** v1038 Marketplace category tabs and browse actions. */
 @Composable
 internal fun MarketplaceBrowseControls(
     selectedCategory: String,
@@ -31,51 +28,47 @@ internal fun MarketplaceBrowseControls(
     filterCount: Int,
     onFilterClick: () -> Unit,
     onSortClick: () -> Unit,
+    nearestAvailable: Boolean = true,
 ) {
     val categories = listOf("All", "Electronics", "Phones", "Home", "Fashion", "Kids", "Sports", "Free")
-    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
-            categories.forEach { category ->
-                val selected = selectedCategory == category
-                Column(
-                    modifier = Modifier.pressScaleClickable { onCategorySelected(category) }.padding(vertical = 9.dp),
-                    verticalArrangement = Arrangement.spacedBy(5.dp),
-                ) {
-                    Text(
-                        text = category,
-                        color = if (selected) Ids.colors.textPrimary else Ids.colors.textSecondary,
-                        fontSize = 14.sp,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                        maxLines = 1,
-                    )
-                    Box(
-                        modifier = Modifier.fillMaxWidth().height(2.dp).clip(RoundedCornerShape(2.dp))
-                            .background(if (selected) Ids.colors.textPrimary else Color.Transparent),
-                    )
-                }
-            }
-        }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-            BrowseSortAction("↕ $sortLabel", selected = true, onClick = onSortClick)
-            BrowseSortAction(if (filterCount > 0) "Filter · $filterCount" else "Filter", selected = filterCount > 0, onClick = onFilterClick)
+    Row(
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        categories.forEach { category ->
+            val selected = selectedCategory == category
+            Text(
+                text = category,
+                color = if (selected) Ids.colors.textPrimary else Ids.colors.textTertiary,
+                fontSize = 17.sp,
+                fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold,
+                maxLines = 1,
+                modifier = Modifier
+                    .height(44.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(if (selected) Ids.colors.surfaceSoft else androidx.compose.ui.graphics.Color.Transparent)
+                    .pressScaleClickable { onCategorySelected(category) }
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+            )
         }
     }
-}
-
-@Composable
-private fun BrowseSortAction(label: String, selected: Boolean, enabled: Boolean = true, onClick: () -> Unit) {
-    Text(
-        text = label,
-        color = when {
-            !enabled -> Ids.colors.textTertiary
-            selected -> Ids.colors.textPrimary
-            else -> Ids.colors.textSecondary
-        },
-        fontSize = 14.sp,
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.pressScaleClickable(enabled = enabled, onClick = onClick).padding(vertical = 8.dp),
-    )
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(
+            text = "↕ $sortLabel",
+            color = if (nearestAvailable) Ids.colors.textSecondary else Ids.colors.textTertiary,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.pressScaleClickable(enabled = nearestAvailable, onClick = onSortClick).padding(vertical = 8.dp),
+        )
+        Text(
+            text = if (filterCount > 0) "Filter · $filterCount" else "Filter",
+            color = if (filterCount > 0) Ids.colors.textPrimary else Ids.colors.textSecondary,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.pressScaleClickable(onClick = onFilterClick).padding(vertical = 8.dp),
+        )
+    }
 }
