@@ -436,62 +436,6 @@ private fun NotificationSettingsScreen(onBack: () -> Unit) {
     }
 }
 
-// Real notifications sub-screen (2026-08-12) -- same extraction as DeviceListScreen
-// above, same real /api/v1/notifications-backed data and NotificationRow, reached
-// via the "Notifications" row in the first card instead of an inline feed.
-@Composable
-internal fun NotificationListScreen(
-    notifications: List<NotificationDto>,
-    unreadCount: Int,
-    onMarkAllRead: () -> Unit,
-    onNotificationClick: (String) -> Unit,
-    onBack: () -> Unit,
-) {
-    Column(modifier = Modifier.fillMaxSize().background(Ids.colors.background)) {
-        SettingsSubScreenHeader(stringResource(R.string.settings_notifications), onBack) {
-            if (unreadCount > 0) {
-                Text(
-                    stringResource(R.string.settings_mark_all_read),
-                    color = Ids.colors.brand,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.pressScaleClickable(onClick = onMarkAllRead),
-                )
-            }
-        }
-        if (notifications.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().padding(top = 48.dp), contentAlignment = Alignment.TopCenter) {
-                Text(stringResource(R.string.settings_no_notifications), color = Ids.colors.textTertiary, fontSize = 14.sp)
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
-                contentPadding = PaddingValues(vertical = 12.dp),
-            ) {
-                items(notifications, key = { it.id }) { notification ->
-                    NotificationRow(notification, onClick = { onNotificationClick(notification.id) })
-                }
-            }
-        }
-    }
-}
-
-// Shared back-header for the two sub-screens above, matching SettingsScreen's own
-// top bar exactly (same back-button shape/position) so navigating in feels like the
-// same screen family, not a different pattern.
-@Composable
-internal fun SettingsSubScreenHeader(title: String, onBack: () -> Unit, trailing: @Composable () -> Unit = {}) {
-    // Prototype `.bar`: 70dp, 48dp back at x=6, 20sp title inline at x=58 (re-measured 2026-11-23; the old
-    // "back arrow on its own row + 28sp title" layout did not match any prototype sub-screen).
-    Row(Modifier.fillMaxWidth().height(70.dp).padding(start = 6.dp, end = 12.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(48.dp).pressScaleClickable(onClick = onBack), contentAlignment = Alignment.Center) {
-            rw.itunda.core.designsystem.components.ItundaArt("back", rw.itunda.core.designsystem.components.ItundaArtSet.Line, 24.dp, tint = Ids.colors.textPrimary)
-        }
-        Text(title, fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.3).sp, color = Ids.colors.textPrimary, modifier = Modifier.padding(start = 4.dp).weight(1f))
-        trailing()
-    }
-}
-
 // Real Toss card container (2026-08-12) -- see this screen's own doc comment for the
 // full account of why: a real, rounded, surface-colored group per section, matching
 // the actual Toss Settings screenshot's own card-list layout instead of one
