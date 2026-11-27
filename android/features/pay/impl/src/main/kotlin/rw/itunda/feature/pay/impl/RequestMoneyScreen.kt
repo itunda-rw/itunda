@@ -57,7 +57,7 @@ import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.designsystem.theme.PretendardFontFamily
 
-// Measured from the v1038 Request money CSS; these screen-only roles differ from IDS tokens.
+// v1038 palette overrides only roles that differ; shared IDS tokens are reused where they match.
 private data class RequestMoneyPalette(
     val background: Color,
     val text: Color,
@@ -162,6 +162,7 @@ fun RequestMoneyScreen(
                 )
                 Row(
                     Modifier.fillMaxWidth().padding(top = 6.dp),
+                    verticalAlignment = Alignment.Bottom,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     val amountText = if (amount == 0L) "" else formatMoney(BigDecimal.valueOf(amount))
@@ -174,7 +175,7 @@ fun RequestMoneyScreen(
                                 else -> (digits.toLongOrNull() ?: MAX_INPUT_AMOUNT).coerceAtMost(MAX_INPUT_AMOUNT)
                             }
                         },
-                        modifier = Modifier.weight(1f).alignByBaseline().semantics {
+                        modifier = Modifier.weight(1f).semantics {
                             contentDescription = strings.amountAccessibility
                         },
                         singleLine = true,
@@ -209,9 +210,10 @@ fun RequestMoneyScreen(
                         "RWF",
                         color = palette.tertiary,
                         fontSize = 20.sp,
+                        lineHeight = 24.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = PretendardFontFamily,
-                        modifier = Modifier.alignByBaseline(),
+                        modifier = Modifier.padding(bottom = 5.dp),
                     )
                 }
                 Text(
@@ -318,6 +320,7 @@ fun RequestMoneyScreen(
 }
 
 @Composable
+// v1038 uses a 44dp back target, 18sp title and 4dp gap; BackTopBar has different fixed metrics.
 private fun RequestMoneyTopBar(
     title: String,
     palette: RequestMoneyPalette,
@@ -422,6 +425,7 @@ private fun RequestMoneyNoteField(
     }
 }
 
+// v1038's 56dp actions use screen-specific tint colours not represented by IdsButton variants.
 @Composable
 private fun RequestMoneyActionButton(
     text: String,

@@ -3,6 +3,7 @@ package rw.itunda.screenshots
 import android.app.Activity
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.assertExists
@@ -31,6 +32,12 @@ import rw.itunda.core.designsystem.components.IdsToast
 import rw.itunda.core.designsystem.theme.IdsTheme
 import rw.itunda.feature.pay.impl.RequestMoneyScreen
 import rw.itunda.feature.pay.impl.RequestMoneyState
+
+private fun Context.requireActivity(): Activity {
+    var current: Context = this
+    while (current !is Activity && current is ContextWrapper) current = current.baseContext
+    return current as? Activity ?: error("No Activity in context wrapper chain")
+}
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -147,7 +154,7 @@ class RequestMoneyScreenshotTest {
         val state = RequestMoneyState(initialNote = "Lunch")
         var activity: Activity? = null
         rule.setContent {
-            activity = LocalContext.current as Activity
+            activity = LocalContext.current.requireActivity()
             IdsTheme(darkTheme = false) { RequestMoneyScreen({}, state) }
         }
         rule.onNodeWithText("Share request").performClick()
