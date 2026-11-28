@@ -151,14 +151,14 @@ fun PayDoneScreen(merchantName: String, onDone: () -> Unit, amount: Long = PayRe
         },
     ) { p ->
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
-            Box(Modifier.padding(start = 24.dp, top = 48.dp).size(88.dp).clip(androidx.compose.foundation.shape.CircleShape).background(p.brandText), contentAlignment = Alignment.Center) {
+            Box(Modifier.padding(start = 25.dp, top = 55.dp).size(73.dp).clip(androidx.compose.foundation.shape.CircleShape).background(p.brandText), contentAlignment = Alignment.Center) {
                 androidx.compose.foundation.Canvas(Modifier.size(44.dp)) {
                     val w = size.width
                     val path = androidx.compose.ui.graphics.Path().apply { moveTo(w * 0.12f, w * 0.52f); lineTo(w * 0.40f, w * 0.78f); lineTo(w * 0.88f, w * 0.22f) }
                     drawPath(path, androidx.compose.ui.graphics.Color.White, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 8.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
                 }
             }
-            Text(String.format(java.util.Locale.US, "%,d", amount) + " RWF", color = p.text, fontSize = 30.sp, lineHeight = 38.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.6).sp, modifier = Modifier.padding(start = 24.dp, top = 24.dp))
+            Text(String.format(java.util.Locale.US, "%,d", amount) + " RWF", color = p.text, fontSize = 30.sp, lineHeight = 38.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.6).sp, modifier = Modifier.padding(start = 24.dp, top = 30.dp))
             Text("Paid to $merchantName", color = p.tt, fontSize = 17.sp, lineHeight = 23.8.sp, modifier = Modifier.padding(start = 24.dp, top = 10.dp))
             Column(Modifier.padding(start = 12.dp, end = 12.dp, top = 36.dp).fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(p.soft).padding(horizontal = 21.dp, vertical = 5.dp)) {
                 listOf("From" to "itunda Pay", "Time" to time, "Reference" to ref).forEach { (a, b) ->
