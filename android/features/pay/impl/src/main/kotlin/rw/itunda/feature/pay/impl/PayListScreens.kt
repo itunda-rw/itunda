@@ -126,7 +126,7 @@ fun PayHistoryScreen(onBack: () -> Unit, onOpen: (Int) -> Unit = {}) {
 /** Prototype "Saved merchants": starred tills plus recent ones. */
 @Composable
 fun PaySavedMerchantsScreen(onBack: () -> Unit) {
-    var savedTills by remember { mutableStateOf(emptySet<String>()) }
+    val savedTills = PayReceiptState.savedTills
     PaySubScreen(onBack = onBack, title = "Saved merchants") { p ->
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
             DayHeader(p, "Saved", first = true)
@@ -135,13 +135,13 @@ fun PaySavedMerchantsScreen(onBack: () -> Unit) {
                 Text("Tap ☆ on a merchant to keep it here. Paying again takes two taps.", color = p.tt, fontSize = 16.sp, lineHeight = 22.sp, modifier = Modifier.padding(bottom = 16.dp))
             } else {
                 savedMerchants.forEach { merchant ->
-                    SavedMerchantRow(merchant, p, isSaved = true) { savedTills = savedTills - merchant.till }
+                    SavedMerchantRow(merchant, p, isSaved = true) { PayReceiptState.toggleSaved(merchant.till) }
                 }
             }
             DayHeader(p, "Recent")
             payMerchants.forEach { merchant ->
                 SavedMerchantRow(merchant, p, isSaved = merchant.till in savedTills) {
-                    savedTills = if (merchant.till in savedTills) savedTills - merchant.till else savedTills + merchant.till
+                    PayReceiptState.toggleSaved(merchant.till)
                 }
             }
         }
