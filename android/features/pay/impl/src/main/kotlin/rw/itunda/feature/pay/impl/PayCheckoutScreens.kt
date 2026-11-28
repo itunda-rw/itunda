@@ -124,51 +124,46 @@ private fun OrderLine(p: PayPalette, label: String, value: String, muted: Boolea
     }
 }
 
-/** Prototype `paydone`: success badge, amount, "Paid to", From / Time / Reference card, Save merchant, Share receipt and Done. */
+/** Prototype `paydone`: check badge, amount, "Paid to", From / Time / Reference card, Share receipt + Done, View in activity. */
 @Composable
-fun PayDoneScreen(merchantName: String, onDone: () -> Unit, amount: Long = PayReceiptState.lastAmount) {
+fun PayDoneScreen(merchantName: String, onDone: () -> Unit, amount: Long = PayReceiptState.lastAmount, onViewActivity: () -> Unit = onDone) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val time = remember { java.time.LocalTime.now().let { String.format(java.util.Locale.US, "%02d:%02d %s", if (it.hour % 12 == 0) 12 else it.hour % 12, it.minute, if (it.hour < 12) "AM" else "PM") } }
     val ref = remember { "TX" + (10_000_000..99_999_999).random() }
-    val till = payMerchants.firstOrNull { it.name == merchantName }?.till
     PaySubScreen(
         onBack = onDone,
         cta = {
-            Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 14.dp, bottom = 28.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 14.dp, bottom = 28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 val pal = rememberPayPalette()
-                Box(Modifier.weight(1f).height(58.dp).clip(RoundedCornerShape(18.dp)).background(pal.tint).pressScaleClickable {
-                    val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                        type = "text/plain"; putExtra(android.content.Intent.EXTRA_TEXT, "itunda Pay receipt\nPaid to: $merchantName\nAmount: ${String.format(java.util.Locale.US, "%,d", amount)} RWF\nTime: $time\nPaid from: itunda Pay\nReference: $ref")
-                    }
-                    ctx.startActivity(android.content.Intent.createChooser(send, null).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
-                }, contentAlignment = Alignment.Center) { Text("Share receipt", color = pal.tintFg, fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.3).sp, maxLines = 1) }
-                Box(Modifier.weight(1f)) { PayBtn("Done", pal, onClick = onDone) }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(Modifier.weight(1f).height(56.dp).clip(RoundedCornerShape(16.dp)).background(pal.tint).pressScaleClickable {
+                        val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                            type = "text/plain"; putExtra(android.content.Intent.EXTRA_TEXT, "itunda Pay receipt\nPaid to: $merchantName\nAmount: ${String.format(java.util.Locale.US, "%,d", amount)} RWF\nTime: $time\nPaid from: itunda Pay\nReference: $ref")
+                        }
+                        ctx.startActivity(android.content.Intent.createChooser(send, null).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+                    }, contentAlignment = Alignment.Center) { Text("Share receipt", color = pal.tintFg, fontSize = 17.sp, letterSpacing = (-0.17).sp, fontWeight = FontWeight.Bold, maxLines = 1) }
+                    Box(Modifier.weight(1f)) { PayBtn("Done", pal, height = 56.dp, radius = 16.dp, size = 17, onClick = onDone) }
+                }
+                Box(Modifier.padding(top = 8.dp).height(44.dp).pressScaleClickable(onClick = onViewActivity).padding(horizontal = 16.dp), contentAlignment = Alignment.Center) {
+                    Text("View in activity", color = pal.brandText, fontSize = 15.sp, letterSpacing = (-0.32).sp, fontWeight = FontWeight.Bold)
+                }
             }
         },
     ) { p ->
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
-            Column(Modifier.fillMaxWidth().padding(top = 31.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                ItundaArt("success3d", ItundaArtSet.Proto, 132.dp)
-                Text(String.format(java.util.Locale.US, "%,d", amount) + " RWF", color = p.text, fontSize = 34.sp, lineHeight = 42.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.8).sp, modifier = Modifier.padding(top = 28.dp))
-                Text("Paid to $merchantName", color = p.tt, fontSize = 16.sp, modifier = Modifier.padding(top = 8.dp))
+            Box(Modifier.padding(start = 24.dp, top = 48.dp).size(88.dp).clip(androidx.compose.foundation.shape.CircleShape).background(p.tintFg), contentAlignment = Alignment.Center) {
+                ItundaArt("check", ItundaArtSet.Line, 44.dp, tint = androidx.compose.ui.graphics.Color.White)
             }
-            Column(Modifier.padding(start = 24.dp, end = 24.dp, top = 44.dp).fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(p.soft).padding(horizontal = 20.dp, vertical = 4.dp)) {
+            Text(String.format(java.util.Locale.US, "%,d", amount) + " RWF", color = p.text, fontSize = 30.sp, lineHeight = 38.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.6).sp, modifier = Modifier.padding(start = 24.dp, top = 24.dp))
+            Text("Paid to $merchantName", color = p.tt, fontSize = 17.sp, lineHeight = 23.8.sp, modifier = Modifier.padding(start = 24.dp, top = 10.dp))
+            Column(Modifier.padding(start = 12.dp, end = 12.dp, top = 36.dp).fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(p.soft).padding(horizontal = 21.dp, vertical = 5.dp)) {
                 listOf("From" to "itunda Pay", "Time" to time, "Reference" to ref).forEach { (a, b) ->
                     Row(Modifier.fillMaxWidth().height(52.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(a, color = p.tt, fontSize = 15.sp, lineHeight = 21.sp, modifier = Modifier.weight(1f))
+                        Text(a, color = p.tt, fontSize = 17.sp, lineHeight = 23.8.sp, modifier = Modifier.weight(1f))
                         Text(b, color = p.text, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
-            if (till != null) {
-                val saved = till in PayReceiptState.savedTills
-                Box(Modifier.fillMaxWidth().padding(top = 16.dp), contentAlignment = Alignment.Center) {
-                    Box(Modifier.height(44.dp).clip(RoundedCornerShape(20.dp)).background(if (saved) p.tint else p.soft).pressScaleClickable { PayReceiptState.toggleSaved(till) }.padding(horizontal = 20.dp), contentAlignment = Alignment.Center) {
-                        Text(if (saved) "★ Saved" else "☆ Save merchant", color = if (saved) p.tintFg else p.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                }
-            }
-            Text("Sample payment. No real money moved.", color = p.tt, fontSize = 13.sp, lineHeight = 18.sp, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp))
         }
     }
 }
