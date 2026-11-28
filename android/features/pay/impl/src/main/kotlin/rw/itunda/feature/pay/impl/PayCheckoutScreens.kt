@@ -126,9 +126,8 @@ private fun OrderLine(p: PayPalette, label: String, value: String, muted: Boolea
 
 /** Prototype `paydone`: success badge, amount, "Paid to", From / Time / Reference card, Save merchant, Share receipt and Done. */
 @Composable
-fun PayDoneScreen(merchantName: String, onDone: () -> Unit) {
+fun PayDoneScreen(merchantName: String, onDone: () -> Unit, amount: Long = PayReceiptState.lastAmount) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
-    val amount = PayReceiptState.lastAmount
     val time = remember { java.time.LocalTime.now().let { String.format(java.util.Locale.US, "%02d:%02d %s", if (it.hour % 12 == 0) 12 else it.hour % 12, it.minute, if (it.hour < 12) "AM" else "PM") } }
     val ref = remember { "TX" + (10_000_000..99_999_999).random() }
     val till = payMerchants.firstOrNull { it.name == merchantName }?.till

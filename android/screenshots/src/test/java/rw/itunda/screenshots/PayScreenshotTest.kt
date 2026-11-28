@@ -131,8 +131,8 @@ class PayScreenshotTest {
     @Test fun tillDark() = shotDark("till") { PayTillScreen({}, {}) }
     @Test fun order() = shot("order") { PayOrderScreen("Nyamirambo Coffee House", {}, {}) }
     @Test fun orderDark() = shotDark("order") { PayOrderScreen("Nyamirambo Coffee House", {}, {}) }
-    @Test fun done() = shot("done") { PayDoneScreen("Nyamirambo Coffee House", {}) }
-    @Test fun doneDark() = shotDark("done") { PayDoneScreen("Nyamirambo Coffee House", {}) }
+    @Test fun done() = shot("done") { PayDoneScreen("Nyamirambo Coffee House", {}, 7_000L) }
+    @Test fun doneDark() = shotDark("done") { PayDoneScreen("Nyamirambo Coffee House", {}, 7_000L) }
     @Test fun history() = shot("history") { PayHistoryScreen({}) }
     @Test fun historyDark() = shotDark("history") { PayHistoryScreen({}) }
     @Test fun historyFiltersExposeSelectionAndRefundEmptyState() {
