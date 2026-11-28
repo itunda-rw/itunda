@@ -106,7 +106,7 @@ fun MiniAppsHubScreen(
         Row(Modifier.padding(top = 14.dp).fillMaxWidth()) {
             listOf("Featured", "Games", "Points", "Categories").forEachIndexed { i, l ->
                 Box(Modifier.weight(1f).height(46.dp).pressScaleClickable { tab = i }, contentAlignment = Alignment.Center) {
-                    Text(l, color = if (tab == i) Ids.colors.textPrimary else Ids.colors.textTertiary, fontSize = 15.sp, lineHeight = 21.sp, letterSpacing = (-0.18).sp, fontWeight = FontWeight.Bold)
+                    Text(l, color = if (tab == i) Ids.colors.textPrimary else Ids.colors.textSecondary, fontSize = 15.sp, lineHeight = 21.sp, letterSpacing = (-0.18).sp, fontWeight = FontWeight.Bold)
                     if (tab == i) Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth(0.72f).height(3.dp).clip(RoundedCornerShape(2.dp)).background(Ids.colors.textPrimary))
                 }
             }
@@ -136,7 +136,7 @@ private fun EmojiTile(emoji: String, box: Int, font: Int, radius: Int = 16) {
 @Composable
 private fun MiniAppRow(rank: Int, a: MiniApp, onStart: () -> Unit) {
     Row(Modifier.padding(horizontal = 12.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).padding(horizontal = 24.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text("$rank", color = Ids.colors.textTertiary, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center, modifier = Modifier.width(20.dp))
+        Text("$rank", color = Ids.colors.textSecondary, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center, modifier = Modifier.width(20.dp))
         EmojiTile(a.emoji, 56, 28)
         Column(Modifier.weight(1f)) {
             Text(a.name, color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 24.sp, letterSpacing = (-0.2).sp, fontWeight = FontWeight.SemiBold)
