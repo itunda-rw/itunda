@@ -35,7 +35,9 @@ import java.util.Locale
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [34], qualifiers = "w390dp-h844dp-xxhdpi")
+// Robolectric reserves 56dp for system bars in the Compose content root. Use a 900dp
+// device so the captured root is the prototype’s 844dp viewport, matching the HTML at 1 CSS px = 1 dp.
+@Config(sdk = [34], qualifiers = "w390dp-h900dp-xxhdpi")
 class EatsCheckoutPrototypeScreenshotTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
 
