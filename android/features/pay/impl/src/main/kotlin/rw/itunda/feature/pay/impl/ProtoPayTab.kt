@@ -85,9 +85,9 @@ fun ProtoPayTab(
     }
     when (sub) {
         PaySub.SETTINGS -> { PaySettingsScreen(onBack = { sub = null }, onAllSettings = onSettings); return }
-        PaySub.AMOUNT -> { PayAmountScreen(merchant, onBack = { sub = null }, onPay = { sub = PaySub.DONE }); return }
+        PaySub.AMOUNT -> { PayAmountScreen(merchant, onBack = { sub = null }, onPay = { PayReceiptState.lastAmount = it; sub = PaySub.DONE }); return }
         PaySub.TILL -> { PayTillScreen(onBack = { sub = null }, onNext = { merchant = it.name; sub = PaySub.ORDER }); return }
-        PaySub.ORDER -> { PayOrderScreen(merchant, onBack = { sub = null }, onPay = { sub = PaySub.DONE }); return }
+        PaySub.ORDER -> { PayOrderScreen(merchant, onBack = { sub = null }, onPay = { PayReceiptState.lastAmount = 7_000L; sub = PaySub.DONE }); return }
         PaySub.DONE -> { PayDoneScreen(merchant, onDone = { sub = null }); return }
         PaySub.HISTORY -> { PayHistoryScreen(onBack = { sub = null }, onOpen = { receipt = it; sub = PaySub.RECEIPT }); return }
         PaySub.RECEIPT -> { PayReceiptScreen(receipt, onBack = { sub = PaySub.HISTORY }, onPayAgain = { merchant = it; sub = PaySub.AMOUNT }); return }

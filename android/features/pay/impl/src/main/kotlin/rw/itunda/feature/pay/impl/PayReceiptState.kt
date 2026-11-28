@@ -18,6 +18,8 @@ internal val PAY_REFUND_REASONS = listOf(
 /** Screen-spanning demo state for receipts: starred merchants (shared with Saved merchants) and refund cases by receipt index. */
 internal object PayReceiptState {
     var savedTills by mutableStateOf(emptySet<String>())
+    /** Amount of the payment that just completed, shown on the Paid screen. */
+    var lastAmount by mutableStateOf(0L)
     val cases = mutableStateMapOf<Int, PayRefundCase>()
 
     fun toggleSaved(till: String) { savedTills = if (till in savedTills) savedTills - till else savedTills + till }
