@@ -31,9 +31,9 @@ import java.util.UUID
 // WeeklySavingsCreateContent.kt's own split, and this exact file's own doc comment
 // already established this precedent on 2026-08-26 for Grow31IntroContent.kt.
 @Composable
-internal fun Grow31CreateContent(onCreated: () -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var dailyAmount by remember { mutableStateOf("") }
+internal fun Grow31CreateContent(initialAmount: String = "", onCreated: () -> Unit) {
+    var name by remember { mutableStateOf("31-day savings") }
+    var dailyAmount by remember { mutableStateOf(initialAmount) }
     var submitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()

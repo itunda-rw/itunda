@@ -780,9 +780,9 @@ data class ConversationSummaryDto(
     val lastMessagePreview: String?,
     val unreadCount: Int,
     val quiet: Boolean = false,
+    val source: String? = null, val neighborhood: String? = null, // chat origin: "market"/"jobs"/"homes"/"neighbours" (null = plain) + other party's neighbourhood
     val pinnedMessageId: String? = null,
-    // Real recoverable archive (2026-08-05) -- see backend ConversationPreference
-    // .archived's own doc comment. Same private-to-me model as quiet.
+    // Real recoverable archive (2026-08-05), private-to-me like quiet -- see backend ConversationPreference.archived.
     val archived: Boolean = false,
     // Real KakaoTalk 채팅방 상단 고정 (pin chat room to top) (2026-08-18) -- see backend
     // MessagingController's own doc comment distinguishing this from the existing
@@ -1099,7 +1099,7 @@ data class SendEmoticonRequest(val emoticonId: String)
 // Real 동네생활-style community board (2026-07-19) -- see rw.itunda.community.web.CommunityController.
 data class CommunityCategoryDto(val id: String, val label: String)
 data class CommunityPostDto(
-    val id: String, val authorId: String, val category: String, val title: String, val body: String,
+    val id: String, val authorId: String, val authorName: String? = null, val category: String, val title: String, val body: String,
     val status: String, val likeCount: Long, val commentCount: Long, val createdAt: String,
     val latitude: Double? = null, val longitude: Double? = null,
     // groupConversationId added 2026-07-24 -- see backend CommunityPost.kt's own doc

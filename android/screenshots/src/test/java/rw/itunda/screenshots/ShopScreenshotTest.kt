@@ -1,0 +1,87 @@
+package rw.itunda.screenshots
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.unit.dp
+import com.github.takahirom.roborazzi.captureRoboImage
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.theme.IdsTheme
+import rw.itunda.feature.shop.impl.ShopHomeContent
+import rw.itunda.feature.shop.impl.ShopProductContent
+import rw.itunda.feature.shop.impl.ShopCartContent
+import rw.itunda.feature.shop.impl.ShopProtoHome
+
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [34], qualifiers = "w390dp-h844dp-xxhdpi")
+class ShopScreenshotTest {
+    @get:Rule val rule = createComposeRule()
+
+    @Test fun shopLight() {
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                Box(Modifier.fillMaxSize().background(Ids.colors.background).padding(20.dp)) { ShopProtoHome() }
+            }
+        }
+        rule.onRoot().captureRoboImage("build/screenshots/shop-light.png")
+    }
+
+    @Test fun shopHomeLight() {
+        rule.setContent { IdsTheme(darkTheme = false) { ShopHomeContent(dark = false) } }
+        rule.onRoot().captureRoboImage("build/screenshots/shop-home-light.png")
+    }
+
+    @Test fun shopHomeDark() {
+        rule.setContent { IdsTheme(darkTheme = true) { ShopHomeContent(dark = true) } }
+        rule.onRoot().captureRoboImage("build/screenshots/shop-home-dark.png")
+    }
+
+    @Test fun shopProductLight() {
+        rule.setContent { IdsTheme(darkTheme = false) { ShopProductContent(0, dark = false) } }
+        rule.onRoot().captureRoboImage("build/screenshots/shop-product-light.png")
+    }
+
+    @Test fun shopProductDark() {
+        rule.setContent { IdsTheme(darkTheme = true) { ShopProductContent(0, dark = true) } }
+        rule.onRoot().captureRoboImage("build/screenshots/shop-product-dark.png")
+    }
+
+    @Config(qualifiers = "w390dp-h2100dp-xxhdpi")
+    @Test fun shopProductFullLight() {
+        rule.setContent { IdsTheme(darkTheme = false) { ShopProductContent(0, dark = false) } }
+        rule.onRoot().captureRoboImage("build/screenshots/shop-product-full-light.png")
+    }
+
+    @Test fun shopCartLight() {
+        rule.setContent { IdsTheme(darkTheme = false) { ShopCartContent(listOf(0 to 2, 1 to 1), dark = false) } }
+        rule.onRoot().captureRoboImage("build/screenshots/shop-cart-light.png")
+    }
+
+    @Test fun shopCartDark() {
+        rule.setContent { IdsTheme(darkTheme = true) { ShopCartContent(listOf(0 to 2, 1 to 1), dark = true) } }
+        rule.onRoot().captureRoboImage("build/screenshots/shop-cart-dark.png")
+    }
+
+    @Config(qualifiers = "w390dp-h1200dp-xxhdpi")
+    @Test fun shopCartFullLight() {
+        rule.setContent { IdsTheme(darkTheme = false) { ShopCartContent(listOf(0 to 2, 1 to 1), dark = false) } }
+        rule.onRoot().captureRoboImage("build/screenshots/shop-cart-full-light.png")
+    }
+
+    @Config(qualifiers = "w390dp-h2100dp-xxhdpi")
+    @Test fun shopProductFullDark() {
+        rule.setContent { IdsTheme(darkTheme = true) { ShopProductContent(0, dark = true) } }
+        rule.onRoot().captureRoboImage("build/screenshots/shop-product-full-dark.png")
+    }
+}

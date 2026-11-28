@@ -246,12 +246,12 @@ fun NewAutoTransferScreen(onBack: () -> Unit, onCreated: () -> Unit) {
                         val selected = frequency == f
                         Text(
                             label,
-                            color = if (selected) Color.White else Ids.colors.textPrimary,
+                            color = if (selected) Ids.colors.background else Ids.colors.textPrimary,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 13.sp,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(999.dp))
-                                .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
+                                .background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
                                 .pressScaleClickable { frequency = f }
                                 .padding(horizontal = 16.dp, vertical = 8.dp),
                         )
@@ -265,12 +265,12 @@ fun NewAutoTransferScreen(onBack: () -> Unit, onCreated: () -> Unit) {
                             val selected = dayOfWeek == d
                             Text(
                                 label,
-                                color = if (selected) Color.White else Ids.colors.textPrimary,
+                                color = if (selected) Ids.colors.background else Ids.colors.textPrimary,
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 12.sp,
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(999.dp))
-                                    .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
+                                    .background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
                                     .pressScaleClickable { dayOfWeek = d }
                                     .padding(horizontal = 10.dp, vertical = 6.dp),
                             )

@@ -5,11 +5,19 @@ import rw.itunda.core.designsystem.components.formatMoney
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -64,12 +72,12 @@ import java.io.IOException
 // (portfolio + add-funds), and StockDetailScreen.kt (buy/sell + price alerts) to stay
 // under the 500-line file-size-lint cap.
 
-internal enum class InvestMode { MARKET, PORTFOLIO, WATCHLIST }
+internal enum class InvestMode { PORTFOLIO, MARKET, ACTIVITY }
 
 @Composable
 fun InvestScreen(onBack: () -> Unit) {
     BackHandler(onBack = onBack)
-    var mode by remember { mutableStateOf(InvestMode.MARKET) }
+    var mode by remember { mutableStateOf(InvestMode.PORTFOLIO) }
     var selectedStock by remember { mutableStateOf<StockDto?>(null) }
     var watchlist by remember { mutableStateOf<List<StockDto>?>(null) }
     val coroutineScope = rememberCoroutineScope()
@@ -87,7 +95,7 @@ fun InvestScreen(onBack: () -> Unit) {
     LaunchedEffect(Unit) { loadWatchlist() }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        BackTopBar(title = "Invest", onBack = if (selectedStock != null) ({ selectedStock = null }) else onBack)
+        rw.itunda.core.designsystem.components.ProtoTopBar("Invest", if (selectedStock != null) ({ selectedStock = null }) else onBack)
 
         if (selectedStock != null) {
             StockDetailContent(
@@ -99,37 +107,91 @@ fun InvestScreen(onBack: () -> Unit) {
             return@Column
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp)
-                .clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).padding(4.dp),
-        ) {
-            listOf(
-                InvestMode.MARKET to stringResource(R.string.invest_tab_market),
-                InvestMode.PORTFOLIO to stringResource(R.string.invest_tab_portfolio),
-                InvestMode.WATCHLIST to stringResource(R.string.invest_tab_watchlist),
-            ).forEach { (m, label) ->
+        InvestTabs(mode) { mode = it }
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = Ids.layout.screenHorizontal)) {
+            when (mode) {
+                InvestMode.MARKET -> MarketContent(watchlist, onOpen = { selectedStock = it })
+                InvestMode.PORTFOLIO -> PortfolioContent(onBrowse = { mode = InvestMode.MARKET })
+                InvestMode.ACTIVITY -> InvestActivityEmpty(onBrowse = { mode = InvestMode.MARKET })
+            }
+        }
+        if (mode == InvestMode.PORTFOLIO) InvestBottomCta(onTbills = { mode = InvestMode.MARKET }, onBrowse = { mode = InvestMode.MARKET })
+    }
+}
+
+/** Static empty-portfolio composition used by the screenshot harness (same pieces as the live screen, no network). */
+@Composable
+fun InvestPortfolioPreview() {
+    Column(Modifier.fillMaxSize().background(Ids.colors.background)) {
+        rw.itunda.core.designsystem.components.ProtoTopBar("Invest") {}
+        InvestTabs(InvestMode.PORTFOLIO) {}
+        Column(Modifier.weight(1f).padding(horizontal = Ids.layout.screenHorizontal)) {
+            Column(Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 10.dp)) {
+                Text("Invested value", color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 20.sp)
+                Text("0 RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 36.sp, lineHeight = 44.sp, letterSpacing = (-1.2).sp)
+                Spacer(Modifier.height(20.dp))
+                InvestIndexHeader()
+            }
+            InvestStartCard {}
+        }
+        InvestBottomCta({}, {})
+    }
+}
+
+/** Prototype tabs: underline style on Portfolio (43.8dp strip, 17sp/700), pill segmented control on Market/Activity. */
+@Composable
+private fun InvestTabs(mode: InvestMode, onMode: (InvestMode) -> Unit) {
+    val items = listOf(InvestMode.PORTFOLIO to "Portfolio", InvestMode.MARKET to "Market", InvestMode.ACTIVITY to "Activity")
+    if (mode == InvestMode.PORTFOLIO) {
+        Row(Modifier.fillMaxWidth().padding(start = 25.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+            items.forEach { (m, label) ->
                 val selected = mode == m
-                Box(
-                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
-                        .background(if (selected) Ids.colors.brand else Color.Transparent)
-                        .pressScaleClickable { mode = m }.padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Column(Modifier.width(IntrinsicSize.Max).pressScaleClickable { onMode(m) }.padding(top = 7.dp)) {
+                    Text(label, color = if (selected) Ids.colors.textPrimary else Ids.colors.textTertiary, fontSize = 17.sp, lineHeight = 23.8.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.176).sp)
+                    Spacer(Modifier.height(4.dp))
+                    Box(Modifier.height(2.dp).fillMaxWidth().background(if (selected) Ids.colors.textPrimary else Color.Transparent))
                 }
             }
         }
-
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            when (mode) {
-                InvestMode.MARKET -> item { MarketContent(watchlist, onOpen = { selectedStock = it }) }
-                InvestMode.PORTFOLIO -> item { PortfolioContent() }
-                InvestMode.WATCHLIST -> item { WatchlistContent(watchlist, onOpen = { selectedStock = it }) }
+        androidx.compose.material3.HorizontalDivider(color = Ids.colors.divider, thickness = 0.5.dp)
+    } else {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp).fillMaxWidth().height(56.dp).clip(RoundedCornerShape(28.dp)).background(Ids.colors.surfaceSoft).padding(7.dp)) {
+            items.forEach { (m, label) ->
+                val selected = mode == m
+                Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(21.dp)).background(if (selected) Ids.colors.brand else Color.Transparent).pressScaleClickable { onMode(m) }, contentAlignment = Alignment.Center) {
+                    Text(label, color = if (selected) Color(0xFF17171C) else Ids.colors.textTertiary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun InvestActivityEmpty(onBrowse: () -> Unit) {
+    Text("History", color = Ids.colors.textPrimary, fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.3).sp, modifier = Modifier.padding(top = 12.dp))
+    Column(Modifier.fillMaxWidth().padding(top = 56.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        rw.itunda.core.designsystem.components.ItundaArt("receipt", rw.itunda.core.designsystem.components.ItundaArtSet.Proto, 96.dp, fit = true)
+        Text("No trades yet. Your buys, sells, dividends and Treasury bills show up here.", color = Ids.colors.textTertiary, fontSize = 17.sp, lineHeight = 24.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.padding(top = 20.dp, start = 16.dp, end = 16.dp))
+    }
+    Box(Modifier.padding(top = 40.dp).fillMaxWidth().height(58.dp).clip(RoundedCornerShape(18.dp)).background(Ids.colors.brand).pressScaleClickable(onClick = onBrowse), contentAlignment = Alignment.Center) {
+        Text("Browse stocks", color = Color(0xFF17171C), fontSize = 18.sp, letterSpacing = (-0.36).sp, fontWeight = FontWeight.Bold)
+    }
+    InvestFinePrint()
+}
+
+@Composable
+internal fun InvestFinePrint() {
+    Text("Money for buying comes from your itunda Bank balance. itunda is not a licensed broker and this is not investment advice.", color = Ids.colors.textTertiary, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 24.dp, bottom = 24.dp))
+}
+
+@Composable
+private fun InvestBottomCta(onTbills: () -> Unit, onBrowse: () -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 14.dp, bottom = 28.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Box(Modifier.weight(1f).height(58.dp).clip(RoundedCornerShape(18.dp)).background(Color(0xFFEEEDFF)).pressScaleClickable(onClick = onTbills), contentAlignment = Alignment.Center) {
+            Text("Treasury bills", color = Color(0xFF5B54D6), fontSize = 18.sp, letterSpacing = (-0.36).sp, fontWeight = FontWeight.SemiBold)
+        }
+        Box(Modifier.weight(1f).height(58.dp).clip(RoundedCornerShape(18.dp)).background(Ids.colors.brand).pressScaleClickable(onClick = onBrowse), contentAlignment = Alignment.Center) {
+            Text("Browse stocks", color = Color(0xFF17171C), fontSize = 18.sp, letterSpacing = (-0.36).sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -162,21 +224,22 @@ private fun MarketContent(watchlist: List<StockDto>?, onOpen: (StockDto) -> Unit
         error != null -> ErrorCard(error!!, onRetry = ::load)
         stocks == null -> SkeletonBlock(height = 220.dp)
         else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("ALL" to "All", "RSE" to "Rwanda (RSE)", "NASDAQ" to "Overseas").forEach { (id, label) ->
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                listOf("ALL" to "Stocks", "BONDS" to "Bonds", "IPO" to "IPO", "WATCH" to "Watchlist").forEach { (id, label) ->
                     val selected = marketFilter == id
                     Text(
-                        label, fontSize = 13.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                        color = if (selected) Ids.colors.brand else Ids.colors.textSecondary,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(999.dp))
-                            .background(if (selected) Ids.colors.brand.copy(alpha = 0.12f) else Color.Transparent)
+                        label, fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                        color = if (selected) Ids.colors.background else Ids.colors.textTertiary,
+                        modifier = Modifier.height(40.dp).clip(RoundedCornerShape(20.dp))
+                            .background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
                             .pressScaleClickable { marketFilter = id }
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                            .padding(horizontal = 18.dp).wrapContentHeight(Alignment.CenterVertically),
                     )
                 }
             }
-            stocks!!.filter { marketFilter == "ALL" || it.market == marketFilter }
+            if (marketFilter == "BONDS" || marketFilter == "IPO") Text(if (marketFilter == "BONDS") "Treasury bills and bonds will list here." else "No IPOs open right now.", color = Ids.colors.textTertiary, fontSize = 15.sp, lineHeight = 22.sp)
+            if (marketFilter == "WATCH") WatchlistContent(watchlist, onOpen = onOpen)
+            if (marketFilter == "ALL") stocks!!
                 .forEach { StockRow(it, isWatched = watchlist?.any { w -> w.id == it.id } == true, onClick = { onOpen(it) }) }
         }
     }

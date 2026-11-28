@@ -1,0 +1,143 @@
+package rw.itunda.feature.menu.impl
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import rw.itunda.core.designsystem.theme.IdsIcons
+import rw.itunda.core.designsystem.components.ItundaArt
+import rw.itunda.core.designsystem.components.ItundaArtSet
+import rw.itunda.core.designsystem.components.pressScaleClickable
+import rw.itunda.core.designsystem.theme.Ids
+
+/** One tappable row of the Explore catalogue. [key] is what the host maps to a destination. */
+internal data class ExploreRow(val key: String, val title: String, val subtitle: String, val art: String)  // art = "<set>/<name>", see ItundaArt
+internal data class ExploreSection(val title: String, val rows: List<ExploreRow>)
+
+// The prototype's own catalogue (v1038), in its order.
+internal val exploreSections = listOf(
+    ExploreSection("Everyday", listOf(ExploreRow("shop", "Shop", "Products · Deals", "color/bag"), ExploreRow("eats", "Eats", "Food · Delivery", "color/restaurant"), ExploreRow("front", "Front", "Eat here · To go", "color/receipt"))),
+    ExploreSection("Your neighbourhood", listOf(ExploreRow("marketplace", "Marketplace", "Buy · Sell", "color/market"), ExploreRow("community", "Community", "Posts · Q&A", "color/chat"), ExploreRow("jobs", "Jobs", "Gigs · Part-time", "color/briefcase"), ExploreRow("property", "Property", "Rent · Buy", "color/house"), ExploreRow("places", "Places", "Discover · Reserve · Pay", "color/market"))),
+    ExploreSection("Money tools", listOf(ExploreRow("benefits", "Benefits", "Points · Coupons", "color/gift"), ExploreRow("invest", "Invest", "RSE · Stocks", "color/chart"), ExploreRow("week26", "26-Week Savings", "Auto-save", "color/money"), ExploreRow("day31", "31-Day Savings", "Daily streak", "color/money"))),
+    ExploreSection("Accounts & cards", listOf(ExploreRow("open", "Open account", "itunda · Other banks", "color/bank"), ExploreRow("assets", "My assets", "Accounts · Loans · Cards", "proto/my-assets"), ExploreRow("card", "Card", "Limits · Freeze", "proto/card"), ExploreRow("transit", "Transit", "Bus fare", "color/transit"), ExploreRow("spending", "Spending", "By category", "proto/spending"), ExploreRow("group", "Group account", "Dues · Split", "proto/group-accounts"), ExploreRow("family", "Family", "Guardian · Child", "proto/youth-account"), ExploreRow("fx", "Foreign currency", "USD · EUR · GBP", "color/globe"), ExploreRow("subs", "Subscriptions", "Recurring", "color/clock"), ExploreRow("cert", "Digital certificate", "Sign", "color/verified"))),
+    ExploreSection("Send & pay", listOf(ExploreRow("transfer", "Transfer", "Auto · Split", "color/send"), ExploreRow("request", "Request money", "Payment code", "color/receipt"), ExploreRow("topup", "Auto top-up", "Refill", "color/wallet"), ExploreRow("mobile", "Mobile plan", "MTN · Airtel", "color/airtime"))),
+    ExploreSection("Save & grow", listOf(ExploreRow("deposit", "12-month deposit", "Interest upfront", "proto/12-month-deposit"), ExploreRow("youth", "Youth account", "Ages 7-18", "proto/youth-account"), ExploreRow("ikimina", "Ikimina", "Group savings", "proto/ikimina"), ExploreRow("sacco", "SACCO shares", "Dividends", "proto/sacco-shares"))),
+    ExploreSection("Borrow", listOf(ExploreRow("loan", "Get a loan", "Personal · SME", "proto/get-a-loan"), ExploreRow("credit", "Credit score", "Free check", "proto/my-credit-score"), ExploreRow("harvest", "Harvest advance", "Coffee co-op", "proto/harvest-advance"), ExploreRow("vup", "VUP Financial Services", "Microloan", "proto/vup-financial-services"), ExploreRow("student", "Student loan", "BRD", "proto/student-loan"), ExploreRow("moto", "Moto-Taxi Ownership", "Down payment", "proto/moto-taxi-ownership"))),
+    ExploreSection("Transport", listOf(ExploreRow("rides", "Rides", "Ride · Drive", "color/moto"), ExploreRow("bike", "Bike rental", "Bikes · Scooters", "color/bike"), ExploreRow("bus", "Bus", "Intercity seats", "color/bus-stop"), ExploreRow("directions", "Directions", "Bus · Car · Walk · Bike", "color/pin"))),
+    ExploreSection("Support", listOf(ExploreRow("chat", "Live chat", "Call support", "color/chat"), ExploreRow("report", "Report an issue with a transaction", "", "proto/report-a-problem"), ExploreRow("news", "Announcements", "", "color/bell"), ExploreRow("ussd", "USSD access", "Any phone", "faces/ussd-phone")))
+)
+
+private val quickTiles = listOf(Triple("bank", "color/bank", "Bank"), Triple("apps", "color/community", "Mini apps"), Triple("games", "color/celebrate", "Games"), Triple("verify", "color/verify-ok", "Verify"))
+
+/** Draws an `<set>/<name>` reference from the itunda art library. */
+@Composable
+internal fun ExploreArt(art: String, size: androidx.compose.ui.unit.Dp) {
+    val (set, name) = art.substringBefore('/') to art.substringAfter('/')
+    val artSet = when (set) { "proto" -> ItundaArtSet.Proto; "faces" -> ItundaArtSet.Face; else -> ItundaArtSet.Color }
+    ItundaArt(name, artSet, size)
+}
+
+/** Explore tab in the prototype's layout: bar, search, quick tiles, offers, white section cards. */
+@Composable
+fun ProtoExploreContent(
+    query: String,
+    onQuery: (String) -> Unit,
+    onOpen: (String) -> Unit,
+    onHelp: () -> Unit,
+    onSettings: () -> Unit,
+) {
+    val q = query.trim()
+    val sections = if (q.isEmpty()) exploreSections else listOf(
+        ExploreSection("Results", exploreSections.flatMap { it.rows }.filter { it.title.contains(q, true) || it.subtitle.contains(q, true) }),
+    )
+    val dark = Ids.colors.background.luminance() < 0.5f
+    val headerBg = if (dark) androidx.compose.ui.graphics.Color(0xFF101013) else Ids.colors.surfaceSoft
+    val bodyBg = if (dark) androidx.compose.ui.graphics.Color(0xFF222227) else Ids.colors.surfaceSoft
+    Column(Modifier.fillMaxSize().background(bodyBg)) {
+    Box(Modifier.fillMaxWidth().background(headerBg).height(70.dp).padding(top = 22.dp, start = 24.dp, end = 18.dp)) {
+        AllTopBar(onOpenAuthentication = { onOpen("verify") }, onOpenHelp = onHelp, onOpenSettings = onSettings, onOpenMiniApps = { onOpen("apps") })
+    }
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 15.dp, end = 15.dp, top = 12.dp, bottom = 96.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item { MenuSearchBar(query = query, onQueryChange = onQuery, placeholder = "Search") }
+        if (q.isEmpty()) {
+            item { QuickTiles(onOpen) }
+            item { Box(Modifier.padding(bottom = 8.dp)) { ExploreOffersCarousel() } }
+        }
+        items(sections) { section -> SectionCard(section, onOpen) }
+    }
+    }
+}
+
+@Composable
+private fun QuickTiles(onOpen: (String) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(exploreCard()).padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 19.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        quickTiles.forEach { (key, art, label) ->
+            Column(Modifier.width(84.5.dp).pressScaleClickable { onOpen(key) }, horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.padding(top = 4.dp).size(48.dp).clip(RoundedCornerShape(18.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
+                    ExploreArt(art, 30.dp)
+                }
+                Spacer(Modifier.height(7.dp))
+                Text(label, color = Ids.colors.textPrimary, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionCard(section: ExploreSection, onOpen: (String) -> Unit) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(exploreCard()).padding(top = 20.dp, bottom = 6.dp)) {
+        Text(
+            section.title, color = Ids.colors.textPrimary, fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp,
+            modifier = Modifier.padding(start = 20.dp).height(36.dp),
+        )
+        section.rows.forEach { row ->
+            Row(
+                Modifier.fillMaxWidth().height(64.dp).pressScaleClickable { onOpen(row.key) }.padding(horizontal = 32.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
+                    ExploreArt(row.art, 28.dp)
+                }
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(row.title, color = Ids.colors.textPrimary, fontSize = 17.sp, lineHeight = 24.sp, letterSpacing = (-0.3).sp, fontWeight = FontWeight.Bold)
+                    if (row.subtitle.isNotEmpty()) Text(row.subtitle, color = Ids.colors.textTertiary, fontSize = 14.sp)
+                }
+                Icon(IdsIcons.ChevronRight, null, Modifier.size(18.dp), tint = androidx.compose.ui.graphics.lerp(Ids.colors.textTertiary, Ids.colors.surface, 0.45f))
+            }
+        }
+    }
+}
+
+/** Prototype card colour: dark mode cards (#17171C) sit darker than the page (#222227). */
+@Composable
+internal fun exploreCard(): androidx.compose.ui.graphics.Color =
+    if (Ids.colors.background.luminance() < 0.5f) androidx.compose.ui.graphics.Color(0xFF17171C) else Ids.colors.surface

@@ -148,6 +148,9 @@ import java.util.UUID
 internal fun PayByCodeCard(
     deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
     facePayEnrolled: Boolean,
+    flashEnabled: Boolean = false,
+    onPhotoPickerReady: (((() -> Unit)) -> Unit)? = null,
+    onFlashAvailability: ((Boolean) -> Unit)? = null,
     onPaid: (CollectPaymentResultDto) -> Unit,
 ) {
     var code by remember { mutableStateOf("") }
@@ -287,6 +290,9 @@ internal fun PayByCodeCard(
 internal fun PayByScanCard(
     deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
     facePayEnrolled: Boolean,
+    flashEnabled: Boolean = false,
+    onPhotoPickerReady: (((() -> Unit)) -> Unit)? = null,
+    onFlashAvailability: ((Boolean) -> Unit)? = null,
     onPaid: (CollectPaymentResultDto) -> Unit,
 ) {
     var scannedIntentId by remember { mutableStateOf<String?>(null) }
@@ -375,7 +381,6 @@ internal fun PayByScanCard(
     // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- a lone
     // form section (docs/UI_UX_GUIDELINES.md §10).
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Scan a merchant's QR", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             val currentPreview = preview
             when {
                 currentPreview != null -> {
@@ -406,14 +411,8 @@ internal fun PayByScanCard(
                     }
                 }
                 else -> {
-                    Text(
-                        "Point your camera at the merchant's payment QR code.",
-                        color = Ids.colors.textSecondary, fontSize = 12.sp,
-                    )
-                    CameraQrScanner(
-                        onScanned = ::handleScanned,
-                        modifier = Modifier.fillMaxWidth().height(280.dp).clip(RoundedCornerShape(12.dp)),
-                    )
+                    ScanHeading()
+                    ScanFrame { CameraQrScanner(onScanned = ::handleScanned, modifier = Modifier.fillMaxSize(), flashEnabled = flashEnabled, onPhotoPickerReady = onPhotoPickerReady, onFlashAvailability = onFlashAvailability) }
                     error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
                 }
             }

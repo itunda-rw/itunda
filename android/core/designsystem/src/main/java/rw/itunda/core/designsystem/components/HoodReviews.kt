@@ -45,6 +45,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
@@ -269,7 +271,9 @@ fun <T> shouldShowChatTimestamp(messages: List<T>, index: Int, senderId: (T) -> 
 }
 
 @Composable
-fun HoodReportAction(targetType: String, targetId: String) {
+fun HoodReportAction(targetType: String, targetId: String, asMenu: Boolean = false) {
+    var menuOpen by remember { mutableStateOf(false) }
+    val toastContext = androidx.compose.ui.platform.LocalContext.current
     var showChoices by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var sending by remember { mutableStateOf(false) }
@@ -290,8 +294,20 @@ fun HoodReportAction(targetType: String, targetId: String) {
             }
         }
     }
-    ListingActionButton(if (sending) "Reporting…" else "Report", sending) { showChoices = true }
-    message?.let { Text(it, color = if (it.startsWith("Thanks")) Ids.colors.success else Ids.colors.danger, fontSize = 12.sp) }
+    if (asMenu) {
+        androidx.compose.runtime.LaunchedEffect(message) { message?.let { android.widget.Toast.makeText(toastContext, it, android.widget.Toast.LENGTH_SHORT).show() } }
+        Box {
+            Box(Modifier.size(44.dp).pressScaleClickable(enabled = !sending, onClick = { menuOpen = true }).semantics { contentDescription = "More options" }, contentAlignment = Alignment.Center) {
+                Text("⋯", color = Ids.colors.textSecondary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            }
+            androidx.compose.material3.DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                androidx.compose.material3.DropdownMenuItem(text = { Text("Report") }, onClick = { menuOpen = false; showChoices = true })
+            }
+        }
+    } else {
+        ListingActionButton(if (sending) "Reporting…" else "Report", sending) { showChoices = true }
+        message?.let { Text(it, color = if (it.startsWith("Thanks")) Ids.colors.success else Ids.colors.danger, fontSize = 12.sp) }
+    }
     if (showChoices) {
         AlertDialog(
             onDismissRequest = { showChoices = false },

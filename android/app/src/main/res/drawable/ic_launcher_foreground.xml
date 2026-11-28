@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Bitmap is rendered directly from the canonical v3 adaptive-foreground SVG in CI. -->
+<!-- Logo only, brand colour (#8F89FF) on a transparent canvas, rendered from the prototype's logo SVG
+     (108dp canvas, logo ~46dp wide, inside the 66dp safe zone). Used as the adaptive foreground, the
+     themed-icon monochrome layer, and the Android 12+ splash icon, so it works on light and dark. -->
 <bitmap xmlns:android="http://schemas.android.com/apk/res/android"
     android:src="@drawable/itunda_adaptive_foreground"
-    android:gravity="center" />
+    android:gravity="fill" />

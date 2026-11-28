@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BRAND_ROOT = ROOT / "packages/brand-assets/canonical/itunda-brand"
 APP_ICON_SVG = BRAND_ROOT / "app-icons/itunda-app-icon.svg"
-ADAPTIVE_FOREGROUND_SVG = BRAND_ROOT / "app-icons/itunda-android-adaptive-foreground.svg"
+ADAPTIVE_FOREGROUND_SVG = BRAND_ROOT / "splash/itunda-splash-icon.svg"  # transparent brand-colour symbol
 failures = []
 
 
@@ -35,9 +35,18 @@ def rendered_png(svg_path, size):
     return result.stdout
 
 
-def check_render_matches(path, svg_path, size):
+def adaptive_png(svg_path):
+    # Same placement as scripts/sync-native-brand-assets.sh: 358px symbol centred on a 432px canvas.
+    return subprocess.run(
+        ["rsvg-convert", "--format=png", "--page-width=432", "--page-height=432", "--width=358", "--height=358",
+         "--left=37", "--top=37", str(svg_path)],
+        check=True, capture_output=True,
+    ).stdout
+
+
+def check_render_matches(path, svg_path, size, adaptive=False):
     try:
-        expected = rendered_png(svg_path, size)
+        expected = adaptive_png(svg_path) if adaptive else rendered_png(svg_path, size)
         check(path.read_bytes() == expected, f"{path}: pixels differ from canonical {svg_path}")
     except (OSError, subprocess.CalledProcessError) as exc:
         check(False, f"could not render canonical {svg_path}: {exc}")
@@ -51,11 +60,11 @@ for density, size in [("mdpi", 48), ("hdpi", 72), ("xhdpi", 96), ("xxhdpi", 144)
             check(png_size(path) == (size, size), f"{path}: expected {size}x{size}, got {png_size(path)}")
             check_render_matches(path, APP_ICON_SVG, size)
 
-adaptive = ROOT / "android/app/src/main/res/drawable/itunda_adaptive_foreground.png"
+adaptive = ROOT / "android/app/src/main/res/drawable-nodpi/itunda_adaptive_foreground.png"
 check(adaptive.is_file(), f"missing {adaptive}")
 if adaptive.is_file():
-    check(png_size(adaptive) == (108, 108), f"{adaptive}: expected 108x108, got {png_size(adaptive)}")
-    check_render_matches(adaptive, ADAPTIVE_FOREGROUND_SVG, 108)
+    check(png_size(adaptive) == (432, 432), f"{adaptive}: expected 432x432, got {png_size(adaptive)}")
+    check_render_matches(adaptive, ADAPTIVE_FOREGROUND_SVG, 432, adaptive=True)
 
 icon_dir = ROOT / "ios/App/Resources/Assets.xcassets/AppIcon.appiconset"
 catalog = json.loads((icon_dir / "Contents.json").read_text())
@@ -78,7 +87,13 @@ for filename, size in expected.items():
 foreground_xml = (ROOT / "android/app/src/main/res/drawable/ic_launcher_foreground.xml").read_text()
 background_xml = (ROOT / "android/app/src/main/res/drawable/ic_launcher_background.xml").read_text()
 check("@drawable/itunda_adaptive_foreground" in foreground_xml, "Android adaptive foreground does not reference generated canonical raster")
-check("#8F89FF" in background_xml, "Android adaptive background does not use v3 brand color")
+check("#FFFFFF" in background_xml, "Android adaptive background must be white; the brand-colour symbol is the foreground")
+for name in ["ic_launcher.xml", "ic_launcher_round.xml"]:
+    adaptive_xml = (ROOT / f"android/app/src/main/res/mipmap-anydpi-v26/{name}").read_text()
+    check("<monochrome" in adaptive_xml, f"{name}: missing themed-icon monochrome layer")
+for qualifier, bg in [("values-v31", "#FFFFFF"), ("values-night-v31", "#17171C")]:
+    styles = (ROOT / f"android/app/src/main/res/{qualifier}/styles.xml").read_text()
+    check("windowSplashScreenAnimatedIcon" in styles and bg in styles, f"{qualifier}: splash icon/background missing")
 
 if failures:
     print("\n".join("FAIL: " + item for item in failures))

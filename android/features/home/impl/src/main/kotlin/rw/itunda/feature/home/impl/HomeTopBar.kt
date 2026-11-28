@@ -17,12 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AccountBalance
-import androidx.compose.material.icons.outlined.AccountBalanceWallet
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.Divider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,12 +28,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
+import rw.itunda.core.designsystem.components.IdsAppBarTitle
+import rw.itunda.core.designsystem.components.ItundaArt
+import rw.itunda.core.designsystem.components.ItundaArtSet
 import rw.itunda.core.designsystem.components.IdsIconButton
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
@@ -67,10 +66,10 @@ internal fun HomeTopBar(
             modifier = Modifier.pressScaleClickable { showAccountSwitcher = true },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("itunda", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-            Icon(
-                Icons.Outlined.ExpandMore, contentDescription = stringResource(R.string.home_account_switcher),
-                modifier = Modifier.size(20.dp), tint = Ids.colors.textPrimary,
+            IdsAppBarTitle()
+            ItundaArt(
+                "chev", ItundaArtSet.Line, size = 16.dp, tint = Ids.colors.textPrimary,
+                modifier = Modifier.rotate(90f),
             )
         }
         Spacer(modifier = Modifier.weight(1f))
@@ -140,10 +139,10 @@ private fun AccountSwitcherSheet(onDismiss: () -> Unit, onOpenOverview: () -> Un
                 modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpenAccount).padding(horizontal = 18.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Outlined.AccountBalanceWallet, contentDescription = null, modifier = Modifier.size(22.dp), tint = Ids.colors.brand)
+                ItundaArt("wallet", ItundaArtSet.Line, size = 22.dp, tint = Ids.colors.brand)
                 Spacer(modifier = Modifier.width(12.dp))
                 Text("itunda Bank account", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                Icon(Icons.Outlined.CheckCircle, contentDescription = stringResource(R.string.home_current_account), modifier = Modifier.size(18.dp), tint = Ids.colors.brand)
+                ItundaArt("check", ItundaArtSet.Line, size = 18.dp, tint = Ids.colors.brand)
             }
             when {
                 linkedAccounts == null -> {}
@@ -154,7 +153,7 @@ private fun AccountSwitcherSheet(onDismiss: () -> Unit, onOpenOverview: () -> Un
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(Icons.Outlined.AccountBalance, contentDescription = null, modifier = Modifier.size(22.dp), tint = Ids.colors.textSecondary)
+                        ItundaArt("bank", ItundaArtSet.Line, size = 22.dp, tint = Ids.colors.textSecondary)
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text("${account.provider} · ${account.externalAccountNumberMasked}", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)

@@ -121,6 +121,7 @@ include(":agentapp")
 
 // Core Bounded Contexts
 include(":core:designsystem")
+include(":screenshots")
 include(":core:network")
 include(":core:sdui")
 include(":core:testing")
@@ -170,6 +171,10 @@ include(":features:shop:testing")
 include(":features:eats:api")
 include(":features:eats:impl")
 include(":features:eats:testing")
+
+include(":features:front:api")
+include(":features:front:impl")
+include(":features:front:testing")
 
 include(":features:talk:api")
 include(":features:talk:impl")

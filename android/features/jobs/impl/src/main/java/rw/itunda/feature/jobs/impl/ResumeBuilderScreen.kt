@@ -115,9 +115,9 @@ private fun ResumeProfileSection(detail: ResumeDetailResponse, onSaved: () -> Un
                     val active = s.id in selectedStrengths
                     Text(
                         s.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
-                        color = if (active) Color.White else Ids.colors.textPrimary,
+                        color = if (active) Ids.colors.background else Ids.colors.textPrimary,
                         modifier = Modifier
-                            .background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft, RoundedCornerShape(999.dp))
+                            .background(if (active) Ids.colors.textPrimary else Ids.colors.surfaceSoft, RoundedCornerShape(999.dp))
                             .pressScaleClickable { selectedStrengths = if (active) selectedStrengths - s.id else selectedStrengths + s.id }
                             .padding(horizontal = 12.dp, vertical = 7.dp),
                     )

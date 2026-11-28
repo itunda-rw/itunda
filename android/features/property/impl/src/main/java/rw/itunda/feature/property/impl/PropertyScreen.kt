@@ -371,7 +371,7 @@ fun PropertyContent(
         if (view == PropertyView.NEARBY) item {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { listOf(1.0, 3.0, 5.0, 10.0).forEach { radius ->
                 val active = nearbyRadiusKm == radius
-                Text("${radius.toInt()} km", color = if (active) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft).pressScaleClickable { nearbyRadiusKm = radius; requestNearbyLocation() }.padding(horizontal = 12.dp, vertical = 7.dp))
+                Text("${radius.toInt()} km", color = if (active) Ids.colors.background else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(if (active) Ids.colors.textPrimary else Ids.colors.surfaceSoft).pressScaleClickable { nearbyRadiusKm = radius; requestNearbyLocation() }.padding(horizontal = 12.dp, vertical = 7.dp))
             } }
         }
         if (view == PropertyView.BROWSE) {
@@ -381,11 +381,11 @@ fun PropertyContent(
                         val active = listingTypeFilter == v
                         Box(
                             modifier = Modifier
-                                .background(if (active) Ids.colors.brand else Ids.colors.surface, RoundedCornerShape(999.dp))
-                                .border(1.dp, if (active) Ids.colors.brand else Ids.colors.textSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
+                                .background(if (active) Ids.colors.textPrimary else Ids.colors.surface, RoundedCornerShape(999.dp))
+                                .border(1.dp, if (active) Ids.colors.textPrimary else Ids.colors.textSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
                                 .pressScaleClickable { listingTypeFilter = if (active) null else v }
                                 .padding(horizontal = 12.dp, vertical = 6.dp),
-                        ) { Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Color.White else Ids.colors.textPrimary) }
+                        ) { Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Ids.colors.background else Ids.colors.textPrimary) }
                     }
                 }
             }
@@ -399,11 +399,11 @@ fun PropertyContent(
                             val active = propertyTypeFilter == t.id
                             Box(
                                 modifier = Modifier
-                                    .background(if (active) Ids.colors.brand else Ids.colors.surface, RoundedCornerShape(999.dp))
-                                    .border(1.dp, if (active) Ids.colors.brand else Ids.colors.textSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
+                                    .background(if (active) Ids.colors.textPrimary else Ids.colors.surface, RoundedCornerShape(999.dp))
+                                    .border(1.dp, if (active) Ids.colors.textPrimary else Ids.colors.textSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
                                     .pressScaleClickable { propertyTypeFilter = if (active) null else t.id }
                                     .padding(horizontal = 12.dp, vertical = 6.dp),
-                            ) { Text(t.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Color.White else Ids.colors.textPrimary) }
+                            ) { Text(t.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Ids.colors.background else Ids.colors.textPrimary) }
                         }
                     }
                 }
@@ -543,10 +543,10 @@ private fun NewPropertyListingForm(propertyTypes: List<PropertyTypeDto>, onCreat
                 listOf("RENT" to "For rent", "SALE" to "For sale").forEach { (v, label) ->
                     val selected = listingType == v
                     Text(
-                        label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else Ids.colors.textPrimary,
+                        label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Ids.colors.background else Ids.colors.textPrimary,
                         modifier = Modifier
                             .clip(RoundedCornerShape(10.dp))
-                            .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
+                            .background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
                             .pressScaleClickable { listingType = v }
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                     )
@@ -560,10 +560,10 @@ private fun NewPropertyListingForm(propertyTypes: List<PropertyTypeDto>, onCreat
                     val selected = propertyType == t.id
                     Box(
                         modifier = Modifier
-                            .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft, RoundedCornerShape(999.dp))
+                            .background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft, RoundedCornerShape(999.dp))
                             .pressScaleClickable { propertyType = t.id }
                             .padding(horizontal = 12.dp, vertical = 6.dp),
-                    ) { Text(t.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else Ids.colors.textPrimary) }
+                    ) { Text(t.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Ids.colors.background else Ids.colors.textPrimary) }
                 }
             }
             IdsTextField(value = title, onValueChange = { title = it }, label = stringResource(R.string.property_title_placeholder), singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -632,6 +632,7 @@ private fun PropertyListingCard(
     listerTrustScore: Int? = null,
     currentUserId: String? = null,
 ) {
+    var expanded by androidx.compose.runtime.saveable.rememberSaveable(listing.id) { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var offering by remember { mutableStateOf(false) }
@@ -651,28 +652,17 @@ private fun PropertyListingCard(
         listing.sizeSqm?.let { "${it} m²" },
     ).joinToString(" · ")
 
-    // Real optional buyer/tenant identification at mark-taken time (2026-07-24) -- see
-    // backend PropertyListingService.markTaken's own doc comment. Confirm with a
-    // phone number or Skip, either way the listing completes.
     var markingTaken by remember { mutableStateOf(false) }
     var counterpartyPhone by remember { mutableStateOf("") }
 
-    // Real Karrot(당근마켓)-style price-drop notification -- see backend
-    // PropertyListingService.updatePrice's own doc comment. Real, shipped on the
-    // backend + bank-mfe with zero Android client until now -- found via a
-    // cross-platform-parity check.
     var editingPrice by remember { mutableStateOf(false) }
     var newPrice by remember(listing.id) { mutableStateOf(listing.price.toInt().toString()) }
 
-    // Real post-transaction review with asymmetric public/private visibility
-    // (2026-07-24) -- see backend HoodReviewService's own doc comment.
     var showReviewSheet by remember { mutableStateOf(false) }
     var selectedGoodPoints by remember { mutableStateOf<Set<String>>(emptySet()) }
     var selectedUncomfortablePoints by remember { mutableStateOf<Set<String>>(emptySet()) }
     var submittingReview by remember { mutableStateOf(false) }
     var reviewSubmitted by remember { mutableStateOf(false) }
-    // Real read-back for the review above (item 192/198) -- see bank-mfe's
-    // HoodReviewResultView (item 192) for the full account.
     var hoodReviews by remember { mutableStateOf<List<rw.itunda.core.network.HoodReviewDto>?>(null) }
     LaunchedEffect(listing.id, listing.status, listing.counterpartyId, isMine) {
         if (isMine && listing.status == "TAKEN" && listing.counterpartyId != null) {
@@ -722,8 +712,13 @@ private fun PropertyListingCard(
     }
     val ownershipStatus = submittedOwnershipStatus ?: listing.ownershipVerificationStatus
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Card(shape = androidx.compose.ui.graphics.RectangleShape, colors = CardDefaults.cardColors(containerColor = Color.Transparent), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(vertical = if (expanded) 14.dp else 0.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (!expanded) {
+                PropertyListRow(listing, propertyTypeLabel, relativeTimeAgo(listing.createdAt), onOpen = { expanded = true }, trailing = {
+                    if (!isMine) WishlistHeart(favorited = favorited, size = 20.dp, modifier = Modifier.pressScaleClickable { onToggleFavorite() })
+                })
+            } else {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -752,7 +747,7 @@ private fun PropertyListingCard(
                     Text(priceLabel, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 }
             }
-            Text(listing.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(listing.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.pressScaleClickable { expanded = false })
             // Real ownership verification badge (2026-07-25) -- shown to every viewer,
             // not just the lister, since this is a trust signal for the buyer/tenant
             // deciding whether to contact this listing.
@@ -954,6 +949,7 @@ private fun PropertyListingCard(
                 myLocation?.let { loc ->
                     if (showRoute) RouteMiniMap(loc.first, loc.second, propertyLat, propertyLng, "You", listing.title)
                 }
+            }
             }
         }
     }

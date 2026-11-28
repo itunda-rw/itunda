@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.Icon
@@ -39,6 +38,7 @@ import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.SkeletonBlock
+import rw.itunda.core.designsystem.itundaface.WishlistHeart
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.FavoriteRestaurantDto
 import rw.itunda.core.network.NetworkClient
@@ -143,13 +143,10 @@ internal fun FavoriteRestaurantsView(onOpen: (FavoriteRestaurantDto) -> Unit, on
                             fontSize = 12.sp,
                         )
                     }
-                    Icon(
-                        Icons.Filled.Favorite,
-                        contentDescription = "Remove from favorites",
-                        tint = Ids.colors.danger,
-                        modifier = Modifier
-                            .size(22.dp)
-                            .pressScaleClickable(enabled = removingId != f.restaurantId) { remove(f.restaurantId) },
+                    WishlistHeart(
+                        favorited = true,
+                        size = 22.dp,
+                        modifier = Modifier.pressScaleClickable(enabled = removingId != f.restaurantId) { remove(f.restaurantId) },
                     )
                 }
             }

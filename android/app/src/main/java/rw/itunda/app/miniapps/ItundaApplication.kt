@@ -107,6 +107,7 @@ class ItundaApplication : Application(), ReactApplication, ImageLoaderFactory {
         loadReactNative(this)
         // Real login/session flow (2026-07-11) -- must run before any screen can make
         // an authenticated request. See network/NetworkClient.kt/SessionManager.kt.
+        NetworkClient.demoMode = rw.itunda.app.BuildConfig.DEMO_MODE
         NetworkClient.init(this, rw.itunda.app.BuildConfig.API_BASE_URL)
         // Real BuildConfig-avoidance (2026-07-23) -- see MapConfig.kt's own doc comment.
         MapConfig.init(rw.itunda.app.BuildConfig.TILES_BASE_URL, rw.itunda.app.BuildConfig.GLYPHS_BASE_URL)

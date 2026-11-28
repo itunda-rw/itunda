@@ -18,7 +18,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import rw.itunda.core.designsystem.components.IdsTextField
@@ -221,7 +220,7 @@ private fun BookingQueue() {
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         items(active, key = { it.id }) { booking ->
-            Card(modifier = Modifier.fillMaxWidth()) {
+            FlatBlock {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                         BookingStatusBadge(booking.status)

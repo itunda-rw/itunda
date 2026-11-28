@@ -1,0 +1,282 @@
+package rw.itunda.screenshots
+
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextClearance
+import androidx.compose.ui.test.hasStateDescription
+import androidx.compose.ui.test.isSelected
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.runtime.mutableStateOf
+import org.junit.Assert.assertTrue
+import androidx.compose.ui.test.performScrollToNode
+import com.github.takahirom.roborazzi.captureRoboImage
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+import rw.itunda.core.designsystem.theme.IdsTheme
+import rw.itunda.feature.pay.impl.PayTillScreen
+import rw.itunda.feature.pay.impl.PayOrderScreen
+import rw.itunda.feature.pay.impl.PayHistoryScreen
+import rw.itunda.feature.pay.impl.PaySavedMerchantsScreen
+import rw.itunda.feature.pay.impl.PayPointsScreen
+import rw.itunda.feature.pay.impl.PayDoneScreen
+import rw.itunda.feature.pay.impl.PaySettingsScreen
+import rw.itunda.feature.pay.impl.PayAmountScreen
+import rw.itunda.feature.pay.impl.AddMoneyScreen
+import rw.itunda.feature.pay.impl.PayCouponAddScreen
+import rw.itunda.feature.pay.impl.CouponBoxContent
+import rw.itunda.feature.pay.impl.PayAddCardScreen
+import rw.itunda.feature.pay.impl.PayReceiptScreen
+import rw.itunda.feature.pay.impl.PayLimitsScreen
+import rw.itunda.feature.pay.impl.PayMyCardsScreen
+import rw.itunda.feature.pay.impl.PayNewCard
+import rw.itunda.feature.pay.impl.PayHub
+import rw.itunda.feature.pay.impl.ProtoPayContent
+import rw.itunda.feature.pay.impl.ProtoPayMode
+import rw.itunda.feature.pay.impl.SplitBillAmountScreen
+
+/** Pay > My code with the prototype's sample data. */
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [34], qualifiers = "w390dp-h844dp-xxhdpi")
+class PayScreenshotTest {
+    @get:Rule val rule = createComposeRule()
+
+    private fun hasRole(role: Role) = SemanticsMatcher.expectValue(SemanticsProperties.Role, role)
+
+    private fun render(dark: Boolean, name: String, mode: ProtoPayMode = ProtoPayMode.MY_CODE) {
+        rule.setContent {
+            IdsTheme(darkTheme = dark) {
+                ProtoPayContent(mode, {}, "ITUNDA-DEMO-1", 43, "itunda Pay Money", "120,500", {}, {}, {}, {}, { _, _, _ -> }, onTopUp = {})
+            }
+        }
+        rule.onRoot().captureRoboImage("build/screenshots/$name.png")
+    }
+
+    @Test fun payLight() = render(false, "pay-light")
+    @Test fun payDark() = render(true, "pay-dark")
+    @Test fun tapLight() = render(false, "pay-tap-light", ProtoPayMode.TAP)
+    @Test fun tapDark() = render(true, "pay-tap-dark", ProtoPayMode.TAP)
+    @Test fun tapTopUpOpensFundingFlow() {
+        val opened = mutableStateOf(false)
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                ProtoPayContent(ProtoPayMode.TAP, {}, "ITUNDA-DEMO-1", 43, "itunda Pay Money", "120,500", {}, {}, {}, {}, { _, _, _ -> }, onTopUp = { opened.value = true })
+            }
+        }
+        rule.onNodeWithText("Top up").performClick()
+        rule.runOnIdle { assertTrue(opened.value) }
+    }
+    // Scan hosts the real camera (CameraX, not available on the JVM); only the dark chrome is checked here.
+    @Test fun scanLight() = render(false, "pay-scan-light", ProtoPayMode.SCAN)
+    @Test fun scanDark() = render(true, "pay-scan-dark", ProtoPayMode.SCAN)
+
+    private fun renderHub(dark: Boolean, name: String, scrollTo: String? = null) {
+        rule.setContent { IdsTheme(darkTheme = dark) { PayHub(onBack = {}, onFindStores = {}) } }
+        if (scrollTo != null) rule.onNode(androidx.compose.ui.test.hasScrollAction()).performScrollToNode(androidx.compose.ui.test.hasText(scrollTo))
+        rule.onRoot().captureRoboImage("build/screenshots/$name.png")
+    }
+
+    @Test fun hubLight() = renderHub(false, "pay-hub-light")
+    @Test fun hubDark() = renderHub(true, "pay-hub-dark")
+    @Test fun hubMidLight() = renderHub(false, "pay-hub-mid-light", "Get more benefits")
+    @Test fun hubMidDark() = renderHub(true, "pay-hub-mid-dark", "Get more benefits")
+    @Test fun hubLowerLight() = renderHub(false, "pay-hub-lower-light", "Send feedback")
+    @Test fun hubLowerDark() = renderHub(true, "pay-hub-lower-dark", "Send feedback")
+
+    @Test fun splitLight() {
+        rule.setContent { IdsTheme(darkTheme = false) { SplitBillAmountScreen(onBack = {}, onContinue = {}) } }
+        rule.onRoot().captureRoboImage("build/screenshots/pay-split-light.png")
+    }
+    @Test fun splitDark() {
+        rule.setContent { IdsTheme(darkTheme = true) { SplitBillAmountScreen(onBack = {}, onContinue = {}) } }
+        rule.onRoot().captureRoboImage("build/screenshots/pay-split-dark.png")
+    }
+    @Test fun hubCouponRowOpensCouponBox() {
+        val opened = mutableStateOf(false)
+        rule.setContent { IdsTheme(darkTheme = false) { PayHub({}, {}, onOpenCoupons = { opened.value = true }) } }
+        rule.onNodeWithText("Coupons received").performClick()
+        rule.runOnIdle { assertTrue(opened.value) }
+    }
+    @Test fun hubOnlineViewOpensExplore() {
+        val opened = mutableStateOf(false)
+        rule.setContent { IdsTheme(darkTheme = false) { PayHub({}, { opened.value = true }) } }
+        rule.onNodeWithText("View").performClick()
+        rule.runOnIdle { assertTrue(opened.value) }
+    }
+
+    private fun shot(name: String, content: @androidx.compose.runtime.Composable () -> Unit) {
+        rule.setContent { IdsTheme(darkTheme = false) { content() } }
+        rule.onRoot().captureRoboImage("build/screenshots/pay-$name.png")
+    }
+    private fun shotDark(name: String, content: @androidx.compose.runtime.Composable () -> Unit) {
+        rule.setContent { IdsTheme(darkTheme = true) { content() } }
+        rule.onRoot().captureRoboImage("build/screenshots/pay-$name-dark.png")
+    }
+    @Test fun till() = shot("till") { PayTillScreen({}, {}) }
+    @Test fun tillDark() = shotDark("till") { PayTillScreen({}, {}) }
+    @Test fun order() = shot("order") { PayOrderScreen("Nyamirambo Coffee House", {}, {}) }
+    @Test fun orderDark() = shotDark("order") { PayOrderScreen("Nyamirambo Coffee House", {}, {}) }
+    @Test fun done() = shot("done") { PayDoneScreen("Nyamirambo Coffee House", {}, 7_000L) }
+    @Test fun doneDark() = shotDark("done") { PayDoneScreen("Nyamirambo Coffee House", {}, 7_000L) }
+    @Test fun history() = shot("history") { PayHistoryScreen({}) }
+    @Test fun historyDark() = shotDark("history") { PayHistoryScreen({}) }
+    @Test fun historyFiltersExposeSelectionAndRefundEmptyState() {
+        rule.setContent { IdsTheme(darkTheme = false) { PayHistoryScreen({}) } }
+        rule.onAllNodesWithText("Kigali Bakery").assertCountEquals(2)
+        rule.onNodeWithText("Paid").performClick()
+        rule.onAllNodesWithText("Kigali Bakery").assertCountEquals(2)
+        rule.onNodeWithText("Refunds").performClick()
+        rule.onNodeWithText("Nothing to show.").assertExists()
+        rule.onAllNodesWithText("Kigali Bakery").assertCountEquals(0)
+    }
+    @Test fun historyTabsExposeSelectedTabSemantics() {
+        rule.setContent { IdsTheme(darkTheme = false) { PayHistoryScreen({}) } }
+        rule.onNodeWithText("All").assert(hasRole(Role.Tab)).assert(isSelected())
+        rule.onNodeWithText("Paid").assert(hasRole(Role.Tab)).performClick().assert(isSelected())
+        rule.onNodeWithText("Refunds").assert(hasRole(Role.Tab)).performClick().assert(isSelected())
+    }
+    @Test fun historySearchFiltersByReferenceAndClearRestoresRows() {
+        rule.setContent { IdsTheme(darkTheme = false) { PayHistoryScreen({}) } }
+        rule.onNodeWithContentDescription("Search payment history").performTextInput("TX40217313")
+        rule.onNodeWithText("Simba Supermarket").assertExists()
+        rule.onAllNodesWithText("Kigali Bakery").assertCountEquals(0)
+        rule.onNodeWithContentDescription("Clear search").performClick()
+        rule.onNodeWithText("Simba Supermarket").assertExists()
+        rule.onAllNodesWithText("Kigali Bakery").assertCountEquals(2)
+    }
+    @Test fun historyReceiptRowsExposeAccessibleActions() {
+        val opened = mutableStateOf(-1)
+        rule.setContent { IdsTheme(darkTheme = false) { PayHistoryScreen({}, { opened.value = it }) } }
+        rule.onNodeWithContentDescription("Payment to Kigali Bakery, 3,500 RWF, 16 Nov 2026 · 09:12 AM")
+            .assert(hasRole(Role.Button)).performClick()
+        rule.runOnIdle { assertTrue(opened.value == 0) }
+    }
+    @Test fun saved() = shot("saved") { PaySavedMerchantsScreen({}) }
+    @Test fun savedDark() = shotDark("saved") { PaySavedMerchantsScreen({}) }
+    @Test fun savedMerchantToggleExposesState() {
+        rule.setContent { IdsTheme(darkTheme = false) { PaySavedMerchantsScreen({}) } }
+        rule.onNodeWithContentDescription("Save Kigali Bakery").assert(hasStateDescription("Not saved")).performClick()
+        rule.onAllNodesWithContentDescription("Remove Kigali Bakery from saved merchants").onFirst().assert(hasStateDescription("Saved")).performClick()
+        rule.onNodeWithContentDescription("Save Kigali Bakery").assert(hasStateDescription("Not saved"))
+    }
+    @Test fun points() = shot("points") { PayPointsScreen({}) }
+    @Test fun pointsDark() = shotDark("points") { PayPointsScreen({}) }
+    @Test fun pointsBalancesExposeReadableCombinedLabels() {
+        rule.setContent { IdsTheme(darkTheme = false) { PayPointsScreen({}) } }
+        rule.onNodeWithContentDescription("MTN MoMo Rewards: 78 points").assertExists()
+        rule.onNodeWithContentDescription("Kigali Bus Points: 28 points").assertExists()
+        rule.onNodeWithContentDescription("Pay Money: 120,500 points").assertExists()
+    }
+    @Test fun paySettingsSwitchExposesAndChangesState() {
+        rule.setContent { IdsTheme(darkTheme = false) { PaySettingsScreen({}) } }
+        rule.onNodeWithContentDescription("Tap to pay").assert(hasRole(Role.Switch)).assert(hasStateDescription("On"))
+        rule.onNodeWithContentDescription("Tap to pay").performClick()
+        rule.onNodeWithContentDescription("Tap to pay").assert(hasStateDescription("Off"))
+    }
+    @Test fun paySettingsFundingSourceExposesSelectedTab() {
+        rule.setContent { IdsTheme(darkTheme = false) { PaySettingsScreen({}) } }
+        rule.onNodeWithText("Pay balance").assert(hasRole(Role.Tab)).assert(isSelected())
+        rule.onNodeWithText("Bank").assert(hasRole(Role.Tab)).performClick().assert(isSelected())
+        rule.onNodeWithText("Pay balance").assert(hasRole(Role.Tab)).assert(!isSelected())
+    }
+    @Test fun settings() = shot("settings") { PaySettingsScreen({}) }
+    @Test fun settingsDark() = shotDark("settings") { PaySettingsScreen({}) }
+    @Test fun amount() = shot("amount") { PayAmountScreen("Amina K.", {}, {}) }
+    @Test fun amountDark() = shotDark("amount") { PayAmountScreen("Amina K.", {}, {}) }
+    @Test fun scanChips() = render(false, "pay-scan-chips-light", ProtoPayMode.SCAN)
+    @Test fun scanChipsDark() = render(true, "pay-scan-chips-dark", ProtoPayMode.SCAN)
+    @Test fun topUp() = shot("topup") {
+        val bank = rw.itunda.core.network.Account("b", "u", "0001", "itunda Bank", null, "SAVINGS", 842300.0, 842300.0, "RWF", true)
+        val pay = rw.itunda.core.network.Account("p", "u", "0002", "itunda Pay", null, "PAY", 120500.0, 120500.0, "RWF", true)
+        AddMoneyScreen(pay, listOf(bank), {}, {})
+    }
+    @Test fun topUpDark() = shotDark("topup") {
+        val bank = rw.itunda.core.network.Account("b", "u", "0001", "itunda Bank", null, "SAVINGS", 842300.0, 842300.0, "RWF", true)
+        val pay = rw.itunda.core.network.Account("p", "u", "0002", "itunda Pay", null, "PAY", 120500.0, 120500.0, "RWF", true)
+        AddMoneyScreen(pay, listOf(bank), {}, {})
+    }
+    @Test fun couponBoxEmpty() = shot("coupon-box") { CouponBoxContent(true, null, emptyList(), emptyList(), false, {}, {}, {}, {}) }
+    @Test fun couponBoxEmptyDark() = shotDark("coupon-box") { CouponBoxContent(true, null, emptyList(), emptyList(), false, {}, {}, {}, {}) }
+    @Test fun addCard() = shot("add-card") { PayAddCardScreen({}, {}) }
+    @Test fun addCardDark() = shotDark("add-card") { PayAddCardScreen({}, {}) }
+    @Test fun addCardFieldsAndSubmitExposeAccessibleState() {
+        val added = mutableStateOf(false)
+        rule.setContent { IdsTheme(darkTheme = false) { PayAddCardScreen({}, { added.value = true }) } }
+        rule.onNodeWithContentDescription("Card number").performTextInput("4242424242424242")
+        rule.onNodeWithContentDescription("Name on card").performTextInput("ERIC TUYIZERE")
+        rule.onNodeWithContentDescription("Expiry").performTextInput("12/30")
+        rule.onNodeWithContentDescription("CVC").performTextInput("123")
+        rule.onNodeWithContentDescription("Add card").assert(hasRole(Role.Button))
+            .assert(hasStateDescription("Ready to add")).performClick()
+        rule.runOnIdle { assertTrue(added.value) }
+    }
+    @Test fun manageCardsRemoveInvokesSelectedCardCallback() {
+        val removed = mutableStateOf(-1)
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                PayMyCardsScreen("120,500", "842,300", listOf(
+                    PayNewCard("Visa", "4242", "AMINA UWASE", "12/28"),
+                    PayNewCard("Mastercard", "5555", "ERIC", "10/29"),
+                ), {}, {}, { removed.value = it })
+            }
+        }
+        rule.onAllNodesWithText("Remove").onFirst().performClick()
+        rule.runOnIdle { assertTrue(removed.value == 0) }
+    }
+    @Test fun manageCardsActionsExposeAccessibleLabels() {
+        val added = mutableStateOf(false)
+        val removed = mutableStateOf(-1)
+        rule.setContent {
+            IdsTheme(darkTheme = false) {
+                PayMyCardsScreen("120,500", "842,300", listOf(PayNewCard("Visa", "4242", "AMINA UWASE", "12/28")), {}, { added.value = true }, { removed.value = it })
+            }
+        }
+        rule.onNodeWithContentDescription("Remove Visa ending in 4242").assert(hasRole(Role.Button)).performClick()
+        rule.runOnIdle { assertTrue(removed.value == 0) }
+        rule.onNodeWithContentDescription("Add a card").assert(hasRole(Role.Button)).performClick()
+        rule.runOnIdle { assertTrue(added.value) }
+    }
+    @Test fun myCards() = shot("my-cards") { PayMyCardsScreen("120,500", "842,300", emptyList(), {}, {}, {}) }
+    @Test fun myCardsDark() = shotDark("my-cards") { PayMyCardsScreen("120,500", "842,300", emptyList(), {}, {}, {}) }
+    @Test fun myCardsWithCard() = shot("my-cards-visa") { PayMyCardsScreen("120,500", "842,300", listOf(PayNewCard("Visa", "4242", "AMINA UWASE", "12/28")), {}, {}, {}) }
+    @Test fun myCardsWithCardDark() = shotDark("my-cards-visa") { PayMyCardsScreen("120,500", "842,300", listOf(PayNewCard("Visa", "4242", "AMINA UWASE", "12/28")), {}, {}, {}) }
+    @Test fun limits() = shot("limits") { PayLimitsScreen(500_000, 2_000_000, 0, {}, { _, _ -> }) }
+    @Test fun limitsDark() = shotDark("limits") { PayLimitsScreen(500_000, 2_000_000, 0, {}, { _, _ -> }) }
+    @Test fun limitsRejectPaymentAboveDailyCap() {
+        rule.setContent { IdsTheme(darkTheme = false) { PayLimitsScreen(500_000, 2_000_000, 0, {}, { _, _ -> }) } }
+        rule.onNodeWithContentDescription("Per payment").performTextClearance()
+        rule.onNodeWithContentDescription("Per payment").performTextInput("3000000")
+        rule.onNodeWithText("The most per payment is 2,000,000 RWF.").assertExists()
+        rule.onNodeWithText("Check your limits").assertExists()
+    }
+    @Test fun receipt() = shot("receipt") { PayReceiptScreen(0, {}, {}) }
+    @Test fun receiptDark() = shotDark("receipt") { PayReceiptScreen(0, {}, {}) }
+    @Test fun receiptCopyReferenceAndShareExposeButtonSemantics() {
+        rule.setContent { IdsTheme(darkTheme = false) { PayReceiptScreen(0, {}, {}) } }
+        rule.onNodeWithContentDescription("Copy receipt reference").assert(hasRole(Role.Button)).performClick()
+        rule.onNodeWithContentDescription("Share receipt").assert(hasRole(Role.Button))
+    }
+    @Test fun receiptPayAgainReturnsMerchant() {
+        val merchant = mutableStateOf("")
+        rule.setContent { IdsTheme(darkTheme = false) { PayReceiptScreen(0, {}, { merchant.value = it }) } }
+        rule.onNodeWithText("Pay again").performClick()
+        rule.runOnIdle { assertTrue(merchant.value.isNotBlank()) }
+    }
+    @Test fun couponAdd() = shot("coupon-add") { PayCouponAddScreen({}) }
+    @Test fun couponAddDark() = shotDark("coupon-add") { PayCouponAddScreen({}) }
+}

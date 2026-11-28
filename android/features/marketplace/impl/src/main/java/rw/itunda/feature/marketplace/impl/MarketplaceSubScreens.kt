@@ -1,21 +1,17 @@
 package rw.itunda.feature.marketplace.impl
 
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -28,30 +24,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import java.io.IOException
-import java.util.Locale
 import kotlinx.coroutines.launch
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
-import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
+import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.ListingActionButton
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.pressScaleClickable
-import rw.itunda.core.designsystem.components.rememberRealLocationRequester
-import rw.itunda.core.designsystem.itundaface.CameraGlyph
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.network.AddKeywordAlertRequest
@@ -211,182 +198,124 @@ internal fun KeywordAlertsView() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
+fun NewListingForm(onCreated: (String, String) -> Unit, onCancel: () -> Unit) {
     var title by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("") }
-    var meetingPlace by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf("Electronics") }
+    var condition by remember { mutableStateOf("Good") }
+    var details by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var submitting by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+    val priceValue = price.filter(Char::isDigit).toDoubleOrNull()
+    val canPost = title.isNotBlank() && priceValue != null && priceValue > 0.0
+    val categories = listOf("Electronics", "Phones", "Home", "Fashion", "Kids", "Sports")
+    val conditions = listOf("New", "Like new", "Good", "Fair")
 
-    // Real photo picker + upload (2026-07-24) -- see UploadController's own doc
-    // comment on why "paste a URL" wasn't good enough. photoUrl holds the real
-    // server-returned URL once upload succeeds; pickedImageUri is the local preview
-    // shown immediately (before/during upload) so the seller isn't staring at a blank
-    // box while a real network call happens.
-    var photoUrl by remember { mutableStateOf<String?>(null) }
-    var pickedImageUri by remember { mutableStateOf<Uri?>(null) }
-    var uploadingPhoto by remember { mutableStateOf(false) }
-    val vehicleState = rememberVehicleListingState()
-    val context = LocalContext.current
-    val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        pickedImageUri = uri
-        photoUrl = null
-        uploadingPhoto = true
-        error = null
-        coroutineScope.launch {
-            try {
-                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                if (bytes == null) {
-                    error = "Couldn't read that photo."
-                    pickedImageUri = null
-                    return@launch
-                }
-                val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
-                val body = bytes.toRequestBody(mimeType.toMediaTypeOrNull())
-                val part = MultipartBody.Part.createFormData("file", "photo.jpg", body)
-                photoUrl = NetworkClient.apiService.uploadPhoto(part).url
-            } catch (e: HttpException) {
-                pickedImageUri = null
-                error = superAppErrorMessage(e)
-            } catch (e: IOException) {
-                pickedImageUri = null
-                error = "Couldn't upload that photo. Check your connection and try again."
-            } finally {
-                uploadingPhoto = false
-            }
-        }
-    }
-
-    // Real optional seller location (2026-07-19) -- powers real proximity search and
-    // "Directions to this seller"; a listing without it simply doesn't appear in either,
-    // an honest opt-in, never assumed.
-    var shareLocation by remember { mutableStateOf(false) }
-    var myLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
-    var locating by remember { mutableStateOf(false) }
-    val requestLocation = rememberRealLocationRequester(
-        onLocating = { locating = it },
-        onSuccess = { lat, lng -> myLocation = lat to lng; shareLocation = true },
-        onError = { error = it },
-    )
-
-    // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- this
-    // screen's own main content, a lone form (docs/UI_UX_GUIDELINES.md §10).
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("List an item", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            IdsTextField(value = title, onValueChange = { title = it }, label = stringResource(R.string.marketplace_title_placeholder), singleLine = true, modifier = Modifier.fillMaxWidth())
-            IdsTextField(value = description, onValueChange = { description = it }, label = stringResource(R.string.marketplace_description_placeholder), modifier = Modifier.fillMaxWidth())
-            // Real photo picker (2026-07-24) -- a real photo is what a Karrot-style
-            // listing card actually needs most, see ListingCard's own header comment.
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Ids.colors.surfaceSoft)
-                    .pressScaleClickable(enabled = !uploadingPhoto) { pickPhoto.launch("image/*") },
-                contentAlignment = Alignment.Center,
-            ) {
-                if (pickedImageUri != null) {
-                    AsyncImage(
-                        model = pickedImageUri,
-                        contentDescription = "Selected photo",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                    if (uploadingPhoto) {
-                        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)), contentAlignment = Alignment.Center) {
-                            Text("Uploading…", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        }
-                    }
-                } else {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        CameraGlyph(size = 13.dp)
-                        Text("Add a photo (optional)", color = Ids.colors.textSecondary, fontSize = 13.sp)
-                    }
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                IdsTextField(value = price, onValueChange = { price = it }, label = "Price (RWF)", singleLine = true, keyboardType = androidx.compose.ui.text.input.KeyboardType.Number, modifier = Modifier.weight(1f))
-                IdsTextField(value = category, onValueChange = { category = it }, label = "Category", singleLine = true, modifier = Modifier.weight(1f))
-            }
+    ModalBottomSheet(onDismissRequest = onCancel) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text("Sell something", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 22.sp)
             IdsTextField(
-                value = meetingPlace,
-                onValueChange = { meetingPlace = it },
-                label = "Suggested meeting place (optional)",
-                supportingText = "Use a public landmark, not a home address.",
+                value = title,
+                onValueChange = { title = it },
+                label = "Title",
+                placeholder = "What are you selling?",
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            VehicleListingFieldsSection(vehicleState)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Ids.colors.surfaceSoft)
-                    .pressScaleClickable(enabled = !locating) { if (shareLocation) shareLocation = false else requestLocation() }
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-            ) {
-                Text(
-                    if (locating) "Finding your real location…"
-                    else if (shareLocation) "📍 Real location shared -- buyers can see distance & get directions"
-                    else "📍 Share my real location (optional)",
-                    fontSize = 13.sp,
-                    color = if (shareLocation) Ids.colors.brand else Ids.colors.textSecondary,
-                )
+            IdsTextField(
+                value = price,
+                onValueChange = { price = it },
+                label = "Price (RWF)",
+                placeholder = "25,000",
+                singleLine = true,
+                keyboardType = KeyboardType.Number,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text("Category", color = Ids.colors.textSecondary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            categories.chunked(3).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { value -> MarketplaceSellChip(value, category == value) { category = value } }
+                }
             }
+            Text("Condition", color = Ids.colors.textSecondary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            conditions.chunked(2).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { value -> MarketplaceSellChip(value, condition == value) { condition = value } }
+                }
+            }
+            IdsTextField(
+                value = details,
+                onValueChange = { details = it },
+                label = "Details (optional)",
+                placeholder = "Any extra information for buyers?",
+                singleLine = false,
+                modifier = Modifier.fillMaxWidth(),
+            )
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                TextButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Cancel") }
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Ids.colors.brand)
-                        .pressScaleClickable(enabled = !submitting && !uploadingPhoto) {
-                            val priceValue = price.toDoubleOrNull()
-                            if (title.isBlank() || description.isBlank() || category.isBlank() || priceValue == null || priceValue <= 0) {
-                                error = "Fill in every field with a real price."
-                                return@pressScaleClickable
-                            }
-                            submitting = true
-                            error = null
-                            coroutineScope.launch {
-                                try {
-                                    val loc = if (shareLocation) myLocation else null
-                                    val res = NetworkClient.apiService.createListing(
-                                        CreateListingRequest(
-                                            title, description, priceValue, category, loc?.first, loc?.second,
-                                            meetingPlace.trim().takeIf { it.isNotEmpty() },
-                                            photoUrl,
-                                            vehicleMileageKm = vehicleState.mileageKm.toIntOrNull().takeIf { vehicleState.isVehicle },
-                                            vehicleInsuranceClaimCount = vehicleState.insuranceClaimCount.toIntOrNull().takeIf { vehicleState.isVehicle },
-                                            vehicleIsLeaseTakeover = vehicleState.isVehicle && vehicleState.isLeaseTakeover,
-                                            leaseTotalAcquisitionCost = vehicleState.leaseTotalAcquisitionCost.toDoubleOrNull().takeIf { vehicleState.isLeaseTakeover },
-                                            leaseRemainingMonths = vehicleState.leaseRemainingMonths.toIntOrNull().takeIf { vehicleState.isLeaseTakeover },
-                                            leaseTotalMonths = vehicleState.leaseTotalMonths.toIntOrNull().takeIf { vehicleState.isLeaseTakeover },
-                                            leaseMonthlyPayment = vehicleState.leaseMonthlyPayment.toDoubleOrNull().takeIf { vehicleState.isLeaseTakeover },
-                                            leaseSubsidyAmount = vehicleState.leaseSubsidyAmount.toDoubleOrNull().takeIf { vehicleState.isLeaseTakeover },
-                                            leaseReturnFee = vehicleState.leaseReturnFee.toDoubleOrNull().takeIf { vehicleState.isLeaseTakeover },
-                                        ),
-                                    )
-                                    if (res.success) onCreated()
-                                } catch (e: HttpException) {
-                                    error = superAppErrorMessage(e)
-                                } catch (e: IOException) {
-                                    error = "Couldn't reach itunda. Check your connection and try again."
-                                } finally {
-                                    submitting = false
-                                }
+            IdsButton(
+                text = "Post",
+                onClick = {
+                    val amount = price.filter(Char::isDigit).toDoubleOrNull()
+                    if (canPost && amount != null) {
+                        submitting = true
+                        error = null
+                        coroutineScope.launch {
+                            try {
+                                val response = NetworkClient.apiService.createListing(
+                                    CreateListingRequest(
+                                        title = title.trim(),
+                                        description = details.trim().ifBlank { "Contact the seller to arrange pickup." },
+                                        price = amount,
+                                        category = category,
+                                    ),
+                                )
+                                if (response.success) onCreated(response.listing.id, condition)
+                                else error = "Couldn't post your listing. Try again."
+                            } catch (e: HttpException) {
+                                error = superAppErrorMessage(e)
+                            } catch (e: IOException) {
+                                error = "Couldn't reach itunda. Check your connection and try again."
+                            } finally {
+                                submitting = false
                             }
                         }
-                        .padding(vertical = 14.dp),
-                    contentAlignment = Alignment.Center,
-                ) { Text(if (submitting) stringResource(R.string.marketplace_listing) else stringResource(R.string.marketplace_list_it), color = Color.White, fontWeight = FontWeight.Bold) }
-            }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = canPost && !submitting,
+                loading = submitting,
+            )
+        }
     }
+}
+
+@Composable
+private fun MarketplaceSellChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Text(
+        text = label,
+        color = if (selected) Ids.colors.textPrimary else Ids.colors.textSecondary,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.clip(RoundedCornerShape(14.dp))
+            .background(if (selected) Ids.colors.surfaceSoft else Ids.colors.surface)
+            .pressScaleClickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 9.dp),
+    )
+}
+
+@Composable
+fun MarketplacePrototypeEmptyState(message: String = "Nothing here yet. Be the first to post.") {
+    Text(
+        text = message,
+        color = Ids.colors.textSecondary,
+        fontSize = 14.sp,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 30.dp),
+    )
 }

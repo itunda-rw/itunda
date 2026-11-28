@@ -61,6 +61,7 @@ fun SupportScreen(
     onBack: () -> Unit,
     initialTransactionId: String? = null,
     initialCategory: String? = null,
+    initialDescription: String? = null,
     onConsumedInitial: () -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
@@ -71,7 +72,7 @@ fun SupportScreen(
     var showNewTicketForm by remember { mutableStateOf(initialTransactionId != null) }
     var selectedTransactionId by remember { mutableStateOf(initialTransactionId) }
     var selectedCategory by remember { mutableStateOf(initialCategory ?: CATEGORIES.first()) }
-    var descriptionText by remember { mutableStateOf("") }
+    var descriptionText by remember { mutableStateOf(initialDescription.orEmpty()) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(initialTransactionId) {

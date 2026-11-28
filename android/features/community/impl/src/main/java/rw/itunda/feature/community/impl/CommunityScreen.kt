@@ -9,6 +9,7 @@ import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -59,7 +60,7 @@ import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.HoodReportAction
 import rw.itunda.core.designsystem.components.ListingActionButton
-import rw.itunda.core.designsystem.itundaface.HeartFilled
+import rw.itunda.core.designsystem.itundaface.HeartOutline
 import rw.itunda.core.designsystem.itundaface.SpeechBubbleGlyph
 import rw.itunda.core.designsystem.components.NeighborhoodSetupPrompt
 import rw.itunda.core.designsystem.components.ScrollFog
@@ -386,11 +387,11 @@ fun CommunityContent(
                         val active = activeCategory == c.id
                         Box(
                             modifier = Modifier
-                                .background(if (active) Ids.colors.brand else Ids.colors.surface, RoundedCornerShape(999.dp))
-                                .border(1.dp, if (active) Ids.colors.brand else Ids.colors.textSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
+                                .background(if (active) Ids.colors.textPrimary else Ids.colors.surface, RoundedCornerShape(999.dp))
+                                .border(1.dp, if (active) Ids.colors.textPrimary else Ids.colors.textSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
                                 .pressScaleClickable { activeCategory = if (active) null else c.id }
                                 .padding(horizontal = 12.dp, vertical = 6.dp),
-                        ) { Text(c.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Color.White else Ids.colors.textPrimary) }
+                        ) { Text(c.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Ids.colors.background else Ids.colors.textPrimary) }
                     }
                 }
             }
@@ -405,11 +406,11 @@ fun CommunityContent(
                         val active = activeTopic == t.id
                         Box(
                             modifier = Modifier
-                                .background(if (active) Ids.colors.brand else Ids.colors.surface, RoundedCornerShape(999.dp))
-                                .border(1.dp, if (active) Ids.colors.brand else Ids.colors.textSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
+                                .background(if (active) Ids.colors.textPrimary else Ids.colors.surface, RoundedCornerShape(999.dp))
+                                .border(1.dp, if (active) Ids.colors.textPrimary else Ids.colors.textSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
                                 .pressScaleClickable { activeTopic = if (active) null else t.id }
                                 .padding(horizontal = 12.dp, vertical = 6.dp),
-                        ) { Text(t.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Color.White else Ids.colors.textPrimary) }
+                        ) { Text(t.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Ids.colors.background else Ids.colors.textPrimary) }
                     }
                 }
             }
@@ -529,8 +530,8 @@ fun CommunityContent(
 // raw ISO string on any parse failure, never a fabricated date.
 private fun formatMeetupDate(iso: String): String = try {
     val instant = java.time.Instant.parse(iso)
-    val local = instant.atZone(java.time.ZoneOffset.UTC)
-    "%04d-%02d-%02d %02d:%02d".format(local.year, local.monthValue, local.dayOfMonth, local.hour, local.minute)
+    val local = instant.atZone(java.time.ZoneId.of("Africa/Kigali"))
+    "${local.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.ENGLISH)} %02d:%02d".format(local.hour, local.minute)
 } catch (e: Exception) {
     iso
 }
@@ -571,10 +572,10 @@ private fun NewCommunityPostForm(categories: List<CommunityCategoryDto>, onCreat
                     val selected = category == c.id
                     Box(
                         modifier = Modifier
-                            .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft, RoundedCornerShape(999.dp))
+                            .background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft, RoundedCornerShape(999.dp))
                             .pressScaleClickable { category = c.id }
                             .padding(horizontal = 12.dp, vertical = 6.dp),
-                    ) { Text(c.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else Ids.colors.textPrimary) }
+                    ) { Text(c.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Ids.colors.background else Ids.colors.textPrimary) }
                 }
             }
             IdsTextField(value = title, onValueChange = { title = it }, label = stringResource(R.string.community_title_placeholder), singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -660,7 +661,7 @@ private fun NewCommunityPostForm(categories: List<CommunityCategoryDto>, onCreat
 }
 
 @Composable
-private fun CommunityPostCard(
+fun CommunityPostCard(
     post: CommunityPostDto, categoryLabel: String, isMine: Boolean, onOpen: () -> Unit, onRemoved: () -> Unit,
     joinedCount: Int = 0, joining: Boolean = false, onJoin: () -> Unit = {},
 ) {
@@ -669,17 +670,20 @@ private fun CommunityPostCard(
     val coroutineScope = rememberCoroutineScope()
 
     Card(
-        shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
+        shape = androidx.compose.ui.graphics.RectangleShape, colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpen),
     ) {
-        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(modifier = Modifier.padding(top = 18.dp, bottom = 26.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                // Same hyperlocal-neighborhood fix as Jobs/Property -- see
-                // [[project_itunda_full_ecosystem_polish]]. Neighborhood matters
-                // especially here: a Community post is explicitly a "your neighbors"
-                // product, not generic content.
-                val categoryAndLocation = listOfNotNull(categoryLabel, post.neighborhood, relativeTimeAgo(post.createdAt)).joinToString(" · ")
-                Text(categoryAndLocation, color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(36.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
+                        rw.itunda.core.designsystem.components.ItundaArt("community", rw.itunda.core.designsystem.components.ItundaArtSet.Color, 28.dp)
+                    }
+                    Column(Modifier.padding(start = 10.dp)) {
+                        Text(post.authorName ?: categoryLabel, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp, lineHeight = 24.sp)
+                        Text(listOfNotNull(post.neighborhood, relativeTimeAgo(post.createdAt)).joinToString(" · "), color = Ids.colors.textSecondary, fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
                 if (isMine) {
                     ListingActionButton("Remove", busy) {
                         busy = true
@@ -694,25 +698,24 @@ private fun CommunityPostCard(
                             }
                         }
                     }
-                }
+                } else HoodReportAction(targetType = "COMMUNITY_POST", targetId = post.id, asMenu = true)
             }
-            Text(post.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            Text(post.body, color = Ids.colors.textSecondary, fontSize = 13.sp, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            Text(post.body, color = Ids.colors.textPrimary, fontSize = 15.sp, lineHeight = 22.sp, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                HeartFilled(size = 12.dp)
-                Text("${post.likeCount} ·", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                SpeechBubbleGlyph(size = 12.dp)
-                Text("${post.commentCount}", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                HeartOutline(size = 22.dp)
+                Text("${post.likeCount}", color = Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(end = 18.dp))
+                SpeechBubbleGlyph(size = 18.dp)
+                Text("${post.commentCount}", color = Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
-            if (!isMine && post.category == "question") {
-                ListingActionButton("Answer this question", busy, onClick = onOpen)
-            } else if (post.category == "meetup") {
+            if (post.category == "meetup") {
                 // Real 당근모임-style structured date/capacity (2026-07-25) -- see
                 // backend CommunityPost.eventDate/capacity's own doc comment.
                 val eventDate = post.eventDate
                 if (eventDate != null) {
-                    val capacityLabel = post.capacity?.let { " · $joinedCount/$it" } ?: ""
-                    Text("🗓️ ${formatMeetupDate(eventDate)}$capacityLabel", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                    Column(Modifier.fillMaxWidth().background(Ids.colors.surfaceSoft, RoundedCornerShape(16.dp)).padding(horizontal = 14.dp, vertical = 10.dp)) {
+                        Text(formatMeetupDate(eventDate), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp, lineHeight = 20.sp)
+                        Text("${listOfNotNull(post.neighborhood).joinToString()}${if (post.neighborhood != null) " · " else ""}$joinedCount going", color = Ids.colors.textPrimary, fontSize = 14.sp, lineHeight = 20.sp)
+                    }
                 }
                 // Real AI-generated 모임 summary (2026-08-28) -- see backend
                 // HoodAiSummaryService's own doc comment. Never shown without this
@@ -736,12 +739,9 @@ private fun CommunityPostCard(
                 } else {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         ListingActionButton("View meetup", busy, onClick = onOpen)
-                        ListingActionButton(if (joining) "Joining…" else "참여하기 · $joinedCount joined", joining, filled = true, onClick = onJoin)
+                        ListingActionButton(if (joining) "Joining…" else "Join · $joinedCount going", joining, filled = true, onClick = onJoin)
                     }
                 }
-            }
-            if (!isMine) {
-                HoodReportAction(targetType = "COMMUNITY_POST", targetId = post.id)
             }
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
         }

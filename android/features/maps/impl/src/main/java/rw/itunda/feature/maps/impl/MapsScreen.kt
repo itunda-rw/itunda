@@ -79,6 +79,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.google.android.gms.location.LocationServices
@@ -1339,8 +1340,7 @@ fun MapScreen(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(top = 12.dp),
+                    .then(if (searchFocused) Modifier.fillMaxSize().zIndex(10f) else Modifier.padding(horizontal = 16.dp).padding(top = 12.dp)),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
             MapTopChrome(
@@ -1363,9 +1363,9 @@ fun MapScreen(
                 isAgentCashDiscovery = isAgentCashDiscovery,
                 onQueryChange = { query = it },
                 onRunSearch = { runSearch() },
-                onClearQuery = { query = ""; searchResults = null },
-                onSearchFocusChange = { searchFocused = it },
-                onCategoryClick = { categoryId -> searchNearbyCategory(categoryId) },
+                onClearQuery = { query = ""; searchResults = null; searchFocused = false },
+                onSearchFocusChange = { focused -> if (focused) searchFocused = true },
+                onCategoryClick = { categoryId -> searchFocused = false; searchNearbyCategory(categoryId) },
                 onToggleItinerary = {
                     if (itineraryBuilding) {
                         itineraryBuilding = false
@@ -1382,6 +1382,7 @@ fun MapScreen(
                 },
                 onSelectPlace = { place -> selectPlace(place) },
                 onSearchResultTap = { place ->
+                    searchFocused = false
                     recentSearches = recentSearchesStore.add(place)
                     if (itineraryBuilding) {
                         addItineraryStop(place)
@@ -1390,6 +1391,7 @@ fun MapScreen(
                     }
                 },
                 onClearRecentSearches = { recentSearchesStore.clear(); recentSearches = emptyList() },
+                onRemoveRecent = { place -> recentSearches = recentSearchesStore.remove(place) },
             )
             } // end floating top panel
 
@@ -1839,17 +1841,4 @@ internal fun SharedFolderSection(
         }
         }
     }
-}
-
-
-/** Feature composition entry point. Keeps the app shell independent of concrete screen names. */
-@Composable
-fun MapsEntryPoint(
-    onBack: () -> Unit,
-    initialCategory: String? = null,
-    initialSearchQuery: String? = null,
-    initialSharedFolder: Pair<String, String>? = null,
-    onOrderDelivery: (merchantId: String, businessName: String) -> Unit = { _, _ -> },
-) {
-    MapScreen(onBack, initialCategory, initialSearchQuery, initialSharedFolder, onOrderDelivery)
 }

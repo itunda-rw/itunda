@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.IdsButton
@@ -71,7 +70,7 @@ fun CatalogTab() {
     LaunchedEffect(Unit) { load() }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Card(modifier = Modifier.fillMaxWidth()) {
+        FlatBlock {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("Add a product", fontWeight = FontWeight.Bold)
                 IdsTextField(value = name, onValueChange = { name = it }, label = "Name", modifier = Modifier.fillMaxWidth())
@@ -148,7 +147,7 @@ fun CatalogTab() {
         } else {
             val lowStock = list.filter { it.stockQuantity != null && it.stockQuantity <= 5 }
             if (lowStock.isNotEmpty()) {
-                Card(modifier = Modifier.fillMaxWidth()) {
+                FlatBlock {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("${lowStock.size} product${if (lowStock.size == 1) "" else "s"} need stock attention", fontWeight = FontWeight.Bold)
                         Text(

@@ -117,7 +117,7 @@ internal fun menuSections(
     )
     val sendPayRows = listOf(
         FlatRow("Transfer", subtitle = "Auto-transfer, split a bill", icon = IdsIcons.Send, iconColor = AccentIndigo, onClick = onOpenTransferHub),
-        FlatRow("Request money", subtitle = "Generate a real payment request code", glyph = { ReceiptGlyph(size = 28.dp) }, onClick = onOpenRequestMoney),
+        FlatRow("Request money", subtitle = "Generate a payment request code", glyph = { ReceiptGlyph(size = 28.dp) }, onClick = onOpenRequestMoney),
         FlatRow("Auto top-up", subtitle = "Refill your account automatically from a linked account", glyph = { RefreshCardGlyph(size = 28.dp) }, onClick = onOpenAutoTopUp),
         FlatRow("Mobile plan", subtitle = "MTN, Airtel, broadband", glyph = { ObjectMobilePhone(size = 28.dp) }, onClick = onOpenPayBillsMiniApp),
     )

@@ -72,7 +72,26 @@ internal fun MapTopChrome(
     onSelectPlace: (PlaceSearchResultDto) -> Unit,
     onSearchResultTap: (PlaceSearchResultDto) -> Unit,
     onClearRecentSearches: () -> Unit,
+    onRemoveRecent: (PlaceSearchResultDto) -> Unit,
 ) {
+    if (searchFocused) {
+        MapSearchScreen(
+            query = query,
+            searching = searching,
+            searchResults = searchResults,
+            error = error,
+            recentSearches = recentSearches,
+            categories = categories,
+            onBack = onClearQuery,
+            onQueryChange = onQueryChange,
+            onRunSearch = onRunSearch,
+            onSelectPlace = onSearchResultTap,
+            onRemoveRecent = onRemoveRecent,
+            onClearRecentSearches = onClearRecentSearches,
+            onQuickSearch = onQueryChange,
+            onCategoryClick = onCategoryClick,
+        )
+    } else {
     Row(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -323,5 +342,6 @@ internal fun MapTopChrome(
                 )
             }
         }
+    }
     }
 }

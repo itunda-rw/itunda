@@ -84,57 +84,27 @@ fun AddMoneyScreen(destination: Account, sourceOptions: List<Account>, onBack: (
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = Ids.layout.screenHorizontal, vertical = 12.dp)) {
-            Box(
-                modifier = Modifier.size(Ids.layout.minTouchTarget).clip(CircleShape).pressScaleClickable(onClick = onBack),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(IdsIcons.Back, contentDescription = stringResource(R.string.back), modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
-            }
-        }
+        rw.itunda.core.designsystem.components.BackTopBar(stringResource(R.string.add_money_title), onBack)
         Column(Modifier.fillMaxWidth().padding(horizontal = Ids.layout.screenHorizontal)) {
-            Text(
-                stringResource(R.string.add_money_title), fontWeight = FontWeight.Bold, fontSize = 20.sp,
-                modifier = Modifier.padding(bottom = 20.dp),
-            )
-
             if (sourceOptions.isEmpty()) {
                 Text(stringResource(R.string.add_money_no_source), color = Ids.colors.textSecondary, fontSize = 13.sp)
             } else {
-                Text(stringResource(R.string.add_money_from), fontWeight = FontWeight.SemiBold, fontSize = 13.sp, modifier = Modifier.padding(bottom = 8.dp))
                 sourceOptions.forEach { account ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = { sourceId = account.id }).padding(vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            RadioButton(selected = sourceId == account.id, onClick = { sourceId = account.id })
-                            Text(account.nickname ?: account.accountName, fontSize = 14.sp)
-                        }
-                        Text("${formatMoney(account.balance)} RWF", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                    val selected = sourceId == account.id
+                    Column(Modifier.fillMaxWidth().pressScaleClickable(onClick = { sourceId = account.id }).padding(vertical = 8.dp)) {
+                        Text(account.nickname ?: account.accountName, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = if (selected) Ids.colors.textPrimary else Ids.colors.textTertiary)
+                        Text("Your itunda account \u00b7 Balance ${formatMoney(account.balance)} RWF", color = Ids.colors.textTertiary, fontSize = 13.sp)
                     }
                 }
-
-                Text(
-                    stringResource(R.string.add_money_amount), fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
-                    modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
+                rw.itunda.core.designsystem.components.AmountKeypadInput(
+                    digits = amountInput,
+                    onDigitsChange = { amountInput = it },
+                    quickAmounts = QUICK_AMOUNTS.map { it.toLong() },
+                    helperText = "How much would you like to add?",
+                    modifier = Modifier.padding(top = 12.dp),
                 )
-                IdsTextField(value = amountInput, onValueChange = { amountInput = it }, label = stringResource(R.string.add_money_amount), isAmount = true, modifier = Modifier.fillMaxWidth())
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
-                    QUICK_AMOUNTS.forEach { quick ->
-                        IdsButton(
-                            text = "+${formatMoney(quick.toDouble())}",
-                            onClick = { amountInput = ((amountInput.toIntOrNull() ?: 0) + quick).toString() },
-                            variant = rw.itunda.core.designsystem.components.IdsButtonVariant.Tinted,
-                            size = rw.itunda.core.designsystem.components.IdsButtonSize.Small,
-                        )
-                    }
-                }
-
                 error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp, modifier = Modifier.padding(top = 12.dp)) }
-
-                Box(modifier = Modifier.padding(top = 20.dp, bottom = 24.dp)) {
+                Box(modifier = Modifier.padding(top = 12.dp, bottom = 24.dp)) {
                     IdsButton(
                         text = stringResource(if (busy) R.string.add_money_submitting else R.string.add_money_submit),
                         enabled = !busy && sourceId != null && amountInput.toBigDecimalOrNull()?.let { it > java.math.BigDecimal.ZERO } == true,

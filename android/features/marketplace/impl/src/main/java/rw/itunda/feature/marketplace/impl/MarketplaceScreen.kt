@@ -33,6 +33,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.ShoppingBag
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -99,8 +101,6 @@ import rw.itunda.core.network.FavoriteListingDto
 import rw.itunda.core.network.KeywordAlertDto
 import rw.itunda.core.network.KeywordAlertQuietHoursDto
 import rw.itunda.core.network.ListingDto
-import rw.itunda.core.network.RecentlyViewedListingDto
-import rw.itunda.core.network.RecentlyViewedListingsStore
 import rw.itunda.core.network.MakeOfferRequest
 import rw.itunda.core.network.BoostListingRequest
 import rw.itunda.core.network.MarkSoldRequest
@@ -177,6 +177,8 @@ fun MarketplaceContent(
     var neighborhoodName by remember { mutableStateOf<String?>(null) }
     var neighborhoodChecked by remember { mutableStateOf(false) }
     var listings by remember { mutableStateOf<List<ListingDto>?>(null) }
+    var boughtListings by remember { mutableStateOf<List<ListingDto>?>(null) }
+    var selectedBrowseCategory by rememberSaveable { mutableStateOf("All") }
     // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc comment;
     // the backend has spread this sellerId->score map alongside every browse response
     // since 2026-07-21, this just finally reads and renders it.
@@ -201,10 +203,7 @@ fun MarketplaceContent(
         BackHandler { showNewListing = false }
     }
     LaunchedEffect(requestNewListingSignal) {
-        if (requestNewListingSignal > 0) {
-            view = HoodView.MINE
-            showNewListing = true
-        }
+        if (requestNewListingSignal > 0) showNewListing = true
     }
     LaunchedEffect(requestedView) {
         val (signal, key) = requestedView
@@ -252,11 +251,17 @@ fun MarketplaceContent(
     // from, matching this file's own existing "opt-in, never assumed" discipline for
     // seller location-sharing.
     val context = LocalContext.current
+    var selectedMarketplaceSort by rememberSaveable { mutableStateOf("Latest") }
+    var requestNearestAfterLocation by remember { mutableStateOf(false) }
     var browseLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     val requestBrowseLocation = rememberRealLocationRequester(
         onLocating = {},
-        onSuccess = { lat, lng -> browseLocation = lat to lng },
-        onError = {},
+        onSuccess = { lat, lng ->
+            browseLocation = lat to lng
+            if (requestNearestAfterLocation) selectedMarketplaceSort = "Nearest"
+            requestNearestAfterLocation = false
+        },
+        onError = { requestNearestAfterLocation = false; error = it },
     )
     LaunchedEffect(Unit) {
         val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
@@ -436,14 +441,18 @@ fun MarketplaceContent(
         loadingMore = true
         coroutineScope.launch {
             try {
-                val res = when (view) {
-                    HoodView.NEIGHBORHOOD -> NetworkClient.apiService.getListingsMyNeighborhood(page = nextPage)
-                    HoodView.BROWSE -> NetworkClient.apiService.browseListings(page = nextPage)
-                    HoodView.PURCHASES -> NetworkClient.apiService.getMyPurchases(page = nextPage)
+                val showingBought = selectedBrowseCategory == "Bought" &&
+                    view in setOf(HoodView.BROWSE, HoodView.NEARBY, HoodView.NEIGHBORHOOD)
+                val res = when {
+                    showingBought -> NetworkClient.apiService.getMyPurchases(page = nextPage)
+                    view == HoodView.NEIGHBORHOOD -> NetworkClient.apiService.getListingsMyNeighborhood(page = nextPage)
+                    view == HoodView.BROWSE -> NetworkClient.apiService.browseListings(page = nextPage)
+                    view == HoodView.PURCHASES -> NetworkClient.apiService.getMyPurchases(page = nextPage)
                     else -> NetworkClient.apiService.getMyListings(page = nextPage)
                 }
                 if (res.success) {
-                    listings = (listings ?: emptyList()) + res.listings
+                    if (showingBought) boughtListings = (boughtListings ?: emptyList()) + res.listings
+                    else listings = (listings ?: emptyList()) + res.listings
                     trustScores = trustScores + res.trustScores
                     likedListingIds = likedListingIds + (res.likedByMe ?: emptySet())
                     page = nextPage
@@ -470,9 +479,42 @@ fun MarketplaceContent(
     // stays null (not emptyList) while blank so it never shadows the real view-based
     // feed above.
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    var searchExpanded by rememberSaveable { mutableStateOf(false) }
+    var recentMarketplaceSearches by rememberSaveable { mutableStateOf(listOf<String>()) }
+    var showBrowseFilters by remember { mutableStateOf(false) }
+    var selectedMaxPrice by rememberSaveable { mutableStateOf(0) }
+    var selectedNeighborhood by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedConditions by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var listingConditions by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var searchResults by remember { mutableStateOf<List<ListingDto>?>(null) }
-    LaunchedEffect(searchQuery) {
-        if (searchQuery.isBlank()) {
+    LaunchedEffect(selectedBrowseCategory, view) {
+        val browseViews = setOf(HoodView.BROWSE, HoodView.NEARBY, HoodView.NEIGHBORHOOD)
+        if (selectedBrowseCategory == "Bought" && view in browseViews) {
+            boughtListings = null
+            page = 0
+            hasMore = false
+            try {
+                val res = NetworkClient.apiService.getMyPurchases(page = 0)
+                if (res.success) {
+                    boughtListings = res.listings
+                    trustScores = res.trustScores
+                    likedListingIds = res.likedByMe ?: emptySet()
+                    hasMore = res.page + 1 < res.totalPages
+                } else boughtListings = emptyList()
+                error = null
+            } catch (e: HttpException) {
+                boughtListings = emptyList()
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                boughtListings = emptyList()
+                error = "Couldn't load your purchases. Check your connection and try again."
+            }
+        } else {
+            boughtListings = null
+        }
+    }
+    LaunchedEffect(searchQuery, selectedBrowseCategory) {
+        if (searchQuery.isBlank() || selectedBrowseCategory == "Bought") {
             searchResults = null
             return@LaunchedEffect
         }
@@ -489,25 +531,55 @@ fun MarketplaceContent(
         }
     }
     val isSearching = searchQuery.isNotBlank()
-    val displayListings = if (isSearching) searchResults else listings
+    val browseViews = setOf(HoodView.BROWSE, HoodView.NEARBY, HoodView.NEIGHBORHOOD)
+    val showingBought = selectedBrowseCategory == "Bought" && view in browseViews
+    val displayListings = when {
+        showingBought -> boughtListings?.let { source ->
+            if (isSearching) source.filter { listing ->
+                listOf(listing.title, listing.description, listing.category, listing.neighborhood.orEmpty())
+                    .any { it.contains(searchQuery, ignoreCase = true) }
+            } else source
+        }
+        isSearching -> searchResults
+        else -> listings
+    }
+    val visibleListings = displayListings?.let { source ->
+        if (view !in browseViews) source else {
+            val categoryFiltered = when (selectedBrowseCategory) {
+                "All" -> source
+                "Free" -> source.filter { it.price <= 0.0 }
+                "Saved" -> source.filter { it.id in favoriteIds }
+                "Bought" -> source
+                "Mine" -> source.filter { it.sellerId == currentUserId }
+                else -> source.filter { it.category.equals(selectedBrowseCategory, ignoreCase = true) }
+            }
+            val priceFiltered = if (selectedMaxPrice > 0) categoryFiltered.filter { it.price <= selectedMaxPrice } else categoryFiltered
+            val areaFiltered = selectedNeighborhood?.let { area ->
+                priceFiltered.filter { it.neighborhood.equals(area, ignoreCase = true) }
+            } ?: priceFiltered
+            val conditionFiltered = if (selectedConditions.isEmpty()) areaFiltered else
+                areaFiltered.filter { listingConditions[it.id] in selectedConditions }
+            when (selectedMarketplaceSort) {
+                "Nearest" -> {
+                    val location = browseLocation
+                    if (location == null) conditionFiltered else conditionFiltered.sortedBy { listing ->
+                        val latitude = listing.latitude
+                        val longitude = listing.longitude
+                        if (latitude == null || longitude == null) Double.POSITIVE_INFINITY
+                        else haversineKm(location.first, location.second, latitude, longitude)
+                    }
+                }
+                else -> conditionFiltered.sortedByDescending { listing ->
+                    runCatching { Instant.parse(listing.createdAt).toEpochMilli() }.getOrDefault(0L)
+                }
+            }
+        }
+    }
 
     // Real listing detail navigation (2026-08-03) -- see ListingDetailScreen's own
     // doc comment for the real-Karrot-verified sourcing. Local nav state, same
     // pattern showNewListing (Mine tab) already establishes in this file.
     var selectedListing by remember { mutableStateOf<ListingDto?>(null) }
-    // Real "recently viewed listings" rail (2026-08-24) -- see
-    // RecentlyViewedListingsStore.kt's own doc comment. A LaunchedEffect on the
-    // listing id (rather than wrapping this screen's several real "open" call sites)
-    // covers every real entry point uniformly.
-    val recentlyViewedContext = LocalContext.current
-    val recentlyViewedListingsStore = remember { RecentlyViewedListingsStore(recentlyViewedContext) }
-    var recentlyViewedListings by remember { mutableStateOf(recentlyViewedListingsStore.getAll()) }
-    LaunchedEffect(selectedListing?.id) {
-        val current = selectedListing ?: return@LaunchedEffect
-        recentlyViewedListings = recentlyViewedListingsStore.add(
-            RecentlyViewedListingDto(current.id, current.title, current.price, current.category, current.photoUrl),
-        )
-    }
     if (selectedListing != null) {
         val current = selectedListing!!
         ListingDetailScreen(
@@ -585,43 +657,100 @@ fun MarketplaceContent(
         // now has exactly one chip row (HoodTab's Market/Life/Jobs/Home), matching
         // real Karrot.
         item {
-            IdsTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                label = "Search",
-                placeholder = "Search marketplace listings",
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (searchExpanded) {
+                    IdsTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        label = "Search",
+                        placeholder = "Search in ${neighborhoodName ?: "your area"}",
+                        modifier = Modifier.weight(1f),
+                    )
+                    Icon(
+                        imageVector = Icons.Outlined.Close,
+                        contentDescription = "Close search",
+                        tint = Ids.colors.textSecondary,
+                        modifier = Modifier.padding(12.dp).pressScaleClickable {
+                            if (searchQuery.isNotBlank()) {
+                                recentMarketplaceSearches = (listOf(searchQuery.trim()) + recentMarketplaceSearches.filterNot { it.equals(searchQuery.trim(), true) }).take(6)
+                            }
+                            searchQuery = ""
+                            searchExpanded = false
+                        },
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Outlined.Search,
+                        contentDescription = "Search marketplace",
+                        tint = Ids.colors.textPrimary,
+                        modifier = Modifier.padding(12.dp).pressScaleClickable { searchExpanded = true },
+                    )
+                }
+            }
         }
-        if (!isSearching && recentlyViewedListings.isNotEmpty()) {
-            item {
-                RecentlyViewedListingsRail(recentlyViewedListings, onOpen = { id ->
-                    // Real single-listing fetch (see ApiService.getListing's own doc
-                    // comment) -- a recently-viewed listing may have since scrolled out
-                    // of the currently-loaded feed, so a plain local-list lookup alone
-                    // (tried first, instant, no network wait) can't always find it.
-                    val cached = (displayListings ?: listings)?.find { it.id == id }
-                    if (cached != null) {
-                        selectedListing = cached
-                    } else {
-                        coroutineScope.launch {
-                            try {
-                                selectedListing = NetworkClient.apiService.getListing(id).listing
-                            } catch (_: Exception) {
-                                // Real, non-critical -- the listing may have been removed
-                                // or sold since; the rail entry just won't open.
+        if (searchExpanded && searchQuery.isBlank()) {
+            if (recentMarketplaceSearches.isNotEmpty()) {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Text("Recent searches", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
+                            Text("Clear", fontSize = 13.sp, color = Ids.colors.textSecondary, modifier = Modifier.pressScaleClickable { recentMarketplaceSearches = emptyList() }.padding(4.dp))
+                        }
+                        recentMarketplaceSearches.chunked(3).forEach { terms ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                terms.forEach { term ->
+                                    Text(term, fontSize = 13.sp, color = Ids.colors.textSecondary, modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft).pressScaleClickable { searchQuery = term }.padding(horizontal = 12.dp, vertical = 8.dp))
+                                }
                             }
                         }
                     }
-                })
+                }
+            }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Popular near ${neighborhoodName ?: "you"}", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("Phone", "Bicycle", "Sofa").forEach { term ->
+                            Text(term, fontSize = 13.sp, color = Ids.colors.textSecondary, modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft).pressScaleClickable { searchQuery = term }.padding(horizontal = 12.dp, vertical = 8.dp))
+                        }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("Baby clothes", "Textbooks", "Fridge").forEach { term ->
+                            Text(term, fontSize = 13.sp, color = Ids.colors.textSecondary, modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(Ids.colors.surface).pressScaleClickable { searchQuery = term }.padding(horizontal = 12.dp, vertical = 8.dp))
+                        }
+                    }
+                }
+            }
+        }
+        if (view == HoodView.BROWSE || view == HoodView.NEARBY || view == HoodView.NEIGHBORHOOD) {
+            item {
+                MarketplaceBrowseControls(
+                    selectedCategory = selectedBrowseCategory,
+                    onCategorySelected = { selectedBrowseCategory = it },
+                    sortLabel = selectedMarketplaceSort,
+                    filterCount = (if (selectedMaxPrice > 0) 1 else 0) + (if (selectedNeighborhood != null) 1 else 0) + (if (selectedConditions.isNotEmpty()) 1 else 0),
+                    onFilterClick = { showBrowseFilters = true },
+                    onSortClick = {
+                        if (!requestNearestAfterLocation) {
+                            if (selectedMarketplaceSort == "Nearest") selectedMarketplaceSort = "Latest"
+                            else if (browseLocation != null) selectedMarketplaceSort = "Nearest"
+                            else { requestNearestAfterLocation = true; requestBrowseLocation() }
+                        }
+                    },
+                )
             }
         }
         if (isSearching) {
             if (displayListings == null) {
                 item { SkeletonBlock() }
-            } else if (displayListings.isEmpty()) {
-                item { EmptyState("No listings match \"$searchQuery\".", icon = Icons.Outlined.ShoppingBag) }
+            } else if (visibleListings.isNullOrEmpty()) {
+                item { MarketplacePrototypeEmptyState() }
             } else {
-                items(displayListings, key = { it.id }) { listing ->
+                items(visibleListings, key = { it.id }) { listing ->
                     ListingRow(
                         listing = listing,
                         isMine = listing.sellerId == currentUserId,
@@ -642,18 +771,6 @@ fun MarketplaceContent(
         favoriteNotice?.let { notice ->
             item { Text(notice, color = Ids.colors.brand, fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
         }
-        if (view == HoodView.MINE) {
-            item {
-                if (!showNewListing) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Ids.colors.brand).pressScaleClickable { showNewListing = true }.padding(vertical = 14.dp),
-                        contentAlignment = Alignment.Center,
-                    ) { Text(stringResource(R.string.marketplace_new_listing_cta), color = Color.White, fontWeight = FontWeight.Bold) }
-                } else {
-                    NewListingForm(onCreated = { showNewListing = false; load() }, onCancel = { showNewListing = false })
-                }
-            }
-        }
         if (view == HoodView.NEIGHBORHOOD && neighborhoodChecked && neighborhoodName == null) {
             item { NeighborhoodSetupPrompt(onDone = { load() }) }
         }
@@ -661,7 +778,17 @@ fun MarketplaceContent(
             item { Text("Your neighborhood: $neighborhoodName", color = Ids.colors.textSecondary, fontSize = 13.sp) }
         }
         if (view == HoodView.WISHLIST) {
-            item { ListingWishlistView(onRemoved = ::loadFavoriteIds) }
+            item { ListingWishlistView(onRemoved = ::loadFavoriteIds, onOpen = { listingId ->
+                coroutineScope.launch {
+                    try {
+                        selectedListing = NetworkClient.apiService.getListing(listingId).listing
+                    } catch (e: HttpException) {
+                        error = superAppErrorMessage(e)
+                    } catch (e: IOException) {
+                        error = "Couldn't reach itunda. Check your connection and try again."
+                    }
+                }
+            }) }
         } else if (view == HoodView.ALERTS) {
             item { KeywordAlertsView() }
         } else if (view == HoodView.HIDDEN) {
@@ -670,24 +797,23 @@ fun MarketplaceContent(
             item { ErrorCard(error!!, onRetry = ::load) }
         } else if (listings == null) {
             item { SkeletonBlock() }
-        } else if (listings!!.isEmpty() && (view != HoodView.NEIGHBORHOOD || neighborhoodName != null)) {
+        } else if (visibleListings.isNullOrEmpty() && (view != HoodView.NEIGHBORHOOD || neighborhoodName != null)) {
             item {
                 EmptyState(
-                    // Real copy-voice fix (item 244, round 5 of the empty-state pass --
-                    // docs/COPY_VOICE.md's rules, never applied to Marketplace/Community/
-                    // Jobs/Property on any platform until now): say what's missing AND
-                    // what fixes it, per this screen's own real, visible affordance
-                    // ("+ List an item" above, in the MINE view) rather than a bare
-                    // absence report.
-                    when (view) {
-                        HoodView.BROWSE -> "No listings yet — be the first to list something for sale."
+                    when {
+                        view == HoodView.BROWSE && selectedBrowseCategory == "Saved" -> "Tap the heart on a listing to save it here."
+                        view == HoodView.BROWSE && selectedBrowseCategory == "Bought" -> "Things you buy with itunda show up here."
+                        view == HoodView.BROWSE && selectedBrowseCategory == "Mine" -> "You have not listed anything yet."
+                        else -> when (view) {
+                        HoodView.BROWSE -> "Nothing here yet. Be the first to post."
                         HoodView.NEARBY -> "No listings near you yet — try Browse to see listings from everywhere."
                         HoodView.NEIGHBORHOOD -> "No listings in your neighborhood yet — try Browse to see listings from everywhere."
-                        HoodView.MINE -> "You haven't listed anything yet — tap \"+ List an item\" above to list your first one."
+                        HoodView.MINE -> "Nothing here yet. Be the first to post."
                         HoodView.PURCHASES -> "No purchases recorded yet — items you buy will show up here."
-                        HoodView.WISHLIST -> "No saved listings yet — tap ♡ on any listing to save it here."
+                        HoodView.WISHLIST -> "Nothing here yet. Be the first to post."
                         HoodView.ALERTS -> "" // unreachable -- ALERTS is intercepted earlier
                         HoodView.HIDDEN -> "" // unreachable -- HIDDEN is intercepted earlier
+                        }
                     },
                     icon = Icons.Outlined.ShoppingBag,
                     // Real fix (2026-08-15): the copy above told the user to "try
@@ -699,8 +825,8 @@ fun MarketplaceContent(
                     onAction = if (view == HoodView.NEARBY || view == HoodView.NEIGHBORHOOD) { { view = HoodView.BROWSE } } else null,
                 )
             }
-        } else if (listings!!.isNotEmpty()) {
-            items(listings!!, key = { it.id }) { listing ->
+        } else if (!visibleListings.isNullOrEmpty()) {
+            items(visibleListings, key = { it.id }) { listing ->
                 ListingRow(
                     listing = listing,
                     isMine = view == HoodView.MINE || listing.sellerId == currentUserId,
@@ -732,15 +858,41 @@ fun MarketplaceContent(
     }
         ScrollFog(modifier = Modifier.align(Alignment.BottomCenter))
     }
+    val availableNeighborhoods = (listings.orEmpty() + searchResults.orEmpty() + boughtListings.orEmpty())
+        .mapNotNull { it.neighborhood?.takeIf(String::isNotBlank) }
+        .distinct()
+        .sorted()
+    MarketplaceFilterSheet(
+        visible = showBrowseFilters,
+        maxPrice = selectedMaxPrice,
+        selectedNeighborhood = selectedNeighborhood,
+        neighborhoods = availableNeighborhoods,
+        selectedConditions = selectedConditions,
+        onDismiss = { showBrowseFilters = false },
+        onApply = { maxPrice, area, conditions ->
+            selectedMaxPrice = maxPrice
+            selectedNeighborhood = area
+            selectedConditions = conditions
+        },
+    )
+    if (showNewListing) NewListingForm(
+        onCreated = { listingId, condition ->
+            listingConditions = listingConditions + (listingId to condition)
+            showNewListing = false
+            load()
+        },
+        onCancel = { showNewListing = false },
+    )
 }
 
 // Real "recently viewed listings" rail (2026-08-24) -- widened from private to
 // internal so MarketplaceRecentlyViewed.kt (same module) can reuse this directly
 // instead of a third near-duplicate placeholder.
 @Composable
-internal fun ListingPhotoPlaceholder() {
+internal fun ListingPhotoPlaceholder(category: String = "") {
+    val art = when { category.contains("electr", true) || category.contains("phone", true) -> "airtime"; category.contains("furn", true) || category.contains("home", true) -> "house"; else -> "bag" }
     Box(modifier = Modifier.fillMaxSize().background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
-        Icon(Icons.Outlined.ShoppingBag, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(40.dp))
+        rw.itunda.core.designsystem.components.ItundaArt(art, rw.itunda.core.designsystem.components.ItundaArtSet.Proto, 56.dp, fit = true)
     }
 }
 
@@ -785,7 +937,7 @@ private fun isListingBoosted(boostedUntil: String?): Boolean {
 // in-place expansion (an earlier pass here guessed at in-place expand without
 // checking; this replaces that guess with the verified real behavior).
 @Composable
-private fun ListingRow(
+fun ListingRow(
     listing: ListingDto, isMine: Boolean,
     favorited: Boolean = false, favoriteBusy: Boolean = false, onToggleFavorite: () -> Unit = {},
     viewerLocation: Pair<Double, Double>? = null,
@@ -814,14 +966,11 @@ private fun ListingRow(
             // own identical fix; see IdsInteractions.kt's pressScaleClickable doc
             // comment for the full sourced account.
             Row(
-                modifier = Modifier.fillMaxWidth().pressScaleClickable(isScrollTouched = isScrollTouched, onClick = onOpen).padding(vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth().pressScaleClickable(isScrollTouched = isScrollTouched, onClick = onOpen).padding(vertical = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                // Real fix, 2026-08-03: was 96.dp -- a fresh real 당근마켓 screenshot
-                // (user-provided) measured the actual thumbnail at ~124dp square on an
-                // equivalent screen (326px of a 1080px-wide capture), notably more
-                // prominent than itunda's first pass.
-                Box(modifier = Modifier.size(124.dp).clip(RoundedCornerShape(12.dp))) {
+                // v1038 Marketplace feed uses a 96dp square thumbnail with a 16dp radius.
+                Box(modifier = Modifier.size(96.dp).clip(RoundedCornerShape(16.dp))) {
                     if (listing.photoUrl != null) {
                         // SubcomposeAsyncImage, not AsyncImage (2026-07-24): plain AsyncImage
                         // renders nothing at all while loading or on a failed fetch -- a
@@ -838,18 +987,27 @@ private fun ListingRow(
                         ) {
                             when (painter.state) {
                                 is coil.compose.AsyncImagePainter.State.Success -> SubcomposeAsyncImageContent()
-                                else -> ListingPhotoPlaceholder()
+                                else -> ListingPhotoPlaceholder(listing.category)
                             }
                         }
                     } else {
-                        ListingPhotoPlaceholder()
+                        ListingPhotoPlaceholder(listing.category)
                     }
-                    if (listing.status == "SOLD") {
+                    if (listing.status.equals("SOLD", ignoreCase = true)) {
                         Box(
                             modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text("SOLD", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    } else if (listing.status.equals("RESERVED", ignoreCase = true)) {
+                        Box(
+                            modifier = Modifier.align(Alignment.BottomStart).padding(6.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Ids.colors.surface)
+                                .padding(horizontal = 7.dp, vertical = 4.dp),
+                        ) {
+                            Text("Reserved", color = Ids.colors.textPrimary, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
                     // Real "Sponsored" badge (2026-07-25) -- only ever shown for a listing
@@ -867,29 +1025,21 @@ private fun ListingRow(
                         ) { Text("AD", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold) }
                     }
                 }
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            listing.title,
+                            listing.title, lineHeight = 22.sp,
                             color = Ids.colors.textPrimary,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             fontSize = 16.sp,
-                            maxLines = 1,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).padding(end = 6.dp),
                         )
                         if (!isMine) {
-                            Text(
-                                if (hiding) "…" else "Hide",
-                                color = Ids.colors.textSecondary,
-                                fontSize = 11.sp,
-                                modifier = Modifier.padding(end = 8.dp)
-                                    .semantics { contentDescription = "Hide this listing -- you won't see it again" }
-                                    .pressScaleClickable(enabled = !hiding, onClick = onHide),
-                            )
                             WishlistHeart(
                                 favorited = favorited,
-                                size = 20.dp,
+                                size = 17.dp,
                                 modifier = Modifier.semantics { contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist" }
                                     .pressScaleClickable(enabled = !favoriteBusy, onClick = onToggleFavorite),
                             )
@@ -908,9 +1058,11 @@ private fun ListingRow(
                         formatDistanceKm(haversineKm(viewerLat, viewerLng, listingLat, listingLng))
                     } else null
                     Text(
-                        listOfNotNull(listing.neighborhood, distanceLabel ?: listing.category, relativeTimeAgo(listing.createdAt)).joinToString(" · "),
+                        listOfNotNull(listing.neighborhood?.takeIf { it.isNotBlank() }, distanceLabel, relativeTimeAgo(listing.createdAt)).joinToString(" · "),
                         color = Ids.colors.textSecondary,
-                        fontSize = 12.sp,
+                        fontSize = 13.sp, lineHeight = 18.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     // Real 나눔 (free giveaway) treatment (2026-08-03) -- real Karrot
                     // shows "나눔 🧡" instead of "0원" for a free item; itunda already
@@ -920,10 +1072,26 @@ private fun ListingRow(
                     // same pattern this file's own CommunityPostCard-equivalent ❤️/💬
                     // counts already use, not a deviation from "themes stay common."
                     if (listing.price <= 0.0) {
-                        Text("Free 🧡", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text("Free", color = Ids.colors.textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, lineHeight = 24.sp)
                     } else {
-                        Text(String.format(Locale.US, "%,.0f RWF", listing.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text(String.format(Locale.US, "%,.0f RWF", listing.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, lineHeight = 24.sp)
                     }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            WishlistHeart(
+                                favorited = liked,
+                                size = 12.dp,
+                                modifier = Modifier.semantics { contentDescription = if (liked) "Unlike" else "Like" }.pressScaleClickable {
+                                    displayedLikeCount = if (liked) (displayedLikeCount - 1).coerceAtLeast(0) else displayedLikeCount + 1
+                                    onToggleLike()
+                                },
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("$displayedLikeCount", color = Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        }
                 }
             }
             // Real like count (2026-08-03) -- matches a real 당근마켓 screenshot's
@@ -931,22 +1099,6 @@ private fun ListingRow(
             // NOT shown alongside it (unlike the real reference) -- there is no real
             // comment-thread feature on listings yet, and this app doesn't fabricate
             // a count for a feature that doesn't exist.
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                WishlistHeart(
-                    favorited = liked,
-                    size = 16.dp,
-                    modifier = Modifier.semantics { contentDescription = if (liked) "Unlike" else "Like" }.pressScaleClickable {
-                        displayedLikeCount = if (liked) (displayedLikeCount - 1).coerceAtLeast(0) else displayedLikeCount + 1
-                        onToggleLike()
-                    },
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("$displayedLikeCount", color = Ids.colors.textTertiary, fontSize = 12.sp)
-            }
         // Real flat-list hairline divider (2026-08-03) -- matches FlatSection's own
         // established real-Toss/Karrot list pattern (core/designsystem's own doc
         // comment on that composable): rows separated by a thin line, never a card
@@ -962,7 +1114,7 @@ private fun ListingRow(
 // inline into every row of the browse list -- moved here unchanged, just reached by
 // navigation instead of always being visible.
 @Composable
-private fun ListingDetailScreen(
+fun ListingDetailScreen(
     listing: ListingDto, isMine: Boolean, onBack: () -> Unit, onChanged: () -> Unit, onMessageSeller: (String) -> Unit, onMakeOffer: (String, Double) -> Unit,
     favorited: Boolean = false, favoriteBusy: Boolean = false, onToggleFavorite: () -> Unit = {},
     sellerTrustScore: Int? = null,
@@ -1152,7 +1304,6 @@ private fun ListingDetailScreen(
                 TrustBadge(sellerTrustScore)
             }
             Text(listing.description, color = Ids.colors.textSecondary, fontSize = 13.sp)
-            VehicleDetailSection(listing)
             listing.meetingPlace?.let {
                 Text("Suggested hand-off: $it", color = Ids.colors.textSecondary, fontSize = 12.sp)
             }

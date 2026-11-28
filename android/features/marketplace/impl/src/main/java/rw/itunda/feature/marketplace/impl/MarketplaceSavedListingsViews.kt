@@ -31,9 +31,11 @@ import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.ListingActionButton
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.FavoriteListingDto
+import rw.itunda.core.network.ListingDto
 import rw.itunda.core.network.HiddenListingDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.superAppErrorMessage
@@ -50,107 +52,82 @@ import rw.itunda.core.network.superAppErrorMessage
 // available" fallback for a favorited-then-deleted listing is the backend's own
 // responsibility -- ListingFavoriteService.kt already resolves that server-side).
 @Composable
-internal fun ListingWishlistView(onRemoved: () -> Unit) {
-    var favorites by remember { mutableStateOf<List<FavoriteListingDto>?>(null) }
+fun ListingWishlistView(
+    onRemoved: () -> Unit,
+    onOpen: (String) -> Unit,
+    initialFavorites: List<FavoriteListingDto>? = null,
+) {
+    var favorites by remember { mutableStateOf(initialFavorites) }
     var error by remember { mutableStateOf<String?>(null) }
     var removingId by remember { mutableStateOf<String?>(null) }
-    // Real pagination-discard fix (2026-09-13, porting web's own fix -- see
-    // project_itunda_pagination_discard_sweep memory) -- getMyFavoriteListings
-    // silently capped this list at the first 20 favorited listings.
-    var page by remember { mutableStateOf(0) }
-    var hasMore by remember { mutableStateOf(false) }
-    var loadingMore by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     fun load() {
         coroutineScope.launch {
             try {
-                val res = NetworkClient.apiService.getMyFavoriteListings(page = 0)
-                if (res.success) { favorites = res.favorites; page = 0; hasMore = res.page + 1 < res.totalPages }
-                error = null
+                val response = NetworkClient.apiService.getMyFavoriteListings(page = 0)
+                if (response.success) {
+                    favorites = response.favorites
+                    error = null
+                }
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {
-                error = "Couldn't reach itunda. Check your connection and try again."
+                error = "Couldn't load saved listings. Check your connection and try again."
             }
         }
     }
-    LaunchedEffect(Unit) { load() }
 
-    fun loadMore() {
-        val nextPage = page + 1
-        loadingMore = true
-        coroutineScope.launch {
-            try {
-                val res = NetworkClient.apiService.getMyFavoriteListings(page = nextPage)
-                if (res.success) {
-                    favorites = (favorites ?: emptyList()) + res.favorites
-                    page = nextPage
-                    hasMore = res.page + 1 < res.totalPages
-                }
-            } catch (_: Exception) {
-                // Non-critical -- the already-loaded page stays visible; the
-                // user can retry by tapping "Load more" again.
-            } finally {
-                loadingMore = false
-            }
-        }
+    LaunchedEffect(initialFavorites) {
+        if (initialFavorites != null) favorites = initialFavorites else load()
     }
 
     when {
-        error != null -> ErrorCard(error!!, onRetry = ::load)
+        error != null -> ErrorCard(error!!, onRetry = { error = null; load() })
         favorites == null -> SkeletonBlock()
-        favorites!!.isEmpty() -> EmptyState("No saved listings yet -- tap ♡ on any listing to save it here.", icon = Icons.Outlined.FavoriteBorder)
-        else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card --
-            // an entity list a user manages (saved listings), no divider, matching
-            // GroupAccountScreen's identical entity-list conversion
-            // (docs/UI_UX_GUIDELINES.md §10).
-            favorites!!.forEach { f ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column {
-                        Text(f.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Text(String.format(Locale.US, "${f.category} · %,.0f RWF", f.price), color = Ids.colors.textSecondary, fontSize = 13.sp)
-                    }
-                    ListingActionButton(if (removingId == f.listingId) "Removing…" else "Remove", removingId == f.listingId) {
-                        removingId = f.listingId
+        favorites!!.isEmpty() -> MarketplacePrototypeEmptyState()
+        else -> Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+            favorites!!.forEach { favorite ->
+                val listing = ListingDto(
+                    id = favorite.listingId,
+                    sellerId = "",
+                    title = favorite.title,
+                    description = "",
+                    price = favorite.price,
+                    category = favorite.category,
+                    status = "ACTIVE",
+                    createdAt = favorite.favoritedAt,
+                    neighborhood = null,
+                    likeCount = 0,
+                )
+                ListingRow(
+                    listing = listing,
+                    isMine = false,
+                    favorited = true,
+                    favoriteBusy = removingId == favorite.listingId,
+                    onToggleFavorite = {
+                        removingId = favorite.listingId
                         coroutineScope.launch {
                             try {
-                                NetworkClient.apiService.removeListingFavorite(f.listingId)
-                                favorites = favorites?.filterNot { it.listingId == f.listingId }
+                                NetworkClient.apiService.removeListingFavorite(favorite.listingId)
+                                favorites = favorites?.filterNot { it.listingId == favorite.listingId }
                                 onRemoved()
                             } catch (e: HttpException) {
                                 error = superAppErrorMessage(e)
                             } catch (e: IOException) {
-                                error = "Couldn't reach itunda. Check your connection and try again."
+                                error = "Couldn't update saved listings. Check your connection and try again."
                             } finally {
                                 removingId = null
                             }
                         }
-                    }
-                }
-            }
-            if (hasMore) {
-                IdsButton(
-                    text = if (loadingMore) "Loading…" else "Load more",
-                    onClick = ::loadMore,
-                    enabled = !loadingMore,
-                    variant = IdsButtonVariant.Tinted,
-                    size = IdsButtonSize.Medium,
+                    },
+                    onOpen = { onOpen(favorite.listingId) },
                 )
             }
         }
     }
 }
 
-// Real "Hidden listings" list (Hood product-completeness pass, 2026-09-07) -- see
-// backend ListingHideRepository.findByUserIdOrderByCreatedAtDesc's own doc comment: a
-// user could hide a listing (real, shipped, wired everywhere) but never see or undo
-// that on any platform until now. Mirrors ListingWishlistView's exact shape above.
 @Composable
 internal fun HiddenListingsView() {
     var hidden by remember { mutableStateOf<List<HiddenListingDto>?>(null) }

@@ -76,7 +76,8 @@ internal fun VerificationCard() {
     }
     LaunchedEffect(Unit) { load() }
 
-    if (!loaded || (emailVerified && phoneVerified)) return
+    if (!loaded) return
+    if (emailVerified && phoneVerified) { YouRow("Verification", subtitle = "Identity verified") { VerifiedTile() }; return }
 
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text("Verify your account", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
