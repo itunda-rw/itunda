@@ -1,0 +1,332 @@
+{
+  "screenKey": "shop",
+  "screenText": "Kimironko\nDelivery\nPickup\nAll\nBrochette\nChicken\nPizza\nBurgers\nLocal\nChips\nBakery\nCoffee\nJuice\nHealthy\nDessert\nDishes\n2\nRwandan coffee\nKimironko Coffee · 15 min\n1,500 RWF\nIced coffee\nKimironko Coffee · 15 min\n2,200 RWF\nResults\n2\nFastest\nTop rated\nFree delivery\nNearest\nOpen now\nNew\nKimironko Coffee\n 4.9 (144) · 15 min\nDelivery 500\nKigali Bakery\n 4.8 (320) · 20 min\nFree delivery",
+  "sheetText": "",
+  "scroll": {
+    "top": 0,
+    "height": 2600,
+    "client": 2600
+  },
+  "controls": [
+    {
+      "tag": "button",
+      "text": "",
+      "id": "",
+      "className": "ez-ib",
+      "role": null,
+      "ariaLabel": "Back",
+      "onClick": "back()",
+      "disabled": false
+    },
+    {
+      "tag": "input",
+      "text": "coffee",
+      "id": "e2q",
+      "className": "hs13",
+      "role": null,
+      "ariaLabel": "Search restaurants",
+      "onClick": null,
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "",
+      "id": "",
+      "className": "ez-ib",
+      "role": null,
+      "ariaLabel": "Orders",
+      "onClick": "S.stack=['shop','eorders'];render('push')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "",
+      "id": "",
+      "className": "ez-ib",
+      "role": null,
+      "ariaLabel": "Cart",
+      "onClick": "toast('Your cart is empty')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Kimironko",
+      "id": "",
+      "className": "ez-ad",
+      "role": null,
+      "ariaLabel": "Change delivery address",
+      "onClick": "eAddr()",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Delivery",
+      "id": "",
+      "className": "on v420hit",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "e2Pk(false)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Pickup",
+      "id": "",
+      "className": "v420hit",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "e2Pk(true)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "All",
+      "id": "",
+      "className": "on",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "e2Cat('All')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Brochette",
+      "id": "",
+      "className": "",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "e2Cat('Brochette')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Chicken",
+      "id": "",
+      "className": "",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "e2Cat('Chicken')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Pizza",
+      "id": "",
+      "className": "",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "e2Cat('Pizza')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Burgers",
+      "id": "",
+      "className": "",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "e2Cat('Burgers')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Local",
+      "id": "",
+      "className": "",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "e2Cat('Local')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Chips",
+      "id": "",
+      "className": "",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "e2Cat('Chips')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Bakery",
+      "id": "",
+      "className": "",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "e2Cat('Bakery')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Coffee",
+      "id": "",
+      "className": "",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "e2Cat('Coffee')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Juice",
+      "id": "",
+      "className": "",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "e2Cat('Juice')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Healthy",
+      "id": "",
+      "className": "",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "e2Cat('Healthy')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Dessert",
+      "id": "",
+      "className": "",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "e2Cat('Dessert')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Rwandan coffee Kimironko Coffee · 15 min 1,500 RWF",
+      "id": "",
+      "className": "tap",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "ezDish(3,0)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Iced coffee Kimironko Coffee · 15 min 2,200 RWF",
+      "id": "",
+      "className": "tap",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "ezDish(3,2)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Fastest",
+      "id": "",
+      "className": "on v420hit",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "e2Sort('fast')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Top rated",
+      "id": "",
+      "className": "v420hit",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "e2Sort('rating')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Free delivery",
+      "id": "",
+      "className": "v420hit",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "e2Sort('free')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Nearest",
+      "id": "",
+      "className": "v420hit",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "e2Sort('near')",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "Open now",
+      "id": "",
+      "className": "v420hit",
+      "role": null,
+      "ariaLabel": null,
+      "onClick": "e2Flt('open')",
+      "disabled": false
+    },
+    {
+      "tag": "div",
+      "text": "New Kimironko Coffee 4.9 (144) · 15 min Delivery 500",
+      "id": "",
+      "className": "ez-c tap",
+      "role": "button",
+      "ariaLabel": "Kimironko Coffee",
+      "onClick": "openERest(3)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "",
+      "id": "",
+      "className": "ez-hr",
+      "role": null,
+      "ariaLabel": "Save",
+      "onClick": "event.stopPropagation();ezFav(3)",
+      "disabled": false
+    },
+    {
+      "tag": "div",
+      "text": "Kigali Bakery 4.8 (320) · 20 min Free delivery",
+      "id": "",
+      "className": "ez-c tap",
+      "role": "button",
+      "ariaLabel": "Kigali Bakery",
+      "onClick": "openERest(0)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "",
+      "id": "",
+      "className": "ez-hr",
+      "role": null,
+      "ariaLabel": "Save",
+      "onClick": "event.stopPropagation();ezFav(0)",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "",
+      "id": "t26dn",
+      "className": "",
+      "role": null,
+      "ariaLabel": "Latest messages",
+      "onClick": null,
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "text": "",
+      "id": "",
+      "className": "v36 hit44a",
+      "role": null,
+      "ariaLabel": "Button",
+      "onClick": null,
+      "disabled": false
+    }
+  ]
+}
