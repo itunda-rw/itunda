@@ -131,7 +131,7 @@ fun PayDoneScreen(merchantName: String, onDone: () -> Unit, amount: Long = PayRe
     val time = remember { java.time.LocalTime.now().let { String.format(java.util.Locale.US, "%02d:%02d %s", if (it.hour % 12 == 0) 12 else it.hour % 12, it.minute, if (it.hour < 12) "AM" else "PM") } }
     val ref = remember { "TX" + (10_000_000..99_999_999).random() }
     PaySubScreen(
-        onBack = onDone,
+        onBack = onDone, showBack = false,
         cta = {
             Column(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 14.dp, bottom = 28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 val pal = rememberPayPalette()
@@ -151,8 +151,12 @@ fun PayDoneScreen(merchantName: String, onDone: () -> Unit, amount: Long = PayRe
         },
     ) { p ->
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
-            Box(Modifier.padding(start = 24.dp, top = 48.dp).size(88.dp).clip(androidx.compose.foundation.shape.CircleShape).background(p.tintFg), contentAlignment = Alignment.Center) {
-                ItundaArt("check", ItundaArtSet.Line, 44.dp, tint = androidx.compose.ui.graphics.Color.White)
+            Box(Modifier.padding(start = 24.dp, top = 48.dp).size(88.dp).clip(androidx.compose.foundation.shape.CircleShape).background(p.brandText), contentAlignment = Alignment.Center) {
+                androidx.compose.foundation.Canvas(Modifier.size(44.dp)) {
+                    val w = size.width
+                    val path = androidx.compose.ui.graphics.Path().apply { moveTo(w * 0.12f, w * 0.52f); lineTo(w * 0.40f, w * 0.78f); lineTo(w * 0.88f, w * 0.22f) }
+                    drawPath(path, androidx.compose.ui.graphics.Color.White, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 8.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
+                }
             }
             Text(String.format(java.util.Locale.US, "%,d", amount) + " RWF", color = p.text, fontSize = 30.sp, lineHeight = 38.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.6).sp, modifier = Modifier.padding(start = 24.dp, top = 24.dp))
             Text("Paid to $merchantName", color = p.tt, fontSize = 17.sp, lineHeight = 23.8.sp, modifier = Modifier.padding(start = 24.dp, top = 10.dp))

@@ -37,13 +37,13 @@ internal fun rememberPayPalette(): PayPalette = payPalette(false, MaterialTheme.
  */
 @Composable
 internal fun PaySubScreen(
-    onBack: () -> Unit, title: String? = null, cta: (@Composable ColumnScope.() -> Unit)? = null, content: @Composable ColumnScope.(PayPalette) -> Unit,
+    onBack: () -> Unit, title: String? = null, cta: (@Composable ColumnScope.() -> Unit)? = null, showBack: Boolean = true, content: @Composable ColumnScope.(PayPalette) -> Unit,
 ) {
     val p = rememberPayPalette()
     PayTextScope {
         Column(Modifier.fillMaxSize().background(p.page)) {
             Box(Modifier.fillMaxWidth().height(70.dp)) {
-                Box(Modifier.padding(start = 6.dp, top = 16.dp).size(48.dp).pressScaleClickable(onClick = onBack), contentAlignment = Alignment.Center) {
+                if (showBack) Box(Modifier.padding(start = 6.dp, top = 16.dp).size(48.dp).pressScaleClickable(onClick = onBack), contentAlignment = Alignment.Center) {
                     Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back", Modifier.size(24.dp), tint = p.text)
                 }
                 if (title != null) {
